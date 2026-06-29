@@ -1,0 +1,81 @@
+name: tofu-apply
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "account/**"
+      - "stacks/**"
+      - "modules/**"
+      - "common.tfvars"
+      - ".github/workflows/tofu-apply.yml"
+
+# Never let two applies overlap (belt-and-suspenders with the DynamoDB lock).
+concurrency:
+  group: tofu-apply
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      stacks: ${{ steps.set.outputs.stacks }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          base: ${{ github.event.before }}
+          filters: |
+            account:
+              - 'account/**'
+              - 'modules/**'
+              - 'common.tfvars'
+            rag:
+              - 'stacks/rag/**'
+              - 'modules/**'
+              - 'common.tfvars'
+      - id: set
+        run: |
+          stacks=()
+          [[ "${{ steps.filter.outputs.account }}" == "true" ]] && stacks+=('"account"')
+          [[ "${{ steps.filter.outputs.rag }}" == "true" ]] && stacks+=('"stacks/rag"')
+          echo "stacks=[$(IFS=,; echo "${stacks[*]}")]" >> "$GITHUB_OUTPUT"
+
+  apply:
+    needs: detect
+    if: needs.detect.outputs.stacks != '[]'
+    runs-on: ubuntu-latest
+    # Gate: requires a reviewer approval configured on the `prod` Environment.
+    environment: prod
+    strategy:
+      fail-fast: true
+      max-parallel: 1
+      matrix:
+        stack: ${{ fromJSON(needs.detect.outputs.stacks) }}
+    defaults:
+      run:
+        working-directory: ${{ matrix.stack }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.TOFU_APPLY_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: 1.11.5
+
+      - name: init
+        run: tofu init -input=false
+
+      - name: apply
+        run: tofu apply -input=false -auto-approve -var-file="$GITHUB_WORKSPACE/common.tfvars"

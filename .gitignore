@@ -1,0 +1,24 @@
+# OpenTofu / Terraform
+.terraform/
+# NOTE: .terraform.lock.hcl is intentionally COMMITTED (pins provider hashes).
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+
+# Local var files with secrets/overrides (commit *.tfvars.example instead)
+*.auto.tfvars
+*.local.tfvars
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Plan artifacts
+*.tfplan
+plan.json
+tfplan.binary
+
+# Editor / OS
+.DS_Store
+*.swp
