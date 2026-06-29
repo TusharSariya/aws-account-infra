@@ -14,7 +14,7 @@ terraform_deploy_role_name = "TerraformDeploy"
 
 # GitHub repo that CI runs from — used to pin the OIDC role trust policy.
 # TODO: confirm this matches the remote you create for this repo.
-github_owner = "TusharSariya"
+github_owner = "TusharSariyaOrg"
 github_repo  = "aws-account-infra"
 
 # Account-wide default tags merged onto every resource.
