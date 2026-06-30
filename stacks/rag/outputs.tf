@@ -23,3 +23,5 @@ output "rag_backup_secret_access_key" {
   sensitive   = true
   description = "Retrieve with: tofu output -raw rag_backup_secret_access_key"
 }
+
+# test: exercise the apply button (no resource change)
