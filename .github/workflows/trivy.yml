@@ -1,0 +1,31 @@
+name: trivy
+
+# Static IaC misconfig scan (public buckets, unencrypted resources, broad IAM, …).
+# Pure file scan — no AWS creds, no OIDC. Always runs on every PR, so the single
+# `trivy` job is itself a stable required-check context (no detect/gate scaffolding
+# needed like the tofu workflows). Suppressions live in /.trivyignore.
+on:
+  pull_request:
+
+concurrency:
+  group: trivy-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  trivy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: config
+          scan-ref: .
+          # Block only on the high-signal findings; lower this later if desired.
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          trivyignores: .trivyignore
+          skip-dirs: "**/.terraform"

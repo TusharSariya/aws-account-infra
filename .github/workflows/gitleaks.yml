@@ -1,0 +1,35 @@
+name: gitleaks
+
+# Secret scanning across the full git history. Runs the MIT-licensed gitleaks CLI
+# directly (NOT gitleaks-action, which requires a paid GITLEAKS_LICENSE for org-owned
+# repos — this repo lives under the TusharSariyaOrg org). No AWS creds. Always runs on
+# every PR, so the single `gitleaks` job is a stable required-check context.
+on:
+  pull_request:
+
+concurrency:
+  group: gitleaks-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  GITLEAKS_VERSION: 8.21.2
+
+jobs:
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history so `detect` scans every commit
+
+      - name: install gitleaks
+        run: |
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar -xz gitleaks
+          sudo mv gitleaks /usr/local/bin/gitleaks
+
+      - name: scan
+        run: gitleaks detect --redact --no-banner --exit-code 1

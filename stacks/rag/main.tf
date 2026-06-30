@@ -10,7 +10,8 @@ module "rag_backups" {
 
   # Backups are nowhere near 1 TiB / 1M objects; relax the inherited alarms.
   bucket_size_bytes_threshold = 107374182400 # 100 GiB
-  object_count_threshold      = 2000000
+
+  object_count_threshold = 2000000
 
   # Move noncurrent versions to cheaper storage; keep recent history cheaply.
   lifecycle_rules = [

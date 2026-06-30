@@ -1,0 +1,12 @@
+# Checkov config for the `checkov` CI workflow.
+# skip-check entries must carry a justification comment; prefer fixing the .tf or an
+# inline `# checkov:skip=<CKV_ID>:<reason>` over a repo-wide skip here.
+framework:
+  - terraform
+skip-path:
+  - ".terraform"
+skip-check:
+  # Community modules are pinned by registry version + .terraform.lock.hcl (repo
+  # convention), not git commit hash. Applies to all module sources, so it's skipped
+  # centrally rather than inline.
+  - CKV_TF_1
