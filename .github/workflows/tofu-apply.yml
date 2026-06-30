@@ -19,8 +19,9 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  id-token: write
+  id-token: write # assume the OIDC apply role
   contents: read
+  pull-requests: read # dorny/paths-filter lists PR files via the API
 
 jobs:
   detect:
