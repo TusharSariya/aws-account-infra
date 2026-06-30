@@ -28,8 +28,35 @@ data "aws_iam_policy_document" "rag_backup" {
       "s3:DeleteObject",
       "s3:AbortMultipartUpload",
       "s3:ListMultipartUploadParts",
+      # Run-stamped derived artifacts tier to GLACIER (Flexible) via lifecycle, so a
+      # restore must thaw them first — GetObject alone can't read a GLACIER object.
+      "s3:RestoreObject",
+      # Object tags carry triage identity (tool/category/name/run_id) and drive the
+      # run-stamped lifecycle rule, so the agent must set & read them.
+      "s3:PutObjectTagging",
+      "s3:GetObjectTagging",
+      "s3:GetObjectVersionTagging",
     ]
     resources = ["${module.rag_backups.s3_bucket_arn}/*"]
+  }
+
+  # Dual-write the backup catalog: one row per artifact per run, plus by-run GSI
+  # reads for snapshot/as-of-T restores. Scoped to only this table + its indexes.
+  # No BatchWriteItem/DeleteItem: the catalog is append-only immutable history, and
+  # BatchWriteItem would smuggle in delete capability the agent must not have.
+  statement {
+    sid    = "BackupCatalog"
+    effect = "Allow"
+    actions = [
+      "dynamodb:PutItem",
+      "dynamodb:GetItem",
+      "dynamodb:Query",
+      "dynamodb:DescribeTable",
+    ]
+    resources = [
+      aws_dynamodb_table.rag_backup_catalog.arn,
+      "${aws_dynamodb_table.rag_backup_catalog.arn}/index/*",
+    ]
   }
 
   # SSE-KMS read/write needs data-key ops on the bucket's CMK (and only that key).

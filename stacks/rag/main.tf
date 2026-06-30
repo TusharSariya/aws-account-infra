@@ -32,6 +32,32 @@ module "rag_backups" {
         },
       ]
     },
+    {
+      # Cost-tier the immutable, run-stamped derived artifacts (indexes, retrieval,
+      # related, extracted, eval, meta tarballs) once they age out of active use.
+      # Tag-filtered (not prefix) so it auto-covers every current and FUTURE tool —
+      # the harness tags these objects `lifecycle-class=run-stamped`; corpus and the
+      # _catalog/ manifests are untagged and stay put (corpus is GLACIER_IR already;
+      # the catalog stays hot).
+      #
+      # Transition only, NO expiration: content-addressed dedup means the *latest*
+      # catalog pointer for an unchanged profile can reference a physically older
+      # object, so blind age-based expiry would delete a still-current artifact.
+      # Pruning is deferred to a catalog-aware step that knows which runs are live.
+      id      = "run-stamped-cost-tiering"
+      enabled = true
+      filter = {
+        tags = {
+          "lifecycle-class" = "run-stamped"
+        }
+      }
+      transition = [
+        {
+          days          = var.backup_run_stamped_glacier_days
+          storage_class = "GLACIER"
+        },
+      ]
+    },
   ]
 
   tags = { component = "rag-backups" }
