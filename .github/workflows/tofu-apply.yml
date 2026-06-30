@@ -108,3 +108,20 @@ jobs:
             echo "::error::stacks changed but not applied (apply=${{ needs.apply.result }}). Add the 'apply' label to run apply, then merge."; exit 1
           fi
           echo "apply gate OK"
+
+  # Once apply succeeds, enable auto-merge so the PR merges itself the moment all
+  # required checks are green — keeping main in lockstep with the applied infra
+  # (no apply-without-merge drift). Auto-merge still respects branch protection, so
+  # it waits for plan-gate + apply-gate before merging.
+  enable-auto-merge:
+    needs: apply
+    if: needs.apply.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: enable auto-merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr merge "${{ github.event.pull_request.number }}" --repo "${{ github.repository }}" --auto --squash
