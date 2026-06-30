@@ -78,4 +78,6 @@ jobs:
         run: tofu init -input=false
 
       - name: apply
-        run: tofu apply -input=false -auto-approve -var-file="$GITHUB_WORKSPACE/common.tfvars"
+        # aws_profile="" → use the OIDC apply role's ambient creds (no local profile
+        # / assume-role on the runner). Overrides the value in common.tfvars.
+        run: tofu apply -input=false -auto-approve -var-file="$GITHUB_WORKSPACE/common.tfvars" -var "aws_profile="
