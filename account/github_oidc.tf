@@ -82,7 +82,7 @@ resource "aws_iam_role_policy" "plan_state" {
   policy = data.aws_iam_policy_document.tofu_state_access.json
 }
 
-# ---- Apply role (main only): admin + state access -------------------------
+# ---- Apply role (prod environment only): admin + state access -------------
 data "aws_iam_policy_document" "github_apply_trust" {
   statement {
     effect  = "Allow"
@@ -96,11 +96,15 @@ data "aws_iam_policy_document" "github_apply_trust" {
       variable = "token.actions.githubusercontent.com:aud"
       values   = ["sts.amazonaws.com"]
     }
-    # Only the main branch may apply.
+    # Apply-before-merge: apply runs on the PR branch, gated by the `prod`
+    # GitHub Environment (required reviewer). A job that declares `environment: prod`
+    # gets sub=repo:<owner>/<repo>:environment:prod regardless of branch, so we pin
+    # trust to the approved environment — tighter than a branch, and the only path
+    # that can assume admin is an approved prod deployment.
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["${local.github_sub_prefix}:ref:refs/heads/main"]
+      values   = ["${local.github_sub_prefix}:environment:prod"]
     }
   }
 }
