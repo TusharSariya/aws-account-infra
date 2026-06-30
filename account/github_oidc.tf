@@ -115,6 +115,7 @@ resource "aws_iam_role" "github_apply" {
 }
 
 resource "aws_iam_role_policy_attachment" "apply_admin" {
+  # checkov:skip=CKV_AWS_274:The CI apply role IS the account's deploy identity and must apply arbitrary infra; AdministratorAccess is intentional. It's only assumable via OIDC from environment:prod (see the trust pin above).
   role       = aws_iam_role.github_apply.name
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }

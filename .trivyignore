@@ -1,0 +1,3 @@
+# Trivy suppressions for the `trivy` CI workflow (scan-type: config).
+# One Trivy check ID per line, each with a justification comment above it.
+# Add entries only for findings reviewed and accepted as intentional.

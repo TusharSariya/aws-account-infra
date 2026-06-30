@@ -1,0 +1,39 @@
+name: tflint
+
+# Provider-aware lint (deprecated args, invalid instance types, naming, unused decls)
+# that `tofu validate` doesn't catch. AWS ruleset runs in static mode (no deep_check),
+# so no AWS creds. Always runs on every PR — the single `tflint` job is a stable
+# required-check context. Config + plugin pins live in /.tflint.hcl.
+on:
+  pull_request:
+
+concurrency:
+  group: tflint-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  tflint:
+    runs-on: ubuntu-latest
+    # Absolute path so EVERY directory visited by `--recursive` uses this single root
+    # config — in recursive mode tflint resolves config per-directory and would otherwise
+    # ignore the root .tflint.hcl (plugins + rule overrides) inside the stack subdirs.
+    env:
+      TFLINT_CONFIG_FILE: ${{ github.workspace }}/.tflint.hcl
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: v0.54.0
+
+      - name: init plugins
+        # GITHUB_TOKEN lifts the anonymous rate limit on plugin downloads.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: tflint --init
+
+      - name: lint
+        run: tflint --recursive --format compact

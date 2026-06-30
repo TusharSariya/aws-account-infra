@@ -4,6 +4,7 @@
 # account. The Mac keeps using its admin/assume-role creds for its mlx-* backups.
 
 resource "aws_iam_user" "rag_backup" {
+  # checkov:skip=CKV_AWS_273:Intentional long-lived programmatic identity for the desktop GPU box (no human/SSO path); scoped to only this bucket + its CMK.
   name = "rag-backup"
   path = "/service/"
   tags = { component = "rag-backups" }
@@ -47,6 +48,7 @@ data "aws_iam_policy_document" "rag_backup" {
 }
 
 resource "aws_iam_user_policy" "rag_backup" {
+  # checkov:skip=CKV_AWS_40:Policy is deliberately attached to the single-purpose service user above (there is no group/role for this programmatic identity).
   name   = "rag-backup-bucket-access"
   user   = aws_iam_user.rag_backup.name
   policy = data.aws_iam_policy_document.rag_backup.json
