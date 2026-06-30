@@ -4,12 +4,20 @@ locals {
 }
 
 provider "aws" {
-  region  = var.region
-  profile = var.aws_profile
+  region = var.region
 
-  assume_role {
-    role_arn     = local.terraform_deploy_role_arn
-    session_name = "tofu-account"
+  # Local runs authenticate via a named profile that assumes the deploy role.
+  # CI runs authenticate via GitHub OIDC (ambient env credentials) and pass
+  # aws_profile="" — then the provider uses those creds directly and skips both
+  # the profile and the assume_role (the OIDC role is already the deploy identity).
+  profile = var.aws_profile != "" ? var.aws_profile : null
+
+  dynamic "assume_role" {
+    for_each = var.aws_profile != "" ? [1] : []
+    content {
+      role_arn     = local.terraform_deploy_role_arn
+      session_name = "tofu-account"
+    }
   }
 
   default_tags {

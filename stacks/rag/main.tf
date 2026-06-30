@@ -17,6 +17,9 @@ module "rag_backups" {
     {
       id      = "backup-noncurrent-tiering"
       enabled = true
+      # Reap orphaned multipart parts: the multi-GB index tarballs upload via
+      # multipart, and a failed/aborted upload otherwise leaves billable fragments.
+      abort_incomplete_multipart_upload_days = 7
       noncurrent_version_transition = [
         {
           days          = var.backup_noncurrent_transition_days

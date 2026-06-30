@@ -1,13 +1,9 @@
 name: tofu-plan
 
+# No path filter: this workflow is a REQUIRED check, so it must always run and
+# report a stable `plan-gate` context (the `detect` job scopes the actual work).
 on:
   pull_request:
-    paths:
-      - "account/**"
-      - "stacks/**"
-      - "modules/**"
-      - "common.tfvars"
-      - ".github/workflows/tofu-plan.yml"
 
 # One plan run per PR ref; newer pushes cancel older runs.
 concurrency:
@@ -79,9 +75,18 @@ jobs:
 
       - name: plan
         id: plan
-        run: tofu plan -input=false -no-color -var-file="$GITHUB_WORKSPACE/common.tfvars" -out=tfplan 2>&1 | tee plan.txt
+        # pipefail so a tofu error fails the step (the `| tee` otherwise masks the
+        # exit code). aws_profile="" overrides common.tfvars so the provider uses
+        # the OIDC ambient creds instead of the Mac's local profile/assume-role.
+        shell: bash
+        run: |
+          set -o pipefail
+          tofu plan -input=false -no-color \
+            -var-file="$GITHUB_WORKSPACE/common.tfvars" -var "aws_profile=" \
+            -out=tfplan 2>&1 | tee plan.txt
 
       - name: comment plan
+        if: always()
         uses: actions/github-script@v7
         with:
           script: |
@@ -94,3 +99,22 @@ jobs:
               issue_number: context.issue.number,
               body,
             });
+
+  # Stable required-status-check context. Always runs so it reports on every PR;
+  # passes when the plan matrix succeeded or was legitimately skipped (no stacks
+  # changed), fails if any plan leg failed/cancelled or detection broke.
+  plan-gate:
+    needs: [detect, plan]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: gate
+        run: |
+          echo "detect=${{ needs.detect.result }}  plan=${{ needs.plan.result }}"
+          if [[ "${{ needs.detect.result }}" != "success" ]]; then
+            echo "::error::detect did not succeed"; exit 1
+          fi
+          if [[ "${{ needs.plan.result }}" == "failure" || "${{ needs.plan.result }}" == "cancelled" ]]; then
+            echo "::error::tofu plan failed"; exit 1
+          fi
+          echo "plan gate OK"
