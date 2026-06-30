@@ -17,9 +17,15 @@ the conventions and cross-file mechanics that aren't obvious from any single fil
 # Match CI exactly before pushing — these are the PR gate checks:
 tofu fmt -check -recursive      # from repo root
 tofu validate                   # from inside a stack dir, after `tofu init`
+
+# Optional local pre-push gate: runs fmt + the four scanners via Docker, mirroring CI.
+./scripts/install-hooks.sh      # one-time: points core.hooksPath at scripts/git-hooks/
+git push --no-verify            # bypass the hook for a single push
 ```
 
 There is no test suite; `fmt` + `validate` + the CI `plan` are the verification loop.
+The committed `scripts/git-hooks/pre-push` hook (Docker-based, fail-closed) lets you catch
+the scanner findings locally before they reach CI; it's opt-in per clone via the installer.
 `bootstrap/` uses **local state** and is run by hand once — never through CI, never via
 the wrapper.
 

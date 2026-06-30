@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# Pre-push gate: run the same checks as CI locally before anything leaves the machine —
+# tofu fmt + the four static scanners (trivy, checkov, gitleaks, tflint), each via Docker
+# so no native tool installs are needed. BLOCKS the push on any failure, and also if
+# Docker or tofu is unavailable (fail-closed by design).
+#
+# Install once:  ./scripts/install-hooks.sh   (points core.hooksPath here)
+# Bypass once:   git push --no-verify          (skips this hook)
+#
+# Tool versions mirror CI and can be overridden via the env vars below.
+set -uo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT" || exit 1
+
+TRIVY_IMAGE="${TRIVY_IMAGE:-aquasec/trivy:0.58.1}"
+CHECKOV_IMAGE="${CHECKOV_IMAGE:-bridgecrew/checkov:latest}"
+GITLEAKS_IMAGE="${GITLEAKS_IMAGE:-zricethezav/gitleaks:latest}"
+TFLINT_IMAGE="${TFLINT_IMAGE:-ghcr.io/terraform-linters/tflint:v0.54.0}"
+
+fail() {
+  echo "" >&2
+  echo "✗ pre-push blocked: $*" >&2
+  echo "  (fix the above, or bypass with: git push --no-verify)" >&2
+  exit 1
+}
+
+# --- prerequisites (fail-closed) -------------------------------------------------------
+command -v tofu >/dev/null 2>&1 || fail "tofu not found on PATH (needed for fmt check)."
+command -v docker >/dev/null 2>&1 || fail "docker not found; the scanners run via Docker."
+docker info >/dev/null 2>&1 || fail "Docker daemon not running — start OrbStack/Docker and retry."
+
+# --- checks ----------------------------------------------------------------------------
+echo "▶ tofu fmt -check -recursive"
+tofu fmt -check -recursive || fail "formatting — run: tofu fmt -recursive"
+
+echo "▶ trivy (config, HIGH/CRITICAL)"
+docker run --rm -v "$REPO_ROOT:/src" -w /src "$TRIVY_IMAGE" \
+  config --severity HIGH,CRITICAL --skip-dirs "**/.terraform" --exit-code 1 --quiet . \
+  || fail "trivy found HIGH/CRITICAL misconfigurations."
+
+echo "▶ checkov (terraform)"
+docker run --rm -v "$REPO_ROOT:/src" "$CHECKOV_IMAGE" \
+  -d /src --framework terraform --config-file /src/.checkov.yaml --compact --quiet \
+  || fail "checkov found policy violations."
+
+echo "▶ gitleaks (secret scan)"
+docker run --rm -v "$REPO_ROOT:/repo" "$GITLEAKS_IMAGE" \
+  detect --source /repo --redact --no-banner --exit-code 1 \
+  || fail "gitleaks found secrets."
+
+echo "▶ tflint (recursive)"
+# init + recursive in ONE container (plugins don't persist across `docker run`s); absolute
+# TFLINT_CONFIG_FILE so every recursive subdir uses the root .tflint.hcl.
+docker run --rm -v "$REPO_ROOT:/data" -w /data --entrypoint sh "$TFLINT_IMAGE" -c '
+  export TFLINT_CONFIG_FILE=/data/.tflint.hcl
+  tflint --init >/dev/null 2>&1 || { echo "tflint --init failed (plugin download?)"; exit 3; }
+  tflint --recursive --format compact
+' || fail "tflint found issues."
+
+echo "✓ pre-push: tofu fmt + trivy + checkov + gitleaks + tflint all passed"
