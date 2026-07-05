@@ -1,98 +1,75 @@
 name: tofu-plan
 
-# No path filter: this workflow is a REQUIRED check, so it must always run and
-# report a stable `plan-gate` context (the `detect` job scopes the actual work).
 on:
   pull_request:
 
-# One plan run per PR ref; newer pushes cancel older runs.
 concurrency:
   group: tofu-plan-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
-  id-token: write # assume the OIDC role
+  id-token: write
   contents: read
-  pull-requests: write # comment the plan
+  pull-requests: write
 
 jobs:
   detect:
     runs-on: ubuntu-latest
     outputs:
-      stacks: ${{ steps.set.outputs.stacks }}
+      units: ${{ steps.units.outputs.units }}
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
         with:
-          filters: |
-            account:
-              - 'account/**'
-              - 'modules/**'
-              - 'common.tfvars'
-            rag:
-              - 'stacks/rag/**'
-              - 'modules/**'
-              - 'common.tfvars'
-      - id: set
-        run: |
-          stacks=()
-          [[ "${{ steps.filter.outputs.account }}" == "true" ]] && stacks+=('"account"')
-          [[ "${{ steps.filter.outputs.rag }}" == "true" ]] && stacks+=('"stacks/rag"')
-          echo "stacks=[$(IFS=,; echo "${stacks[*]}")]" >> "$GITHUB_OUTPUT"
+          fetch-depth: 0
+      - id: units
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.sha }}
+        run: echo "units=$(python3 scripts/deploy-units.py changed "$BASE_SHA" "$HEAD_SHA")" >> "$GITHUB_OUTPUT"
 
   plan:
     needs: detect
-    if: needs.detect.outputs.stacks != '[]'
+    if: needs.detect.outputs.units != '[]'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        stack: ${{ fromJSON(needs.detect.outputs.stacks) }}
+        unit: ${{ fromJSON(needs.detect.outputs.units) }}
     defaults:
       run:
-        working-directory: ${{ matrix.stack }}
+        working-directory: ${{ matrix.unit.path }}
     steps:
       - uses: actions/checkout@v4
-
       - uses: aws-actions/configure-aws-credentials@v4
+        if: matrix.unit.cloud == 'aws'
         with:
           role-to-assume: ${{ vars.TOFU_PLAN_ROLE_ARN }}
-          aws-region: us-east-1
-
+          aws-region: ${{ matrix.unit.region }}
       - uses: opentofu/setup-opentofu@v1
         with:
           tofu_version: 1.11.5
-
-      - name: fmt check
+      - name: format
         run: tofu fmt -check -recursive
-
-      - name: init
+      - name: initialize
         run: tofu init -input=false
-
       - name: validate
         run: tofu validate
-
       - name: plan
-        id: plan
-        # pipefail so a tofu error fails the step (the `| tee` otherwise masks the
-        # exit code). aws_profile="" overrides common.tfvars so the provider uses
-        # the OIDC ambient creds instead of the Mac's local profile/assume-role.
         shell: bash
         run: |
           set -o pipefail
           tofu plan -input=false -no-color \
-            -var-file="$GITHUB_WORKSPACE/common.tfvars" -var "aws_profile=" \
-            -out=tfplan 2>&1 | tee plan.txt
-
+            -var-file="$GITHUB_WORKSPACE/${{ matrix.unit.var_file }}" \
+            -var "aws_profile=" -out=tfplan 2>&1 | tee plan.txt
       - name: comment plan
         if: always()
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
-            const plan = fs.readFileSync('${{ matrix.stack }}/plan.txt', 'utf8');
-            const body = `### tofu plan — \`${{ matrix.stack }}\`\n\n<details><summary>show</summary>\n\n\`\`\`\n${plan.slice(-60000)}\n\`\`\`\n\n</details>`;
+            const path = '${{ matrix.unit.path }}/plan.txt';
+            const plan = fs.existsSync(path) ? fs.readFileSync(path, 'utf8') : 'Plan did not produce output.';
+            const body = `### tofu plan — \`${{ matrix.unit.id }}\`\n\n<details><summary>show</summary>\n\n\`\`\`\n${plan.slice(-60000)}\n\`\`\`\n\n</details>`;
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -100,9 +77,6 @@ jobs:
               body,
             });
 
-  # Stable required-status-check context. Always runs so it reports on every PR;
-  # passes when the plan matrix succeeded or was legitimately skipped (no stacks
-  # changed), fails if any plan leg failed/cancelled or detection broke.
   plan-gate:
     needs: [detect, plan]
     if: always()
@@ -110,11 +84,5 @@ jobs:
     steps:
       - name: gate
         run: |
-          echo "detect=${{ needs.detect.result }}  plan=${{ needs.plan.result }}"
-          if [[ "${{ needs.detect.result }}" != "success" ]]; then
-            echo "::error::detect did not succeed"; exit 1
-          fi
-          if [[ "${{ needs.plan.result }}" == "failure" || "${{ needs.plan.result }}" == "cancelled" ]]; then
-            echo "::error::tofu plan failed"; exit 1
-          fi
-          echo "plan gate OK"
+          [[ "${{ needs.detect.result }}" == "success" ]] || exit 1
+          [[ "${{ needs.plan.result }}" != "failure" && "${{ needs.plan.result }}" != "cancelled" ]] || exit 1

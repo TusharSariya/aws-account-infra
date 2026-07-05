@@ -4,7 +4,7 @@
 
 # --- Backup bucket: full corpus + indexes (~37 GB across RAG tools) ---------
 module "rag_backups" {
-  source = "../../modules/encrypted_s3_bucket"
+  source = "../../../../../modules/aws/encrypted_s3_bucket"
 
   bucket_name = "rag-backups-${var.aws_account_id}-${var.region}"
 
@@ -65,7 +65,7 @@ module "rag_backups" {
 
 # --- ECR repos: one per RAG service image ----------------------------------
 module "ecr" {
-  source   = "../../modules/ecr_repository"
+  source   = "../../../../../modules/aws/ecr_repository"
   for_each = toset(var.ecr_repos)
 
   name = each.value

@@ -1,4 +1,4 @@
-# --- Common inputs (sourced from ../common.tfvars, declared in every stack) ---
+# --- Environment inputs (sourced from config/environments/aws/staging.tfvars) ---
 variable "aws_account_id" {
   type = string
 }
