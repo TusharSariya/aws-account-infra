@@ -1,0 +1,20 @@
+name: localstack
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start sandbox
+        run: ./scripts/localstack.sh up
+      - name: Smoke test
+        run: ./scripts/localstack.sh smoke
+      - name: Logs on failure
+        if: failure()
+        run: docker compose -f mocks/localstack/compose.yml logs

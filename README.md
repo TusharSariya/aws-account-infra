@@ -1,60 +1,84 @@
-# aws-account-infra
+# infrastructure
 
-General-purpose OpenTofu IaC for AWS account **992382747916** (`us-east-1`), managed
-from the Mac. Establishes remote state, a dedicated deploy role, an account-wide
-baseline, and per-workload stacks. The first workload is the RAG backup bucket + ECR
-repos (the RAG *runtime* — query server, Docker image, backup scripts — lives in the
-separate RAG repo and only *consumes* this stack's outputs).
+Infrastructure-as-code and host configuration for personal environments. The current
+live cloud environment is AWS staging account `992382747916` in `us-east-1`; the layout
+allows additional accounts and provider-specific GCP/Azure roots without pretending
+their resources share one abstraction.
 
 ## Layout
 
-| Path | Purpose | State |
-|---|---|---|
-| `bootstrap/` | Creates the S3 state bucket + DynamoDB lock table | **local** (run once) |
-| `account/` | Account-wide baseline: budget alarm, account hygiene, GitHub OIDC + CI roles | remote |
-| `stacks/rag/` | RAG backup S3 bucket + ECR repos | remote |
-| `modules/encrypted_s3_bucket/` | Reusable: versioned + KMS + block-public S3 bucket | — |
-| `modules/ecr_repository/` | Reusable: private ECR repo, scan-on-push, lifecycle | — |
-| `scripts/` | One-time deploy-role bootstrap + `tofu.sh` wrapper | — |
+| Path | Purpose |
+|---|---|
+| `deploy-units.json` | Deployable OpenTofu roots, dependencies, variables, and change detection |
+| `live/aws/staging/` | State bootstrap, account baseline, and staging workloads |
+| `modules/aws/` | Reusable AWS-only OpenTofu modules |
+| `config/environments/` | Non-secret variables grouped by cloud and environment |
+| `ansible/` | macOS administration workstation and Ubuntu compute configuration |
+| `mocks/localstack/` | Disposable local AWS sandbox |
+| `docs/plans/kubernetes.md` | Review-only Kubernetes proposal; nothing implements it yet |
 
-## One-time setup (in order)
+## AWS staging
+
+The existing remote state coordinates and keys are unchanged:
+
+- Bucket: `tofu-state-992382747916-us-east-1`
+- Lock table: `tofu-locks`
+- Keys: `account/terraform.tfstate` and `stacks/rag/terraform.tfstate`
+
+For an existing checkout, reattach each relocated root before making changes:
 
 ```bash
-# 1. Create the Terraform deploy role (uses your `admin` profile).
-AWS_PROFILE=admin ./scripts/bootstrap-terraform-deploy-role.sh
-
-# 2. Create the remote-state backend (local state; chicken-and-egg).
-cd bootstrap && AWS_PROFILE=admin tofu init && AWS_PROFILE=admin tofu apply
-cd ..
-
-# 3. Stand up the account baseline (now using remote state + assume-role).
-./scripts/tofu.sh account init
-./scripts/tofu.sh account apply
-
-# 4. Stand up the first workload.
-./scripts/tofu.sh stacks/rag init
-./scripts/tofu.sh stacks/rag apply
+./scripts/infra.sh aws-staging-account init -reconfigure
+./scripts/infra.sh aws-staging-account plan
+./scripts/infra.sh aws-staging-rag init -reconfigure
+./scripts/infra.sh aws-staging-rag plan
 ```
 
-`scripts/tofu.sh <stack-dir> <tofu-args...>` wraps `tofu` with `AWS_PROFILE` and the
-shared `common.tfvars` so every stack is invoked consistently.
+Both migration plans must show no resource changes. Do not apply a migration plan that
+proposes replacement or deletion.
 
-## State backend
+For a new account, copy the staging `live/aws` shape, create a separate environment
+variable file, bootstrap that account's state backend manually, then add its roots and
+dependencies to `deploy-units.json`. Use account-specific state storage and GitHub OIDC
+roles. Never reuse staging state keys for another account.
 
-S3 bucket `tofu-state-992382747916-us-east-1` + DynamoDB lock table `tofu-locks`
-(created by `bootstrap/`). Each stack uses a distinct `key` (see its `backend.tf`).
+### Initial staging bootstrap
 
-## CI/CD
+```bash
+AWS_PROFILE=admin ./scripts/bootstrap-terraform-deploy-role.sh
+cd live/aws/staging/bootstrap
+AWS_PROFILE=admin tofu init
+AWS_PROFILE=admin tofu apply
+cd ../../../..
+./scripts/infra.sh aws-staging-account init
+./scripts/infra.sh aws-staging-account apply
+./scripts/infra.sh aws-staging-rag init
+./scripts/infra.sh aws-staging-rag apply
+```
 
-GitHub Actions authenticate via **OIDC** (no stored AWS keys) to roles created in
-`account/github_oidc.tf`:
-- **PR** → `tofu-plan.yml`: `fmt -check`, `validate`, `plan` (commented), via the
-  read-scoped plan role.
-- **merge to `main`** → `tofu-apply.yml`: `apply`, gated by the `prod` GitHub
-  Environment (required reviewer), via the apply role.
-`bootstrap/` is never run in CI.
+CI plans changed deploy units using AWS GitHub OIDC. Adding the `apply` label runs the
+serialized, gated apply-before-merge workflow. Bootstrap is never run in CI.
 
-## Before the first apply — confirm these
+## Local systems
 
-- `common.tfvars`: `github_owner`/`github_repo`, `budget_*` values (marked `TODO`).
-- The `prod` GitHub Environment + a required reviewer (configured in GitHub settings).
+See [ansible/README.md](ansible/README.md) for inventory and host configuration. Actual
+inventory is gitignored; the committed inventory contains documentation addresses only.
+
+LocalStack is a sandbox, not a live-stack test backend:
+
+```bash
+./scripts/localstack.sh up
+./scripts/localstack.sh smoke
+./scripts/localstack.sh down
+```
+
+## Future providers
+
+Add provider-native roots as `live/gcp/<environment>/...` or
+`live/azure/<environment>/...`, provider-native modules under `modules/<cloud>/`, and
+cloud-specific variables under `config/environments/<cloud>/`. Extend CI authentication
+for that provider before setting a unit's `ci` field to true. Do not place credentials in
+variable files or create generic modules whose inputs merely mirror provider resources.
+
+Kubernetes remains intentionally deferred. Review and complete every open prerequisite
+in [docs/plans/kubernetes.md](docs/plans/kubernetes.md) before adding automation.

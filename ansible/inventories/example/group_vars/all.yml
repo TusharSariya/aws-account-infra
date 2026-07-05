@@ -1,0 +1,5 @@
+environment_name: local
+common_timezone: America/St_Johns
+
+# Put passwords, tokens, and private values in an Ansible Vault-encrypted file in
+# inventories/local/group_vars rather than adding them here.

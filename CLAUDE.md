@@ -1,111 +1,42 @@
-# CLAUDE.md
+# Repository guidance
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
-OpenTofu IaC for a single AWS account (`992382747916`, `us-east-1`). The README covers
-the one-time bootstrap order and the layout table — read it for setup. This file covers
-the conventions and cross-file mechanics that aren't obvious from any single file.
+This repository manages AWS staging infrastructure, local host configuration, and a
+LocalStack sandbox. Kubernetes is documentation-only. GCP and Azure are future provider
+namespaces, not implemented environments.
 
 ## Commands
 
 ```bash
-# Always drive stacks through the wrapper (sets AWS_PROFILE, injects common.tfvars).
-./scripts/tofu.sh <stack-dir> <subcommand> [args...]
-./scripts/tofu.sh account plan
-./scripts/tofu.sh stacks/rag apply
-
-# Match CI exactly before pushing — these are the PR gate checks:
-tofu fmt -check -recursive      # from repo root
-tofu validate                   # from inside a stack dir, after `tofu init`
-
-# Optional local pre-push gate: runs fmt + the four scanners via Docker, mirroring CI.
-./scripts/install-hooks.sh      # one-time: points core.hooksPath at scripts/git-hooks/
-git push --no-verify            # bypass the hook for a single push
+./scripts/infra.sh aws-staging-account plan
+./scripts/infra.sh aws-staging-rag plan
+./scripts/localstack.sh up
+./scripts/localstack.sh smoke
+ANSIBLE_CONFIG=ansible/ansible.cfg ansible-playbook ansible/playbooks/compute.yml --check --diff
 ```
 
-There is no test suite; `fmt` + `validate` + the CI `plan` are the verification loop.
-The committed `scripts/git-hooks/pre-push` hook (Docker-based, fail-closed) lets you catch
-the scanner findings locally before they reach CI; it's opt-in per clone via the installer.
-`bootstrap/` uses **local state** and is run by hand once — never through CI, never via
-the wrapper.
+OpenTofu roots and dependencies are declared in `deploy-units.json`. Update the manifest
+when adding or relocating a root; CI derives its matrix from that file. Environment
+variables live under `config/environments`, and secrets must not be committed.
 
-## Architecture
+## AWS invariants
 
-Three deploy units, each with its own remote-state `key` (see each `backend.tf`):
-- `bootstrap/` — creates the S3 state bucket + DynamoDB lock table (local state).
-- `account/` — account-wide singletons: budget alarm, GitHub OIDC provider + the two CI
-  roles (`account/github_oidc.tf`).
-- `stacks/rag/` — the first workload; composes the reusable modules.
+- Preserve existing staging backend keys unless performing an explicit, backed-up state
+  migration.
+- Local AWS providers use `aws_profile` and assume `TerraformDeploy`; CI overrides
+  `aws_profile` with an empty value and uses its ambient OIDC role.
+- Bootstrap uses local state and is always manual.
+- Provider and community-module versions remain pinned across roots.
+- Account-level dependencies precede workload roots in `deploy-units.json`.
+- Application runtime code belongs in its workload repository, not here.
 
-`modules/encrypted_s3_bucket` and `modules/ecr_repository` are the shared building blocks.
-`encrypted_s3_bucket` wraps the community KMS + s3-bucket modules and bundles versioning,
-KMS encryption, public-access block, a deny-insecure-transport policy, and CloudWatch
-size/object-count alarms — all toggle/threshold-driven via variables. `stacks/rag`
-relaxes the inherited alarm thresholds and supplies lifecycle rules rather than
-re-implementing any of that.
+## Scope boundaries
 
-This repo only provisions the durable resources the **separate RAG repo** consumes (it
-reads this stack's outputs). Don't add runtime/app code here.
+- Ansible can manage the Mac workstation and Ubuntu compute baseline. It must not install
+  Kubernetes until `docs/plans/kubernetes.md` has been separately reviewed and approved.
+- LocalStack is for disposable experiments and smoke tests. Live roots must not be
+  redirected to its endpoints.
+- Cloud-specific modules are preferred over cross-cloud wrappers.
 
-## Dual auth: the `aws_profile` switch
-
-Every stack's `providers.tf` keys off `var.aws_profile`:
-- **Local runs** (non-empty profile, default `admin`) → the provider uses the named
-  profile and an `assume_role` block targeting `TerraformDeploy`.
-- **CI runs** → the workflows pass `-var "aws_profile="`, which makes the provider skip
-  both the profile and the assume-role and use the OIDC role's ambient credentials
-  directly (the OIDC role is already the deploy identity).
-
-So when editing `providers.tf`, preserve the `var.aws_profile != ""` conditional on both
-the `profile` arg and the dynamic `assume_role` — breaking it breaks CI or local, not both.
-
-## CI gating model (`.github/workflows/`)
-
-Both workflows run on `pull_request` with **no path filter** so their `*-gate` jobs are
-stable required checks; a `detect` job (dorny/paths-filter) scopes the actual work to the
-changed stacks (`account/**`, `modules/**`, or `common.tfvars` → account; `stacks/rag/**`
-+ those shared paths → rag).
-
-- `tofu-plan.yml` → fmt/validate/plan via the read-scoped `TOFU_PLAN_ROLE_ARN`, comments
-  the plan on the PR.
-- `tofu-apply.yml` → **apply-before-merge**: apply runs *on the PR* and is required, so
-  main never drifts from applied infra. It only fires once the `apply` **label** is added
-  (the human approval) and runs under `environment: prod` so the OIDC `sub` matches the
-  apply role's trust pin. On success it enables auto-merge. There is intentionally no
-  `push: main` apply.
-
-The OIDC role ARNs are GitHub repo **variables** (`TOFU_PLAN_ROLE_ARN`,
-`TOFU_APPLY_ROLE_ARN`), set from `account/` outputs after that stack is applied.
-
-### Static scanners (credential-free required checks)
-
-Four more workflows run on every `pull_request` and **block merge on findings**. Unlike
-the tofu workflows they are pure file scans — **no OIDC, no AWS creds, no `detect`/matrix**
-(so each scan job is itself the stable required-check context, named after the workflow):
-
-- `trivy.yml` — IaC misconfig scan (`scan-type: config`, `HIGH,CRITICAL`).
-- `checkov.yml` — policy-as-code (AWS ruleset, `framework: terraform`).
-- `gitleaks.yml` — secret scan over full history; runs the MIT-licensed **CLI binary**, not
-  `gitleaks-action` (that needs a paid license for org-owned repos like this one).
-- `tflint.yml` — provider-aware lint. Runs with `TFLINT_CONFIG_FILE` set to an **absolute**
-  path so `--recursive` applies the root `.tflint.hcl` (plugins + rule overrides) inside
-  every stack subdir — it doesn't inherit it otherwise.
-
-Suppressions are deliberate and justified, living in the root config files (`.tflint.hcl`,
-`.trivyignore`, `.checkov.yaml`) for repo-wide conventions, or inline at the resource
-(`# checkov:skip=<id>:<reason>`, `#trivy:ignore:<id> <reason>`) for one-off intentional
-design (e.g. the bootstrap state bucket/lock table, the AdministratorAccess apply role,
-the long-lived `rag_backup` service user). To make these truly required, add the
-`trivy`/`checkov`/`gitleaks`/`tflint` checks to `main`'s branch protection.
-
-## Conventions
-
-- `common.tfvars` is the single source of shared inputs for all stacks; the wrapper
-  injects it. Every stack re-declares all common variables — including ones it doesn't use
-  — so passing the shared file never warns about undeclared vars (see the "Declared
-  (unused here)" block in `stacks/rag/variables.tf`).
-- `.terraform.lock.hcl` is committed on purpose (pins provider hashes); `*.tfstate` and
-  `.terraform/` are gitignored.
-- Provider/community-module versions are pinned (`tofu_version: 1.11.5` in CI, AWS
-  provider 6.52.0). Keep them in lockstep across stacks.
-- Each stack tags resources with a `stack`/`component` tag merged onto `default_tags`.
+Before pushing, run relevant formatting, validation, lint, security scans, Ansible syntax
+checks, and LocalStack smoke tests. `.terraform.lock.hcl` files are committed deliberately;
+state, local inventory, Vault password files, plans, and `.terraform/` are ignored.

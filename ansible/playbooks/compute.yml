@@ -1,0 +1,8 @@
+---
+- name: Configure Ubuntu compute hosts
+  hosts: ubuntu_compute
+  become: true
+  gather_facts: true
+  roles:
+    - common
+    - ubuntu_compute

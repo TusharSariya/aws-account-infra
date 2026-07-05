@@ -1,0 +1,25 @@
+name: ansible
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    env:
+      ANSIBLE_CONFIG: ansible/ansible.cfg
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install ansible-core==2.18.6 ansible-lint==25.5.0
+      - run: ansible-galaxy collection install -r ansible/requirements.yml
+      - run: ansible-lint ansible
+      - name: syntax check
+        run: |
+          ansible-playbook -i ansible/inventories/example/hosts.yml ansible/playbooks/workstation.yml --syntax-check
+          ansible-playbook -i ansible/inventories/example/hosts.yml ansible/playbooks/compute.yml --syntax-check

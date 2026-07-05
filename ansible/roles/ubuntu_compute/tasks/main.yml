@@ -1,0 +1,15 @@
+---
+- name: Install workload-specific packages
+  ansible.builtin.apt:
+    name: "{{ ubuntu_compute_packages }}"
+    state: present
+  when: ubuntu_compute_packages | length > 0
+
+- name: Ensure time synchronization is enabled
+  ansible.builtin.systemd_service:
+    name: systemd-timesyncd
+    enabled: true
+    state: started
+
+# Kubernetes and its kernel/container prerequisites are deliberately excluded.
+# See docs/plans/kubernetes.md before adding them.
