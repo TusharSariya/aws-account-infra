@@ -7,7 +7,7 @@
 
 - name: Ensure time synchronization is enabled
   ansible.builtin.systemd_service:
-    name: systemd-timesyncd
+    name: chrony
     enabled: true
     state: started
 

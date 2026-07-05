@@ -1,0 +1,113 @@
+---
+- name: Wait for all nodes to become ready
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_validation_kubeconfig }} wait node
+    --all --for=condition=Ready --timeout={{ cluster_validation_timeout }}
+  changed_when: false
+
+- name: Check Cilium health
+  ansible.builtin.command: >-
+    cilium status --kubeconfig {{ cluster_validation_kubeconfig }}
+    --wait --wait-duration {{ cluster_validation_timeout }}
+  changed_when: false
+
+- name: Run Cilium connectivity tests
+  ansible.builtin.command: >-
+    cilium connectivity test --kubeconfig {{ cluster_validation_kubeconfig }}
+    --test-concurrency 1
+  when: cluster_validation_run_connectivity_test
+  changed_when: false
+
+- name: Read node inventory
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_validation_kubeconfig }} get nodes -o json
+  register: cluster_validation_nodes
+  changed_when: false
+
+- name: Assert expected architecture and GPU resources
+  ansible.builtin.assert:
+    that:
+      - >-
+        (((cluster_validation_nodes.stdout | from_json).items |
+        selectattr('metadata.name', 'equalto', groups['kubernetes_control_plane'][0]) |
+        map(attribute='status.allocatable') |
+        first)['nvidia.com/gpu'] | int) == 1
+      - >-
+        groups['ephemeral_nodes'] | default([]) | length == 0 or
+        ((cluster_validation_nodes.stdout | from_json).items |
+        selectattr('metadata.name', 'in', groups['ephemeral_nodes']) |
+        map(attribute='status.nodeInfo.architecture') |
+        select('equalto', 'arm64') | list | length) ==
+        (groups['ephemeral_nodes'] | length)
+    fail_msg: "Expected NVIDIA or ARM64 node capabilities were not advertised."
+
+- name: Check GPU Operator policy
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_validation_kubeconfig }}
+    wait clusterpolicy/cluster-policy --for=jsonpath='{.status.state}'=ready
+    --timeout={{ cluster_validation_timeout }}
+  changed_when: false
+
+- name: Read ingress service
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_validation_kubeconfig }}
+    get service ingress-nginx-controller --namespace ingress-nginx -o json
+  register: cluster_validation_ingress
+  changed_when: false
+
+- name: Assert MetalLB assigned ingress an address
+  ansible.builtin.assert:
+    that:
+      - >-
+        (cluster_validation_ingress.stdout | from_json).status.loadBalancer.ingress |
+        default([]) | length > 0
+    fail_msg: "MetalLB has not assigned an address to ingress-nginx."
+
+- name: Create validation working directory
+  ansible.builtin.file:
+    path: "{{ cluster_validation_work_dir }}"
+    state: directory
+    mode: "0700"
+
+- name: Render disposable smoke tests
+  ansible.builtin.template:
+    src: smoke-tests.yml.j2
+    dest: "{{ cluster_validation_work_dir }}/smoke-tests.yml"
+    mode: "0600"
+
+- name: Execute disposable cluster smoke tests
+  block:
+    - name: Apply smoke-test resources
+      ansible.builtin.command: >-
+        kubectl --kubeconfig {{ cluster_validation_kubeconfig }} apply
+        --filename {{ cluster_validation_work_dir }}/smoke-tests.yml
+      changed_when: true
+
+    - name: Wait for smoke-test jobs
+      ansible.builtin.command: >-
+        kubectl --kubeconfig {{ cluster_validation_kubeconfig }} wait job
+        --namespace {{ cluster_validation_namespace }} --all
+        --for=condition=complete --timeout={{ cluster_validation_timeout }}
+      changed_when: false
+
+    - name: Wait for ingress smoke deployment
+      ansible.builtin.command: >-
+        kubectl --kubeconfig {{ cluster_validation_kubeconfig }} wait deployment/ingress-smoke
+        --namespace {{ cluster_validation_namespace }} --for=condition=Available
+        --timeout={{ cluster_validation_timeout }}
+      changed_when: false
+
+    - name: Verify ingress through MetalLB
+      ansible.builtin.uri:
+        url: >-
+          http://{{ (cluster_validation_ingress.stdout | from_json).status.loadBalancer.ingress[0].ip }}/
+        headers:
+          Host: validation.homelab.local
+        status_code: 200
+        use_proxy: false
+  always:
+    - name: Remove smoke-test namespace
+      ansible.builtin.command: >-
+        kubectl --kubeconfig {{ cluster_validation_kubeconfig }} delete namespace
+        {{ cluster_validation_namespace }} --ignore-not-found --wait=false
+      changed_when: true

@@ -1,6 +1,6 @@
 # Local Kubernetes implementation plan
 
-Status: **proposal only — do not implement from this document without a separate review**
+Status: **node preparation and staged kubeadm runbooks implemented; cluster application pending**
 
 This plan describes a full upstream Kubernetes cluster on two physical Ubuntu hosts.
 The Mac is the administration workstation and may run separate Linux containers through
@@ -12,9 +12,10 @@ offline.
 
 - Ubuntu host 1: kubeadm control plane, etcd, and schedulable worker.
 - Ubuntu host 2: kubeadm worker.
-- Mac: Ansible, `kubectl`, Helm, and Helmfile client.
+- Mac: Ansible, `kubectl`, Helm, Helmfile, native MLX, and an optional bridged
+  Multipass ARM64 worker.
 - Runtime: containerd on both Ubuntu hosts.
-- Pod networking and policy: Cilium.
+- Pod networking and policy: Cilium with kube-proxy retained initially.
 - LAN service addresses: MetalLB in layer-2 mode.
 - HTTP routing: ingress-nginx behind a MetalLB address.
 - Default persistent volumes: Local Path Provisioner.

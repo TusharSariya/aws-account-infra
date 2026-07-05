@@ -1,0 +1,39 @@
+---
+- name: Validate maintenance target
+  hosts: admin_workstations
+  gather_facts: false
+  vars:
+    maintenance_kubeconfig: "{{ lookup('env', 'HOME') }}/.kube/config"
+  tasks:
+    - name: Require one explicit Kubernetes node target
+      ansible.builtin.assert:
+        that:
+          - maintenance_target is defined
+          - maintenance_target in groups['kubernetes_nodes']
+        fail_msg: "Pass -e maintenance_target=<inventory hostname>."
+
+    - name: Drain maintenance target
+      ansible.builtin.command: >-
+        kubectl --kubeconfig {{ maintenance_kubeconfig }} drain
+        {{ maintenance_target }} --ignore-daemonsets --delete-emptydir-data
+        --timeout=15m
+      changed_when: true
+
+- name: Upgrade one Kubernetes node
+  hosts: "{{ maintenance_target | default('maintenance_target_not_set') }}"
+  become: true
+  serial: 1
+  roles:
+    - kubernetes_upgrade
+
+- name: Return upgraded node to service
+  hosts: admin_workstations
+  gather_facts: false
+  vars:
+    maintenance_kubeconfig: "{{ lookup('env', 'HOME') }}/.kube/config"
+  tasks:
+    - name: Uncordon maintenance target
+      ansible.builtin.command: >-
+        kubectl --kubeconfig {{ maintenance_kubeconfig }} uncordon
+        {{ maintenance_target }}
+      changed_when: true

@@ -1,5 +1,17 @@
 environment_name: local
-common_timezone: America/St_Johns
+ubuntu_baseline_timezone: America/St_Johns
+
+kubernetes_cluster_name: homelab
+kubernetes_api_endpoint: 192.0.2.10
+kubernetes_api_port: 6443
+kubernetes_pod_subnet: 10.200.0.0/16
+kubernetes_service_subnet: 10.96.0.0/12
+kubernetes_metallb_pool: 192.0.2.200-192.0.2.210
+
+# Set false to preinstall the Ubuntu NVIDIA driver and container toolkit on the
+# GPU host rather than letting GPU Operator manage them.
+kubernetes_gpu_operator_manage_driver: true
+kubernetes_gpu_operator_manage_toolkit: true
 
 # Put passwords, tokens, and private values in an Ansible Vault-encrypted file in
 # inventories/local/group_vars rather than adding them here.

@@ -1,0 +1,7 @@
+---
+- name: Validate the Kubernetes cluster
+  hosts: admin_workstations
+  become: false
+  gather_facts: false
+  roles:
+    - cluster_validation

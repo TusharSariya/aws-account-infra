@@ -2,9 +2,20 @@
 admin_workstation_homebrew_packages:
   - ansible
   - awscli
+  - cilium-cli
   - helm
   - helmfile
   - jq
   - kubectl
-  - opentofu
+  - pyenv
   - sops
+  - tenv
+
+admin_workstation_homebrew_casks:
+  - multipass
+
+admin_workstation_install_sdkman: true
+admin_workstation_sdkman_installer_checksum: >-
+  sha256:b7bda3ce24f631d54d6b6b24f9ca32bc0a0e12dde12b2c3c73b1e28c5c36a364
+admin_workstation_terraform_version: 1.14.7
+admin_workstation_opentofu_version: 1.11.5

@@ -1,0 +1,7 @@
+---
+cluster_validation_kubeconfig: "{{ lookup('env', 'HOME') }}/.kube/config"
+cluster_validation_timeout: 10m
+cluster_validation_run_connectivity_test: true
+cluster_validation_work_dir: /tmp/homelab-cluster-validation
+cluster_validation_namespace: infra-validation
+cluster_validation_gpu_image: nvidia/cuda:13.1.1-base-ubuntu24.04

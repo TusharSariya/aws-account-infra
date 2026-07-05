@@ -1,0 +1,37 @@
+---
+- name: Assert the host is Ubuntu
+  ansible.builtin.assert:
+    that:
+      - ansible_facts["distribution"] == "Ubuntu"
+    fail_msg: "The Ubuntu baseline role supports Ubuntu only."
+
+- name: Set host timezone
+  community.general.timezone:
+    name: "{{ ubuntu_baseline_timezone }}"
+
+- name: Install baseline packages
+  ansible.builtin.apt:
+    name: "{{ ubuntu_baseline_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Enable automatic security updates
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+
+- name: Check whether a reboot is required
+  ansible.builtin.stat:
+    path: /var/run/reboot-required
+  register: ubuntu_baseline_reboot_required
+
+- name: Report required reboot
+  ansible.builtin.debug:
+    msg: "A reboot is required"
+  when: ubuntu_baseline_reboot_required.stat.exists

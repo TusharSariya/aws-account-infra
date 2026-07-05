@@ -1,0 +1,73 @@
+---
+- name: Load required kernel modules now
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: present
+    persistent: present
+  loop:
+    - overlay
+    - br_netfilter
+
+- name: Configure Kubernetes networking sysctls
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/99-kubernetes.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      net.bridge.bridge-nf-call-iptables = 1
+      net.bridge.bridge-nf-call-ip6tables = 1
+      net.ipv4.ip_forward = 1
+  notify: Reload sysctls
+
+- name: Disable swap now
+  ansible.builtin.command: swapoff -a
+  when:
+    - kubernetes_node_disable_swap
+    - ansible_facts["swaptotal_mb"] > 0
+  changed_when: true
+
+- name: Disable configured swap after reboot
+  ansible.builtin.replace:
+    path: /etc/fstab
+    regexp: '^(\s*[^#\n]+\s+\S+\s+swap\s+\S+.*)$'
+    replace: '# \1'
+  when: kubernetes_node_disable_swap
+
+- name: Configure Kubernetes package repository
+  ansible.builtin.deb822_repository:
+    name: kubernetes
+    types:
+      - deb
+    uris:
+      - "https://pkgs.k8s.io/core:/stable:/{{ kubernetes_node_minor_version }}/deb/"
+    suites:
+      - /
+    signed_by: "https://pkgs.k8s.io/core:/stable:/{{ kubernetes_node_minor_version }}/deb/Release.key"
+    state: present
+
+- name: Install Kubernetes node packages
+  ansible.builtin.apt:
+    name: "{{ kubernetes_node_packages | map('regex_replace', '$', '=' + kubernetes_node_package_version) | list }}"
+    state: present
+    update_cache: true
+
+- name: Hold Kubernetes packages for deliberate upgrades
+  ansible.builtin.dpkg_selections:
+    name: "{{ item }}"
+    selection: hold
+  loop: "{{ kubernetes_node_packages }}"
+
+- name: Configure kubelet resource reservations
+  ansible.builtin.template:
+    src: kubelet-extra-args.env.j2
+    dest: /etc/default/kubelet
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart kubelet
+
+- name: Enable kubelet
+  ansible.builtin.systemd_service:
+    name: kubelet
+    enabled: true

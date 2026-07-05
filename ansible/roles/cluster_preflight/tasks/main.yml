@@ -1,0 +1,46 @@
+---
+- name: Assert the host operating system is supported
+  ansible.builtin.assert:
+    that:
+      - ansible_facts["distribution"] == cluster_preflight_supported_distribution
+      - ansible_facts["distribution_version"] == cluster_preflight_supported_version
+      - ansible_facts["architecture"] in cluster_preflight_supported_architectures
+      - ansible_facts["memtotal_mb"] >= 2048
+      - ansible_facts["processor_vcpus"] >= 2
+    fail_msg: >-
+      Kubernetes nodes must run Ubuntu 26.04 with at least 2 CPUs and 2 GiB RAM
+      on x86_64 or aarch64.
+
+- name: Assert cluster network variables are configured
+  ansible.builtin.assert:
+    that:
+      - kubernetes_api_endpoint | length > 0
+      - kubernetes_api_endpoint != "192.0.2.10"
+      - kubernetes_pod_subnet != kubernetes_service_subnet
+      - groups["kubernetes_control_plane"] | length == 1
+    fail_msg: >-
+      Configure a real API endpoint in the ignored local inventory. Exactly
+      one control-plane host is required.
+
+- name: Check node address
+  ansible.builtin.assert:
+    that:
+      - ansible_host is defined
+      - ansible_host | length > 0
+    fail_msg: "Every Kubernetes node requires a stable inventory address."
+
+- name: Collect service state for conflict detection
+  ansible.builtin.service_facts:
+
+- name: Refuse an active K3s installation
+  ansible.builtin.assert:
+    that:
+      - >-
+        'k3s.service' not in ansible_facts.services or
+        ansible_facts.services['k3s.service'].state != 'running'
+      - >-
+        'k3s-agent.service' not in ansible_facts.services or
+        ansible_facts.services['k3s-agent.service'].state != 'running'
+    fail_msg: >-
+      K3s is active. Reinstall or remove it manually before using these
+      upstream kubeadm runbooks.

@@ -21,5 +21,6 @@ jobs:
       - run: ansible-lint ansible
       - name: syntax check
         run: |
-          ansible-playbook -i ansible/inventories/example/hosts.yml ansible/playbooks/workstation.yml --syntax-check
-          ansible-playbook -i ansible/inventories/example/hosts.yml ansible/playbooks/compute.yml --syntax-check
+          for playbook in ansible/playbooks/*.yml; do
+            ansible-playbook -i ansible/inventories/example/hosts.yml "$playbook" --syntax-check
+          done

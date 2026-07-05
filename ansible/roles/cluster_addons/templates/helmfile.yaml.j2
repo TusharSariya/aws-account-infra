@@ -1,0 +1,84 @@
+---
+helmDefaults:
+  wait: true
+  timeout: 900
+  atomic: true
+
+repositories:
+  - name: cilium
+    url: https://helm.cilium.io
+  - name: metallb
+    url: https://metallb.github.io/metallb
+  - name: ingress-nginx
+    url: https://kubernetes.github.io/ingress-nginx
+  - name: metrics-server
+    url: https://kubernetes-sigs.github.io/metrics-server
+  - name: nvidia
+    url: https://helm.ngc.nvidia.com/nvidia
+
+releases:
+  - name: cilium
+    namespace: kube-system
+    chart: cilium/cilium
+    version: "{{ cluster_addons_cilium_version }}"
+    values:
+      - ipam:
+          mode: kubernetes
+        kubeProxyReplacement: false
+        routingMode: tunnel
+        tunnelProtocol: vxlan
+        operator:
+          replicas: 1
+
+  - name: metallb
+    namespace: metallb-system
+    createNamespace: true
+    chart: metallb/metallb
+    version: "{{ cluster_addons_metallb_version }}"
+
+  - name: ingress-nginx
+    namespace: ingress-nginx
+    createNamespace: true
+    chart: ingress-nginx/ingress-nginx
+    version: "{{ cluster_addons_ingress_nginx_version }}"
+    values:
+      - controller:
+          service:
+            type: LoadBalancer
+
+  - name: metrics-server
+    namespace: kube-system
+    chart: metrics-server/metrics-server
+    version: "{{ cluster_addons_metrics_server_version }}"
+    values:
+      - args:
+          - --kubelet-preferred-address-types=InternalIP,Hostname
+          - --kubelet-insecure-tls
+
+  - name: local-path-provisioner
+    namespace: local-path-storage
+    createNamespace: true
+    chart: "{{ cluster_addons_work_dir }}/local-path-provisioner/deploy/chart/local-path-provisioner"
+    values:
+      - nodeSelector:
+          storage: local
+        storageClass:
+          defaultClass: true
+          reclaimPolicy: Retain
+        nodePathMap:
+          - node: DEFAULT_PATH_FOR_NON_LISTED_NODES
+            paths:
+              - "{{ cluster_addons_local_storage_path }}"
+
+  - name: gpu-operator
+    namespace: gpu-operator
+    createNamespace: true
+    chart: nvidia/gpu-operator
+    version: "{{ cluster_addons_gpu_operator_version }}"
+    values:
+      - driver:
+          enabled: {{ kubernetes_gpu_operator_manage_driver | bool | lower }}
+        toolkit:
+          enabled: {{ kubernetes_gpu_operator_manage_toolkit | bool | lower }}
+        operator:
+          defaultRuntime: containerd

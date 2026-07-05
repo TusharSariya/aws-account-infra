@@ -1,0 +1,9 @@
+---
+- name: Initialize the Kubernetes control plane
+  hosts: kubernetes_control_plane
+  become: true
+  gather_facts: true
+  serial: 1
+  roles:
+    - cluster_preflight
+    - kubernetes_control_plane

@@ -1,0 +1,7 @@
+---
+- name: Provision the optional bridged ARM64 worker
+  hosts: admin_workstations
+  become: false
+  gather_facts: true
+  roles:
+    - multipass_worker

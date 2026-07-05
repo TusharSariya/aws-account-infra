@@ -1,0 +1,13 @@
+---
+ubuntu_baseline_timezone: "{{ common_timezone | default('UTC') }}"
+ubuntu_baseline_packages:
+  - ca-certificates
+  - curl
+  - git
+  - htop
+  - jq
+  - python3-debian
+  - rsync
+  - unattended-upgrades
+  - unzip
+  - vim

@@ -1,0 +1,10 @@
+---
+mlx_host_python_version: 3.13.12
+mlx_host_mlx_version: 0.31.2
+mlx_host_mlx_lm_version: 0.31.3
+mlx_host_virtualenv: "{{ ansible_facts['user_dir'] }}/.virtualenvs/mlx-api"
+mlx_host_model: ""
+mlx_host_bind_address: 127.0.0.1
+mlx_host_port: 8080
+mlx_host_service_enabled: false
+mlx_host_label: io.homelab.mlx-api
