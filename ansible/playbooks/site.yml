@@ -1,0 +1,6 @@
+---
+- name: Configure administration workstation
+  ansible.builtin.import_playbook: workstation.yml
+
+- name: Configure compute hosts
+  ansible.builtin.import_playbook: compute.yml

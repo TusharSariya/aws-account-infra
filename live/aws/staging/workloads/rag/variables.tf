@@ -1,4 +1,4 @@
-# --- Common inputs (sourced from ../../common.tfvars) ---
+# --- Environment inputs (sourced from config/environments/aws/staging.tfvars) ---
 variable "aws_account_id" {
   type = string
 }
@@ -23,7 +23,7 @@ variable "default_tags" {
   default = {}
 }
 
-# Declared (unused here) so common.tfvars keys don't warn as undeclared.
+# Declared (unused here) so the environment file can be shared by staging deploy units.
 variable "github_owner" {
   type    = string
   default = ""

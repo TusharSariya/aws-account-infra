@@ -1,0 +1,10 @@
+---
+admin_workstation_homebrew_packages:
+  - ansible
+  - awscli
+  - helm
+  - helmfile
+  - jq
+  - kubectl
+  - opentofu
+  - sops

@@ -1,95 +1,69 @@
 name: tofu-apply
 
-# Apply-before-merge: apply runs on the PR and is a REQUIRED check, so the PR can't
-# merge until the apply succeeds. The human gate is the `apply` LABEL — apply only
-# runs once you add it (after reviewing the plan); a stack-changing PR stays blocked
-# until then. (Required-reviewer Environments aren't available on this plan/repo, so
-# the label is the approval. The job still declares `environment: prod` so its OIDC
-# token's sub is `…:environment:prod`, matching the apply role's trust.) No path
-# filter — always run + report a stable `apply-gate`; `detect` scopes the work.
-# There is intentionally NO push:main apply (main is already-applied).
 on:
   pull_request:
     types: [opened, synchronize, reopened, labeled, unlabeled]
 
-# Never let two applies overlap, across ALL PRs (belt-and-suspenders with the
-# DynamoDB state lock). A single global group serializes every apply.
 concurrency:
   group: tofu-apply
   cancel-in-progress: false
 
 permissions:
-  id-token: write # assume the OIDC apply role
+  id-token: write
   contents: read
-  pull-requests: read # dorny/paths-filter lists PR files via the API
+  pull-requests: read
 
 jobs:
   detect:
     runs-on: ubuntu-latest
     outputs:
-      stacks: ${{ steps.set.outputs.stacks }}
+      units: ${{ steps.units.outputs.units }}
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
         with:
-          # For pull_request events paths-filter diffs against the PR base automatically.
-          filters: |
-            account:
-              - 'account/**'
-              - 'modules/**'
-              - 'common.tfvars'
-            rag:
-              - 'stacks/rag/**'
-              - 'modules/**'
-              - 'common.tfvars'
-      - id: set
-        run: |
-          stacks=()
-          [[ "${{ steps.filter.outputs.account }}" == "true" ]] && stacks+=('"account"')
-          [[ "${{ steps.filter.outputs.rag }}" == "true" ]] && stacks+=('"stacks/rag"')
-          echo "stacks=[$(IFS=,; echo "${stacks[*]}")]" >> "$GITHUB_OUTPUT"
+          fetch-depth: 0
+      - id: units
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.sha }}
+        run: echo "units=$(python3 scripts/deploy-units.py changed "$BASE_SHA" "$HEAD_SHA")" >> "$GITHUB_OUTPUT"
 
   apply:
     needs: detect
-    # Runs only when there are stacks to apply AND you've added the `apply` label
-    # (the human approval). `environment: prod` is kept so the OIDC sub matches the
-    # apply role's trust pin.
-    if: needs.detect.outputs.stacks != '[]' && contains(github.event.pull_request.labels.*.name, 'apply')
+    if: needs.detect.outputs.units != '[]' && contains(github.event.pull_request.labels.*.name, 'apply')
     runs-on: ubuntu-latest
     environment: prod
-    strategy:
-      fail-fast: true
-      max-parallel: 1
-      matrix:
-        stack: ${{ fromJSON(needs.detect.outputs.stacks) }}
-    defaults:
-      run:
-        working-directory: ${{ matrix.stack }}
     steps:
       - uses: actions/checkout@v4
-
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.TOFU_APPLY_ROLE_ARN }}
           aws-region: us-east-1
-
       - uses: opentofu/setup-opentofu@v1
         with:
           tofu_version: 1.11.5
+      - name: Apply deploy units in dependency order
+        env:
+          UNITS_JSON: ${{ needs.detect.outputs.units }}
+        run: |
+          python3 - <<'PY' > /tmp/deploy-units.tsv
+          import json
+          import os
 
-      - name: init
-        run: tofu init -input=false
+          for unit in json.loads(os.environ["UNITS_JSON"]):
+              if unit["cloud"] != "aws":
+                  raise SystemExit(f"CI apply is not configured for cloud {unit['cloud']!r}")
+              print(f"{unit['id']}\t{unit['path']}\t{unit['var_file']}")
+          PY
 
-      - name: apply
-        # aws_profile="" → use the OIDC apply role's ambient creds (no local profile
-        # / assume-role on the runner). Overrides the value in common.tfvars.
-        run: tofu apply -input=false -auto-approve -var-file="$GITHUB_WORKSPACE/common.tfvars" -var "aws_profile="
+          while IFS=$'\t' read -r id path var_file; do
+            echo "::group::Apply $id"
+            tofu -chdir="$path" init -input=false
+            tofu -chdir="$path" apply -input=false -auto-approve \
+              -var-file="$GITHUB_WORKSPACE/$var_file" -var "aws_profile="
+            echo "::endgroup::"
+          done < /tmp/deploy-units.tsv
 
-  # Stable required-status-check context that blocks the merge until apply succeeds.
-  # - no stacks changed            → pass (nothing to apply)
-  # - stacks changed, not applied  → FAIL (add the `apply` label to apply them)
-  # - stacks changed, apply ok     → pass
   apply-gate:
     needs: [detect, apply]
     if: always()
@@ -97,22 +71,12 @@ jobs:
     steps:
       - name: gate
         run: |
-          echo "detect=${{ needs.detect.result }}  stacks=${{ needs.detect.outputs.stacks }}  apply=${{ needs.apply.result }}"
-          if [[ "${{ needs.detect.result }}" != "success" ]]; then
-            echo "::error::detect did not succeed"; exit 1
-          fi
-          if [[ "${{ needs.detect.outputs.stacks }}" == "[]" ]]; then
-            echo "no stacks changed — nothing to apply"; exit 0
-          fi
-          if [[ "${{ needs.apply.result }}" != "success" ]]; then
-            echo "::error::stacks changed but not applied (apply=${{ needs.apply.result }}). Add the 'apply' label to run apply, then merge."; exit 1
-          fi
-          echo "apply gate OK"
+          [[ "${{ needs.detect.result }}" == "success" ]] || exit 1
+          if [[ "${{ needs.detect.outputs.units }}" == "[]" ]]; then exit 0; fi
+          [[ "${{ needs.apply.result }}" == "success" ]] || {
+            echo "::error::Deploy units changed but were not applied. Add the apply label."; exit 1;
+          }
 
-  # Once apply succeeds, enable auto-merge so the PR merges itself the moment all
-  # required checks are green — keeping main in lockstep with the applied infra
-  # (no apply-without-merge drift). Auto-merge still respects branch protection, so
-  # it waits for plan-gate + apply-gate before merging.
   enable-auto-merge:
     needs: apply
     if: needs.apply.result == 'success'

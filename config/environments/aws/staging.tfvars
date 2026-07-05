@@ -1,6 +1,5 @@
-# Shared inputs for every stack. Pass with: tofu plan -var-file=../../common.tfvars
-# (the tofu.sh wrapper does this automatically). Adjust the placeholders marked TODO
-# before the first apply.
+# Shared inputs for AWS staging deploy units. The infra wrapper selects this file from
+# deploy-units.json. Adjust the placeholders marked TODO before the first apply.
 
 aws_account_id = "992382747916"
 region         = "us-east-1"

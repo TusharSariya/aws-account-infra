@@ -22,3 +22,7 @@ tfplan.binary
 # Editor / OS
 .DS_Store
 *.swp
+
+# Machine-specific Ansible inventory and Vault credentials
+ansible/inventories/local/
+.vault-password

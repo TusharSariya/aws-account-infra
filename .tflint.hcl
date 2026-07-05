@@ -6,9 +6,8 @@ plugin "terraform" {
   preset  = "recommended"
 }
 
-# Every stack re-declares all common variables — including ones it doesn't use — so the
-# shared common.tfvars never warns about undeclared vars (the "Declared (unused here)"
-# convention; see CLAUDE.md). That's deliberate, so this rule would only ever false-flag.
+# Staging deploy units share an environment variable file and intentionally declare a
+# few inputs they do not consume, so this rule would false-flag that convention.
 rule "terraform_unused_declarations" {
   enabled = false
 }

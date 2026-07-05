@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "units": [
+    {
+      "id": "aws-staging-account",
+      "cloud": "aws",
+      "environment": "staging",
+      "path": "live/aws/staging/account",
+      "var_file": "config/environments/aws/staging.tfvars",
+      "region": "us-east-1",
+      "dependencies": [],
+      "ci": true,
+      "watch": ["live/aws/staging/account/", "modules/aws/", "config/environments/aws/staging.tfvars"]
+    },
+    {
+      "id": "aws-staging-rag",
+      "cloud": "aws",
+      "environment": "staging",
+      "path": "live/aws/staging/workloads/rag",
+      "var_file": "config/environments/aws/staging.tfvars",
+      "region": "us-east-1",
+      "dependencies": ["aws-staging-account"],
+      "ci": true,
+      "watch": ["live/aws/staging/workloads/rag/", "modules/aws/", "config/environments/aws/staging.tfvars"]
+    }
+  ]
+}
