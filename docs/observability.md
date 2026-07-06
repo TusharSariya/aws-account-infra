@@ -66,8 +66,8 @@ Access Grafana through the shared Gateway API endpoint:
 open http://grafana.home.arpa
 ```
 
-The hostname is resolved by the Pi-hole record in
-`kubernetes/apps/pihole/pihole.yml` and routed by an Istio Gateway API HTTPRoute.
+The hostname is resolved by the Pi-hole `FTLCONF_dns_hostRecord` (set by the
+`cluster_apps` role) and routed by an Istio Gateway API HTTPRoute.
 The username is `admin`. Retrieve the generated password without committing it
 to the repository:
 
@@ -129,13 +129,32 @@ exhaust memory.
 
 ## Phase 5: centralized logs
 
-Deploy Grafana Loki and Alloy after metrics and alerts are stable. Applications
+Status: first slice implemented — Pi-hole DNS query logs.
+
+A single-binary Grafana Loki (filesystem storage on `local-path`, bounded
+retention via the compactor) is deployed by the `cluster_addons` Helmfile in the
+`monitoring` namespace and wired into Grafana as a datasource. The first log
+source is Pi-hole: an **Alloy sidecar** (in the Pi-hole pod, deployed by the
+`cluster_apps` role) tails the FTL dnsmasq query log
+(`/var/log/pihole/pihole.log`, a file — not stdout) and pushes to Loki. It
+promotes only a bounded label set (`action`, and `client` on query lines); the
+domain stays in the log line and is extracted at query time with LogQL, so
+per-domain cardinality never enters the index. A "Pi-hole — DNS query logs"
+Grafana dashboard ships alongside the exporter-fed "Pi-hole — metrics" one.
+
+Retention and the PVC size are set from the inventory
+(`kubernetes_loki_retention_hours`, `kubernetes_loki_storage_size`); the query
+log stays LAN-internal (no external route). See `docs/gateway-api.md` and the
+design spec `docs/superpowers/specs/2026-07-06-pihole-log-analytics-design.md`.
+
+Next, extend the same pipeline to application logs: deploy a cluster-wide Alloy
+DaemonSet for stdout collection once the RAG services exist. Those services
 should emit structured JSON containing fields such as `request_id`,
 `document_id`, `pipeline_stage`, `priority`, `model`, `duration_ms`, and a
 bounded error category.
 
-Start with short retention and explicit storage limits. Logs grow much faster
-than metrics and use the same single local disk as the workloads they observe.
+Keep short retention and explicit storage limits. Logs grow much faster than
+metrics and use the same single local disk as the workloads they observe.
 Secrets, document contents, prompts, and retrieved private text must not be
 logged by default.
 

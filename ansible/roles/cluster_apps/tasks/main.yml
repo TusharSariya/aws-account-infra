@@ -1,0 +1,154 @@
+---
+- name: Assert local cluster tools are installed
+  ansible.builtin.command: "{{ item }} version"
+  loop:
+    - kubectl
+    - helm
+    - helmfile
+  changed_when: false
+
+- name: Assert environment-specific Pi-hole values are configured
+  ansible.builtin.assert:
+    that:
+      - kubernetes_pihole_dns_address | length > 0
+      - kubernetes_pihole_dns_address != "192.0.2.202"
+    fail_msg: "Set kubernetes_pihole_dns_address to a real MetalLB address in local inventory."
+
+- name: Create apps working directory
+  ansible.builtin.file:
+    path: "{{ cluster_apps_work_dir }}"
+    state: directory
+    mode: "0700"
+
+- name: Ensure the Pi-hole namespace exists
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_apps_kubeconfig }} create namespace
+    {{ cluster_apps_pihole_namespace }} --dry-run=client --output yaml
+  register: cluster_apps_pihole_ns
+  changed_when: false
+
+- name: Apply the Pi-hole namespace
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_apps_kubeconfig }} apply --filename -
+  args:
+    stdin: "{{ cluster_apps_pihole_ns.stdout }}"
+  register: cluster_apps_pihole_ns_apply
+  changed_when: "'unchanged' not in cluster_apps_pihole_ns_apply.stdout"
+
+- name: Render the Pi-hole admin secret from Vault (when provided)
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_apps_kubeconfig }} create secret generic
+    {{ cluster_apps_pihole_secret }} --namespace {{ cluster_apps_pihole_namespace }}
+    --from-literal=password={{ vault_pihole_admin_password }}
+    --dry-run=client --output yaml
+  register: cluster_apps_pihole_secret_manifest
+  changed_when: false
+  no_log: true
+  when: vault_pihole_admin_password is defined
+
+- name: Apply the Pi-hole admin secret
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_apps_kubeconfig }} apply --filename -
+  args:
+    stdin: "{{ cluster_apps_pihole_secret_manifest.stdout }}"
+  no_log: true
+  changed_when: true
+  when: vault_pihole_admin_password is defined
+
+- name: Assert the Pi-hole admin secret exists
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_apps_kubeconfig }} get secret
+    {{ cluster_apps_pihole_secret }} --namespace {{ cluster_apps_pihole_namespace }}
+  changed_when: false
+
+# Migration safety: refuse to run against the retired hand-applied manifest, whose
+# Deployment/Service names collide with the chart's and cannot be adopted by Helm.
+- name: Look for a Helm-managed Pi-hole deployment
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_apps_kubeconfig }} get deployment
+    --namespace {{ cluster_apps_pihole_namespace }}
+    --selector app.kubernetes.io/managed-by=Helm --output name
+  register: cluster_apps_pihole_helm
+  changed_when: false
+  failed_when: false
+
+- name: Look for any Pi-hole deployment
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_apps_kubeconfig }} get deployment pihole
+    --namespace {{ cluster_apps_pihole_namespace }} --output name
+  register: cluster_apps_pihole_any
+  changed_when: false
+  failed_when: false
+
+- name: Fail when an un-migrated raw Pi-hole deployment is present
+  ansible.builtin.fail:
+    msg: >-
+      A non-Helm 'pihole' Deployment exists in {{ cluster_apps_pihole_namespace }}.
+      Delete the retired raw Deployment/Service/HTTPRoute (keep the pihole-data PVC and
+      the pihole-admin secret) before running this play. See docs/gateway-api.md.
+  when:
+    - cluster_apps_pihole_any.rc == 0
+    - "'pihole' not in cluster_apps_pihole_helm.stdout"
+
+- name: Render Pi-hole supporting resources
+  ansible.builtin.template:
+    src: pihole-resources.yml.j2
+    dest: "{{ cluster_apps_work_dir }}/pihole-resources.yml"
+    mode: "0600"
+
+- name: Apply Pi-hole supporting resources
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_apps_kubeconfig }} apply
+    --filename {{ cluster_apps_work_dir }}/pihole-resources.yml
+  register: cluster_apps_resources_apply
+  changed_when: "'unchanged' not in cluster_apps_resources_apply.stdout"
+
+- name: Render Pi-hole Grafana dashboards
+  ansible.builtin.template:
+    src: pihole-dashboards.yml.j2
+    dest: "{{ cluster_apps_work_dir }}/pihole-dashboards.yml"
+    mode: "0600"
+
+- name: Apply Pi-hole Grafana dashboards
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_apps_kubeconfig }} apply
+    --filename {{ cluster_apps_work_dir }}/pihole-dashboards.yml
+  register: cluster_apps_dashboards_apply
+  changed_when: "'unchanged' not in cluster_apps_dashboards_apply.stdout"
+
+- name: Render pinned Pi-hole Helmfile
+  ansible.builtin.template:
+    src: helmfile.yaml.j2
+    dest: "{{ cluster_apps_work_dir }}/helmfile.yaml"
+    mode: "0600"
+
+- name: Apply the Pi-hole Helm release
+  ansible.builtin.command: >-
+    helmfile --file {{ cluster_apps_work_dir }}/helmfile.yaml apply
+  environment:
+    KUBECONFIG: "{{ cluster_apps_kubeconfig }}"
+  register: cluster_apps_helmfile
+  changed_when: "'Affected releases are:' in cluster_apps_helmfile.stdout"
+
+- name: Wait for the Pi-hole deployment to be available
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_apps_kubeconfig }} wait deployment/pihole
+    --namespace {{ cluster_apps_pihole_namespace }}
+    --for=condition=Available --timeout=5m
+  changed_when: false
+
+- name: Wait for the Pi-hole HTTPRoute to be accepted
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_apps_kubeconfig }} wait httproute/pihole
+    --namespace {{ cluster_apps_pihole_namespace }}
+    --for=jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].status}'=True
+    --timeout=5m
+  changed_when: false
+
+- name: Verify the Pi-hole admin UI through Gateway API
+  ansible.builtin.uri:
+    url: "http://{{ cluster_apps_gateway_address }}/admin/"
+    headers:
+      Host: "{{ cluster_apps_pihole_hostname }}"
+    status_code: [200, 301, 302, 308]
+    use_proxy: false

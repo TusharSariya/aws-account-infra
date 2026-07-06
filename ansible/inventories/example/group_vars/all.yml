@@ -11,6 +11,12 @@ kubernetes_gateway_address: 192.0.2.201
 kubernetes_gateway_namespace: istio-ingress
 kubernetes_gateway_name: homelab
 kubernetes_grafana_hostname: grafana.home.arpa
+kubernetes_pihole_hostname: pihole.home.arpa
+kubernetes_pihole_dns_address: 192.0.2.202
+
+# Centralized logs (Loki single-binary, filesystem-backed on local-path).
+kubernetes_loki_retention_hours: 336
+kubernetes_loki_storage_size: 20Gi
 
 # Set false to preinstall the Ubuntu NVIDIA driver and container toolkit on the
 # GPU host rather than letting GPU Operator manage them.

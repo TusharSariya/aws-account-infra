@@ -1,0 +1,147 @@
+---
+# Alloy sidecar configuration: tail the Pi-hole dnsmasq query log, promote a
+# bounded label set (action, and client on query lines), and push to Loki.
+# The domain is intentionally NOT a label (unbounded) — extract it at query
+# time with LogQL. The Loki push URL is a fixed in-cluster address.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pihole-alloy-config
+  namespace: {{ cluster_apps_pihole_namespace }}
+data:
+  config.alloy: |
+{% raw %}
+    local.file_match "pihole" {
+      path_targets = [{
+        __path__ = "/var/log/pihole/pihole.log",
+        job      = "pihole",
+      }]
+      sync_period = "5s"
+    }
+
+    loki.source.file "pihole" {
+      targets       = local.file_match.pihole.targets
+      forward_to    = [loki.process.pihole.receiver]
+      tail_from_end = true
+    }
+
+    loki.process "pihole" {
+      // Action verb, anchored after "dnsmasq[<pid>]: ". The optional "gravity "
+      // prefix on block lines is consumed so the label is a clean "blocked".
+      stage.regex {
+        expression = "dnsmasq\\[\\d+\\]: (?:gravity )?(?P<action>query|forwarded|reply|cached|blocked)"
+      }
+      // Client only appears on query lines ("... from <client>").
+      stage.regex {
+        expression = "from (?P<client>[0-9A-Fa-f.:]+)\\s*$"
+      }
+      stage.labels {
+        values = {
+          action = "",
+          client = "",
+        }
+      }
+      forward_to = [loki.write.default.receiver]
+    }
+
+    loki.write "default" {
+      endpoint {
+        url = "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
+      }
+    }
+{% endraw %}
+---
+# North-south route for the Pi-hole admin UI through the shared Istio gateway.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: pihole
+  namespace: {{ cluster_apps_pihole_namespace }}
+spec:
+  parentRefs:
+    - name: {{ cluster_apps_gateway_name }}
+      namespace: {{ cluster_apps_gateway_namespace }}
+      sectionName: http
+  hostnames:
+    - {{ cluster_apps_pihole_hostname | quote }}
+  rules:
+    - backendRefs:
+        - name: pihole-web
+          port: 80
+---
+# Standalone Pi-hole metrics exporter (reads the FTL API over the network, so it
+# is decoupled from the Pi-hole pod lifecycle) + ServiceMonitor for Prometheus.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pihole-exporter
+  namespace: {{ cluster_apps_pihole_namespace }}
+  labels:
+    app.kubernetes.io/name: pihole-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pihole-exporter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: pihole-exporter
+    spec:
+      containers:
+        - name: exporter
+          image: {{ cluster_apps_pihole_exporter_image }}
+          env:
+            - name: PIHOLE_HOSTNAME
+              value: pihole-web.{{ cluster_apps_pihole_namespace }}.svc.cluster.local
+            - name: PIHOLE_PORT
+              value: "80"
+            - name: PIHOLE_PROTOCOL
+              value: http
+            - name: PIHOLE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ cluster_apps_pihole_secret }}
+                  key: password
+            - name: PORT
+              value: "9617"
+          ports:
+            - name: metrics
+              containerPort: 9617
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pihole-exporter
+  namespace: {{ cluster_apps_pihole_namespace }}
+  labels:
+    app.kubernetes.io/name: pihole-exporter
+spec:
+  selector:
+    app.kubernetes.io/name: pihole-exporter
+  ports:
+    - name: metrics
+      port: 9617
+      targetPort: metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: pihole-exporter
+  namespace: {{ cluster_apps_pihole_namespace }}
+  labels:
+    app.kubernetes.io/name: pihole-exporter
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pihole-exporter
+  endpoints:
+    - port: metrics
+      interval: 30s

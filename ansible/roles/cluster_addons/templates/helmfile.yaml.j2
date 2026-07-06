@@ -7,6 +7,8 @@ helmDefaults:
 repositories:
   - name: cilium
     url: https://helm.cilium.io
+  - name: grafana-community
+    url: https://grafana-community.github.io/helm-charts
   - name: istio
     url: https://istio-release.storage.googleapis.com/charts
   - name: metallb
@@ -173,3 +175,112 @@ releases:
             limits:
               cpu: 500m
               memory: 512Mi
+          additionalDataSources:
+            - name: Loki
+              type: loki
+              access: proxy
+              url: http://loki.monitoring.svc.cluster.local:3100
+              jsonData:
+                maxLines: 1000
+        additionalPrometheusRulesMap:
+          pihole-dns:
+            groups:
+              - name: pihole-dns
+                rules:
+                  - alert: PiholeExporterDown
+                    expr: absent(pihole_status)
+                    for: 15m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: Pi-hole exporter is not reporting metrics
+                      description: No pihole_status metric for 15m; pihole-exporter is down or unscraped.
+                  - alert: PiholeBlockingDisabled
+                    expr: pihole_status == 0
+                    for: 15m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: Pi-hole blocking is disabled
+                      description: pihole_status has been 0 (blocking off) for 15m.
+                  - alert: PiholeNotBlocking
+                    expr: (pihole_ads_percentage_today == 0) and (pihole_dns_queries_today > 100)
+                    for: 1h
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: Pi-hole answers queries but blocks nothing
+                      description: 0% blocked over 1h despite >100 queries today; gravity/blocklists may be broken.
+                  - alert: PiholeGravityEmpty
+                    expr: pihole_domains_being_blocked == 0
+                    for: 30m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: Pi-hole blocklist (gravity) is empty
+                      description: pihole_domains_being_blocked == 0 for 30m; gravity failed to load.
+
+  - name: loki
+    namespace: monitoring
+    createNamespace: true
+    chart: grafana-community/loki
+    version: "{{ cluster_addons_loki_version }}"
+    values:
+      - deploymentMode: SingleBinary
+        loki:
+          auth_enabled: false
+          commonConfig:
+            replication_factor: 1
+          schemaConfig:
+            configs:
+              - from: "2024-04-01"
+                store: tsdb
+                object_store: filesystem
+                schema: v13
+                index:
+                  prefix: index_
+                  period: 24h
+          storage:
+            type: filesystem
+          limits_config:
+            retention_period: "{{ cluster_addons_loki_retention }}"
+          compactor:
+            retention_enabled: true
+            delete_request_store: filesystem
+          pattern_ingester:
+            enabled: false
+          ruler:
+            enabled: false
+        singleBinary:
+          replicas: 1
+          persistence:
+            enabled: true
+            storageClass: local-path
+            size: "{{ cluster_addons_loki_storage_size }}"
+          nodeSelector:
+            storage: local
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+        read:
+          replicas: 0
+        write:
+          replicas: 0
+        backend:
+          replicas: 0
+        minio:
+          enabled: false
+        gateway:
+          enabled: false
+        chunksCache:
+          enabled: false
+        resultsCache:
+          enabled: false
+        lokiCanary:
+          enabled: false
+        test:
+          enabled: false

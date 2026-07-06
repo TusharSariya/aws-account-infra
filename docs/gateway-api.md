@@ -76,7 +76,7 @@ parentRefs:
 ```
 
 The listener permits routes from all namespaces. For example, the Pi-hole admin
-UI (`kubernetes/apps/pihole/pihole.yml`) exposes `pihole.home.arpa` through the
+UI (deployed by the `cluster_apps` role) exposes `pihole.home.arpa` through the
 gateway, while Pi-hole DNS keeps serving on its own LoadBalancer at
 `10.0.0.232:53` — only the web UI is routed through Istio; DNS (an L4 service)
 is not and must not be.

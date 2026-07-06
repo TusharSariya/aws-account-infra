@@ -8,3 +8,6 @@ cluster_validation_gpu_image: nvidia/cuda:13.1.1-base-ubuntu24.04
 cluster_validation_gateway_namespace: "{{ kubernetes_gateway_namespace }}"
 cluster_validation_gateway_name: "{{ kubernetes_gateway_name }}"
 cluster_validation_gateway_hostname: validation.home.arpa
+cluster_validation_loki_check: true
+cluster_validation_loki_namespace: monitoring
+cluster_validation_loki_selector: app.kubernetes.io/component=single-binary

@@ -70,6 +70,15 @@
         selectattr('status', 'equalto', 'True') | list | length == 1
     fail_msg: "The shared Gateway is not programmed with a MetalLB address."
 
+- name: Wait for Loki to be ready
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_validation_kubeconfig }} wait pod
+    --namespace {{ cluster_validation_loki_namespace }}
+    --selector {{ cluster_validation_loki_selector }}
+    --for=condition=Ready --timeout={{ cluster_validation_timeout }}
+  when: cluster_validation_loki_check | bool
+  changed_when: false
+
 - name: Create validation working directory
   ansible.builtin.file:
     path: "{{ cluster_validation_work_dir }}"
