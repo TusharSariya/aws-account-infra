@@ -1,0 +1,6 @@
+---
+cluster_preflight_supported_distribution: Ubuntu
+cluster_preflight_supported_version: "26.04"
+cluster_preflight_supported_architectures:
+  - x86_64
+  - aarch64

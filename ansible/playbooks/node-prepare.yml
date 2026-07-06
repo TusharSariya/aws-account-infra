@@ -1,0 +1,23 @@
+---
+- name: Validate Kubernetes nodes
+  hosts: kubernetes_nodes
+  become: false
+  gather_facts: true
+  roles:
+    - cluster_preflight
+
+- name: Prepare Ubuntu Kubernetes nodes
+  hosts: kubernetes_nodes
+  become: true
+  gather_facts: true
+  roles:
+    - ubuntu_baseline
+    - container_runtime
+    - kubernetes_node
+
+- name: Prepare NVIDIA GPU hosts
+  hosts: nvidia_gpu_nodes
+  become: true
+  gather_facts: true
+  roles:
+    - nvidia_gpu_host

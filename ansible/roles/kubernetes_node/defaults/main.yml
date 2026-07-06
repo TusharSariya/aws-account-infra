@@ -1,0 +1,29 @@
+---
+# Kubernetes packages use a repository per minor release. Upgrade this value
+# deliberately and follow the kubeadm upgrade procedure before applying it.
+kubernetes_node_minor_version: v1.36
+kubernetes_node_package_version: 1.36.2-2.1
+kubernetes_node_disable_swap: true
+kubernetes_node_packages:
+  - kubelet
+  - kubeadm
+  - kubectl
+kubernetes_node_cri_socket: unix:///run/containerd/containerd.sock
+kubernetes_node_dns_servers: []
+kubernetes_node_resolv_conf: /etc/kubernetes/kubelet-resolv.conf
+kubernetes_node_system_reserved: >-
+  {{ 'cpu=1,memory=2Gi,ephemeral-storage=2Gi'
+     if inventory_hostname in groups['kubernetes_control_plane']
+     else ('cpu=300m,memory=512Mi,ephemeral-storage=1Gi'
+           if inventory_hostname in (groups['legacy_nodes'] | default([]))
+           else 'cpu=500m,memory=512Mi,ephemeral-storage=1Gi') }}
+kubernetes_node_kube_reserved: >-
+  {{ 'cpu=1,memory=2Gi,ephemeral-storage=2Gi'
+     if inventory_hostname in groups['kubernetes_control_plane']
+     else ('cpu=300m,memory=512Mi,ephemeral-storage=1Gi'
+           if inventory_hostname in (groups['legacy_nodes'] | default([]))
+           else 'cpu=500m,memory=512Mi,ephemeral-storage=1Gi') }}
+kubernetes_node_eviction_hard: >-
+  {{ 'memory.available<300Mi,nodefs.available<10%'
+     if inventory_hostname in (groups['legacy_nodes'] | default([]))
+     else 'memory.available<500Mi,nodefs.available<10%' }}

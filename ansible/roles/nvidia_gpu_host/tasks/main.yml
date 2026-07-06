@@ -1,0 +1,38 @@
+---
+- name: Install NVIDIA host preflight tools
+  ansible.builtin.apt:
+    name:
+      - "linux-headers-{{ ansible_facts['kernel'] }}"
+      - mokutil
+      - pciutils
+    state: present
+    update_cache: true
+
+- name: Detect NVIDIA hardware
+  ansible.builtin.command: "lspci -d 10de:"
+  register: nvidia_gpu_host_lspci
+  changed_when: false
+
+- name: Check Secure Boot state
+  ansible.builtin.command: mokutil --sb-state
+  register: nvidia_gpu_host_secure_boot
+  changed_when: false
+  failed_when: false
+
+- name: Assert GPU prerequisites
+  ansible.builtin.assert:
+    that:
+      - nvidia_gpu_host_lspci.stdout | length > 0
+      - "'disabled' in nvidia_gpu_host_secure_boot.stdout | lower"
+    fail_msg: >-
+      An NVIDIA PCI device must be present and Secure Boot must be disabled
+      before GPU Operator manages kernel drivers.
+
+- name: Install host-managed NVIDIA stack
+  ansible.builtin.apt:
+    name:
+      - "{{ nvidia_gpu_host_driver_package }}"
+      - "{{ nvidia_gpu_host_toolkit_package }}"
+    state: present
+  when: not kubernetes_gpu_operator_manage_driver
+  notify: Configure NVIDIA container runtime

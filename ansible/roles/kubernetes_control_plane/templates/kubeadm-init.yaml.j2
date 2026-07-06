@@ -1,0 +1,23 @@
+---
+apiVersion: kubeadm.k8s.io/v1beta4
+kind: InitConfiguration
+localAPIEndpoint:
+  advertiseAddress: "{{ ansible_host }}"
+  bindPort: {{ kubernetes_api_port }}
+nodeRegistration:
+  name: "{{ inventory_hostname | lower | replace('_', '-') }}"
+  criSocket: "{{ kubernetes_control_plane_cri_socket }}"
+---
+apiVersion: kubeadm.k8s.io/v1beta4
+kind: ClusterConfiguration
+clusterName: "{{ kubernetes_cluster_name }}"
+kubernetesVersion: "{{ kubernetes_control_plane_version }}"
+controlPlaneEndpoint: "{{ kubernetes_api_endpoint }}:{{ kubernetes_api_port }}"
+networking:
+  dnsDomain: cluster.local
+  podSubnet: "{{ kubernetes_pod_subnet }}"
+  serviceSubnet: "{{ kubernetes_service_subnet }}"
+apiServer:
+  certSANs:
+    - "{{ kubernetes_api_endpoint }}"
+    - "{{ ansible_host }}"

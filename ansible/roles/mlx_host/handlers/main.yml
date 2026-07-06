@@ -1,0 +1,5 @@
+---
+- name: Restart MLX API
+  community.general.launchd:
+    name: "{{ mlx_host_label }}"
+    state: restarted

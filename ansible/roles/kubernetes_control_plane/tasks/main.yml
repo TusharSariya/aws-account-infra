@@ -1,0 +1,45 @@
+---
+- name: Render kubeadm initialization configuration
+  ansible.builtin.template:
+    src: kubeadm-init.yaml.j2
+    dest: /etc/kubernetes/kubeadm-init.yaml
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Check whether the control plane is initialized
+  ansible.builtin.stat:
+    path: /etc/kubernetes/admin.conf
+  register: kubernetes_control_plane_admin_conf
+
+- name: Pull pinned control-plane images
+  ansible.builtin.command: kubeadm config images pull --config /etc/kubernetes/kubeadm-init.yaml
+  when: not kubernetes_control_plane_admin_conf.stat.exists
+  changed_when: true
+
+- name: Initialize the control plane
+  ansible.builtin.command: kubeadm init --config /etc/kubernetes/kubeadm-init.yaml
+  when: not kubernetes_control_plane_admin_conf.stat.exists
+  changed_when: true
+
+- name: Create local kubeconfig directory
+  ansible.builtin.file:
+    path: "{{ kubernetes_control_plane_kubeconfig_local | dirname }}"
+    state: directory
+    mode: "0700"
+  delegate_to: localhost
+  become: false
+
+- name: Fetch administrator kubeconfig
+  ansible.builtin.fetch:
+    src: /etc/kubernetes/admin.conf
+    dest: "{{ kubernetes_control_plane_kubeconfig_local }}"
+    flat: true
+  no_log: true
+
+- name: Protect local administrator kubeconfig
+  ansible.builtin.file:
+    path: "{{ kubernetes_control_plane_kubeconfig_local }}"
+    mode: "0600"
+  delegate_to: localhost
+  become: false

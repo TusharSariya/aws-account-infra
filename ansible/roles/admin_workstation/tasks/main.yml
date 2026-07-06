@@ -2,7 +2,7 @@
 - name: Assert the administration workstation is macOS
   ansible.builtin.assert:
     that:
-      - ansible_system == "Darwin"
+      - ansible_facts["system"] == "Darwin"
     fail_msg: "The administration workstation role currently supports macOS only."
 
 - name: Check for Homebrew
@@ -22,3 +22,95 @@
     name: "{{ admin_workstation_homebrew_packages }}"
     state: present
     update_homebrew: false
+
+- name: List installed Helm plugins
+  ansible.builtin.command: helm plugin list
+  register: admin_workstation_helm_plugins
+  changed_when: false
+
+- name: Remove an unpinned Helm Diff plugin
+  ansible.builtin.command: helm plugin uninstall diff
+  when:
+    - admin_workstation_helm_plugins.stdout is regex('(?m)^diff\\s+')
+    - >-
+      admin_workstation_helm_plugins.stdout is not regex(
+      '(?m)^diff\\s+' +
+      (admin_workstation_helm_diff_version | regex_replace('^v', '')) +
+      '\\s+')
+  changed_when: true
+
+- name: Install pinned Helm Diff plugin
+  ansible.builtin.command:
+    argv:
+      - helm
+      - plugin
+      - install
+      - https://github.com/databus23/helm-diff
+      - --version
+      - "{{ admin_workstation_helm_diff_version }}"
+      - --verify=false
+  when: >-
+    admin_workstation_helm_plugins.stdout is not regex(
+    '(?m)^diff\\s+' +
+    (admin_workstation_helm_diff_version | regex_replace('^v', '')) +
+    '\\s+')
+  changed_when: true
+
+- name: Install administration applications
+  community.general.homebrew_cask:
+    name: "{{ admin_workstation_homebrew_casks }}"
+    state: present
+  when: admin_workstation_homebrew_casks | length > 0
+
+- name: Check for SDKMAN
+  ansible.builtin.stat:
+    path: "{{ ansible_facts['user_dir'] }}/.sdkman/bin/sdkman-init.sh"
+  register: admin_workstation_sdkman
+  when: admin_workstation_install_sdkman
+
+- name: Download SDKMAN installer
+  ansible.builtin.get_url:
+    url: https://get.sdkman.io
+    dest: /tmp/sdkman-install.sh
+    mode: "0700"
+    checksum: "{{ admin_workstation_sdkman_installer_checksum }}"
+  when:
+    - admin_workstation_install_sdkman
+    - not admin_workstation_sdkman.stat.exists
+
+- name: Install SDKMAN
+  ansible.builtin.command: /bin/bash /tmp/sdkman-install.sh
+  environment:
+    SDKMAN_DIR: "{{ ansible_facts['user_dir'] }}/.sdkman"
+  when:
+    - admin_workstation_install_sdkman
+    - not admin_workstation_sdkman.stat.exists
+  changed_when: true
+
+- name: List installed Terraform versions
+  ansible.builtin.command: tenv tf list
+  register: admin_workstation_terraform_versions
+  changed_when: false
+
+- name: Install pinned Terraform with tenv
+  ansible.builtin.command: "tenv tf install {{ admin_workstation_terraform_version }}"
+  when: admin_workstation_terraform_version not in admin_workstation_terraform_versions.stdout
+  changed_when: true
+
+- name: Select pinned Terraform with tenv
+  ansible.builtin.command: "tenv tf use {{ admin_workstation_terraform_version }}"
+  changed_when: false
+
+- name: List installed OpenTofu versions
+  ansible.builtin.command: tenv tofu list
+  register: admin_workstation_opentofu_versions
+  changed_when: false
+
+- name: Install pinned OpenTofu with tenv
+  ansible.builtin.command: "tenv tofu install {{ admin_workstation_opentofu_version }}"
+  when: admin_workstation_opentofu_version not in admin_workstation_opentofu_versions.stdout
+  changed_when: true
+
+- name: Select pinned OpenTofu with tenv
+  ansible.builtin.command: "tenv tofu use {{ admin_workstation_opentofu_version }}"
+  changed_when: false

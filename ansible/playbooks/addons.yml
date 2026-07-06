@@ -1,0 +1,7 @@
+---
+- name: Install and configure cluster add-ons
+  hosts: admin_workstations
+  become: false
+  gather_facts: true
+  roles:
+    - cluster_addons

@@ -1,0 +1,132 @@
+---
+- name: Assert local cluster tools are installed
+  ansible.builtin.command: "{{ item }} version"
+  loop:
+    - kubectl
+    - helm
+    - helmfile
+  changed_when: false
+
+- name: Assert MetalLB address pool is configured
+  ansible.builtin.assert:
+    that:
+      - kubernetes_metallb_pool | length > 0
+      - kubernetes_metallb_pool != "192.0.2.200-192.0.2.210"
+    fail_msg: "Configure an unused MetalLB LAN range in local inventory."
+
+- name: Create add-on working directory
+  ansible.builtin.file:
+    path: "{{ cluster_addons_work_dir }}"
+    state: directory
+    mode: "0700"
+
+- name: Download pinned local-path provisioner source
+  ansible.builtin.get_url:
+    url: >-
+      https://github.com/rancher/local-path-provisioner/archive/refs/tags/v{{ cluster_addons_local_path_version }}.tar.gz
+    dest: "{{ cluster_addons_work_dir }}/local-path-provisioner.tar.gz"
+    mode: "0600"
+    checksum: "{{ cluster_addons_local_path_checksum }}"
+
+- name: Extract pinned local-path provisioner chart
+  ansible.builtin.unarchive:
+    src: "{{ cluster_addons_work_dir }}/local-path-provisioner.tar.gz"
+    dest: "{{ cluster_addons_work_dir }}"
+    remote_src: true
+    creates: >-
+      {{ cluster_addons_work_dir }}/local-path-provisioner-{{ cluster_addons_local_path_version }}/deploy/chart/local-path-provisioner/Chart.yaml
+
+- name: Link pinned local-path provisioner chart
+  ansible.builtin.file:
+    src: "{{ cluster_addons_work_dir }}/local-path-provisioner-{{ cluster_addons_local_path_version }}"
+    dest: "{{ cluster_addons_work_dir }}/local-path-provisioner"
+    state: link
+
+- name: Label storage and GPU control-plane node
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_addons_kubeconfig }} label node
+    {{ groups['kubernetes_control_plane'][0] | lower | replace('_', '-') }}
+    accelerator=nvidia storage=local hardware-tier=gpu --overwrite
+  register: cluster_addons_control_plane_labels
+  changed_when: "'not labeled' not in cluster_addons_control_plane_labels.stdout"
+
+- name: Make the single control plane schedulable
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_addons_kubeconfig }} taint node
+    {{ groups['kubernetes_control_plane'][0] | lower | replace('_', '-') }}
+    node-role.kubernetes.io/control-plane-
+  register: cluster_addons_control_plane_taint
+  changed_when: cluster_addons_control_plane_taint.rc == 0
+  failed_when:
+    - cluster_addons_control_plane_taint.rc != 0
+    - "'not found' not in cluster_addons_control_plane_taint.stderr"
+
+- name: Allow the single control plane to advertise load balancer addresses
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_addons_kubeconfig }} label node
+    {{ groups['kubernetes_control_plane'][0] | lower | replace('_', '-') }}
+    node.kubernetes.io/exclude-from-external-load-balancers-
+  register: cluster_addons_control_plane_load_balancer_label
+  changed_when: >-
+    'not labeled' not in cluster_addons_control_plane_load_balancer_label.stdout
+
+- name: Label legacy nodes
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_addons_kubeconfig }} label node
+    {{ item | lower | replace('_', '-') }} hardware-tier=legacy --overwrite
+  register: cluster_addons_legacy_labels
+  changed_when: "'not labeled' not in cluster_addons_legacy_labels.stdout"
+  loop: "{{ groups['legacy_nodes'] | default([]) }}"
+
+- name: Label ephemeral nodes
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_addons_kubeconfig }} label node
+    {{ item | lower | replace('_', '-') }} lifecycle=ephemeral --overwrite
+  register: cluster_addons_ephemeral_labels
+  changed_when: "'not labeled' not in cluster_addons_ephemeral_labels.stdout"
+  loop: "{{ groups['ephemeral_nodes'] | default([]) }}"
+
+- name: Taint legacy nodes
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_addons_kubeconfig }} taint node
+    {{ item | lower | replace('_', '-') }}
+    workload-tier=light:NoSchedule --overwrite
+  register: cluster_addons_legacy_taint
+  changed_when: "'not tainted' not in cluster_addons_legacy_taint.stdout"
+  loop: "{{ groups['legacy_nodes'] | default([]) }}"
+
+- name: Taint ephemeral nodes
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_addons_kubeconfig }} taint node
+    {{ item | lower | replace('_', '-') }}
+    lifecycle=ephemeral:NoSchedule --overwrite
+  register: cluster_addons_ephemeral_taint
+  changed_when: "'not tainted' not in cluster_addons_ephemeral_taint.stdout"
+  loop: "{{ groups['ephemeral_nodes'] | default([]) }}"
+
+- name: Render pinned Helmfile
+  ansible.builtin.template:
+    src: helmfile.yaml.j2
+    dest: "{{ cluster_addons_work_dir }}/helmfile.yaml"
+    mode: "0600"
+
+- name: Apply pinned cluster add-ons
+  ansible.builtin.command: >-
+    helmfile --file {{ cluster_addons_work_dir }}/helmfile.yaml apply
+  environment:
+    KUBECONFIG: "{{ cluster_addons_kubeconfig }}"
+  register: cluster_addons_helmfile
+  changed_when: "'Affected releases are:' in cluster_addons_helmfile.stdout"
+
+- name: Render MetalLB address resources
+  ansible.builtin.template:
+    src: metallb-resources.yml.j2
+    dest: "{{ cluster_addons_work_dir }}/metallb-resources.yml"
+    mode: "0600"
+
+- name: Apply MetalLB address resources
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_addons_kubeconfig }} apply
+    --filename {{ cluster_addons_work_dir }}/metallb-resources.yml
+  register: cluster_addons_metallb_apply
+  changed_when: "'unchanged' not in cluster_addons_metallb_apply.stdout"
