@@ -7,14 +7,16 @@ helmDefaults:
 repositories:
   - name: cilium
     url: https://helm.cilium.io
+  - name: istio
+    url: https://istio-release.storage.googleapis.com/charts
   - name: metallb
     url: https://metallb.github.io/metallb
-  - name: ingress-nginx
-    url: https://kubernetes.github.io/ingress-nginx
   - name: metrics-server
     url: https://kubernetes-sigs.github.io/metrics-server
   - name: nvidia
     url: https://helm.ngc.nvidia.com/nvidia
+  - name: prometheus-community
+    url: https://prometheus-community.github.io/helm-charts
 
 releases:
   - name: cilium
@@ -35,16 +37,6 @@ releases:
     createNamespace: true
     chart: metallb/metallb
     version: "{{ cluster_addons_metallb_version }}"
-
-  - name: ingress-nginx
-    namespace: ingress-nginx
-    createNamespace: true
-    chart: ingress-nginx/ingress-nginx
-    version: "{{ cluster_addons_ingress_nginx_version }}"
-    values:
-      - controller:
-          service:
-            type: LoadBalancer
 
   - name: metrics-server
     namespace: kube-system
@@ -86,3 +78,98 @@ releases:
           enabled: {{ kubernetes_gpu_operator_manage_toolkit | bool | lower }}
         operator:
           defaultRuntime: containerd
+
+  - name: istio-base
+    namespace: istio-system
+    createNamespace: true
+    chart: istio/base
+    version: "{{ cluster_addons_istio_version }}"
+
+  - name: istiod
+    namespace: istio-system
+    createNamespace: true
+    chart: istio/istiod
+    version: "{{ cluster_addons_istio_version }}"
+    needs:
+      - istio-system/istio-base
+    values:
+      - pilot:
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
+
+  - name: kube-prometheus-stack
+    namespace: monitoring
+    createNamespace: true
+    chart: prometheus-community/kube-prometheus-stack
+    version: "{{ cluster_addons_kube_prometheus_stack_version }}"
+    disableValidationOnInstall: true
+    values:
+      - prometheus:
+          prometheusSpec:
+            retention: 7d
+            retentionSize: 8GB
+            nodeSelector:
+              storage: local
+            resources:
+              requests:
+                cpu: 200m
+                memory: 1Gi
+              limits:
+                cpu: "2"
+                memory: 3Gi
+            serviceMonitorSelectorNilUsesHelmValues: false
+            podMonitorSelectorNilUsesHelmValues: false
+            probeSelectorNilUsesHelmValues: false
+            storageSpec:
+              volumeClaimTemplate:
+                spec:
+                  storageClassName: local-path
+                  accessModes:
+                    - ReadWriteOnce
+                  resources:
+                    requests:
+                      storage: 10Gi
+        alertmanager:
+          alertmanagerSpec:
+            retention: 120h
+            nodeSelector:
+              storage: local
+            resources:
+              requests:
+                cpu: 50m
+                memory: 128Mi
+              limits:
+                cpu: 500m
+                memory: 512Mi
+            storage:
+              volumeClaimTemplate:
+                spec:
+                  storageClassName: local-path
+                  accessModes:
+                    - ReadWriteOnce
+                  resources:
+                    requests:
+                      storage: 1Gi
+        grafana:
+          defaultDashboardsTimezone: America/St_Johns
+          nodeSelector:
+            storage: local
+          persistence:
+            enabled: true
+            type: sts
+            storageClassName: local-path
+            accessModes:
+              - ReadWriteOnce
+            size: 2Gi
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

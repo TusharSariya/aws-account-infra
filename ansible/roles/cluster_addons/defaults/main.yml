@@ -3,10 +3,16 @@ cluster_addons_kubeconfig: "{{ lookup('env', 'HOME') }}/.kube/config"
 cluster_addons_work_dir: /tmp/homelab-kubernetes-platform
 cluster_addons_cilium_version: 1.19.5
 cluster_addons_metallb_version: 0.16.1
-cluster_addons_ingress_nginx_version: 4.15.1
 cluster_addons_metrics_server_version: 3.13.1
 cluster_addons_local_path_version: 0.0.36
 cluster_addons_local_path_checksum: >-
   sha256:55d3dd5eae9683e8e93b2b9dbc6c7824e22f683edffe44d779e6a1939eb45ba6
 cluster_addons_gpu_operator_version: v26.3.3
+cluster_addons_kube_prometheus_stack_version: 87.10.1
+cluster_addons_istio_version: 1.30.2
+cluster_addons_gateway_api_version: v1.5.1
+cluster_addons_gateway_namespace: "{{ kubernetes_gateway_namespace }}"
+cluster_addons_gateway_name: "{{ kubernetes_gateway_name }}"
+cluster_addons_gateway_address: "{{ kubernetes_gateway_address }}"
+cluster_addons_grafana_hostname: "{{ kubernetes_grafana_hostname }}"
 cluster_addons_local_storage_path: /var/local-path-provisioner

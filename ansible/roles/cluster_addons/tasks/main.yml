@@ -104,6 +104,12 @@
   changed_when: "'not tainted' not in cluster_addons_ephemeral_taint.stdout"
   loop: "{{ groups['ephemeral_nodes'] | default([]) }}"
 
+- name: Install pinned Gateway API standard-channel CRDs
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_addons_kubeconfig }} apply --server-side
+    --filename https://github.com/kubernetes-sigs/gateway-api/releases/download/{{ cluster_addons_gateway_api_version }}/standard-install.yaml
+  changed_when: false
+
 - name: Render pinned Helmfile
   ansible.builtin.template:
     src: helmfile.yaml.j2
@@ -117,6 +123,75 @@
     KUBECONFIG: "{{ cluster_addons_kubeconfig }}"
   register: cluster_addons_helmfile
   changed_when: "'Affected releases are:' in cluster_addons_helmfile.stdout"
+
+- name: Render Gateway API resources
+  ansible.builtin.template:
+    src: gateway-resources.yml.j2
+    dest: "{{ cluster_addons_work_dir }}/gateway-resources.yml"
+    mode: "0600"
+
+- name: Apply Gateway API resources
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_addons_kubeconfig }} apply
+    --filename {{ cluster_addons_work_dir }}/gateway-resources.yml
+  register: cluster_addons_gateway_apply
+  changed_when: "'unchanged' not in cluster_addons_gateway_apply.stdout"
+
+- name: Wait for the shared Gateway
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_addons_kubeconfig }} wait
+    gateway/{{ cluster_addons_gateway_name }}
+    --namespace {{ cluster_addons_gateway_namespace }}
+    --for=condition=Programmed --timeout=10m
+  changed_when: false
+
+- name: Wait for the Grafana HTTPRoute
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_addons_kubeconfig }} wait
+    httproute/grafana --namespace monitoring
+    --for=jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].status}'=True
+    --timeout=5m
+  changed_when: false
+
+- name: Verify Grafana through Gateway API
+  ansible.builtin.uri:
+    url: "http://{{ cluster_addons_gateway_address }}/login"
+    headers:
+      Host: "{{ cluster_addons_grafana_hostname }}"
+    status_code: 200
+    use_proxy: false
+
+- name: Check for the retired Envoy Gateway release
+  ansible.builtin.command: helm status envoy-gateway --namespace envoy-gateway-system
+  register: cluster_addons_envoy_gateway_status
+  changed_when: false
+  failed_when: false
+
+- name: Remove the retired Envoy Gateway release after Istio verification
+  ansible.builtin.command: helm uninstall envoy-gateway --namespace envoy-gateway-system
+  when: cluster_addons_envoy_gateway_status.rc == 0
+  changed_when: true
+
+- name: Remove retired Envoy Gateway resources
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_addons_kubeconfig }} delete {{ item }} --ignore-not-found
+  loop:
+    - gatewayclass envoy
+    - namespace envoy-gateway-system
+    - namespace gateway-system
+  when: cluster_addons_envoy_gateway_status.rc == 0
+  changed_when: true
+
+- name: Check for the retired ingress-nginx release
+  ansible.builtin.command: helm status ingress-nginx --namespace ingress-nginx
+  register: cluster_addons_ingress_nginx_status
+  changed_when: false
+  failed_when: false
+
+- name: Remove the retired ingress-nginx release after Gateway verification
+  ansible.builtin.command: helm uninstall ingress-nginx --namespace ingress-nginx
+  when: cluster_addons_ingress_nginx_status.rc == 0
+  changed_when: true
 
 - name: Render MetalLB address resources
   ansible.builtin.template:
