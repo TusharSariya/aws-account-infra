@@ -15,7 +15,7 @@
   ansible.builtin.command: >-
     cilium connectivity test --kubeconfig {{ cluster_validation_kubeconfig }}
     --test-concurrency 1
-  when: cluster_validation_run_connectivity_test
+  when: cluster_validation_run_connectivity_test | bool
   changed_when: false
 
 - name: Read node inventory
@@ -28,14 +28,16 @@
   ansible.builtin.assert:
     that:
       - >-
-        (((cluster_validation_nodes.stdout | from_json).items |
-        selectattr('metadata.name', 'equalto', groups['kubernetes_control_plane'][0]) |
+        (((cluster_validation_nodes.stdout | from_json)['items'] |
+        selectattr('metadata.name', 'equalto',
+        groups['kubernetes_control_plane'][0] | lower | replace('_', '-')) |
         map(attribute='status.allocatable') |
         first)['nvidia.com/gpu'] | int) == 1
       - >-
         groups['ephemeral_nodes'] | default([]) | length == 0 or
-        ((cluster_validation_nodes.stdout | from_json).items |
-        selectattr('metadata.name', 'in', groups['ephemeral_nodes']) |
+        ((cluster_validation_nodes.stdout | from_json)['items'] |
+        selectattr('metadata.name', 'in',
+        groups['ephemeral_nodes'] | map('regex_replace', '_', '-') | list) |
         map(attribute='status.nodeInfo.architecture') |
         select('equalto', 'arm64') | list | length) ==
         (groups['ephemeral_nodes'] | length)
@@ -74,6 +76,19 @@
     src: smoke-tests.yml.j2
     dest: "{{ cluster_validation_work_dir }}/smoke-tests.yml"
     mode: "0600"
+
+- name: Remove stale smoke-test namespace
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_validation_kubeconfig }} delete namespace
+    {{ cluster_validation_namespace }} --ignore-not-found --wait=false
+  changed_when: true
+
+- name: Wait for stale smoke-test namespace deletion
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_validation_kubeconfig }} wait
+    --for=delete namespace/{{ cluster_validation_namespace }}
+    --timeout={{ cluster_validation_timeout }}
+  changed_when: false
 
 - name: Execute disposable cluster smoke tests
   block:

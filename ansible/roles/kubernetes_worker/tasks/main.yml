@@ -8,7 +8,7 @@
   ansible.builtin.command: >-
     {{ hostvars[groups['kubernetes_control_plane'][0]]['kubernetes_join_command']['stdout'] }}
     --cri-socket {{ kubernetes_worker_cri_socket }}
-    --node-name {{ inventory_hostname }}
+    --node-name {{ inventory_hostname | lower | replace('_', '-') }}
   when: not kubernetes_worker_kubelet_conf.stat.exists
   changed_when: true
   no_log: true

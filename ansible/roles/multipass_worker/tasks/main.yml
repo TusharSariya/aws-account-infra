@@ -1,4 +1,19 @@
 ---
+- name: Check for manually installed Multipass
+  ansible.builtin.command: multipass version
+  register: multipass_worker_command
+  changed_when: false
+  failed_when: false
+
+- name: Require Multipass bootstrap
+  ansible.builtin.assert:
+    that:
+      - multipass_worker_command.rc == 0
+    fail_msg: >-
+      Install Multipass interactively first with
+      'brew install --cask multipass'; its Apple package installer requires a
+      terminal for administrator authorization.
+
 - name: Assert Multipass worker inputs exist
   ansible.builtin.assert:
     that:

@@ -60,7 +60,10 @@ releases:
     createNamespace: true
     chart: "{{ cluster_addons_work_dir }}/local-path-provisioner/deploy/chart/local-path-provisioner"
     values:
-      - nodeSelector:
+      - helperImage:
+          repository: registry.k8s.io/e2e-test-images/busybox
+          tag: 1.36.1-1
+        nodeSelector:
           storage: local
         storageClass:
           defaultClass: true
@@ -75,6 +78,7 @@ releases:
     createNamespace: true
     chart: nvidia/gpu-operator
     version: "{{ cluster_addons_gpu_operator_version }}"
+    disableValidationOnInstall: true
     values:
       - driver:
           enabled: {{ kubernetes_gpu_operator_manage_driver | bool | lower }}

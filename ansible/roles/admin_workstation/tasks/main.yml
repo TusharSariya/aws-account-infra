@@ -2,7 +2,7 @@
 - name: Assert the administration workstation is macOS
   ansible.builtin.assert:
     that:
-      - ansible_system == "Darwin"
+      - ansible_facts["system"] == "Darwin"
     fail_msg: "The administration workstation role currently supports macOS only."
 
 - name: Check for Homebrew
@@ -22,6 +22,39 @@
     name: "{{ admin_workstation_homebrew_packages }}"
     state: present
     update_homebrew: false
+
+- name: List installed Helm plugins
+  ansible.builtin.command: helm plugin list
+  register: admin_workstation_helm_plugins
+  changed_when: false
+
+- name: Remove an unpinned Helm Diff plugin
+  ansible.builtin.command: helm plugin uninstall diff
+  when:
+    - admin_workstation_helm_plugins.stdout is regex('(?m)^diff\\s+')
+    - >-
+      admin_workstation_helm_plugins.stdout is not regex(
+      '(?m)^diff\\s+' +
+      (admin_workstation_helm_diff_version | regex_replace('^v', '')) +
+      '\\s+')
+  changed_when: true
+
+- name: Install pinned Helm Diff plugin
+  ansible.builtin.command:
+    argv:
+      - helm
+      - plugin
+      - install
+      - https://github.com/databus23/helm-diff
+      - --version
+      - "{{ admin_workstation_helm_diff_version }}"
+      - --verify=false
+  when: >-
+    admin_workstation_helm_plugins.stdout is not regex(
+    '(?m)^diff\\s+' +
+    (admin_workstation_helm_diff_version | regex_replace('^v', '')) +
+    '\\s+')
+  changed_when: true
 
 - name: Install administration applications
   community.general.homebrew_cask:

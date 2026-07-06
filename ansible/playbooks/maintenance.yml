@@ -15,7 +15,8 @@
     - name: Drain maintenance target
       ansible.builtin.command: >-
         kubectl --kubeconfig {{ maintenance_kubeconfig }} drain
-        {{ maintenance_target }} --ignore-daemonsets --delete-emptydir-data
+        {{ maintenance_target | lower | replace('_', '-') }}
+        --ignore-daemonsets --delete-emptydir-data
         --timeout=15m
       changed_when: true
 
@@ -35,5 +36,5 @@
     - name: Uncordon maintenance target
       ansible.builtin.command: >-
         kubectl --kubeconfig {{ maintenance_kubeconfig }} uncordon
-        {{ maintenance_target }}
+        {{ maintenance_target | lower | replace('_', '-') }}
       changed_when: true

@@ -25,8 +25,8 @@ ansible-playbook ansible/playbooks/workstation.yml
 ```
 
 The workstation role installs Homebrew tools, pyenv, tenv, SDKMAN, Helm, Helmfile,
-kubectl, Cilium CLI, and Multipass. MLX uses a dedicated pyenv virtual environment;
-Conda is not required for MLX and remains available for projects that need it.
+kubectl, and Cilium CLI. MLX uses a dedicated pyenv virtual environment; Conda is
+not required for MLX and remains available for projects that need it.
 
 ## Configure inventory
 
@@ -43,7 +43,14 @@ The example addresses intentionally fail preflight checks.
 
 ## Optional ARM64 worker
 
-Set the bridged interface and SSH public-key path, then create the VM:
+Multipass uses Apple's privileged package installer and must be bootstrapped from
+an interactive terminal:
+
+```bash
+brew install --cask multipass
+```
+
+Then set the bridged interface and SSH public-key path and create the VM:
 
 ```bash
 ansible-playbook ansible/playbooks/mac-worker.yml

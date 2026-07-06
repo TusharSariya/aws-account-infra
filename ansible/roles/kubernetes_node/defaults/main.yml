@@ -9,6 +9,8 @@ kubernetes_node_packages:
   - kubeadm
   - kubectl
 kubernetes_node_cri_socket: unix:///run/containerd/containerd.sock
+kubernetes_node_dns_servers: []
+kubernetes_node_resolv_conf: /etc/kubernetes/kubelet-resolv.conf
 kubernetes_node_system_reserved: >-
   {{ 'cpu=1,memory=2Gi,ephemeral-storage=2Gi'
      if inventory_hostname in groups['kubernetes_control_plane']

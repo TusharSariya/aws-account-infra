@@ -20,12 +20,33 @@
   args:
     creates: "{{ mlx_host_virtualenv }}/bin/python"
 
+- name: Read installed MLX package versions
+  ansible.builtin.command:
+    argv:
+      - "{{ mlx_host_virtualenv }}/bin/python"
+      - -c
+      - >-
+        from importlib.metadata import version;
+        print(version('mlx') + ' ' + version('mlx-lm'))
+  register: mlx_host_installed_versions
+  changed_when: false
+  failed_when: false
+
 - name: Install pinned MLX packages
-  ansible.builtin.pip:
-    name:
+  ansible.builtin.command:
+    argv:
+      - "{{ mlx_host_virtualenv }}/bin/python"
+      - -m
+      - pip
+      - install
+      - --disable-pip-version-check
       - "mlx=={{ mlx_host_mlx_version }}"
       - "mlx-lm=={{ mlx_host_mlx_lm_version }}"
-    virtualenv: "{{ mlx_host_virtualenv }}"
+  when: >-
+    mlx_host_installed_versions.rc != 0 or
+    mlx_host_installed_versions.stdout !=
+    (mlx_host_mlx_version + ' ' + mlx_host_mlx_lm_version)
+  changed_when: true
 
 - name: Assert enabled MLX service has a model
   ansible.builtin.assert:

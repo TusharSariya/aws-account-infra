@@ -27,6 +27,9 @@
     that:
       - ansible_host is defined
       - ansible_host | length > 0
+      - >-
+        (inventory_hostname | lower | replace('_', '-')) is
+        match('^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$')
     fail_msg: "Every Kubernetes node requires a stable inventory address."
 
 - name: Collect service state for conflict detection

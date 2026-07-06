@@ -58,6 +58,25 @@
     selection: hold
   loop: "{{ kubernetes_node_packages }}"
 
+- name: Create Kubernetes configuration directory
+  ansible.builtin.file:
+    path: /etc/kubernetes
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: kubernetes_node_dns_servers | length > 0
+
+- name: Configure kubelet upstream DNS
+  ansible.builtin.template:
+    src: kubelet-resolv.conf.j2
+    dest: "{{ kubernetes_node_resolv_conf }}"
+    owner: root
+    group: root
+    mode: "0644"
+  when: kubernetes_node_dns_servers | length > 0
+  notify: Restart kubelet
+
 - name: Configure kubelet resource reservations
   ansible.builtin.template:
     src: kubelet-extra-args.env.j2

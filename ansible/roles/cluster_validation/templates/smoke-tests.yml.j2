@@ -52,7 +52,7 @@ spec:
         storage: local
       containers:
         - name: storage
-          image: busybox:1.37.0
+          image: registry.k8s.io/e2e-test-images/busybox:1.36.1-1
           command:
             - sh
             - -ec
@@ -64,6 +64,7 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: local-storage-smoke
+{% if groups['legacy_nodes'] | default([]) | length > 0 %}
 ---
 apiVersion: batch/v1
 kind: Job
@@ -84,8 +85,9 @@ spec:
           effect: NoSchedule
       containers:
         - name: cpu
-          image: busybox:1.37.0
+          image: registry.k8s.io/e2e-test-images/busybox:1.36.1-1
           command: ["sh", "-ec", "test $(uname -m) = x86_64"]
+{% endif %}
 {% if groups['ephemeral_nodes'] | default([]) | length > 0 %}
 ---
 apiVersion: batch/v1
@@ -107,7 +109,7 @@ spec:
           effect: NoSchedule
       containers:
         - name: cpu
-          image: busybox:1.37.0
+          image: registry.k8s.io/e2e-test-images/busybox:1.36.1-1
           command: ["sh", "-ec", "test $(uname -m) = aarch64"]
 {% endif %}
 ---
