@@ -6,6 +6,7 @@ admin_workstation_homebrew_packages:
   - helm
   - helmfile
   - jq
+  - k9s
   - kubectl
   - pyenv
   - sops
