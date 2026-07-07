@@ -16,6 +16,12 @@ terraform_deploy_role_name = "TerraformDeploy"
 github_owner = "TusharSariyaOrg"
 github_repo  = "aws-account-infra"
 
+# Workload repo trusted to assume the rag stack's ECR-push OIDC role (builds
+# and pushes the harvest / graph-rag-query images). Different repo from this
+# infra repo's own CI identity above.
+ecr_push_github_owner = "TusharSariyaOrg"
+ecr_push_github_repo  = "excalidraw-tf-rag"
+
 # Account-wide default tags merged onto every resource.
 default_tags = {
   managed_by = "opentofu"
