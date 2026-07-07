@@ -50,20 +50,34 @@
     --timeout={{ cluster_validation_timeout }}
   changed_when: false
 
-- name: Read ingress service
+- name: Read shared Gateway
   ansible.builtin.command: >-
     kubectl --kubeconfig {{ cluster_validation_kubeconfig }}
-    get service ingress-nginx-controller --namespace ingress-nginx -o json
-  register: cluster_validation_ingress
+    get gateway {{ cluster_validation_gateway_name }}
+    --namespace {{ cluster_validation_gateway_namespace }} -o json
+  register: cluster_validation_gateway
   changed_when: false
 
-- name: Assert MetalLB assigned ingress an address
+- name: Assert MetalLB assigned and programmed the Gateway
   ansible.builtin.assert:
     that:
       - >-
-        (cluster_validation_ingress.stdout | from_json).status.loadBalancer.ingress |
+        (cluster_validation_gateway.stdout | from_json).status.addresses |
         default([]) | length > 0
-    fail_msg: "MetalLB has not assigned an address to ingress-nginx."
+      - >-
+        (cluster_validation_gateway.stdout | from_json).status.conditions |
+        selectattr('type', 'equalto', 'Programmed') |
+        selectattr('status', 'equalto', 'True') | list | length == 1
+    fail_msg: "The shared Gateway is not programmed with a MetalLB address."
+
+- name: Wait for Loki to be ready
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_validation_kubeconfig }} wait pod
+    --namespace {{ cluster_validation_loki_namespace }}
+    --selector {{ cluster_validation_loki_selector }}
+    --for=condition=Ready --timeout={{ cluster_validation_timeout }}
+  when: cluster_validation_loki_check | bool
+  changed_when: false
 
 - name: Create validation working directory
   ansible.builtin.file:
@@ -105,19 +119,27 @@
         --for=condition=complete --timeout={{ cluster_validation_timeout }}
       changed_when: false
 
-    - name: Wait for ingress smoke deployment
+    - name: Wait for Gateway API smoke deployment
       ansible.builtin.command: >-
         kubectl --kubeconfig {{ cluster_validation_kubeconfig }} wait deployment/ingress-smoke
         --namespace {{ cluster_validation_namespace }} --for=condition=Available
         --timeout={{ cluster_validation_timeout }}
       changed_when: false
 
-    - name: Verify ingress through MetalLB
+    - name: Wait for Gateway API smoke route
+      ansible.builtin.command: >-
+        kubectl --kubeconfig {{ cluster_validation_kubeconfig }} wait
+        httproute/gateway-smoke --namespace {{ cluster_validation_namespace }}
+        --for=jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].status}'=True
+        --timeout={{ cluster_validation_timeout }}
+      changed_when: false
+
+    - name: Verify HTTPRoute through MetalLB
       ansible.builtin.uri:
         url: >-
-          http://{{ (cluster_validation_ingress.stdout | from_json).status.loadBalancer.ingress[0].ip }}/
+          http://{{ (cluster_validation_gateway.stdout | from_json).status.addresses[0].value }}/
         headers:
-          Host: validation.homelab.local
+          Host: "{{ cluster_validation_gateway_hostname }}"
         status_code: 200
         use_proxy: false
   always:

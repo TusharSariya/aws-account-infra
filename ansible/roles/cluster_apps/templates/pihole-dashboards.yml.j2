@@ -1,0 +1,16 @@
+---
+# Grafana loads dashboards from ConfigMaps labelled grafana_dashboard=1 in the
+# monitoring namespace (kube-prometheus-stack dashboard sidecar). Both dashboards
+# select their datasource via a dashboard variable, so no hard-coded UID is needed.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pihole-dashboards
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  pihole-logs.json: |
+{{ lookup('file', role_path ~ '/files/pihole-logs-dashboard.json') | indent(4, first=true) }}
+  pihole-metrics.json: |
+{{ lookup('file', role_path ~ '/files/pihole-metrics-dashboard.json') | indent(4, first=true) }}

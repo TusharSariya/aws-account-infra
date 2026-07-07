@@ -1,0 +1,7 @@
+---
+- name: Deploy in-cluster applications
+  hosts: admin_workstations
+  become: false
+  gather_facts: true
+  roles:
+    - cluster_apps
