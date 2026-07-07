@@ -21,6 +21,11 @@ output "ecr_repo_urls" {
   description = "Map of image name → ECR URL, consumed by the RAG repo's release_image.sh."
 }
 
+output "ecr_push_role_arn" {
+  value       = aws_iam_role.github_ecr_push.arn
+  description = "role-to-assume for the excalidraw-tf-rag repo's build/push CI workflow."
+}
+
 # --- Desktop backup-agent credentials (scoped to the rag-backups bucket) ---
 output "rag_backup_access_key_id" {
   value       = aws_iam_access_key.rag_backup.id

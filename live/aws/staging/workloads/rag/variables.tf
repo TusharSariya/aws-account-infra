@@ -41,10 +41,22 @@ variable "budget_notification_email" {
   default = ""
 }
 
+# GitHub repo whose Actions runs are trusted to assume the ECR-push OIDC role
+# (see image_push_oidc.tf) — the workload repo that builds these images, not
+# this infra repo (that trust lives in the account stack's github_owner/repo).
+variable "ecr_push_github_owner" {
+  type    = string
+  default = ""
+}
+variable "ecr_push_github_repo" {
+  type    = string
+  default = ""
+}
+
 # --- rag-specific ---
 variable "ecr_repos" {
   type        = list(string)
-  default     = ["graph-rag-query"]
+  default     = ["graph-rag-query", "harvest"]
   description = "ECR repos to create. Add rag-lit / repo-rag image names when needed."
 }
 

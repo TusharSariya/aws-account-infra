@@ -34,6 +34,17 @@ variable "github_repo" {
   description = "GitHub repo name (for OIDC trust)."
 }
 
+# Declared (unused here) so the shared environment file can also serve the rag
+# workload stack's ECR-push OIDC trust — see workloads/rag/image_push_oidc.tf.
+variable "ecr_push_github_owner" {
+  type    = string
+  default = ""
+}
+variable "ecr_push_github_repo" {
+  type    = string
+  default = ""
+}
+
 # --- account-specific ---
 variable "budget_monthly_limit_usd" {
   type        = string
