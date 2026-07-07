@@ -18,7 +18,7 @@ output "backup_catalog_table_arn" {
 
 output "ecr_repo_urls" {
   value       = { for k, m in module.ecr : k => m.repository_url }
-  description = "Map of image name → ECR URL, consumed by the RAG repo's release_image.sh."
+  description = "Map of image name → ECR URL for statically-declared repos only. Empty under the default ecr_repos = []; CI-created repos are not tracked here."
 }
 
 output "ecr_push_role_arn" {
@@ -37,5 +37,3 @@ output "rag_backup_secret_access_key" {
   sensitive   = true
   description = "Retrieve with: tofu output -raw rag_backup_secret_access_key"
 }
-
-# test: exercise the apply button (no resource change)

@@ -41,9 +41,12 @@ resource "aws_iam_role" "github_ecr_push" {
   assume_role_policy = data.aws_iam_policy_document.github_ecr_push_trust.json
 }
 
-# Least privilege: authenticate to ECR (account-level API, no resource scoping
-# available) plus push access to only this stack's repos — nothing else in the
-# account.
+# Deliberately unrestricted within ECR (Resource = "*" on the management + push
+# actions below): CI creates repos on demand from a directory it discovers at
+# build time, so repo names/ARNs aren't known to Terraform ahead of time and
+# can't be prefix-scoped. The trust policy above is the real security boundary
+# here — only repo:TusharSariyaOrg/excalidraw-tf-rag:ref:refs/heads/master can
+# ever assume this role in the first place.
 data "aws_iam_policy_document" "github_ecr_push" {
   statement {
     sid       = "EcrAuth"
@@ -53,9 +56,13 @@ data "aws_iam_policy_document" "github_ecr_push" {
   }
 
   statement {
-    sid    = "EcrPush"
+    sid    = "EcrManage"
     effect = "Allow"
     actions = [
+      "ecr:CreateRepository",
+      "ecr:DescribeRepositories",
+      "ecr:PutImageScanningConfiguration",
+      "ecr:PutLifecyclePolicy",
       "ecr:BatchCheckLayerAvailability",
       "ecr:InitiateLayerUpload",
       "ecr:UploadLayerPart",
@@ -63,7 +70,7 @@ data "aws_iam_policy_document" "github_ecr_push" {
       "ecr:PutImage",
       "ecr:BatchGetImage",
     ]
-    resources = [for repo in module.ecr : repo.repository_arn]
+    resources = ["*"]
   }
 }
 

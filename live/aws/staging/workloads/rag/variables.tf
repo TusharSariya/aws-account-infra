@@ -56,12 +56,14 @@ variable "ecr_push_github_repo" {
 # --- rag-specific ---
 variable "ecr_repos" {
   type = list(string)
-  # Named as <github-repo>/<path-to-image>, so image names never collide across
-  # the tools this account will eventually host. graph-rag-query was a
-  # placeholder for a query server that doesn't exist yet — dropped rather than
-  # renamed; re-add it under its real path once that server is actually built.
-  default     = ["excalidraw-tf-rag/v3/harvest"]
-  description = "ECR repos to create, one per image. Add more as <github-repo>/<path> when needed."
+  # Statically-declared repos only — the excalidraw-tf-rag repo's CI now
+  # creates workload-image repos on demand (see build-push-images.yml there
+  # and this stack's image_push_oidc.tf for the IAM permissions backing it).
+  # Leave empty unless a repo genuinely needs to exist before any image is
+  # pushed, or needs settings CI's create-on-push flow doesn't set. Named as
+  # <github-repo>/<path-to-image> if populated, so names never collide.
+  default     = []
+  description = "ECR repos to create statically, one per image. Usually empty — most repos are created ad-hoc by CI."
 }
 
 variable "backup_noncurrent_transition_days" {
