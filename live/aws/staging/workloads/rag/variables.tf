@@ -55,9 +55,13 @@ variable "ecr_push_github_repo" {
 
 # --- rag-specific ---
 variable "ecr_repos" {
-  type        = list(string)
-  default     = ["graph-rag-query", "harvest"]
-  description = "ECR repos to create. Add rag-lit / repo-rag image names when needed."
+  type = list(string)
+  # Named as <github-repo>/<path-to-image>, so image names never collide across
+  # the tools this account will eventually host. graph-rag-query was a
+  # placeholder for a query server that doesn't exist yet — dropped rather than
+  # renamed; re-add it under its real path once that server is actually built.
+  default     = ["excalidraw-tf-rag/v3/harvest"]
+  description = "ECR repos to create, one per image. Add more as <github-repo>/<path> when needed."
 }
 
 variable "backup_noncurrent_transition_days" {
