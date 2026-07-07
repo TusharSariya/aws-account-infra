@@ -47,6 +47,8 @@ resource "aws_iam_role" "github_ecr_push" {
 # can't be prefix-scoped. The trust policy above is the real security boundary
 # here — only repo:TusharSariyaOrg/excalidraw-tf-rag:ref:refs/heads/master can
 # ever assume this role in the first place.
+# checkov:skip=CKV_AWS_111:Write access is intentionally unconstrained by resource — ECR repo names are created ad-hoc by CI and unknown to Terraform ahead of time; the OIDC trust policy (branch-pinned to one repo) is the actual boundary.
+# checkov:skip=CKV_AWS_356:Same rationale as CKV_AWS_111 above — "*" is required because repo ARNs don't exist yet at plan time, not an oversight.
 data "aws_iam_policy_document" "github_ecr_push" {
   statement {
     sid       = "EcrAuth"
