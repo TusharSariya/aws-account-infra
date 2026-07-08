@@ -1,0 +1,9 @@
+---
+# Which Brewfiles under files/ compose this host's Homebrew policy. The install
+# check and the drift warning both operate on the assembled union of these, so
+# they can never diverge. Narrow the list (e.g. [base, dev]) for a host that
+# should not carry the ops tooling.
+homebrew_bundles:
+  - base
+  - dev
+  - ops
