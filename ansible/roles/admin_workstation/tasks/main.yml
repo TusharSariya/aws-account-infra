@@ -5,23 +5,9 @@
       - ansible_facts["system"] == "Darwin"
     fail_msg: "The administration workstation role currently supports macOS only."
 
-- name: Check for Homebrew
-  ansible.builtin.command: brew --version
-  register: homebrew_check
-  changed_when: false
-  failed_when: false
-
-- name: Require Homebrew bootstrap
-  ansible.builtin.assert:
-    that:
-      - homebrew_check.rc == 0
-    fail_msg: "Install Homebrew first; see ansible/README.md."
-
-- name: Install administration tools
-  community.general.homebrew:
-    name: "{{ admin_workstation_homebrew_packages }}"
-    state: present
-    update_homebrew: false
+# Homebrew presence and the formula/cask lists moved to the `homebrew` role,
+# which runs first in workstation.yml. helm, tenv, etc. are already installed by
+# the time this role runs.
 
 - name: List installed Helm plugins
   ansible.builtin.command: helm plugin list
@@ -55,12 +41,6 @@
     (admin_workstation_helm_diff_version | regex_replace('^v', '')) +
     '\\s+')
   changed_when: true
-
-- name: Install administration applications
-  community.general.homebrew_cask:
-    name: "{{ admin_workstation_homebrew_casks }}"
-    state: present
-  when: admin_workstation_homebrew_casks | length > 0
 
 - name: Check for SDKMAN
   ansible.builtin.stat:

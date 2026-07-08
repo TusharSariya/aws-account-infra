@@ -11,6 +11,7 @@ namespaces, not implemented environments.
 ./scripts/infra.sh aws-staging-rag plan
 ./scripts/localstack.sh up
 ./scripts/localstack.sh smoke
+ANSIBLE_CONFIG=ansible/ansible.cfg ansible-playbook ansible/playbooks/workstation.yml --check --diff
 ANSIBLE_CONFIG=ansible/ansible.cfg ansible-playbook ansible/playbooks/compute.yml --check --diff
 ```
 
