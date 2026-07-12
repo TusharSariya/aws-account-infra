@@ -1,0 +1,30 @@
+---
+cluster_harvester_kubeconfig: "{{ lookup('env', 'HOME') }}/.kube/config"
+cluster_harvester_work_dir: /tmp/homelab-kubernetes-harvester
+
+cluster_harvester_namespace: harvester
+cluster_harvester_secret: harvester-secrets
+cluster_harvester_keda_auth_secret: keda-pg
+
+# Prod harvest image (per-source worker). Environment-specific value comes from
+# the inventory (kubernetes_harvester_image); see inventories/example/group_vars.
+cluster_harvester_image: "{{ kubernetes_harvester_image }}"
+
+# KEDA postgresql scaler target: desired queue-visible-length per replica. A
+# value of "1" means "scale toward one worker per pending message" (bounded by
+# each source's max_replicas below).
+cluster_harvester_target_value: "1"
+cluster_harvester_polling_interval: 15
+
+# One KEDA ScaledJob per harvest source. queue is the pgmq queue the postgresql
+# scaler reads; max_replicas caps concurrent worker Jobs for that source.
+cluster_harvester_sources:
+  - name: arxiv
+    queue: harvest_arxiv
+    max_replicas: 1
+  - name: openalex
+    queue: harvest_openalex
+    max_replicas: 3
+  - name: s2
+    queue: harvest_s2
+    max_replicas: 2

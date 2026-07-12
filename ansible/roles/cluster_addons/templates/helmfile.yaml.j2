@@ -11,6 +11,8 @@ repositories:
     url: https://grafana-community.github.io/helm-charts
   - name: istio
     url: https://istio-release.storage.googleapis.com/charts
+  - name: kedacore
+    url: https://kedacore.github.io/charts
   - name: metallb
     url: https://metallb.github.io/metallb
   - name: metrics-server
@@ -48,6 +50,12 @@ releases:
       - args:
           - --kubelet-preferred-address-types=InternalIP,Hostname
           - --kubelet-insecure-tls
+
+  - name: keda
+    namespace: keda
+    createNamespace: true
+    chart: kedacore/keda
+    version: "{{ cluster_addons_keda_version }}"
 
   - name: local-path-provisioner
     namespace: local-path-storage

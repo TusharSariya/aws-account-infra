@@ -18,6 +18,10 @@ kubernetes_pihole_dns_address: 192.0.2.202
 kubernetes_loki_retention_hours: 336
 kubernetes_loki_storage_size: 20Gi
 
+# Harvest worker image the KEDA ScaledJobs run (cluster_harvester role). Pull is
+# authenticated by the node kubelet ECR credential provider; no imagePullSecret.
+kubernetes_harvester_image: "992382747916.dkr.ecr.us-east-1.amazonaws.com/excalidraw-tf-rag/v3/harvest/prod:0.5.0"
+
 # Set false to preinstall the Ubuntu NVIDIA driver and container toolkit on the
 # GPU host rather than letting GPU Operator manage them.
 kubernetes_gpu_operator_manage_driver: true

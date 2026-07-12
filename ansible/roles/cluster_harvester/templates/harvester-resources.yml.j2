@@ -1,0 +1,59 @@
+---
+# KEDA authentication for the postgresql scaler. The connection string is a
+# direct pg DSN to the Supabase session pooler (:5432), connecting as the
+# read-only harvester_keda_ro role; it is sourced from Vault and stored in the
+# {{ cluster_harvester_keda_auth_secret }} secret.
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: harvester-pg
+  namespace: {{ cluster_harvester_namespace }}
+spec:
+  secretTargetRef:
+    - parameter: connection
+      name: {{ cluster_harvester_keda_auth_secret }}
+      key: connection
+{% for src in cluster_harvester_sources %}
+---
+# harvest-work worker for the {{ src.name }} source. KEDA scales concurrent Jobs
+# by the visible length of the {{ src.queue }} pgmq queue, up to
+# {{ src.max_replicas }} replica(s). The container ENTRYPOINT is ["harvest"], so
+# command overrides it to run the worker subcommand for this source.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledJob
+metadata:
+  name: harvester-{{ src.name }}
+  namespace: {{ cluster_harvester_namespace }}
+spec:
+  jobTargetRef:
+    template:
+      spec:
+        restartPolicy: Never
+        containers:
+          - name: harvest-work
+            image: {{ cluster_harvester_image }}
+            command: ["harvest-work", "--source", "{{ src.name }}"]
+            envFrom:
+              - secretRef:
+                  name: {{ cluster_harvester_secret }}
+            env:
+              - name: MALLOC_ARENA_MAX
+                value: "2"
+            resources:
+              requests:
+                cpu: "50m"
+                memory: "128Mi"
+              limits:
+                memory: "256Mi"
+  pollingInterval: {{ cluster_harvester_polling_interval }}
+  maxReplicaCount: {{ src.max_replicas }}
+  scalingStrategy:
+    strategy: accurate
+  triggers:
+    - type: postgresql
+      metadata:
+        query: "SELECT queue_visible_length FROM pgmq.metrics('{{ src.queue }}')"
+        targetQueryValue: "{{ cluster_harvester_target_value }}"
+      authenticationRef:
+        name: harvester-pg
+{% endfor %}

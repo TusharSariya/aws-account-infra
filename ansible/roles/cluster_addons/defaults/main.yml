@@ -13,6 +13,10 @@ cluster_addons_loki_version: 18.4.0
 cluster_addons_loki_retention: "{{ kubernetes_loki_retention_hours | default('336') }}h"
 cluster_addons_loki_storage_size: "{{ kubernetes_loki_storage_size | default('20Gi') }}"
 cluster_addons_istio_version: 1.30.2
+# KEDA event-driven autoscaler chart. Verified current on artifacthub 2026-07-11
+# (kedacore/keda 2.20.1); re-verify against https://kedacore.github.io/charts
+# before apply and keep pinned per repo policy.
+cluster_addons_keda_version: 2.20.1
 cluster_addons_gateway_api_version: v1.5.1
 cluster_addons_gateway_namespace: "{{ kubernetes_gateway_namespace }}"
 cluster_addons_gateway_name: "{{ kubernetes_gateway_name }}"

@@ -77,6 +77,57 @@
   when: kubernetes_node_dns_servers | length > 0
   notify: Restart kubelet
 
+# --- ECR image pull via kubelet credential provider ------------------------
+- name: Create the kubelet image credential provider bin directory
+  ansible.builtin.file:
+    path: "{{ kubernetes_node_ecr_credential_provider_bin_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: kubernetes_node_ecr_credential_provider_enabled | bool
+
+- name: Install the ECR credential provider plugin
+  ansible.builtin.get_url:
+    url: "{{ kubernetes_node_ecr_credential_provider_url }}"
+    dest: "{{ kubernetes_node_ecr_credential_provider_bin_dir }}/ecr-credential-provider"
+    checksum: "{{ kubernetes_node_ecr_credential_provider_checksum or omit }}"
+    owner: root
+    group: root
+    mode: "0755"
+  when: kubernetes_node_ecr_credential_provider_enabled | bool
+  notify: Restart kubelet
+
+- name: Create the ECR pull credentials directory
+  ansible.builtin.file:
+    path: "{{ kubernetes_node_ecr_credentials_file | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  when: kubernetes_node_ecr_credential_provider_enabled | bool
+
+- name: Install the ECR pull credentials from Vault
+  ansible.builtin.template:
+    src: ecr-credentials.j2
+    dest: "{{ kubernetes_node_ecr_credentials_file }}"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+  when: kubernetes_node_ecr_credential_provider_enabled | bool
+  notify: Restart kubelet
+
+- name: Render the kubelet credential provider config
+  ansible.builtin.template:
+    src: credential-provider-config.yaml.j2
+    dest: "{{ kubernetes_node_credential_provider_config }}"
+    owner: root
+    group: root
+    mode: "0644"
+  when: kubernetes_node_ecr_credential_provider_enabled | bool
+  notify: Restart kubelet
+
 - name: Configure kubelet resource reservations
   ansible.builtin.template:
     src: kubelet-extra-args.env.j2

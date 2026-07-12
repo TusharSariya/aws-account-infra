@@ -124,6 +124,13 @@
   register: cluster_addons_helmfile
   changed_when: "'Affected releases are:' in cluster_addons_helmfile.stdout"
 
+- name: Wait for the KEDA operator to be available
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_addons_kubeconfig }} wait
+    deployment/keda-operator --namespace keda
+    --for=condition=Available --timeout=5m
+  changed_when: false
+
 - name: Render Gateway API resources
   ansible.builtin.template:
     src: gateway-resources.yml.j2
