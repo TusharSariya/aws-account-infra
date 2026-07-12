@@ -29,26 +29,70 @@ kubernetes_node_eviction_hard: >-
      else 'memory.available<500Mi,nodefs.available<10%' }}
 
 # --- ECR image pull (kubelet credential provider) --------------------------
-# Off-cloud nodes have no instance role, so kubelet exchanges a long-lived
-# read-only IAM key (minted from live/aws/staging/account/ecr_pull_iam.tf,
-# stored in Vault) for short-lived ECR tokens via the ecr-credential-provider
-# plugin. Enabled only when the Vault key material is present.
+# Off-cloud nodes have no instance role. The ecr-credential-provider plugin
+# obtains a short-lived ECR token, and it sources the AWS credentials it needs
+# from IAM Roles Anywhere instead of any long-lived access key:
+#
+#   per-node X.509 client cert + key (issued by the operator's CA, delivered via
+#   Vault) --> aws_signing_helper `credential-process` --> temporary STS creds.
+#
+# The trust anchor / role / profile the helper targets are created in
+# live/aws/staging/account/ecr_pull_iam.tf; feed their ARNs in via the inventory
+# vars below. Enabled only when the node's Vault cert material is present.
 kubernetes_node_ecr_credential_provider_enabled: >-
-  {{ (vault_ecr_pull_access_key_id is defined) and (vault_ecr_pull_secret_access_key is defined) }}
+  {{ (vault_ecr_pull_node_certificate is defined) and (vault_ecr_pull_node_private_key is defined) }}
 # Binary version tracks the cluster's Kubernetes minor (kubernetes_node_minor_version
 # v1.36). VERIFY BEFORE APPLY: the kubernetes/cloud-provider-aws project stopped
 # publishing prebuilt ecr-credential-provider binaries to artifacts.k8s.io for
 # v1.30+, so kubernetes_node_ecr_credential_provider_url below MUST point at a
-# real, checksummed binary you trust before this runs (see report/plan doc).
+# real, checksummed binary you trust before this runs (see docs/plans/keda.md).
 kubernetes_node_ecr_credential_provider_version: v1.36.0
 kubernetes_node_ecr_credential_provider_arch: "{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}"
 kubernetes_node_ecr_credential_provider_url: >-
-  https://artifacts.k8s.io/binaries/cloud-provider-aws/{{ kubernetes_node_ecr_credential_provider_version }}/linux/{{ kubernetes_node_ecr_credential_provider_arch }}/ecr-credential-provider-linux-{{ kubernetes_node_ecr_credential_provider_arch }}
+  https://artifacts.k8s.io/binaries/cloud-provider-aws/{{
+  kubernetes_node_ecr_credential_provider_version }}/linux/{{
+  kubernetes_node_ecr_credential_provider_arch
+  }}/ecr-credential-provider-linux-{{
+  kubernetes_node_ecr_credential_provider_arch }}
 # Leave empty to skip verification; set a "sha256:..." digest before apply.
 kubernetes_node_ecr_credential_provider_checksum: ""
 kubernetes_node_ecr_credential_provider_bin_dir: /etc/kubernetes/image-credential-provider
 kubernetes_node_credential_provider_config: /etc/kubernetes/credential-provider-config.yaml
-kubernetes_node_ecr_credentials_file: /etc/kubernetes/ecr-credential-provider/credentials
 # ECR registry host(s) kubelet routes to this plugin, and the region to auth in.
 kubernetes_node_ecr_registry: 992382747916.dkr.ecr.us-east-1.amazonaws.com
 kubernetes_node_ecr_region: us-east-1
+
+# --- AWS IAM Roles Anywhere signing helper --------------------------------
+# aws_signing_helper is the AWS "IAM Roles Anywhere Credential Helper". It presents
+# the node's client cert to Roles Anywhere and vends temp STS creds via the
+# `credential-process` protocol. Pinned + checksummed; VERIFY the version/URL and the
+# per-arch SHA256 against the AWS docs before apply:
+#   https://docs.aws.amazon.com/rolesanywhere/latest/userguide/credential-helper.html
+# Verified 2026-07-11: v1.8.4 (released 2026-06-09). Note the Linux path carries an
+# OS-distro segment ("Amzn2023"); the statically-linked binary runs fine on Ubuntu.
+kubernetes_node_aws_signing_helper_version: "1.8.4"
+kubernetes_node_aws_signing_helper_arch: "{{ 'Aarch64' if ansible_architecture == 'aarch64' else 'X86_64' }}"
+kubernetes_node_aws_signing_helper_url: >-
+  https://rolesanywhere.amazonaws.com/releases/{{
+  kubernetes_node_aws_signing_helper_version }}/{{
+  kubernetes_node_aws_signing_helper_arch }}/Linux/Amzn2023/aws_signing_helper
+# Per-arch SHA256 (checksum passed to get_url as "sha256:<digest>"). Update both
+# alongside the version bump above.
+kubernetes_node_aws_signing_helper_checksums:
+  X86_64: "b7568acd6e1517a4e1adaee68d52bfd6284a0e5305677166cd83d43a07c815c9"
+  Aarch64: "581a57223b476637458fa4598169d1d71c1b5b796f08026b460ec3f41a2b3707"
+kubernetes_node_aws_signing_helper_checksum: >-
+  sha256:{{ kubernetes_node_aws_signing_helper_checksums[kubernetes_node_aws_signing_helper_arch] }}
+kubernetes_node_aws_signing_helper_bin: /usr/local/bin/aws_signing_helper
+
+# Roles Anywhere material + coordinates the signing helper needs. The cert/key are
+# per-node, issued by the operator's CA and delivered from Vault. The three ARNs come
+# from the aws-staging-account TF outputs (ecr_pull_trust_anchor_arn /
+# ecr_pull_profile_arn / ecr_pull_role_arn) — set them in the inventory.
+kubernetes_node_ecr_rolesanywhere_dir: /etc/kubernetes/rolesanywhere
+kubernetes_node_ecr_rolesanywhere_cert_file: "{{ kubernetes_node_ecr_rolesanywhere_dir }}/cert.pem"
+kubernetes_node_ecr_rolesanywhere_key_file: "{{ kubernetes_node_ecr_rolesanywhere_dir }}/key.pem"
+kubernetes_node_ecr_aws_config_file: "{{ kubernetes_node_ecr_rolesanywhere_dir }}/config"
+kubernetes_node_ecr_rolesanywhere_trust_anchor_arn: ""
+kubernetes_node_ecr_rolesanywhere_profile_arn: ""
+kubernetes_node_ecr_rolesanywhere_role_arn: ""

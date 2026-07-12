@@ -98,23 +98,55 @@
   when: kubernetes_node_ecr_credential_provider_enabled | bool
   notify: Restart kubelet
 
-- name: Create the ECR pull credentials directory
+- name: Install the aws_signing_helper (Roles Anywhere credential helper)
+  ansible.builtin.get_url:
+    url: "{{ kubernetes_node_aws_signing_helper_url }}"
+    dest: "{{ kubernetes_node_aws_signing_helper_bin }}"
+    checksum: "{{ kubernetes_node_aws_signing_helper_checksum }}"
+    owner: root
+    group: root
+    mode: "0755"
+  when: kubernetes_node_ecr_credential_provider_enabled | bool
+  notify: Restart kubelet
+
+- name: Create the Roles Anywhere credentials directory
   ansible.builtin.file:
-    path: "{{ kubernetes_node_ecr_credentials_file | dirname }}"
+    path: "{{ kubernetes_node_ecr_rolesanywhere_dir }}"
     state: directory
     owner: root
     group: root
     mode: "0700"
   when: kubernetes_node_ecr_credential_provider_enabled | bool
 
-- name: Install the ECR pull credentials from Vault
-  ansible.builtin.template:
-    src: ecr-credentials.j2
-    dest: "{{ kubernetes_node_ecr_credentials_file }}"
+- name: Install the node Roles Anywhere client certificate from Vault
+  ansible.builtin.copy:
+    content: "{{ vault_ecr_pull_node_certificate }}"
+    dest: "{{ kubernetes_node_ecr_rolesanywhere_cert_file }}"
     owner: root
     group: root
     mode: "0600"
   no_log: true
+  when: kubernetes_node_ecr_credential_provider_enabled | bool
+  notify: Restart kubelet
+
+- name: Install the node Roles Anywhere private key from Vault
+  ansible.builtin.copy:
+    content: "{{ vault_ecr_pull_node_private_key }}"
+    dest: "{{ kubernetes_node_ecr_rolesanywhere_key_file }}"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+  when: kubernetes_node_ecr_credential_provider_enabled | bool
+  notify: Restart kubelet
+
+- name: Render the AWS config with the Roles Anywhere credential_process
+  ansible.builtin.template:
+    src: aws-config.j2
+    dest: "{{ kubernetes_node_ecr_aws_config_file }}"
+    owner: root
+    group: root
+    mode: "0600"
   when: kubernetes_node_ecr_credential_provider_enabled | bool
   notify: Restart kubelet
 

@@ -37,8 +37,51 @@ a per-source cap. See `ansible/roles/cluster_harvester/` and
 - Applied by the standard `helmfile apply` in the `cluster_addons` role, after
   which the role waits on `deployment/keda-operator` becoming `Available`.
 - Workers pull the prod harvest image from ECR; auth is handled by the node
-  kubelet ECR credential provider (`kubernetes_node` role) using the read-only
-  IAM user from `live/aws/staging/account/ecr_pull_iam.tf` — no imagePullSecret.
+  kubelet ECR credential provider (`kubernetes_node` role). It sources AWS
+  credentials from **IAM Roles Anywhere** — each node presents an X.509 client
+  cert to the trust anchor and receives short-lived STS creds, so there is no
+  static AWS access key and no imagePullSecret. See the flow below.
+
+## ECR pull auth: IAM Roles Anywhere
+
+The homelab nodes run off-cloud (no EC2 instance role, no OIDC), so kubelet's
+`ecr-credential-provider` plugin needs AWS credentials. Rather than a long-lived
+access key, the node uses IAM Roles Anywhere:
+
+1. The operator's **CA certificate** is registered as a Roles Anywhere trust
+   anchor in `live/aws/staging/account/ecr_pull_iam.tf`
+   (`aws_rolesanywhere_trust_anchor`, input var `homelab_ca_certificate_pem`).
+2. That file also defines the IAM role (`homelab-ecr-pull`, trusting
+   `rolesanywhere.amazonaws.com` and carrying the repo-scoped ECR-read policy)
+   and a Roles Anywhere profile. Its outputs expose the trust-anchor / profile /
+   role ARNs.
+3. On each node the `kubernetes_node` role installs the **aws_signing_helper**
+   (AWS IAM Roles Anywhere Credential Helper) binary, drops the node's client
+   cert + private key (from Vault) at `/etc/kubernetes/rolesanywhere/{cert,key}.pem`
+   (mode 0600), and writes an AWS config whose `[default]` profile runs
+   `aws_signing_helper credential-process ...` as a `credential_process`.
+4. The credential provider (via `AWS_CONFIG_FILE`) invokes that process, the
+   helper signs a request with the client cert, Roles Anywhere validates it
+   against the trust anchor, and STS returns temporary creds scoped to the role.
+
+### Operator prerequisites
+
+Before applying, the operator must:
+
+- **Bring a CA.** Stand up (or reuse) a Certificate Authority. Supply its
+  *public* certificate PEM as the `homelab_ca_certificate_pem` Terraform variable
+  (via tfvars or `-var`); it is never committed.
+- **Register the trust anchor.** Apply the `aws-staging-account` unit so the
+  trust anchor, role, and profile exist. Record the three output ARNs.
+- **Issue per-node client certs.** For each node, issue a client certificate +
+  private key signed by that CA, and store them in a Vault-encrypted inventory
+  file as `vault_ecr_pull_node_certificate` and `vault_ecr_pull_node_private_key`.
+- **Wire the ARNs into inventory.** Set
+  `kubernetes_node_ecr_rolesanywhere_trust_anchor_arn`, `_profile_arn`, and
+  `_role_arn` (see `inventories/example/group_vars/all.yml`) from the TF outputs.
+- **Verify the helper pin.** Confirm `kubernetes_node_aws_signing_helper_version`
+  / URL / per-arch SHA256 against the AWS docs before apply (per repo pinning
+  policy), same as the `ecr-credential-provider` plugin binary.
 
 ## Rollback
 
