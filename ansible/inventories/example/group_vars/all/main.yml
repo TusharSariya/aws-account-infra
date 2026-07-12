@@ -1,3 +1,6 @@
+# Non-secret group vars for every host. Copy this tree to inventories/local/ and edit.
+# Secrets do NOT go here — they live in the sibling (encrypted) vault.yml; see
+# vault.yml.example. Ansible auto-loads every file under group_vars/all/.
 environment_name: local
 ubuntu_baseline_timezone: America/St_Johns
 
@@ -22,20 +25,25 @@ kubernetes_loki_storage_size: 20Gi
 # authenticated by the node kubelet ECR credential provider; no imagePullSecret.
 kubernetes_harvester_image: "992382747916.dkr.ecr.us-east-1.amazonaws.com/excalidraw-tf-rag/v3/harvest/prod:0.5.0"
 
+# Supabase project URL for the harvester worker. NOT a secret (the service key is —
+# that lives in vault.yml). Named vault_* only for grouping; safe to keep plaintext.
+vault_harvester_supabase_url: "https://PROJECT_REF.supabase.co"
+
 # IAM Roles Anywhere coordinates for the node ECR-pull identity. Copy these from the
 # aws-staging-account TF outputs (ecr_pull_trust_anchor_arn / ecr_pull_profile_arn /
-# ecr_pull_role_arn). The node's aws_signing_helper passes them to Roles Anywhere to
-# vend short-lived ECR creds. The per-node client cert + key that go with these are
-# secrets — put them in a Vault-encrypted file as vault_ecr_pull_node_certificate /
-# vault_ecr_pull_node_private_key (never here). Example placeholders below:
+# ecr_pull_role_arn).
 kubernetes_node_ecr_rolesanywhere_trust_anchor_arn: "arn:aws:rolesanywhere:us-east-1:992382747916:trust-anchor/EXAMPLE-TRUST-ANCHOR-ID"
 kubernetes_node_ecr_rolesanywhere_profile_arn: "arn:aws:rolesanywhere:us-east-1:992382747916:profile/EXAMPLE-PROFILE-ID"
 kubernetes_node_ecr_rolesanywhere_role_arn: "arn:aws:iam::992382747916:role/homelab/homelab-ecr-pull"
+
+# Each node's client cert is issued via an ON-NODE CSR signed by your homelab CA:
+# the node generates and keeps its OWN private key (it never leaves the node, never
+# enters git or vault). These two paths point at the CA on the CONTROLLER (your Mac);
+# keep them OUTSIDE the checkout. Setting both non-empty ENABLES the ECR pull identity.
+kubernetes_node_ecr_ca_certificate_path: "{{ lookup('env', 'HOME') }}/.config/aws-account-infra/homelab-ca.crt"
+kubernetes_node_ecr_ca_privatekey_path: "{{ lookup('env', 'HOME') }}/.config/aws-account-infra/homelab-ca.key"
 
 # Set false to preinstall the Ubuntu NVIDIA driver and container toolkit on the
 # GPU host rather than letting GPU Operator manage them.
 kubernetes_gpu_operator_manage_driver: true
 kubernetes_gpu_operator_manage_toolkit: true
-
-# Put passwords, tokens, and private values in an Ansible Vault-encrypted file in
-# inventories/local/group_vars rather than adding them here.

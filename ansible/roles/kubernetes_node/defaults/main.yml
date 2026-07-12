@@ -38,9 +38,11 @@ kubernetes_node_eviction_hard: >-
 #
 # The trust anchor / role / profile the helper targets are created in
 # live/aws/staging/account/ecr_pull_iam.tf; feed their ARNs in via the inventory
-# vars below. Enabled only when the node's Vault cert material is present.
+# vars below. Enabled when the operator points at a CA to sign node CSRs (below);
+# the node's own key is generated on-node, so no secret gates this.
 kubernetes_node_ecr_credential_provider_enabled: >-
-  {{ (vault_ecr_pull_node_certificate is defined) and (vault_ecr_pull_node_private_key is defined) }}
+  {{ (kubernetes_node_ecr_ca_certificate_path | default('') | length > 0)
+     and (kubernetes_node_ecr_ca_privatekey_path | default('') | length > 0) }}
 # Binary version tracks the cluster's Kubernetes minor (kubernetes_node_minor_version
 # v1.36). VERIFY BEFORE APPLY: the kubernetes/cloud-provider-aws project stopped
 # publishing prebuilt ecr-credential-provider binaries to artifacts.k8s.io for
@@ -85,14 +87,24 @@ kubernetes_node_aws_signing_helper_checksum: >-
   sha256:{{ kubernetes_node_aws_signing_helper_checksums[kubernetes_node_aws_signing_helper_arch] }}
 kubernetes_node_aws_signing_helper_bin: /usr/local/bin/aws_signing_helper
 
-# Roles Anywhere material + coordinates the signing helper needs. The cert/key are
-# per-node, issued by the operator's CA and delivered from Vault. The three ARNs come
-# from the aws-staging-account TF outputs (ecr_pull_trust_anchor_arn /
-# ecr_pull_profile_arn / ecr_pull_role_arn) — set them in the inventory.
+# Roles Anywhere material + coordinates the signing helper needs. The node's private
+# key is GENERATED ON THE NODE and never leaves it; the node emits a CSR which the
+# controller signs with the operator's CA (paths below), returning only the public
+# cert. The three ARNs come from the aws-staging-account TF outputs
+# (ecr_pull_trust_anchor_arn / ecr_pull_profile_arn / ecr_pull_role_arn).
 kubernetes_node_ecr_rolesanywhere_dir: /etc/kubernetes/rolesanywhere
 kubernetes_node_ecr_rolesanywhere_cert_file: "{{ kubernetes_node_ecr_rolesanywhere_dir }}/cert.pem"
 kubernetes_node_ecr_rolesanywhere_key_file: "{{ kubernetes_node_ecr_rolesanywhere_dir }}/key.pem"
+kubernetes_node_ecr_rolesanywhere_csr_file: "{{ kubernetes_node_ecr_rolesanywhere_dir }}/node.csr"
 kubernetes_node_ecr_aws_config_file: "{{ kubernetes_node_ecr_rolesanywhere_dir }}/config"
 kubernetes_node_ecr_rolesanywhere_trust_anchor_arn: ""
 kubernetes_node_ecr_rolesanywhere_profile_arn: ""
 kubernetes_node_ecr_rolesanywhere_role_arn: ""
+
+# CA that signs each node's CSR, on the CONTROLLER (your Mac). Keep OUTSIDE the repo.
+# Both empty by default → the ECR pull identity stays disabled (see the gate above).
+kubernetes_node_ecr_ca_certificate_path: ""
+kubernetes_node_ecr_ca_privatekey_path: ""
+# Client-cert lifetime and the controller-side scratch dir where CSRs are signed.
+kubernetes_node_ecr_client_cert_days: 365
+kubernetes_node_ecr_signing_dir: "{{ lookup('env', 'HOME') }}/.config/aws-account-infra/node-certs"

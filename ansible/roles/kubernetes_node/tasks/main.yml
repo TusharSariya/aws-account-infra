@@ -118,25 +118,75 @@
     mode: "0700"
   when: kubernetes_node_ecr_credential_provider_enabled | bool
 
-- name: Install the node Roles Anywhere client certificate from Vault
+# The node's Roles Anywhere identity is minted via an on-node CSR: the private key is
+# generated on the node (never leaves it, never enters git/Vault), the node emits a
+# CSR, the controller signs it with the operator's CA, and only the public cert is
+# installed back on the node. This keeps the most sensitive material off the network.
+
+- name: Generate the node Roles Anywhere private key (on the node)
+  community.crypto.openssl_privatekey:
+    path: "{{ kubernetes_node_ecr_rolesanywhere_key_file }}"
+    type: RSA
+    size: 2048
+    owner: root
+    group: root
+    mode: "0600"
+  when: kubernetes_node_ecr_credential_provider_enabled | bool
+
+- name: Generate the node client-cert CSR (on the node)
+  community.crypto.openssl_csr:
+    path: "{{ kubernetes_node_ecr_rolesanywhere_csr_file }}"
+    privatekey_path: "{{ kubernetes_node_ecr_rolesanywhere_key_file }}"
+    common_name: "{{ inventory_hostname }}"
+    owner: root
+    group: root
+    mode: "0644"
+  when: kubernetes_node_ecr_credential_provider_enabled | bool
+
+- name: Ensure the controller signing directory exists
+  ansible.builtin.file:
+    path: "{{ kubernetes_node_ecr_signing_dir }}"
+    state: directory
+    mode: "0700"
+  delegate_to: localhost
+  become: false
+  when: kubernetes_node_ecr_credential_provider_enabled | bool
+
+- name: Read the CSR back from the node
+  ansible.builtin.slurp:
+    src: "{{ kubernetes_node_ecr_rolesanywhere_csr_file }}"
+  register: kubernetes_node_ecr_csr
+  when: kubernetes_node_ecr_credential_provider_enabled | bool
+
+- name: Stage the CSR on the controller for signing
   ansible.builtin.copy:
-    content: "{{ vault_ecr_pull_node_certificate }}"
+    content: "{{ kubernetes_node_ecr_csr.content | b64decode }}"
+    dest: "{{ kubernetes_node_ecr_signing_dir }}/{{ inventory_hostname }}.csr"
+    mode: "0644"
+  delegate_to: localhost
+  become: false
+  when: kubernetes_node_ecr_credential_provider_enabled | bool
+
+- name: Sign the node CSR with the homelab CA (on the controller)
+  community.crypto.x509_certificate:
+    path: "{{ kubernetes_node_ecr_signing_dir }}/{{ inventory_hostname }}.crt"
+    csr_path: "{{ kubernetes_node_ecr_signing_dir }}/{{ inventory_hostname }}.csr"
+    provider: ownca
+    ownca_path: "{{ kubernetes_node_ecr_ca_certificate_path }}"
+    ownca_privatekey_path: "{{ kubernetes_node_ecr_ca_privatekey_path }}"
+    ownca_not_after: "+{{ kubernetes_node_ecr_client_cert_days }}d"
+    mode: "0644"
+  delegate_to: localhost
+  become: false
+  when: kubernetes_node_ecr_credential_provider_enabled | bool
+
+- name: Install the signed client certificate on the node
+  ansible.builtin.copy:
+    src: "{{ kubernetes_node_ecr_signing_dir }}/{{ inventory_hostname }}.crt"
     dest: "{{ kubernetes_node_ecr_rolesanywhere_cert_file }}"
     owner: root
     group: root
-    mode: "0600"
-  no_log: true
-  when: kubernetes_node_ecr_credential_provider_enabled | bool
-  notify: Restart kubelet
-
-- name: Install the node Roles Anywhere private key from Vault
-  ansible.builtin.copy:
-    content: "{{ vault_ecr_pull_node_private_key }}"
-    dest: "{{ kubernetes_node_ecr_rolesanywhere_key_file }}"
-    owner: root
-    group: root
-    mode: "0600"
-  no_log: true
+    mode: "0644"
   when: kubernetes_node_ecr_credential_provider_enabled | bool
   notify: Restart kubelet
 

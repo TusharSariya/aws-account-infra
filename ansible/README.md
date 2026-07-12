@@ -38,8 +38,42 @@ Copy `inventories/example` to the ignored `inventories/local` directory. Configu
 - `kubernetes_api_endpoint`, which must remain stable;
 - an unused MetalLB range outside the router's DHCP pool.
 
-Keep passwords, tokens, kubeconfigs, and private values in Ansible Vault or SOPS.
-The example addresses intentionally fail preflight checks.
+Non-secret vars live in `group_vars/all/main.yml`. The example addresses
+intentionally fail preflight checks.
+
+### Secrets (Ansible Vault)
+
+Secrets live in `group_vars/all/vault.yml`, **encrypted** and **committed** — the
+ciphertext is safe in git and makes secrets reproducible. Only the vault *password*
+is out-of-band, at `~/.config/aws-account-infra/vault-password` (referenced by
+`ansible.cfg`, so runs never prompt). One-time setup on a controller:
+
+```bash
+# 1. Put the shared vault password (obtained out-of-band) outside the checkout:
+mkdir -p ~/.config/aws-account-infra
+printf '%s' '<vault-password>' > ~/.config/aws-account-infra/vault-password
+chmod 600 ~/.config/aws-account-infra/vault-password
+
+# 2. First operator only — create the encrypted secrets from the template:
+cp inventories/example/group_vars/all/vault.yml.example \
+   inventories/local/group_vars/all/vault.yml
+$EDITOR inventories/local/group_vars/all/vault.yml     # fill real values
+make -C ansible vault-encrypt                          # encrypt in place, then commit it
+```
+
+Everyday: `make -C ansible vault-edit` / `vault-view`. Changing the vault password
+(`vault-rekey`) rotates *encryption only* — it does **not** rotate the underlying
+Supabase key or DSN password; do that in Supabase and re-edit the vault.
+
+> Run playbooks via `make -C ansible <target>` (below). The Makefile exports an
+> absolute `ANSIBLE_CONFIG`, so the config, inventory, and vault password resolve
+> from any working directory — a bare `ansible-playbook` from the repo root does not
+> pick up `ansible/ansible.cfg`. First run: `make -C ansible deps check`.
+
+The homelab CA that signs each node's ECR client cert (`kubernetes_node`) is
+referenced by `kubernetes_node_ecr_ca_{certificate,privatekey}_path`; keep those
+files outside the checkout (e.g. `~/.config/aws-account-infra/homelab-ca.{crt,key}`).
+Node private keys are generated **on the node** and never enter git or the vault.
 
 ## Optional ARM64 worker
 

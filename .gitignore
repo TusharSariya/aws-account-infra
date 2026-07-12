@@ -23,6 +23,28 @@ tfplan.binary
 .DS_Store
 *.swp
 
-# Machine-specific Ansible inventory and Vault credentials
-ansible/inventories/local/
+# --- Homelab PKI: NEVER commit private keys or the CA. This is a guardrail, not a
+# security boundary — keep real keys outside the checkout (e.g. ~/.config/...).
+*.key
+*.srl
+homelab-ca.*
+homelab-pki/
+# Obsolete Mac-minted node material (superseded by the on-node CSR flow); safe to rm.
+desktop.crt
+desktop.csr
+
+# Machine-specific Ansible inventory and the vault password (never committed).
 .vault-password
+ansible/inventories/local/
+
+# EXCEPTION: the ansible-vault CIPHERTEXT is encrypted at rest, so it IS committed —
+# that is what makes secrets reproducible after a `git clean -x` or a lost laptop.
+# Git cannot re-include a file whose parent dir is ignored, so re-include each parent
+# on the way down, then the one ciphertext file. Everything else under local/ stays out.
+!ansible/inventories/local/
+ansible/inventories/local/*
+!ansible/inventories/local/group_vars/
+ansible/inventories/local/group_vars/*
+!ansible/inventories/local/group_vars/all/
+ansible/inventories/local/group_vars/all/*
+!ansible/inventories/local/group_vars/all/vault.yml

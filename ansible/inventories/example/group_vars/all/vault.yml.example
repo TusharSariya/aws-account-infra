@@ -1,0 +1,23 @@
+# SECRETS TEMPLATE — do not put real values here (this .example file is committed
+# plaintext). ansible ignores it (".example" is not a loadable vars extension).
+#
+# To use it, on the controller (your Mac):
+#   1. cp inventories/example/group_vars/all/vault.yml.example \
+#         inventories/local/group_vars/all/vault.yml
+#   2. edit inventories/local/group_vars/all/vault.yml with real values
+#   3. make -C ansible vault-encrypt      # encrypts it in place
+#   4. git add inventories/local/group_vars/all/vault.yml && commit
+#      (committing the CIPHERTEXT is intentional — it's encrypted, and it makes the
+#       secrets reproducible. The vault PASSWORD is never committed.)
+#
+# Only true secrets belong here. The Supabase URL and the public CA cert are NOT
+# secret and live in main.yml / on disk. Node private keys never exist here at all —
+# they are generated on the node via the CSR flow.
+
+# Supabase service_role key for the harvester worker (full DB access — keep secret).
+vault_harvester_service_key: "REPLACE_WITH_STAGING_SERVICE_ROLE_KEY"
+
+# KEDA postgresql-scaler DSN for the least-privilege harvester_keda_ro role. The
+# password MUST be percent-encoded (a literal @ : / % breaks the URI) and TLS MUST be
+# explicit (sslmode=require). Host = Supabase session pooler (Dashboard → Connect).
+vault_harvester_keda_dsn: "postgresql://harvester_keda_ro.PROJECT_REF:PERCENT_ENCODED_PW@POOLER_HOST:5432/postgres?sslmode=require"
