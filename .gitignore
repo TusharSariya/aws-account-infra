@@ -26,3 +26,9 @@ tfplan.binary
 # Machine-specific Ansible inventory and Vault credentials
 ansible/inventories/local/
 .vault-password
+
+# Homelab PKI private material — the CA private key must NEVER be committed.
+# The public cert (homelab-ca.crt) is safe but belongs in staging.tfvars, not loose at root.
+*.key
+homelab-ca.*
+homelab-pki/
