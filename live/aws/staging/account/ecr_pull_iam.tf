@@ -30,6 +30,9 @@
 variable "homelab_ca_certificate_pem" {
   type        = string
   description = "PEM of the operator's CA certificate, registered as the Roles Anywhere trust anchor bundle. Operator-supplied via tfvars/CLI; never committed."
+  # Defaults to empty so the plan-only CI job (which cannot hold a CA) still runs;
+  # a real, non-empty PEM MUST be supplied at apply time for the trust anchor to work.
+  default = ""
 }
 
 # Trust anchor: tells Roles Anywhere which CA to trust when validating a node's
