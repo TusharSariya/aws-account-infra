@@ -32,3 +32,14 @@ default_tags = {
 # TODO: set a real notification email and your tolerance.
 budget_monthly_limit_usd  = "20"
 budget_notification_email = "tushar.sariya77@gmail.com"
+
+# --- Homelab ECR-pull identity (IAM Roles Anywhere) -----------------------------
+# The operator's own CA certificate (PEM), registered as the trust anchor that
+# validates each node's client cert. This is a PUBLIC cert, not a secret, but it is
+# environment-specific — BRING YOUR OWN CA and supply it here or via `-var`/`-var-file`
+# at apply time. Left unset on purpose so a real CA is never committed. Example:
+# homelab_ca_certificate_pem = <<-EOT
+#   -----BEGIN CERTIFICATE-----
+#   ...your homelab CA cert...
+#   -----END CERTIFICATE-----
+# EOT
