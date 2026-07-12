@@ -35,9 +35,19 @@ variable "homelab_ca_certificate_pem" {
   default = ""
 }
 
+locals {
+  # The Roles Anywhere chain is created only when a CA cert is actually supplied.
+  # With the default "" (the plan-only CI job, which has no CA) this plans ZERO of
+  # these resources instead of shipping a null trust anchor to AWS and failing with
+  # a cryptic ValidationException at apply time. A real apply MUST pass the PEM.
+  # trimspace guards a whitespace-only value.
+  enable_ecr_pull = trimspace(var.homelab_ca_certificate_pem) != ""
+}
+
 # Trust anchor: tells Roles Anywhere which CA to trust when validating a node's
 # presented client certificate.
 resource "aws_rolesanywhere_trust_anchor" "ecr_pull" {
+  count   = local.enable_ecr_pull ? 1 : 0
   name    = "homelab-ecr-pull"
   enabled = true
 
@@ -54,6 +64,8 @@ resource "aws_rolesanywhere_trust_anchor" "ecr_pull" {
 # sts:TagSession / sts:SetSourceIdentity actions are required by Roles Anywhere so it
 # can propagate certificate attributes onto the session.
 data "aws_iam_policy_document" "ecr_pull_assume" {
+  count = local.enable_ecr_pull ? 1 : 0
+
   statement {
     sid    = "RolesAnywhereAssume"
     effect = "Allow"
@@ -69,15 +81,16 @@ data "aws_iam_policy_document" "ecr_pull_assume" {
     condition {
       test     = "ArnEquals"
       variable = "aws:SourceArn"
-      values   = [aws_rolesanywhere_trust_anchor.ecr_pull.arn]
+      values   = [aws_rolesanywhere_trust_anchor.ecr_pull[0].arn]
     }
   }
 }
 
 resource "aws_iam_role" "ecr_pull" {
+  count              = local.enable_ecr_pull ? 1 : 0
   name               = "homelab-ecr-pull"
   path               = "/homelab/"
-  assume_role_policy = data.aws_iam_policy_document.ecr_pull_assume.json
+  assume_role_policy = data.aws_iam_policy_document.ecr_pull_assume[0].json
 }
 
 # GetAuthorizationToken has no resource-level scoping in ECR and must be granted on
@@ -107,15 +120,17 @@ data "aws_iam_policy_document" "ecr_pull" {
 # ECR-read permissions attached to the ROLE (not a user) — this is what makes
 # CKV_AWS_40 pass.
 resource "aws_iam_role_policy" "ecr_pull" {
+  count  = local.enable_ecr_pull ? 1 : 0
   name   = "ecr-pull"
-  role   = aws_iam_role.ecr_pull.id
+  role   = aws_iam_role.ecr_pull[0].id
   policy = data.aws_iam_policy_document.ecr_pull.json
 }
 
 # Profile: the set of roles a Roles Anywhere session is allowed to request. The node
 # passes this profile ARN (plus the trust anchor + role ARNs) to aws_signing_helper.
 resource "aws_rolesanywhere_profile" "ecr_pull" {
+  count     = local.enable_ecr_pull ? 1 : 0
   name      = "homelab-ecr-pull"
   enabled   = true
-  role_arns = [aws_iam_role.ecr_pull.arn]
+  role_arns = [aws_iam_role.ecr_pull[0].arn]
 }
