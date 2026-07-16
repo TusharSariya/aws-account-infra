@@ -21,6 +21,8 @@ repositories:
     url: https://helm.ngc.nvidia.com/nvidia
   - name: prometheus-community
     url: https://prometheus-community.github.io/helm-charts
+  - name: jetstack
+    url: https://charts.jetstack.io
 
 releases:
   - name: cilium
@@ -292,3 +294,13 @@ releases:
           enabled: false
         test:
           enabled: false
+  - name: cert-manager
+    namespace: cert-manager
+    createNamespace: true
+    chart: jetstack/cert-manager
+    version: "{{ cluster_addons_cert_manager_version }}"
+    values:
+      - crds:
+          enabled: true
+        dns01RecursiveNameservers: "1.1.1.1:53,9.9.9.9:53"
+        dns01RecursiveNameserversOnly: true

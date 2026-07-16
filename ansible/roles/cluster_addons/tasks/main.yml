@@ -212,3 +212,9 @@
     --filename {{ cluster_addons_work_dir }}/metallb-resources.yml
   register: cluster_addons_metallb_apply
   changed_when: "'unchanged' not in cluster_addons_metallb_apply.stdout"
+- name: Wait for the cert-manager webhook to be available
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_addons_kubeconfig }} wait
+    deployment/cert-manager-webhook --namespace cert-manager
+    --for=condition=Available --timeout=5m
+  changed_when: false
