@@ -56,32 +56,39 @@ access key, the node uses IAM Roles Anywhere:
    and a Roles Anywhere profile. Its outputs expose the trust-anchor / profile /
    role ARNs.
 3. On each node the `kubernetes_node` role installs the **aws_signing_helper**
-   (AWS IAM Roles Anywhere Credential Helper) binary, drops the node's client
-   cert + private key (from Vault) at `/etc/kubernetes/rolesanywhere/{cert,key}.pem`
-   (mode 0600), and writes an AWS config whose `[default]` profile runs
-   `aws_signing_helper credential-process ...` as a `credential_process`.
+   (AWS IAM Roles Anywhere Credential Helper) binary, mints the node's client
+   cert via an **on-node CSR** (the node generates and keeps its own private key
+   at `/etc/kubernetes/rolesanywhere/key.pem`; the controller signs the CSR with
+   the homelab CA and returns only the public `cert.pem`), and writes an AWS
+   config whose `[default]` profile runs `aws_signing_helper credential-process
+   ...` as a `credential_process`.
 4. The credential provider (via `AWS_CONFIG_FILE`) invokes that process, the
    helper signs a request with the client cert, Roles Anywhere validates it
    against the trust anchor, and STS returns temporary creds scoped to the role.
 
 ### Operator prerequisites
 
-Before applying, the operator must:
+The CA, trust anchor, node-cert custody, reproduction steps, and threat model all
+live in **[`homelab-ca.md`](homelab-ca.md)** — that is the source of truth for
+this trust domain. In summary, before applying:
 
-- **Bring a CA.** Stand up (or reuse) a Certificate Authority. Supply its
-  *public* certificate PEM as the `homelab_ca_certificate_pem` Terraform variable
-  (via tfvars or `-var`); it is never committed.
-- **Register the trust anchor.** Apply the `aws-staging-account` unit so the
-  trust anchor, role, and profile exist. Record the three output ARNs.
-- **Issue per-node client certs.** For each node, issue a client certificate +
-  private key signed by that CA, and store them in a Vault-encrypted inventory
-  file as `vault_ecr_pull_node_certificate` and `vault_ecr_pull_node_private_key`.
-- **Wire the ARNs into inventory.** Set
-  `kubernetes_node_ecr_rolesanywhere_trust_anchor_arn`, `_profile_arn`, and
-  `_role_arn` (see `inventories/example/group_vars/all.yml`) from the TF outputs.
-- **Verify the helper pin.** Confirm `kubernetes_node_aws_signing_helper_version`
-  / URL / per-arch SHA256 against the AWS docs before apply (per repo pinning
-  policy), same as the `ecr-credential-provider` plugin binary.
+- **Bring a CA and register the trust anchor.** See `homelab-ca.md`. Note that
+  the AWS side is **not currently in Terraform** — the trust anchor, role, and
+  profile were created out-of-band, and the `ecr_pull_iam.tf` referenced above
+  does not exist in this repo.
+- **Wire the ARNs and CA paths into inventory.** Set
+  `kubernetes_node_ecr_rolesanywhere_trust_anchor_arn`, `_profile_arn`, `_role_arn`,
+  plus `kubernetes_node_ecr_ca_certificate_path` / `_ca_privatekey_path` (see
+  `inventories/example/group_vars/all/main.yml`). The two CA paths are the switch:
+  both must be non-empty or every ECR task skips silently.
+- **Per-node client certs need no operator action.** `node-prepare` mints them via
+  an on-node CSR. There is no `vault_ecr_pull_node_certificate` /
+  `vault_ecr_pull_node_private_key` — a node's private key never leaves the node.
+- **Verify the binary pins.** Confirm `kubernetes_node_aws_signing_helper_version`
+  and `kubernetes_node_ecr_credential_provider_version` / URLs / per-arch SHA256
+  before apply, per repo pinning policy. The credential provider is pinned to
+  **v1.31.0** deliberately: upstream stopped publishing prebuilt binaries after it,
+  and every later `artifacts.k8s.io` path 404s.
 
 ## Rollback
 

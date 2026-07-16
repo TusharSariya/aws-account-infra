@@ -133,11 +133,24 @@
     mode: "0600"
   when: kubernetes_node_ecr_credential_provider_enabled | bool
 
+# The extensions below are REQUIRED, not decorative. IAM Roles Anywhere rejects an
+# end-entity cert that lacks them with "AccessDeniedException: Untrusted certificate.
+# Insufficient certificate" — an error that reads like a trust-anchor/CA mismatch and
+# sends you debugging the wrong layer entirely. The ownca provider that signs this CSR
+# carries its extensions onto the cert, so they must be requested HERE.
 - name: Generate the node client-cert CSR (on the node)
   community.crypto.openssl_csr:
     path: "{{ kubernetes_node_ecr_rolesanywhere_csr_file }}"
     privatekey_path: "{{ kubernetes_node_ecr_rolesanywhere_key_file }}"
     common_name: "{{ inventory_hostname }}"
+    basic_constraints:
+      - "CA:FALSE"
+    basic_constraints_critical: true
+    key_usage:
+      - digitalSignature
+    key_usage_critical: true
+    extended_key_usage:
+      - clientAuth
     owner: root
     group: root
     mode: "0644"

@@ -27,11 +27,21 @@ tfplan.binary
 # security boundary — keep real keys outside the checkout (e.g. ~/.config/...).
 *.key
 *.srl
-homelab-ca.*
+# NOT `homelab-ca.*` — that pattern is unanchored, so it matches at ANY depth and
+# silently swallowed docs/plans/homelab-ca.md. Private keys stay covered by *.key
+# above; list the CA's other artefacts explicitly so the stem stays usable for docs.
+homelab-ca.crt
+homelab-ca.crt.bak
+homelab-ca.pem
 homelab-pki/
 # Obsolete Mac-minted node material (superseded by the on-node CSR flow); safe to rm.
 desktop.crt
 desktop.csr
+
+# Ad-hoc Pi-hole /etc backup: 16MB of runtime state including tls.pem (a PRIVATE KEY)
+# and cli_pw. Ignored so a stray `git add -A` cannot publish it. This is host state,
+# not repo content — it belongs outside the checkout entirely.
+pihole-etc-backup/
 
 # Machine-specific Ansible inventory and the vault password (never committed).
 .vault-password

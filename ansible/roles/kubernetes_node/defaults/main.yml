@@ -43,21 +43,32 @@ kubernetes_node_eviction_hard: >-
 kubernetes_node_ecr_credential_provider_enabled: >-
   {{ (kubernetes_node_ecr_ca_certificate_path | default('') | length > 0)
      and (kubernetes_node_ecr_ca_privatekey_path | default('') | length > 0) }}
-# Binary version tracks the cluster's Kubernetes minor (kubernetes_node_minor_version
-# v1.36). VERIFY BEFORE APPLY: the kubernetes/cloud-provider-aws project stopped
-# publishing prebuilt ecr-credential-provider binaries to artifacts.k8s.io for
-# v1.30+, so kubernetes_node_ecr_credential_provider_url below MUST point at a
-# real, checksummed binary you trust before this runs (see docs/plans/keda.md).
-kubernetes_node_ecr_credential_provider_version: v1.36.0
-kubernetes_node_ecr_credential_provider_arch: "{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}"
+# Deliberately pinned BEHIND the cluster's Kubernetes minor (v1.36). The
+# cloud-provider-aws project stopped publishing prebuilt ecr-credential-provider
+# binaries to artifacts.k8s.io after v1.31.0 — every later path 404s, and the GitHub
+# releases carry no binary assets — so v1.31.0 is the newest official artifact that
+# exists. The skew is inert: kubelet talks to this plugin over the STABLE
+# credentialprovider.kubelet.k8s.io/v1 contract, which both ends speak. Verified on
+# 2026-07-16 against the v1.36.2 node: correct CredentialProviderResponse and a live
+# ECR token (the only difference from a v1.36 build is a cosmetic region warning).
+# Building from source would track the minor but yields a non-reproducible binary that
+# no one else can re-fetch and verify — an official pinned artifact beats that here.
+kubernetes_node_ecr_credential_provider_version: v1.31.0
+kubernetes_node_ecr_credential_provider_arch: >-
+  {{ 'arm64' if ansible_facts['architecture'] == 'aarch64' else 'amd64' }}
 kubernetes_node_ecr_credential_provider_url: >-
   https://artifacts.k8s.io/binaries/cloud-provider-aws/{{
   kubernetes_node_ecr_credential_provider_version }}/linux/{{
   kubernetes_node_ecr_credential_provider_arch
   }}/ecr-credential-provider-linux-{{
   kubernetes_node_ecr_credential_provider_arch }}
-# Leave empty to skip verification; set a "sha256:..." digest before apply.
-kubernetes_node_ecr_credential_provider_checksum: ""
+# Per-arch SHA256 (checksum passed to get_url as "sha256:<digest>"), same shape as the
+# signing helper above. Update both alongside the version pin.
+kubernetes_node_ecr_credential_provider_checksums:
+  amd64: "93cb405e50ac98fe1bd18757a1900794c14111705bd996f19728791aca9b5590"
+  arm64: "fa0061361d21cbad70a4cd6576f69366ae863a004ec6f59cba7ddbc71ba7106e"
+kubernetes_node_ecr_credential_provider_checksum: >-
+  sha256:{{ kubernetes_node_ecr_credential_provider_checksums[kubernetes_node_ecr_credential_provider_arch] }}
 kubernetes_node_ecr_credential_provider_bin_dir: /etc/kubernetes/image-credential-provider
 kubernetes_node_credential_provider_config: /etc/kubernetes/credential-provider-config.yaml
 # ECR registry host(s) kubelet routes to this plugin, and the region to auth in.
@@ -73,7 +84,8 @@ kubernetes_node_ecr_region: us-east-1
 # Verified 2026-07-11: v1.8.4 (released 2026-06-09). Note the Linux path carries an
 # OS-distro segment ("Amzn2023"); the statically-linked binary runs fine on Ubuntu.
 kubernetes_node_aws_signing_helper_version: "1.8.4"
-kubernetes_node_aws_signing_helper_arch: "{{ 'Aarch64' if ansible_architecture == 'aarch64' else 'X86_64' }}"
+kubernetes_node_aws_signing_helper_arch: >-
+  {{ 'Aarch64' if ansible_facts['architecture'] == 'aarch64' else 'X86_64' }}
 kubernetes_node_aws_signing_helper_url: >-
   https://rolesanywhere.amazonaws.com/releases/{{
   kubernetes_node_aws_signing_helper_version }}/{{

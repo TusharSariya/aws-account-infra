@@ -52,7 +52,14 @@ spec:
   triggers:
     - type: postgresql
       metadata:
-        query: "SELECT queue_visible_length FROM pgmq.metrics('{{ src.queue }}')"
+        # NOT `SELECT queue_visible_length FROM pgmq.metrics(...)` directly. Supabase
+        # enables RLS on the pgmq.q_* tables with no policies, and pgmq.metrics() is
+        # SECURITY INVOKER — so as harvester_keda_ro (no BYPASSRLS) it counts an
+        # empty table and returns 0 forever, however deep the backlog. It fails
+        # SILENTLY: no error, just a permanently idle ScaledJob that looks exactly
+        # like an empty queue. harvest_queue_visible_length is the SECURITY DEFINER
+        # wrapper that can see the rows (migration 20260716190000).
+        query: "SELECT public.harvest_queue_visible_length('{{ src.queue }}')"
         targetQueryValue: "{{ cluster_harvester_target_value }}"
       authenticationRef:
         name: harvester-pg

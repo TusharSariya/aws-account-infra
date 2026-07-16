@@ -10,14 +10,22 @@
 # Fail loudly and early. Without this, an undefined/placeholder secret makes the
 # `when: ... is defined` secret tasks silently skip, and the failure only surfaces
 # later as a confusing "secret not found" from kubectl.
+# Every placeholder token in vault.yml.example must be listed here. Checking only SOME
+# of them is worse than checking none: a half-filled DSN passes this gate, and the
+# failure resurfaces as KEDA silently holding every ScaledJob at zero replicas, which
+# is indistinguishable from "the queue is empty" — i.e. a green-looking no-op run.
+# (pooler_host/PROJECT_REF were added after exactly that happened on 2026-07-16.)
 - name: Assert the harvester secrets are present and not placeholders
   ansible.builtin.assert:
     that:
       - vault_harvester_supabase_url is defined
+      - "'PROJECT_REF' not in vault_harvester_supabase_url"
       - vault_harvester_service_key is defined
       - "'REPLACE_' not in vault_harvester_service_key"
       - vault_harvester_keda_dsn is defined
       - "'PERCENT_ENCODED_PW' not in vault_harvester_keda_dsn"
+      - "'pooler_host' not in vault_harvester_keda_dsn"
+      - "'PROJECT_REF' not in vault_harvester_keda_dsn"
     fail_msg: >-
       Harvester secrets missing or unfilled. Copy vault.yml.example to
       inventories/local/group_vars/all/vault.yml, fill real values, and
