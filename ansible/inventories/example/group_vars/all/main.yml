@@ -17,6 +17,26 @@ kubernetes_grafana_hostname: grafana.home.arpa
 kubernetes_pihole_hostname: pihole.home.arpa
 kubernetes_pihole_dns_address: 192.0.2.202
 
+# TLS for the homelab Gateway (cert-manager + Let's Encrypt over Cloudflare DNS-01).
+# See docs/superpowers/specs/2026-07-16-homelab-pki-design.md
+#
+# kubernetes_homelab_domain must be a PUBLIC domain you control DNS for — home.arpa
+# and other RFC 8375/6761 special-use names can never get a public cert, because no
+# CA can validate control of a name that does not exist in public DNS. The zone must
+# be hosted on Cloudflare and reachable by the scoped API token in vault.yml.
+# DNS-01 writes only a temporary _acme-challenge TXT record; no inbound access is
+# needed, and the service A/CNAME records stay private (split-horizon via Pi-hole).
+kubernetes_homelab_domain: homelab.example.com
+kubernetes_cloudflare_zone: example.com
+# Contact on the ACME account. Not used for validation and never appears in the
+# certificate — Let's Encrypt only reaches you here about account/policy matters.
+# (LE discontinued expiry notification mail in June 2025, so nothing routine
+# arrives; monitor renewals yourself rather than waiting for an email.)
+kubernetes_acme_email: you@example.com
+# letsencrypt-staging (default) or letsencrypt-prod. Prove the DNS-01 loop on
+# staging FIRST — prod allows only 5 failed validations/hour.
+kubernetes_acme_issuer: letsencrypt-staging
+
 # Centralized logs (Loki single-binary, filesystem-backed on local-path).
 kubernetes_loki_retention_hours: 336
 kubernetes_loki_storage_size: 20Gi

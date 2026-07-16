@@ -17,7 +17,17 @@ cluster_addons_istio_version: 1.30.2
 # (kedacore/keda 2.20.1); re-verify against https://kedacore.github.io/charts
 # before apply and keep pinned per repo policy.
 cluster_addons_keda_version: 2.20.1
+# cert-manager. Verified current against https://charts.jetstack.io/index.yaml
+# on 2026-07-16 (v1.21.0 latest stable); re-verify before apply and keep pinned
+# per repo policy. Install record: docs/plans/cert-manager.md
 cluster_addons_cert_manager_version: v1.21.0
+# ACME/DNS-01 wiring. The issuer defaults to STAGING: the prod cutover is a
+# deliberate one-variable flip once the DNS-01 loop is proven, because Let's
+# Encrypt's prod rate limits are unforgiving of a debugging session.
+cluster_addons_acme_email: "{{ kubernetes_acme_email }}"
+cluster_addons_acme_issuer: "{{ kubernetes_acme_issuer | default('letsencrypt-staging') }}"
+cluster_addons_cloudflare_zone: "{{ kubernetes_cloudflare_zone }}"
+cluster_addons_homelab_domain: "{{ kubernetes_homelab_domain }}"
 cluster_addons_gateway_api_version: v1.5.1
 cluster_addons_gateway_namespace: "{{ kubernetes_gateway_namespace }}"
 cluster_addons_gateway_name: "{{ kubernetes_gateway_name }}"
