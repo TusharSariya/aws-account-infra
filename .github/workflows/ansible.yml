@@ -18,6 +18,16 @@ jobs:
           python-version: "3.13"
       - run: pip install ansible-core==2.18.6 ansible-lint==25.5.0
       - run: ansible-galaxy collection install -r ansible/requirements.yml
+      # ansible.cfg sets vault_password_file, and ansible-core ERRORS at startup if
+      # that path is absent — regardless of whether anything needs decrypting. CI
+      # cannot hold the real password, so give it a placeholder purely to satisfy the
+      # existence check. The committed vault ciphertext then fails to decrypt, which
+      # ansible-lint downgrades to a warning and skips; every other file still lints.
+      - name: Provide a placeholder vault password (CI holds no real secret)
+        run: |
+          mkdir -p ~/.config/aws-account-infra
+          printf 'ci-placeholder-not-a-real-password' > ~/.config/aws-account-infra/vault-password
+          chmod 600 ~/.config/aws-account-infra/vault-password
       - run: ansible-lint ansible
       - name: syntax check
         run: |
