@@ -126,26 +126,27 @@ trust root, and only `.gitignore` stands between the key and a `git add -A`.
 
 ### 2. Register it with AWS
 
-> **This step is not in Terraform.** The live trust anchor, profile, and IAM role
-> were created out-of-band and no `.tf` file in this repo describes them. The
-> commands below reproduce them, but they are a stopgap — see Known gaps.
+The trust anchor, profile, and IAM role are Terraform, in
+`live/aws/staging/account/ecr_pull_iam.tf`. Apply that unit with the CA's **public**
+certificate supplied at apply time — it is operator-specific and deliberately never
+committed:
 
 ```bash
-# Trust anchor: pins the CA's PUBLIC cert. Never send the key.
-aws rolesanywhere create-trust-anchor --region us-east-1 \
-  --name homelab-ecr-pull --enabled \
-  --source "sourceType=CERTIFICATE_BUNDLE,sourceData={x509CertificateData=$(cat homelab-ca.crt)}"
-
-# IAM role trusting the Roles Anywhere service, with an ECR-read policy attached.
-# Scope the policy to the harvest repos only — this bound is what caps the blast radius.
-
-# Profile: maps an authenticated cert to that role.
-aws rolesanywhere create-profile --region us-east-1 \
-  --name homelab-ecr-pull --enabled \
-  --role-arns arn:aws:iam::<account>:role/homelab/homelab-ecr-pull
+cd live/aws/staging/account
+tofu apply -var "homelab_ca_certificate_pem=$(cat ~/.config/aws-account-infra/homelab-ca.crt)"
 ```
 
-Record the three ARNs.
+The whole chain is gated on that variable being non-empty (`local.enable_ecr_pull`),
+so the plan-only CI job — which has no CA — plans zero of these resources rather than
+shipping a null trust anchor and failing at apply with a cryptic ValidationException.
+An apply without the PEM silently creates nothing.
+
+Record the three outputs: `ecr_pull_trust_anchor_arn`, `ecr_pull_profile_arn`,
+`ecr_pull_role_arn`.
+
+The ECR-read policy is attached to the **role**, not a user, and scoped to the
+harvest repositories. That scoping is what caps the blast radius in the table above,
+so keep it narrow.
 
 ### 3. Back the CA key up
 
@@ -258,12 +259,11 @@ signing helper → Roles Anywhere → CA → ECR.
 
 ## Known gaps
 
-- **The AWS side is not in Terraform.** `keda.md` cites
-  `live/aws/staging/account/ecr_pull_iam.tf`; that file does not exist, and no
-  `.tf` in this repo mentions `rolesanywhere`. The trust anchor, profile, and role
-  are live but were created out-of-band, so "reproducible" currently means
-  "follow step 2 by hand". Codifying them is the highest-value follow-up here —
-  as written, an account rebuild loses the AWS half of this design.
+- **The CA cert must be re-supplied on every apply of the account unit.** It is a
+  `-var`, not state, so an apply that forgets it evaluates `enable_ecr_pull` to
+  false and plans the trust anchor, profile, and role for **destruction** — which
+  would break ECR pull on every node at once. There is no guard against this; the
+  operator has to remember. Worth a `terraform.tfvars` pointing at the CA path.
 - **No revocation.** There is no CRL and no OCSP. A leaked node key is valid until
   its cert expires. The only true revocation is replacing the CA and trust anchor.
   Acceptable only because the role is ECR-read-scoped.

@@ -72,10 +72,11 @@ The CA, trust anchor, node-cert custody, reproduction steps, and threat model al
 live in **[`homelab-ca.md`](homelab-ca.md)** — that is the source of truth for
 this trust domain. In summary, before applying:
 
-- **Bring a CA and register the trust anchor.** See `homelab-ca.md`. Note that
-  the AWS side is **not currently in Terraform** — the trust anchor, role, and
-  profile were created out-of-band, and the `ecr_pull_iam.tf` referenced above
-  does not exist in this repo.
+- **Bring a CA and register the trust anchor.** See `homelab-ca.md`. The AWS side
+  is Terraform (`live/aws/staging/account/ecr_pull_iam.tf`), applied with the CA's
+  public PEM as `-var homelab_ca_certificate_pem=...`. That variable gates the whole
+  chain via `count`, so an apply that omits it plans the trust anchor, role, and
+  profile for **destruction** — breaking ECR pull on every node.
 - **Wire the ARNs and CA paths into inventory.** Set
   `kubernetes_node_ecr_rolesanywhere_trust_anchor_arn`, `_profile_arn`, `_role_arn`,
   plus `kubernetes_node_ecr_ca_certificate_path` / `_ca_privatekey_path` (see
