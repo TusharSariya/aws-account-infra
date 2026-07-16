@@ -1,0 +1,31 @@
+---
+# pre-commit hooks, wired to the PRE-PUSH stage (not every commit) so a push is
+# blocked before it reaches CI's checkov / fmt / validate gates. This is the
+# portable, framework-based alternative to the repo's native scanner gate
+# (scripts/git-hooks/pre-push, installed by ./scripts/install-hooks.sh).
+#
+# One-time setup per clone (see README "Pre-commit hooks"):
+#   pre-commit install --hook-type pre-push
+# NOTE: pre-commit refuses to install while core.hooksPath is set, so pick ONE
+# gate — either the native script OR pre-commit (unset core.hooksPath first).
+#
+# Pins are deliberate: the checkov rev matches the CI image (3.3.8) so the local
+# and CI verdicts agree.
+default_stages: [pre-push]
+
+repos:
+  - repo: https://github.com/bridgecrewio/checkov
+    rev: "3.3.8"
+    hooks:
+      - id: checkov
+        # Mirror the CI invocation: repo-wide terraform scan honoring
+        # .checkov.yaml (skip-path / skip-check entries live there, not here).
+        args: ["--config-file", ".checkov.yaml", "--framework", "terraform"]
+
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.108.0
+    hooks:
+      # These call the `terraform` binary by default. This repo standardizes on
+      # OpenTofu; export PCT_TFPATH=tofu to run them through tofu instead.
+      - id: terraform_fmt
+      - id: terraform_validate

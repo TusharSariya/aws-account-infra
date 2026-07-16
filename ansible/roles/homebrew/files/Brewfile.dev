@@ -1,0 +1,88 @@
+# Brewfile.dev — build systems, language runtimes, dev tooling and apps
+#
+# Managed by the `homebrew` Ansible role. `brew bundle` ensures these are
+# installed; the role warns (never removes) about anything installed but not
+# declared in a Brewfile.
+
+# Third-party tap for the codexbar cask below
+tap "steipete/tap"
+
+# --- build systems / compilers ---
+# Automatic configure script builder
+brew "automake"
+# Generic library support script
+brew "libtool"
+# Parser generator
+brew "bison"
+# Fast Lexical Analyzer, generates Scanners (tokenizers)
+brew "flex"
+# Generate scripting interfaces to C/C++ code
+brew "swig"
+# Cross-platform make
+brew "cmake"
+# Fast and user friendly build system
+brew "meson"
+# Object-file caching compiler wrapper
+brew "ccache"
+# LLVM Project Linker
+brew "lld"
+# User-friendly launcher for Bazel
+brew "bazelisk"
+
+# --- language runtimes / version managers ---
+# Open-source, cross-platform JavaScript runtime environment
+brew "node"
+# JavaScript package manager
+brew "yarn"
+# Python version management
+brew "pyenv"
+# Go version management
+brew "goenv"
+# Interpreted, interactive, object-oriented programming language
+brew "python@3.10"
+# Dependency manager for Cocoa projects
+brew "cocoapods"
+
+# --- dev tools / libraries ---
+# Run your GitHub Actions locally
+brew "act"
+# Open source computer vision library
+brew "opencv"
+# Core component of the AcoustID project (Audio fingerprinting)
+brew "chromaprint"
+# New file format for still image compression
+brew "jpeg-xl"
+# PDF rendering library (based on the xpdf-3.0 code base)
+brew "poppler"
+# Perl lib for reading and writing EXIF metadata
+brew "exiftool"
+# Modern diagram scripting language that turns text to diagrams
+brew "d2"
+# Library to communicate with iOS devices natively
+brew "libimobiledevice"
+# Tool for emulating mouse and keyboard events
+brew "cliclick"
+# Command-line client for mega.co.nz storage service
+brew "megacmd"
+
+# --- desktop apps / SDKs ---
+# Terminal emulator that uses platform-native UI and GPU acceleration
+cask "ghostty"
+# Replacement for Docker Desktop
+cask "orbstack"
+# Developer platform
+cask "dotnet-sdk"
+# JDK from the Eclipse Foundation (Adoptium)
+cask "temurin@21"
+# Tools to manage, monitor, profile and troubleshoot Java applications
+cask "jdk-mission-control"
+# Minimal installer for conda
+cask "miniconda"
+# Command-line access to MEGA services
+cask "megacmd-app"
+# OpenAI's coding agent that runs in your terminal
+cask "codex"
+# Menu bar usage monitor for Codex and Claude
+cask "steipete/tap/codexbar", trusted: true
+# AI coding agent desktop client
+cask "opencode-desktop"

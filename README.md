@@ -72,6 +72,27 @@ LocalStack is a sandbox, not a live-stack test backend:
 ./scripts/localstack.sh down
 ```
 
+## Pre-push checks
+
+Pushes are gated by the same static scanners CI runs (checkov, `terraform fmt`,
+etc.). Pick **one** local gate and install it once per clone:
+
+- Native scanner script (Docker-based; also runs trivy, gitleaks, tflint):
+
+  ```bash
+  ./scripts/install-hooks.sh   # sets core.hooksPath -> scripts/git-hooks
+  ```
+
+- Or the [pre-commit](https://pre-commit.com) framework (`.pre-commit-config.yaml`;
+  checkov pinned to the CI image `3.3.8`, plus `terraform_fmt` / `terraform_validate`):
+
+  ```bash
+  git config --unset-all core.hooksPath   # pre-commit refuses while this is set
+  pre-commit install --hook-type pre-push
+  ```
+
+Both block the push on any finding; bypass a single push with `git push --no-verify`.
+
 ## Future providers
 
 Add provider-native roots as `live/gcp/<environment>/...` or

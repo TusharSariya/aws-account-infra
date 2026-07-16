@@ -24,9 +24,19 @@ ansible-playbook ansible/playbooks/workstation.yml --check --diff
 ansible-playbook ansible/playbooks/workstation.yml
 ```
 
-The workstation role installs Homebrew tools, pyenv, tenv, SDKMAN, Helm, Helmfile,
-kubectl, and Cilium CLI. MLX uses a dedicated pyenv virtual environment; Conda is
-not required for MLX and remains available for projects that need it.
+Homebrew packages are managed by the `homebrew` role (macOS only). It declares the
+machine's formulae, casks, and taps in `roles/homebrew/files/Brewfile.{base,dev,ops}`
+(select which apply per host with `homebrew_bundles`) and drives them with `brew bundle`.
+The role is **additive**: it installs anything declared-but-missing and, on every run,
+**warns** about anything installed-but-undeclared ("add these to a Brewfile") — it never
+removes packages. Seed or refresh the Brewfiles with `brew bundle dump`. `--no-upgrade`
+keeps runs non-disruptive; upgrade deliberately with `brew upgrade`.
+
+The `admin_workstation` role then installs the version-pinned tooling that isn't a plain
+brew package: pyenv-adjacent SDKMAN, tenv-pinned Terraform/OpenTofu, and the pinned
+helm-diff plugin (`helm`, `tenv`, etc. come from the `homebrew` role, which runs first).
+MLX uses a dedicated pyenv virtual environment; Conda is not required for MLX and remains
+available for projects that need it.
 
 ## Configure inventory
 

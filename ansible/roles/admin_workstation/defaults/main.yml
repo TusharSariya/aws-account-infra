@@ -1,18 +1,7 @@
 ---
-admin_workstation_homebrew_packages:
-  - ansible
-  - awscli
-  - cilium-cli
-  - helm
-  - helmfile
-  - jq
-  - k9s
-  - kubectl
-  - pyenv
-  - sops
-  - tenv
-
-admin_workstation_homebrew_casks: []
+# Homebrew formulae and casks are managed by the `homebrew` role (Brewfiles),
+# which runs before this role in workstation.yml and provides helm, tenv, etc.
+# This role now owns only the pinned/version-managed tooling below.
 
 admin_workstation_install_sdkman: true
 admin_workstation_sdkman_installer_checksum: >-

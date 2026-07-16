@@ -127,19 +127,26 @@ trust root, and only `.gitignore` stands between the key and a `git add -A`.
 ### 2. Register it with AWS
 
 The trust anchor, profile, and IAM role are Terraform, in
-`live/aws/staging/account/ecr_pull_iam.tf`. Apply that unit with the CA's **public**
-certificate supplied at apply time — it is operator-specific and deliberately never
-committed:
+`live/aws/staging/account/ecr_pull_iam.tf`. The CA's **public** certificate is not a
+secret, and lives inline in `config/environments/aws/staging.tfvars` as
+`homelab_ca_certificate_pem`. Replacing the CA means replacing that PEM.
 
 ```bash
 cd live/aws/staging/account
-tofu apply -var "homelab_ca_certificate_pem=$(cat ~/.config/aws-account-infra/homelab-ca.crt)"
+tofu apply -var-file="$(git rev-parse --show-toplevel)/config/environments/aws/staging.tfvars"
 ```
 
-The whole chain is gated on that variable being non-empty (`local.enable_ecr_pull`),
-so the plan-only CI job — which has no CA — plans zero of these resources rather than
-shipping a null trust anchor and failing at apply with a cryptic ValidationException.
-An apply without the PEM silently creates nothing.
+The whole chain is `count`-gated on that variable being non-empty
+(`local.enable_ecr_pull`), so the plan-only CI job — which has no CA — plans zero of
+these resources rather than shipping a null trust anchor and failing at apply with a
+cryptic ValidationException.
+
+That gate cuts both ways: an apply that omits the var-file evaluates the gate to
+false and plans the live trust anchor, role, and profile for **destruction**,
+breaking ECR pull on every node. CI always passes `-var-file` (see `tofu-apply.yml`),
+so the automated path is safe; the exposure is a hand-run `tofu apply` in this
+directory. `staging.tfvars` is not an auto-loaded filename — only `terraform.tfvars`
+and `*.auto.tfvars` are — so the flag is never optional.
 
 Record the three outputs: `ecr_pull_trust_anchor_arn`, `ecr_pull_profile_arn`,
 `ecr_pull_role_arn`.
@@ -259,11 +266,11 @@ signing helper → Roles Anywhere → CA → ECR.
 
 ## Known gaps
 
-- **The CA cert must be re-supplied on every apply of the account unit.** It is a
-  `-var`, not state, so an apply that forgets it evaluates `enable_ecr_pull` to
-  false and plans the trust anchor, profile, and role for **destruction** — which
-  would break ECR pull on every node at once. There is no guard against this; the
-  operator has to remember. Worth a `terraform.tfvars` pointing at the CA path.
+- **A hand-run `tofu apply` without `-var-file` destroys the ECR-pull chain.** CI
+  always passes it, so the automated path is safe, but nothing stops an operator
+  applying that unit directly and silently reaping the trust anchor, role, and
+  profile. Renaming `staging.tfvars` to `*.auto.tfvars` would make it auto-load and
+  close this, at the cost of the plan-only CI job's empty-CA behaviour.
 - **No revocation.** There is no CRL and no OCSP. A leaked node key is valid until
   its cert expires. The only true revocation is replacing the CA and trust anchor.
   Acceptable only because the role is ECR-read-scoped.
