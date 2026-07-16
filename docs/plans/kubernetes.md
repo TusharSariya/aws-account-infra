@@ -51,7 +51,9 @@ selected Kubernetes and Cilium versions rather than changed blindly.
   initialization/join operations.
 - kubeadm owns control-plane certificates, static pods, bootstrap tokens, and node joins.
 - Helmfile owns Cilium, MetalLB, ingress-nginx, Local Path Provisioner, and later shared
-  platform add-ons.
+  platform add-ons. Each net-new add-on install gets its own reviewed plan doc under
+  `docs/plans/` before apply (e.g. KEDA event-driven autoscaling — see
+  `docs/plans/keda.md`).
 - Workload repositories own application namespaces, releases, policies, and application
   data lifecycle.
 - This infrastructure repository stores no unencrypted join tokens, kubeconfigs, private

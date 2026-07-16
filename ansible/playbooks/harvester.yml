@@ -1,0 +1,7 @@
+---
+- name: Deploy the harvester KEDA ScaledJobs
+  hosts: admin_workstations
+  become: false
+  gather_facts: true
+  roles:
+    - cluster_harvester
