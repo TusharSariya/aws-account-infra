@@ -23,8 +23,13 @@ cluster_harvester_polling_interval: 15
 cluster_harvester_unpaywall_email: "tushar.97@hotmail.com"
 cluster_harvester_crossref_mailto: "tushar.97@hotmail.com"
 
-# One KEDA ScaledJob per harvest source. queue is the pgmq queue the postgresql
-# scaler reads; max_replicas caps concurrent worker Jobs for that source.
+# One KEDA ScaledJob per harvest source. Each ScaledJob holds a session-mode
+# pooler connection (Supabase free tier pool_size≈15). Enabling more than ~12
+# concurrent Ready scalers risks EMAXCONNSESSION and TriggerError — pause idle
+# identity-only sources (dblp/openreview/acl/ia) or raise the pooler limit.
+#
+# queue is the pgmq queue the postgresql scaler reads; max_replicas caps
+# concurrent worker Jobs for that source.
 #
 # max_replicas discipline: there is no shared cross-pod rate budget yet, so every
 # replica hammers the same public API independently. The polite-pool / no-key
