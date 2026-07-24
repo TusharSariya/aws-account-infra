@@ -22,7 +22,10 @@ spec:
 apiVersion: keda.sh/v1alpha1
 kind: ScaledJob
 metadata:
-  name: harvester-{{ src.name }}
+  # k8s resource names are RFC-1123 (no underscores); the source key may contain
+  # them (acl_anthology, internet_archive), so hyphenate for the name only. The
+  # `--source` arg and the queue name below keep the underscored key verbatim.
+  name: harvester-{{ src.name | replace('_', '-') }}
   namespace: {{ cluster_harvester_namespace }}
 spec:
   jobTargetRef:
@@ -42,9 +45,9 @@ spec:
             resources:
               requests:
                 cpu: "50m"
-                memory: "128Mi"
+                memory: "{{ src.memory_request | default('128Mi') }}"
               limits:
-                memory: "256Mi"
+                memory: "{{ src.memory_limit | default('256Mi') }}"
   pollingInterval: {{ cluster_harvester_polling_interval }}
   maxReplicaCount: {{ src.max_replicas }}
   scalingStrategy:
