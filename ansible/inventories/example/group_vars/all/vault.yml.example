@@ -21,3 +21,10 @@ vault_harvester_service_key: "REPLACE_WITH_STAGING_SERVICE_ROLE_KEY"
 # password MUST be percent-encoded (a literal @ : / % breaks the URI) and TLS MUST be
 # explicit (sslmode=require). Host = Supabase session pooler (Dashboard → Connect).
 vault_harvester_keda_dsn: "postgresql://harvester_keda_ro.PROJECT_REF:PERCENT_ENCODED_PW@POOLER_HOST:5432/postgres?sslmode=require"
+
+# API key for the `core` harvest source (api.core.ac.uk/v3 — free tier, register at
+# core.ac.uk/services/api). REQUIRED for the core ScaledJob (enabled in
+# cluster_harvester_sources). While this holds the REPLACE_ placeholder it is NOT
+# injected into the harvester secret — set a real key, `make -C ansible vault-encrypt`,
+# and re-run the harvester playbook before core workers can authenticate.
+vault_harvester_core_api_key: "REPLACE_WITH_CORE_API_KEY"

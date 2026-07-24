@@ -37,10 +37,12 @@ cluster_harvester_sources:
     max_replicas: 1
   - name: openalex
     queue: harvest_openalex
-    max_replicas: 3
+    # No OPENALEX_API_KEY in the cluster secret yet — stay at 1 (polite pool).
+    max_replicas: 1
   - name: s2
     queue: harvest_s2
-    max_replicas: 2
+    # No Semantic Scholar API key in-cluster; 2 replicas amplify 429s.
+    max_replicas: 1
     # Cite/ref streaming still needs headroom for 250-edge stub upserts + authors.
     memory_request: "256Mi"
     memory_limit: "512Mi"
@@ -77,9 +79,7 @@ cluster_harvester_sources:
   - name: osf
     queue: harvest_osf
     max_replicas: 1
-  # core needs CORE_API_KEY — uncomment this entry AFTER you fill
-  # vault_harvester_core_api_key in vault.yml (see vault.yml.example). Left
-  # commented so a keyless core worker doesn't loop into not_found/redelivery.
-  # - name: core
-  #   queue: harvest_core
-  #   max_replicas: 1
+  # CORE_API_KEY is injected when vault_harvester_core_api_key is set (tasks/main.yml).
+  - name: core
+    queue: harvest_core
+    max_replicas: 1
