@@ -11,5 +11,28 @@
     enabled: true
     state: started
 
+# The toggle is executed as root, so it lives in a root-owned path. A
+# root-executed script sitting in a user-writable $HOME is a local privilege
+# escalation; the home-directory symlink below exists only so it is easy to
+# find. src is resolved from role_path so the role stays usable from any
+# playbook directory.
+- name: Install the display mode toggle
+  ansible.builtin.copy:
+    src: "{{ role_path }}/../../../scripts/display-mode.sh"
+    dest: /usr/local/sbin/display-mode
+    owner: root
+    group: root
+    mode: "0755"
+  when: ubuntu_compute_display_mode_enabled
+
+- name: Link the display mode toggle into the home directory
+  ansible.builtin.file:
+    src: /usr/local/sbin/display-mode
+    dest: "/home/{{ ansible_user }}/display-mode.sh"
+    state: link
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+  when: ubuntu_compute_display_mode_enabled
+
 # Kubernetes and its kernel/container prerequisites are deliberately excluded.
 # See docs/plans/kubernetes.md before adding them.

@@ -16,15 +16,75 @@ cluster_harvester_image: "{{ kubernetes_harvester_image }}"
 cluster_harvester_target_value: "1"
 cluster_harvester_polling_interval: 15
 
-# One KEDA ScaledJob per harvest source. queue is the pgmq queue the postgresql
-# scaler reads; max_replicas caps concurrent worker Jobs for that source.
+# Polite-pool contact tokens for the metadata sources that ask for one. These are
+# NOT secrets — every API request is expected to carry them — so they live here in
+# plaintext rather than in Vault. UNPAYWALL_EMAIL is REQUIRED by the unpaywall
+# worker; CROSSREF_MAILTO is the optional crossref polite-pool hint.
+cluster_harvester_unpaywall_email: "tushar.97@hotmail.com"
+cluster_harvester_crossref_mailto: "tushar.97@hotmail.com"
+
+# One KEDA ScaledJob per harvest source. Each ScaledJob holds a session-mode
+# pooler connection (Supabase free tier pool_size≈15). Enabling more than ~12
+# concurrent Ready scalers risks EMAXCONNSESSION and TriggerError — pause idle
+# identity-only sources (dblp/openreview/acl/ia) or raise the pooler limit.
+#
+# queue is the pgmq queue the postgresql scaler reads; max_replicas caps
+# concurrent worker Jobs for that source.
+#
+# max_replicas discipline: there is no shared cross-pod rate budget yet, so every
+# replica hammers the same public API independently. The polite-pool / no-key
+# sources are pinned to 1 to stay inside courtesy limits — raising them risks a
+# 429 ban, not more throughput. Only raise a source that has its own key/quota
+# headroom (openalex with a key, s2).
 cluster_harvester_sources:
   - name: arxiv
     queue: harvest_arxiv
     max_replicas: 1
   - name: openalex
     queue: harvest_openalex
-    max_replicas: 3
+    # No OPENALEX_API_KEY in the cluster secret yet — stay at 1 (polite pool).
+    max_replicas: 1
   - name: s2
     queue: harvest_s2
-    max_replicas: 2
+    # No Semantic Scholar API key in-cluster; 2 replicas amplify 429s.
+    max_replicas: 1
+    # Cite/ref streaming still needs headroom for 250-edge stub upserts + authors.
+    memory_request: "256Mi"
+    memory_limit: "512Mi"
+  - name: unpaywall
+    queue: harvest_unpaywall
+    max_replicas: 1
+  - name: crossref
+    queue: harvest_crossref
+    max_replicas: 1
+  - name: dblp
+    queue: harvest_dblp
+    max_replicas: 1
+  - name: openreview
+    queue: harvest_openreview
+    max_replicas: 1
+  - name: acl_anthology
+    queue: harvest_acl_anthology
+    max_replicas: 1
+  - name: opencitations
+    queue: harvest_opencitations
+    max_replicas: 1
+  - name: datacite
+    queue: harvest_datacite
+    max_replicas: 1
+  - name: internet_archive
+    queue: harvest_internet_archive
+    max_replicas: 1
+  - name: zenodo
+    queue: harvest_zenodo
+    max_replicas: 1
+  - name: figshare
+    queue: harvest_figshare
+    max_replicas: 1
+  - name: osf
+    queue: harvest_osf
+    max_replicas: 1
+  # CORE_API_KEY is injected when vault_harvester_core_api_key is set (tasks/main.yml).
+  - name: core
+    queue: harvest_core
+    max_replicas: 1
