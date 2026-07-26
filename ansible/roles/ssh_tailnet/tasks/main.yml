@@ -1,0 +1,151 @@
+---
+- name: Assert the host is Ubuntu
+  ansible.builtin.assert:
+    that:
+      - ansible_facts["distribution"] == "Ubuntu"
+    fail_msg: "The tailnet SSH role supports Ubuntu only."
+
+- name: Resolve the tailnet address from interface facts
+  ansible.builtin.set_fact:
+    ssh_tailnet_address: >-
+      {{ ansible_facts[ssh_tailnet_interface]["ipv4"]["address"] | default("") }}
+
+# Reading the address from facts rather than a variable is the safety property
+# that matters here: if tailscaled is down or the interface is missing, the play
+# stops before rewriting sshd, instead of binding an address that does not exist
+# and leaving the host reachable only from its physical console.
+- name: Require a live tailnet address before rebinding sshd
+  ansible.builtin.assert:
+    that:
+      - ssh_tailnet_address | length > 0
+      # Single backslash: these are YAML plain scalars, where Jinja does not
+      # collapse "\\" to "\" — a doubled one would match a literal backslash.
+      # Tailscale allocates from the 100.64.0.0/10 CGNAT range.
+      - ssh_tailnet_address is match("^100\.")
+    fail_msg: >-
+      No usable address on {{ ssh_tailnet_interface }}. Bring Tailscale up
+      (`sudo tailscale up`) before applying this role; binding sshd to a missing
+      address would lock this host out.
+
+- name: Require the ansible_user when AllowUsers is in play
+  ansible.builtin.assert:
+    that:
+      - ansible_user is defined
+      - ansible_user | length > 0
+    fail_msg: "ssh_tailnet_allow_users defaults to ansible_user, which is unset."
+  when: ssh_tailnet_allow_users | length > 0
+
+- name: Build the full listen address list
+  ansible.builtin.set_fact:
+    ssh_tailnet_listen_addresses: >-
+      {{ [ssh_tailnet_address] + ssh_tailnet_extra_listen_addresses }}
+
+- name: Read the main sshd configuration
+  ansible.builtin.slurp:
+    src: /etc/ssh/sshd_config
+  register: ssh_tailnet_main_config
+
+# A drop-in that is never included is the failure mode that looks like success:
+# `sshd -T` reports the hardened values only if this Include is present.
+- name: Assert the drop-in directory is included
+  ansible.builtin.assert:
+    that:
+      - ssh_tailnet_main_config["content"] | b64decode is search("^Include\s+/etc/ssh/sshd_config.d/\*.conf", multiline=True)
+    fail_msg: >-
+      /etc/ssh/sshd_config does not include /etc/ssh/sshd_config.d/*.conf, so the
+      drop-in this role writes would be ignored.
+
+- name: Install the tailnet sshd drop-in
+  ansible.builtin.template:
+    src: 10-tailnet.conf.j2
+    dest: /etc/ssh/sshd_config.d/10-tailnet.conf
+    owner: root
+    group: root
+    mode: "0644"
+    validate: /usr/sbin/sshd -t -f %s
+  notify: Restart SSH
+
+# Ubuntu 22.10+ ships socket activation, where systemd owns port 22 on 0.0.0.0
+# and hands connections to sshd. ListenAddress is silently ignored under that
+# arrangement, so the host stays internet-exposed despite a correct sshd_config.
+- name: Check whether SSH socket activation is available
+  ansible.builtin.stat:
+    path: /usr/lib/systemd/system/ssh.socket
+  register: ssh_tailnet_socket_unit
+
+- name: Disable SSH socket activation
+  ansible.builtin.systemd_service:
+    name: ssh.socket
+    enabled: false
+    state: stopped
+  when: ssh_tailnet_socket_unit.stat.exists
+
+- name: Ensure the sshd drop-in directory exists
+  ansible.builtin.file:
+    path: /etc/systemd/system/ssh.service.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+# sshd now binds an address that only exists once tailscaled has come up. Without
+# this ordering a reboot can race and leave sshd dead on "Cannot assign requested
+# address" — recoverable only at the keyboard.
+- name: Order sshd after tailscaled
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/ssh.service.d/10-tailscaled.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # Managed by Ansible (role: ssh_tailnet).
+      [Unit]
+      After=tailscaled.service network-online.target
+      Wants=tailscaled.service
+  notify: Restart SSH
+
+- name: Enable and start sshd
+  ansible.builtin.systemd_service:
+    name: ssh.service
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Allow SSH from the tailnet
+  community.general.ufw:
+    rule: allow
+    direction: in
+    interface: "{{ ssh_tailnet_interface }}"
+    proto: tcp
+    port: "22"
+  when: ssh_tailnet_manage_firewall
+
+- name: Apply the pending sshd restart before verifying
+  ansible.builtin.meta: flush_handlers
+
+# Skipped under --check: nothing was applied, so the live socket would reflect
+# the old configuration and the assert below would report a false failure.
+- name: Read the addresses sshd is listening on
+  ansible.builtin.command: ss -H -tln sport = :22
+  changed_when: false
+  register: ssh_tailnet_listeners
+  when: not ansible_check_mode
+
+# The check the manual walkthrough of this setup needed and did not have: a
+# correct config file proves nothing, only the live socket does.
+- name: Assert sshd listens only on the intended addresses
+  ansible.builtin.assert:
+    that:
+      - ssh_tailnet_observed_addresses | difference(ssh_tailnet_listen_addresses) | length == 0
+    fail_msg: >-
+      sshd is listening on {{ ssh_tailnet_observed_addresses | join(", ") }},
+      which exceeds the intended {{ ssh_tailnet_listen_addresses | join(", ") }}.
+      A wildcard here means port 22 is still reachable off-tailnet.
+  when: not ansible_check_mode
+  vars:
+    ssh_tailnet_observed_addresses: >-
+      {{ ssh_tailnet_listeners.stdout_lines
+         | map("split")
+         | map(attribute=3)
+         | map("regex_replace", ":22$", "")
+         | list }}

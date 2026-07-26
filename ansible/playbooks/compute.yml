@@ -6,3 +6,7 @@
   roles:
     - ubuntu_baseline
     - ubuntu_compute
+    # Last, and only where ssh_tailnet_enabled is set: it restarts sshd and then
+    # verifies the live listener, so it should not run ahead of other work.
+    - role: ssh_tailnet
+      when: ssh_tailnet_enabled | bool
