@@ -1,0 +1,4 @@
+---
+- name: Reload tailscale sysctls
+  ansible.builtin.command: sysctl --system
+  changed_when: true

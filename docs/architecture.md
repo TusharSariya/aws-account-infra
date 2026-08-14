@@ -79,6 +79,7 @@ flowchart LR
 | `grafana.home.arpa` | → `10.0.0.234` → Grafana (monitoring) |
 | `pihole.home.arpa` | → `10.0.0.234` → Pi-hole admin UI (pihole) |
 | MetalLB pool | `10.0.0.231–10.0.0.253` |
+| `100.125.44.96` | Node on the tailnet — SSH, and the subnet router that carries the two addresses above to off-site clients (`docs/remote-access.md`) |
 
 ## Components
 

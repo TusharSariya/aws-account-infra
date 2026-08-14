@@ -1,0 +1,32 @@
+---
+# Advertising subnet routes makes this node the only path from the tailnet into
+# the home LAN. Opt in per host, for the same reason ssh_tailnet does: this role
+# is applied from a group, and ubuntu_laptop_dell_studio must never become a
+# router for a subnet it does not own.
+tailscale_subnet_router_enabled: false
+
+# The LAN addresses reachable from the tailnet. Derived from the same variables
+# cluster_addons and cluster_apps render their MetalLB annotations from, so a
+# VIP change moves the route with it instead of leaving a stale /32 advertised.
+#
+# /32s rather than the whole 10.0.0.0/24: a subnet route takes precedence over
+# the client's own LAN route, so advertising the /24 would pull every home
+# address through this node even for clients sitting next to it on the LAN.
+tailscale_subnet_router_routes:
+  - "{{ kubernetes_pihole_dns_address }}/32"
+  - "{{ kubernetes_gateway_address }}/32"
+
+# Smallest prefix this role will advertise. A short prefix is almost always a
+# mistake — /8 would swallow 10.0.0.0/8 for every tailnet client.
+tailscale_subnet_router_min_prefix_length: 24
+
+# Fail when the advertised routes have not been approved in the admin console.
+# Approval is a tailnet-wide control-plane action that cannot be performed from
+# the node, so the role reports the gap rather than exiting green on a route
+# that carries no traffic. Set false to downgrade to a warning.
+tailscale_subnet_router_require_approval: true
+
+# IPv6 forwarding is deliberately absent. Only IPv4 /32s are advertised, and
+# setting net.ipv6.conf.all.forwarding=1 changes router-advertisement handling
+# on this host, which is a real risk on a node whose only link is WiFi.
+tailscale_subnet_router_sysctl_file: /etc/sysctl.d/99-tailscale.conf
