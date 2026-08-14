@@ -1,0 +1,137 @@
+name: ecr-push
+
+# Build linux/arm64 images under apps/ecr/<name> and push an immutable git-sha
+# tag. Does not retarget Lambda; set booker_image_tag and apply for that.
+
+on:
+  pull_request:
+    paths:
+      - "apps/ecr/**"
+      - ".github/workflows/ecr-push.yml"
+  push:
+    branches: [main]
+    paths:
+      - "apps/ecr/**"
+      - ".github/workflows/ecr-push.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ecr-push-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+env:
+  AWS_REGION: us-east-1
+  AWS_ACCOUNT_ID: "992382747916"
+  ECR_PUSH_ROLE_ARN: arn:aws:iam::992382747916:role/github-ci-infra-ecr-push
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      images: ${{ steps.images.outputs.images }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: images
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          import os
+          from pathlib import Path
+
+          root = Path("apps/ecr")
+          all_names = sorted(
+              p.parent.name for p in root.glob("*/Dockerfile") if p.is_file()
+          )
+          event = os.environ["EVENT_NAME"]
+          if event == "workflow_dispatch" or not os.environ.get("BASE_SHA") or set(os.environ.get("BASE_SHA", "")) == {"0"}:
+              selected = all_names
+          else:
+              import subprocess
+
+              changed = subprocess.check_output(
+                  ["git", "diff", "--name-only", os.environ["BASE_SHA"], os.environ["HEAD_SHA"], "--"],
+                  text=True,
+              ).splitlines()
+              selected = []
+              workflow_changed = any(path == ".github/workflows/ecr-push.yml" for path in changed)
+              if workflow_changed:
+                  selected = all_names
+              else:
+                  for name in all_names:
+                      prefix = f"apps/ecr/{name}/"
+                      if any(path.startswith(prefix) for path in changed):
+                          selected.append(name)
+          print("images=" + json.dumps(selected, separators=(",", ":")))
+          PY
+
+  push:
+    needs: detect
+    if: needs.detect.outputs.images != '[]'
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        name: ${{ fromJSON(needs.detect.outputs.images) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.ECR_PUSH_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - uses: aws-actions/amazon-ecr-login@v2
+      - name: Ensure repository
+        env:
+          NAME: ${{ matrix.name }}
+        run: |
+          aws ecr describe-repositories --repository-names "$NAME" >/dev/null 2>&1 \
+            || aws ecr create-repository \
+              --repository-name "$NAME" \
+              --image-tag-mutability IMMUTABLE \
+              --image-scanning-configuration scanOnPush=true
+      - name: Build and push
+        env:
+          NAME: ${{ matrix.name }}
+          TAG: ${{ github.sha }}
+        run: |
+          URI="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${NAME}"
+          SHORT="${TAG:0:7}"
+          if aws ecr describe-images --repository-name "$NAME" --image-ids imageTag="$TAG" >/dev/null 2>&1; then
+            echo "Already in ECR: ${URI}:${TAG}"
+            exit 0
+          fi
+          docker buildx build \
+            --platform linux/arm64 \
+            --provenance=false \
+            --sbom=false \
+            -t "${URI}:${TAG}" \
+            -t "${URI}:${SHORT}" \
+            --push \
+            "apps/ecr/${NAME}"
+          echo "Pushed ${URI}:${TAG} and ${URI}:${SHORT}"
+      - name: Comment tag on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const name = '${{ matrix.name }}';
+            const tag = '${{ github.sha }}';
+            const short = tag.slice(0, 7);
+            const body = `### ecr-push — \`${name}\`\n\n\`${tag}\` (short \`${short}\`)\n\nPushing does not retarget Lambda. For court-booker, set \`booker_image_tag\` and apply.`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });

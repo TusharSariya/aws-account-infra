@@ -45,6 +45,17 @@ variable "ecr_push_github_repo" {
   default = ""
 }
 
+# Declared so the shared environment file can also serve the court-booker stack.
+variable "booker_image_tag" {
+  type    = string
+  default = ""
+}
+
+variable "schedule_enabled" {
+  type    = bool
+  default = false
+}
+
 # --- account-specific ---
 variable "budget_monthly_limit_usd" {
   type        = string
