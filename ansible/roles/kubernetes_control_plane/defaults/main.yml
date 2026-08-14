@@ -2,3 +2,16 @@
 kubernetes_control_plane_version: v1.36.2
 kubernetes_control_plane_cri_socket: unix:///run/containerd/containerd.sock
 kubernetes_control_plane_kubeconfig_local: "{{ lookup('env', 'HOME') }}/.kube/config"
+
+# kubernetes_api_external_endpoint is an inventory-level variable, declared beside
+# kubernetes_api_endpoint in group_vars rather than here: both describe the cluster,
+# not this role, and the certificate and the kubeconfig must agree on them.
+
+# Name of the fallback kubeconfig context pinned to kubernetes_api_endpoint. The
+# default context follows the external endpoint; this one stays on the LAN so a
+# tailnet outage does not leave the cluster unreachable from the same subnet.
+kubernetes_control_plane_lan_context: homelab-lan
+
+# Whether to drop a copy of admin.conf in the node user's home. Off by default: it
+# widens cluster-admin from root-only to any process running as that user.
+kubernetes_control_plane_user_kubeconfig: false

@@ -6,6 +6,10 @@
   roles:
     - ubuntu_baseline
     - ubuntu_compute
+    # Before ssh_tailnet: this only reads tailscaled and sets a preference, so
+    # it must not run after the task that restarts the SSH daemon carrying it.
+    - role: tailscale_subnet_router
+      when: tailscale_subnet_router_enabled | bool
     # Last, and only where ssh_tailnet_enabled is set: it restarts sshd and then
     # verifies the live listener, so it should not run ahead of other work.
     - role: ssh_tailnet
