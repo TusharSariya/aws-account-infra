@@ -3,7 +3,7 @@ resource "aws_ses_email_identity" "alerts" {
 }
 
 resource "aws_sns_topic" "alerts" {
-  # checkov:skip=CKV_AWS_26:AWS-managed SNS encryption is enough for alarm JSON; a dedicated CMK would add a monthly KMS charge.
+  # checkov:skip=CKV_AWS_26:AWS-managed SNS encryption cannot receive CloudWatch alarm publishes; a dedicated CMK would add a monthly KMS charge for weekly alarm JSON.
   name = "court-booker-alerts"
 }
 

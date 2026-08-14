@@ -13,5 +13,6 @@ ENV BOOKINGS_PATH=/var/task/bookings.yaml
 ENV PYTHONPATH=/var/task
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
+USER pwuser
 ENTRYPOINT ["python", "-m", "awslambdaric"]
 CMD ["booker.handler.lambda_handler"]

@@ -1,3 +1,7 @@
 # Trivy suppressions for the `trivy` CI workflow (scan-type: config).
 # One Trivy check ID per line, each with a justification comment above it.
 # Add entries only for findings reviewed and accepted as intentional.
+
+# CloudWatch cannot publish to an SNS topic encrypted with alias/aws/sns.
+# A customer-managed key would add a monthly KMS charge for weekly alarm JSON.
+AVD-AWS-0095
