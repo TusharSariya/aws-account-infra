@@ -55,7 +55,7 @@ resource "aws_iam_role_policy" "sfn" {
 }
 
 resource "aws_sfn_state_machine" "booker" {
-  # checkov:skip=CKV_AWS_285:X-Ray is skipped to keep a once-a-week path cheap.
+  # checkov:skip=CKV_AWS_284:X-Ray is skipped to keep a once-a-week path cheap.
   count = var.booker_image_tag != "" ? 1 : 0
 
   name     = "court-booker"
