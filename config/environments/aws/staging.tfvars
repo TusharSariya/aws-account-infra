@@ -28,6 +28,13 @@ default_tags = {
   repo       = "aws-account-infra"
 }
 
+# Court-booker Lambda image + weekly schedules. Empty tag / false would destroy
+# or disable live resources on the next apply; keep these in the shared file so
+# CI does not need extra -var flags. Pushing a new image does not retarget
+# Lambda until this tag is updated.
+booker_image_tag = "chromium-shm2"
+schedule_enabled = true
+
 # AWS Budgets monthly cost alarm (account/ stack).
 # TODO: set a real notification email and your tolerance.
 budget_monthly_limit_usd  = "20"

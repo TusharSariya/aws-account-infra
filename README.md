@@ -14,16 +14,17 @@ their resources share one abstraction.
 | `modules/aws/` | Reusable AWS-only OpenTofu modules |
 | `config/environments/` | Non-secret variables grouped by cloud and environment |
 | `ansible/` | macOS administration workstation and Ubuntu compute configuration |
+| `apps/ecr/` | Container image sources; CI pushes each subdirectory to ECR |
 | `mocks/localstack/` | Disposable local AWS sandbox |
 | `docs/plans/kubernetes.md` | Review-only Kubernetes proposal; nothing implements it yet |
 
 ## AWS staging
 
-The existing remote state coordinates and keys are unchanged:
+The existing remote state bucket and lock table are unchanged. Keys:
 
-- Bucket: `tofu-state-992382747916-us-east-1`
-- Lock table: `tofu-locks`
-- Keys: `account/terraform.tfstate` and `stacks/rag/terraform.tfstate`
+- `account/terraform.tfstate` — account baseline
+- `stacks/rag/terraform.tfstate` — RAG
+- `stacks/court-booker/terraform.tfstate` — court booker (new; first apply creates it)
 
 For an existing checkout, reattach each relocated root before making changes:
 
@@ -32,6 +33,8 @@ For an existing checkout, reattach each relocated root before making changes:
 ./scripts/infra.sh aws-staging-account plan
 ./scripts/infra.sh aws-staging-rag init -reconfigure
 ./scripts/infra.sh aws-staging-rag plan
+./scripts/infra.sh aws-staging-court-booker init
+./scripts/infra.sh aws-staging-court-booker plan
 ```
 
 Both migration plans must show no resource changes. Do not apply a migration plan that
@@ -54,10 +57,14 @@ cd ../../../..
 ./scripts/infra.sh aws-staging-account apply
 ./scripts/infra.sh aws-staging-rag init
 ./scripts/infra.sh aws-staging-rag apply
+./scripts/infra.sh aws-staging-court-booker init
+./scripts/infra.sh aws-staging-court-booker apply
 ```
 
 CI plans changed deploy units using AWS GitHub OIDC. Adding the `apply` label runs the
-serialized, gated apply-before-merge workflow. Bootstrap is never run in CI.
+serialized, gated apply-before-merge workflow. Bootstrap is never run in CI. Changes
+under `apps/ecr/` are built and pushed to ECR by `.github/workflows/ecr-push.yml`;
+update `booker_image_tag` and apply to retarget Lambda.
 
 ## Local systems
 

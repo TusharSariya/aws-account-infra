@@ -12,6 +12,11 @@ output "github_apply_role_arn" {
   description = "role-to-assume for the tofu-apply workflow (main)."
 }
 
+output "github_infra_ecr_push_role_arn" {
+  value       = aws_iam_role.github_infra_ecr_push.arn
+  description = "role-to-assume for .github/workflows/ecr-push.yml (apps/ecr images)."
+}
+
 # IAM Roles Anywhere coordinates the homelab nodes pass to aws_signing_helper. All
 # three are needed for the credential_process invocation on each kubelet host — feed
 # them into the ansible inventory (kubernetes_node_ecr_rolesanywhere_*_arn).

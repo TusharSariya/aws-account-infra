@@ -1,0 +1,21 @@
+timezone: America/St_Johns
+horizon_hours: 72
+gym_id: 785
+university_id: 105
+calendar_url: https://embed.upace.app/equipment/105/calendar?gym_id=785&hide-filters=true
+activities:
+  court1: "3-1 - Squash & Racquetball Court 1"
+  court2: "3-2 - Squash & Racquetball Court 2"
+weekly:
+  - activity: court1
+    weekday: Mon
+    time: "17:00"
+    duration_min: 60
+    people: 1
+    enabled: false
+  - activity: court2
+    weekday: Mon
+    time: "20:00"
+    duration_min: 60
+    people: 1
+    enabled: true

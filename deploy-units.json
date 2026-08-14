@@ -22,6 +22,22 @@
       "dependencies": ["aws-staging-account"],
       "ci": true,
       "watch": ["live/aws/staging/workloads/rag/", "modules/aws/", "config/environments/aws/staging.tfvars"]
+    },
+    {
+      "id": "aws-staging-court-booker",
+      "cloud": "aws",
+      "environment": "staging",
+      "path": "live/aws/staging/workloads/court-booker",
+      "var_file": "config/environments/aws/staging.tfvars",
+      "region": "us-east-1",
+      "dependencies": ["aws-staging-account"],
+      "ci": true,
+      "watch": [
+        "live/aws/staging/workloads/court-booker/",
+        "modules/aws/",
+        "apps/ecr/court-booker/bookings.yaml",
+        "config/environments/aws/staging.tfvars"
+      ]
     }
   ]
 }
