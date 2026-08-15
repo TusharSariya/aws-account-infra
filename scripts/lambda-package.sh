@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
-# Build an arm64 Lambda zip from apps/lambda/python/<runtime>/<name> and upload
-# it to lambda-releases. Usage:
-#   LAMBDA_ZIP_PREFIX=stable/court-booker ./scripts/lambda-package.sh python/3.12/court-booker [tag]
+# Build an arm64 Lambda zip from apps/lambda/python/<runtime>/<name> with uv
+# and upload it to lambda-releases. Usage:
+#   LAMBDA_ZIP_PREFIX=stable/court-booker ./scripts/lambda-package.sh python/3.14/court-booker [tag]
 # Tag defaults to the full git sha (same as CI). Does not retarget Lambda.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 REL="${1:?usage: $0 python/<runtime>/<name> [tag]}"
+if [[ $# -lt 2 && -n "$(git -C "$REPO_ROOT" status --porcelain)" ]]; then
+  echo "working tree is dirty; pass an explicit upload tag so we do not overwrite a commit sha zip" >&2
+  exit 1
+fi
 TAG="${2:-$(git -C "$REPO_ROOT" rev-parse HEAD)}"
 SHORT="$(git -C "$REPO_ROOT" rev-parse --short HEAD)"
 SRC="${REPO_ROOT}/apps/lambda/${REL}"
@@ -16,6 +20,9 @@ DOMAIN="${CODEARTIFACT_DOMAIN:-aws-account-infra}"
 OWNER="${CODEARTIFACT_DOMAIN_OWNER:-992382747916}"
 BUCKET="${LAMBDA_ZIP_BUCKET:-lambda-releases-${ACCOUNT}-${REGION}}"
 KEY_PREFIX="${LAMBDA_ZIP_PREFIX:-stable/court-booker}"
+PY="${LAMBDA_PYTHON:-3.14}"
+# Amazon Linux 2023 (python3.14 runtime). Forces linux wheels when packaging on macOS.
+PLATFORM="${LAMBDA_PYTHON_PLATFORM:-aarch64-manylinux_2_28}"
 
 ARCH="$(uname -m)"
 if [[ "$ARCH" != "arm64" && "$ARCH" != "aarch64" ]]; then
@@ -23,8 +30,16 @@ if [[ "$ARCH" != "arm64" && "$ARCH" != "aarch64" ]]; then
   exit 1
 fi
 
-if [[ ! -f "${SRC}/requirements.txt" ]]; then
-  echo "missing ${SRC}/requirements.txt" >&2
+if [[ ! -f "${SRC}/pyproject.toml" ]]; then
+  echo "missing ${SRC}/pyproject.toml" >&2
+  exit 1
+fi
+if [[ ! -d "${SRC}/booker" ]]; then
+  echo "missing ${SRC}/booker (HTTP package lives in the lambda app, not apps/ecr)" >&2
+  exit 1
+fi
+if ! command -v uv >/dev/null 2>&1; then
+  echo "uv is required to package Lambda zips" >&2
   exit 1
 fi
 
@@ -36,24 +51,29 @@ STAGE="${REPO_ROOT}/build/lambda/${REL}"
 rm -rf "$STAGE"
 mkdir -p "$STAGE"
 
-BOOKER_SRC="${REPO_ROOT}/apps/ecr/court-booker"
-cp -R "${BOOKER_SRC}/booker" "${STAGE}/booker"
-rm -f "${STAGE}/booker/upace.py"
-cp "${BOOKER_SRC}/bookings.yaml" "${STAGE}/bookings.yaml"
+uv python install "$PY"
 
-python3 -m pip install --quiet --upgrade pip
-python3 -m pip install --quiet --no-cache-dir \
-  -r "${SRC}/requirements.txt" \
-  --target "$STAGE"
+REQS="$(mktemp)"
+trap 'rm -f "$REQS"' EXIT
+uv export --directory "$SRC" --frozen --no-dev --no-hashes --no-annotate --no-header -o "$REQS"
+
+uv pip install --python "$PY" --python-version "$PY" --python-platform "$PLATFORM" \
+  --only-binary :all: --no-cache --target "$STAGE" -r "$REQS"
 
 TOKEN="$(aws codeartifact get-authorization-token \
   --domain "$DOMAIN" --domain-owner "$OWNER" --region "$REGION" \
   --query authorizationToken --output text --duration-seconds 900)"
-python3 -m pip install --quiet --no-cache-dir \
+uv pip install --python "$PY" --python-version "$PY" --python-platform "$PLATFORM" \
+  --no-cache --target "$STAGE" \
   "upace==0.1.0" \
   --index-url "https://aws:${TOKEN}@${DOMAIN}-${OWNER}.d.codeartifact.${REGION}.amazonaws.com/pypi/sdk-stable/simple/" \
-  --extra-index-url https://pypi.org/simple \
-  --target "$STAGE"
+  --extra-index-url https://pypi.org/simple
+
+# App source last so it wins over any similarly named files from wheels.
+cp -R "${SRC}/booker" "${STAGE}/booker"
+rm -rf "${STAGE}/booker/__pycache__"
+# Shared schedule file — OpenTofu also reads this path.
+cp "${REPO_ROOT}/apps/ecr/court-booker/bookings.yaml" "${STAGE}/bookings.yaml"
 
 find "$STAGE" -type d -name '__pycache__' -prune -exec rm -rf {} +
 find "$STAGE" -type f -name '*.pyc' -delete

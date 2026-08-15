@@ -52,7 +52,7 @@
         "live/aws/staging/workloads/lambda/python/court-booker/",
         "modules/aws/",
         "apps/ecr/court-booker/bookings.yaml",
-        "apps/lambda/python/3.12/court-booker/",
+        "apps/lambda/python/3.14/court-booker/",
         "config/environments/aws/staging.tfvars"
       ]
     }

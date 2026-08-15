@@ -7,6 +7,8 @@ packages from CodeArtifact `sdk-stable`, and uploads an immutable git-sha object
 to `lambda-releases` (`candidate/` on PRs, `stable/` on main). OpenTofu does not
 retarget Lambda until `booker_api_zip_key` is a `stable/` key.
 
+Packaging uses `uv` and the Lambda runtime is `python3.14`.
+
 ```bash
-./scripts/lambda-package.sh python/3.12/court-booker
+./scripts/lambda-package.sh python/3.14/court-booker
 ```

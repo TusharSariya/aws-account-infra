@@ -37,7 +37,7 @@ under `apps/ecr/court-booker/`; locally):
 ./scripts/ecr-image.sh court-booker
 ```
 
-The HTTP/API booker is a separate zip Lambda (`apps/lambda/python/3.12/court-booker`).
+The HTTP/API booker is a separate zip Lambda (`apps/lambda/python/3.14/court-booker`).
 Playwright EventBridge is DISABLED (`schedule_enabled = false`); the API zip cron is the live booker.
 
 Put My Y credentials once (never in git). The OpenTofu stack creates the empty

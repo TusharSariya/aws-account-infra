@@ -8,7 +8,6 @@ on:
   pull_request:
     paths:
       - "apps/lambda/**"
-      - "apps/ecr/court-booker/booker/**"
       - "apps/ecr/court-booker/bookings.yaml"
       - "scripts/lambda-package.sh"
       - ".github/workflows/lambda-package.yml"
@@ -16,7 +15,6 @@ on:
     branches: [main]
     paths:
       - "apps/lambda/**"
-      - "apps/ecr/court-booker/booker/**"
       - "apps/ecr/court-booker/bookings.yaml"
       - "scripts/lambda-package.sh"
       - ".github/workflows/lambda-package.yml"
@@ -44,9 +42,11 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v6
         with:
-          python-version: "3.12"
+          python-version: "3.14"
+      - name: Test
+        run: uv run --directory apps/lambda/python/3.14/court-booker pytest
       - id: aws
         continue-on-error: true
         uses: aws-actions/configure-aws-credentials@v4
@@ -60,7 +60,7 @@ jobs:
           LAMBDA_ZIP_PREFIX: ${{ github.event_name == 'pull_request' && 'candidate/court-booker' || 'stable/court-booker' }}
         run: |
           chmod +x scripts/lambda-package.sh
-          ./scripts/lambda-package.sh python/3.12/court-booker "$TAG"
+          ./scripts/lambda-package.sh python/3.14/court-booker "$TAG"
       - name: Skip until account apply
         if: steps.aws.outcome != 'success'
         run: echo "lambda-releases OIDC role not applied yet; skipping upload."

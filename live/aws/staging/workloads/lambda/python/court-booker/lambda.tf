@@ -17,7 +17,7 @@ resource "aws_lambda_function" "booker" {
   function_name = "court-booker-api"
   role          = aws_iam_role.lambda.arn
   handler       = "booker.handler.lambda_handler"
-  runtime       = "python3.12"
+  runtime       = "python3.14"
   architectures = ["arm64"]
   memory_size   = 256
   timeout       = 30

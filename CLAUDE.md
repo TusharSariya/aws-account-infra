@@ -33,7 +33,7 @@ variables live under `config/environments`, and secrets must not be committed.
 - Application runtime code belongs in its workload repository, not here.
   Exception: `apps/ecr/court-booker/` is a small Playwright Lambda image whose infra lives in
   `live/aws/staging/workloads/court-booker/` (own state key `stacks/court-booker/terraform.tfstate`).
-  The HTTP booker is a zip Lambda under `apps/lambda/python/3.12/court-booker/` with infra in
+  The HTTP booker is a zip Lambda under `apps/lambda/python/3.14/court-booker/` with infra in
   `live/aws/staging/workloads/lambda/python/court-booker/` (state key `stacks/court-booker-api/terraform.tfstate`).
   GitHub Actions pushes `apps/ecr/<name>` to ECR and `apps/lambda/` zips to
   `lambda-releases` (`candidate/` on PRs, `stable/` on main). It does not retarget
