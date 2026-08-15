@@ -8,7 +8,7 @@ resource "aws_scheduler_schedule" "weekly" {
 
   name                         = "court-booker-${each.key}"
   group_name                   = aws_scheduler_schedule_group.booker.name
-  description                  = "Unlock ${each.value.activity} ${each.value.weekday} ${each.value.time}; Step Functions retries 3 times, 60s apart. Parked DISABLED while the API zip booker is the live cron."
+  description                  = "T-72h unlock for ${each.value.activity} ${each.value.weekday} ${each.value.time}; Step Functions retries 3 times, 60s apart. Parked DISABLED while the API zip booker is the live cron."
   schedule_expression          = "cron(${each.value.cron_minute} ${each.value.cron_hour} ? * ${each.value.cron_dow} *)"
   schedule_expression_timezone = "America/St_Johns"
   state                        = var.schedule_enabled ? "ENABLED" : "DISABLED"
@@ -41,7 +41,7 @@ resource "aws_scheduler_schedule" "oneshot" {
 
   name                         = "court-booker-oneshot-${each.key}"
   group_name                   = aws_scheduler_schedule_group.booker.name
-  description                  = "One-shot ${each.value.activity} ${each.value.date} ${each.value.time}; expected ${each.key}"
+  description                  = "T-72h one-shot for ${each.value.activity} ${each.value.date} ${each.value.time}; expected ${each.key}"
   schedule_expression          = "at(${each.value.invoke_at})"
   schedule_expression_timezone = "America/St_Johns"
   state                        = "ENABLED"

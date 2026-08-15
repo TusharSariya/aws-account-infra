@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime, time
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -9,6 +9,7 @@ from booker.schedule import (
     format_ui_time,
     parse_hhmm,
     resolve_weekly_target,
+    slot_unlock_at,
     unlock_cron,
     unlock_weekday,
     warmup_cron,
@@ -34,6 +35,11 @@ def test_unlock_weekday_is_three_calendar_days_earlier():
 def test_unlock_cron_monday_1700_is_friday_1700():
     minute, hour, dow = unlock_cron("Mon", "17:00")
     assert (minute, hour, dow) == (0, 17, "FRI")
+
+
+def test_oneshot_eventbridge_is_slot_minus_horizon():
+    assert slot_unlock_at(date(2026, 8, 19), time(5, 0), 72) == datetime(2026, 8, 16, 5, 0)
+    assert slot_unlock_at(date(2026, 8, 19), time(4, 0), 72) == datetime(2026, 8, 16, 4, 0)
 
 
 def test_warmup_cron_monday_1800_is_friday_1758():

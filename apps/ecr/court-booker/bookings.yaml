@@ -22,23 +22,21 @@ weekly:
     duration_min: 60
     people: 1
     enabled: false
-# Saturday 15 Aug night one-shots (America/St_Johns). Tuesday 04:00 is outside
-# hours and should fail; 05:00 should book. Disable after they fire — a later
-# apply with a past `at()` will error.
+# Court slots only. EventBridge fires horizon_hours (72) earlier at the same
+# clock time (Wed 05:00 → Sun 05:00). Disable after they fire — a later apply
+# with a past `at()` will error.
 oneshot:
-  - name: tue-0400-closed
+  - name: wed-0400-closed
     activity: court2
-    date: "2026-08-18"
+    date: "2026-08-19"
     time: "04:00"
-    invoke_at: "2026-08-15T22:00:00"
     duration_min: 60
     people: 1
     enabled: true
-  - name: tue-0500
+  - name: wed-0500
     activity: court2
-    date: "2026-08-18"
+    date: "2026-08-19"
     time: "05:00"
-    invoke_at: "2026-08-15T22:05:00"
     duration_min: 60
     people: 1
     enabled: true

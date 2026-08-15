@@ -2,6 +2,7 @@ locals {
   bookings_path = "${path.module}/../../../../../../../apps/ecr/court-booker/bookings.yaml"
   bookings      = yamldecode(file(local.bookings_path))
   zip_ready     = startswith(var.booker_api_zip_key, "stable/")
+  horizon_hours = tonumber(try(local.bookings.horizon_hours, 72))
 
   weekday_unlock = {
     Mon = "FRI"
@@ -28,13 +29,18 @@ locals {
     if try(rule.enabled, false) && local.zip_ready
   }
 
+  # YAML date/time is the court slot. EventBridge `at()` is that instant minus horizon_hours.
+  # Treat wall-clock as UTC so formatdate keeps the same HH:MM for America/St_Johns.
   oneshot = {
     for rule in try(local.bookings.oneshot, []) :
     rule.name => {
-      activity     = rule.activity
-      date         = tostring(rule.date)
-      time         = tostring(rule.time)
-      invoke_at    = tostring(rule.invoke_at)
+      activity = rule.activity
+      date     = tostring(rule.date)
+      time     = tostring(rule.time)
+      invoke_at = formatdate(
+        "YYYY-MM-DD'T'HH:mm:ss",
+        timeadd("${rule.date}T${rule.time}:00Z", "-${local.horizon_hours}h")
+      )
       duration_min = try(tonumber(rule.duration_min), 60)
       people       = try(tonumber(rule.people), 1)
     }
