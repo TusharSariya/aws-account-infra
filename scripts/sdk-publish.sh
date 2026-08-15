@@ -33,25 +33,69 @@ if ! aws codeartifact describe-domain --domain "$DOMAIN" --domain-owner "$OWNER"
   exit 3
 fi
 
+package_version() {
+  case "$TARGET" in
+    python)
+      python3 -c 'import pathlib,re; t=pathlib.Path("'"$OUT"'/pyproject.toml").read_text(); print(re.search(r"^version = \"([^\"]+)\"", t, re.M).group(1))'
+      ;;
+    typescript-fetch)
+      python3 -c 'import json; print(json.load(open("'"$OUT"'/package.json"))["version"])'
+      ;;
+  esac
+}
+
+package_format() {
+  case "$TARGET" in
+    python) echo pypi ;;
+    typescript-fetch) echo npm ;;
+  esac
+}
+
+package_name() {
+  case "$TARGET" in
+    python)
+      python3 -c 'import pathlib,re; t=pathlib.Path("'"$OUT"'/pyproject.toml").read_text(); print(re.search(r"^name = \"([^\"]+)\"", t, re.M).group(1))'
+      ;;
+    typescript-fetch)
+      python3 -c 'import json; print(json.load(open("'"$OUT"'/package.json"))["name"])'
+      ;;
+  esac
+}
+
+already_published() {
+  local name version format
+  name="$(package_name)"
+  version="$(package_version)"
+  format="$(package_format)"
+  aws codeartifact describe-package-version \
+    --domain "$DOMAIN" --domain-owner "$OWNER" --repository "$REPO" \
+    --format "$format" --package "$name" --package-version "$version" \
+    --region "$REGION" >/dev/null 2>&1
+}
+
 login() {
   aws codeartifact login --tool "$1" --domain "$DOMAIN" --domain-owner "$OWNER" \
     --repository "$REPO" --region "$REGION"
 }
 
+if already_published; then
+  echo "already in $REPO: $(package_name) $(package_version); skipping"
+  exit 0
+fi
+
 case "$TARGET" in
   python)
-    login twine
     python3 -m pip install --quiet build twine
     python3 -m build --outdir "$OUT/dist" "$OUT"
+    login twine
     python3 -m twine upload --repository codeartifact --non-interactive "$OUT/dist"/*
     ;;
   typescript-fetch)
+    # Install build deps from the public registry. CodeArtifact has no npmjs
+    # upstream (one repo also holds PyPI packages, one external connection max).
+    (cd "$OUT" && npm install --registry https://registry.npmjs.org)
     login npm
-    (
-      cd "$OUT"
-      npm install
-      npm publish
-    )
+    (cd "$OUT" && npm publish --ignore-scripts)
     ;;
   *)
     echo "unsupported target: $TARGET" >&2

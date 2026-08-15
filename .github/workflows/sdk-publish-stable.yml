@@ -47,6 +47,7 @@ jobs:
           ).splitlines()
           required = any(
               path.startswith("sdk/targets/")
+              or path.startswith("scripts/sdk-")
               or (path.startswith("specs/") and path.endswith("openapi.yaml"))
               for path in changed
           )
