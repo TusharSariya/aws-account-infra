@@ -4,6 +4,9 @@ Local CLI and AWS Lambda share `python -m booker`. Chromium talks to the publish
 Upace equipment calendar. My Y credentials come from repo-root `.env` locally and
 from Secrets Manager in Lambda. Do not commit `.env`.
 
+The Upace HTTP contract lives at [`specs/upace/openapi.yaml`](../../../specs/upace/openapi.yaml),
+not in this image.
+
 ```bash
 cd apps/ecr/court-booker
 python3 -m venv .venv

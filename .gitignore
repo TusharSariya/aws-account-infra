@@ -23,6 +23,10 @@ tfplan.binary
 .DS_Store
 *.swp
 
+# OpenAPI Generator output and Swagger UI staging (rebuilt in CI)
+generated/
+build/api-docs/
+
 # Secrets and local Python (court-booker CLI reads repo-root .env)
 .env
 __pycache__/

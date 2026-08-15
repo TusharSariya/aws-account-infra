@@ -1,0 +1,1006 @@
+openapi: 3.1.0
+info:
+  title: Upace equipment API
+  version: 0.1.0
+  summary: Unpublished HTTP API behind embed.upace.app. Reverse-engineered from the Next.js embed and
+    verified with live calls on 2026-08-14.
+  description: |-
+    Base URL is `https://upace.app/api`. The calendar at `https://embed.upace.app/equipment/{university_id}/calendar` is a Next.js SPA over this API.
+
+    **Verified live (2026-08-14):** `POST /auth/login/legacy`, `GET /equipment/schedules`, `GET /equipment/schedules/unauth`, `GET /equipment/{id}/available_durations`, `POST /reserve`, `GET /reservations/mine`, `POST /reservations/cancel`.
+
+    **From embed JS only (not live-tested):** `POST /integration/custom`, `GET /equipment/{id}/available_times`, waitlists, classes, password reset.
+
+    Ches Penney Family YMCA: `university_id=105`, `gym_id`/`facility_id=785`. Court 1 equipment id `7412`, court 2 `12739`. This Y logs in via `/auth/login/legacy`, not Salesforce `/integration/custom`.
+
+    Cloudflare may 1010-ban non-browser user agents after repeated calls. The embed sends `Origin: https://embed.upace.app` and `Authorization: Bearer <token>`.
+servers:
+- url: https://upace.app/api
+  description: Upace production API
+tags:
+- name: Auth
+- name: Equipment
+- name: Reservations
+- name: Waitlists
+- name: Classes
+x-ches-penney:
+  university_id: 105
+  gym_id: 785
+  equipment:
+    court1: 7412
+    court2: 12739
+  calendar_url: https://embed.upace.app/equipment/105/calendar?gym_id=785&hide-filters=true
+  monday_hours: 05:00-19:00
+  login: /auth/login/legacy
+security: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'Token from `POST /auth/login/legacy`. Embed stores the whole login JSON in localStorage
+        key `__upace` and sends `authorization: Bearer ${token}`.'
+  parameters:
+    X-SOURCE:
+      name: X-SOURCE
+      in: header
+      required: false
+      schema:
+        type: string
+        enum:
+        - SCHEDULE
+        - EMBED
+        - DISPLAY-EMBED
+      description: Equipment calendar uses `SCHEDULE`. Class embeds use `EMBED` or `DISPLAY-EMBED`.
+    Origin:
+      name: Origin
+      in: header
+      required: false
+      schema:
+        type: string
+        example: https://embed.upace.app
+    equipmentId:
+      name: equipmentId
+      in: path
+      required: true
+      schema:
+        type: integer
+      examples:
+        court1:
+          value: 7412
+          summary: Ches Penney Court 1
+        court2:
+          value: 12739
+          summary: Ches Penney Court 2
+    university_id:
+      name: university_id
+      in: query
+      required: true
+      schema:
+        type: integer
+        example: 105
+    facility_id:
+      name: facility_id
+      in: query
+      required: false
+      description: Gym id. Empty string means all facilities. Ches Penney is 785.
+      schema:
+        type: string
+        example: '785'
+    room_id:
+      name: room_id
+      in: query
+      required: false
+      schema:
+        type: string
+    equipment_type_id:
+      name: equipment_type_id
+      in: query
+      required: false
+      schema:
+        type: string
+    start_date:
+      name: start_date
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date
+        example: '2026-08-17'
+    end_date:
+      name: end_date
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date
+        example: '2026-08-23'
+    exclude_if_closed_or_cancelled:
+      name: exclude_if_closed_or_cancelled
+      in: query
+      required: false
+      schema:
+        type: boolean
+        default: true
+    exclude_past_classes:
+      name: exclude_past_classes
+      in: query
+      required: false
+      schema:
+        type: boolean
+        default: true
+    date:
+      name: date
+      in: query
+      required: true
+      schema:
+        type: string
+        format: date
+        example: '2026-08-17'
+    start_time:
+      name: start_time
+      in: query
+      required: true
+      description: 24h `HH:MM`. Empty/missing durations means that start is not offered (closed, taken,
+        or outside hours).
+      schema:
+        type: string
+        pattern: ^[0-2][0-9]:[0-5][0-9]$
+        example: 06:00
+  schemas:
+    ErrorBody:
+      type: object
+      properties:
+        success:
+          type: boolean
+          const: false
+        code:
+          type: integer
+        message:
+          type: string
+      required:
+      - success
+    LabeledInt:
+      type: object
+      properties:
+        value:
+          type: integer
+        label:
+          type: string
+      required:
+      - value
+      - label
+      examples:
+      - value: 60
+        label: 60 mins
+    LoginLegacyRequest:
+      type: object
+      required:
+      - email
+      - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+    LoginResponse:
+      type: object
+      required:
+      - success
+      - token
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+          example: Authentication successful
+        token:
+          type: string
+          description: Bearer token (~389 chars observed).
+        refresh_token:
+          type: string
+        id:
+          type: integer
+          description: Upace user id.
+        university_id:
+          type: integer
+          example: 105
+        first_name:
+          type: string
+        last_name:
+          type: string
+        email:
+          type: string
+          format: email
+        primary_role:
+          type: integer
+          description: Members are `7` (`USER`). Instructors are rejected by the embed even if login succeeds.
+          example: 7
+      additionalProperties: true
+    SalesforceLoginRequest:
+      type: object
+      required:
+      - username
+      - password
+      - identifier
+      - university_id
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          format: password
+        identifier:
+          type: string
+          const: ynorth_sf_sso
+        university_id:
+          type: integer
+          example: 105
+    PasswordResetRequest:
+      type: object
+      required:
+      - email
+      properties:
+        email:
+          type: string
+          format: email
+    PasswordResetConfirmRequest:
+      type: object
+      required:
+      - email
+      - password
+      - confirm_password
+      - pin
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+        confirm_password:
+          type: string
+          format: password
+        pin:
+          type: string
+    Equipment:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type:
+          - string
+          - 'null'
+        facility:
+          type: string
+        type:
+          type: string
+          example: Gym
+        gym_id:
+          type: integer
+          example: 785
+        gym_name:
+          type: string
+          example: Ches Penney Family YMCA
+        room_id:
+          type: integer
+        room_name:
+          type: string
+        image_url:
+          type:
+          - string
+          - 'null'
+        total_slots:
+          type: integer
+          description: Capacity. Squash courts are 1.
+        durations:
+          type: array
+          items:
+            $ref: '#/components/schemas/LabeledInt'
+        attending_persons:
+          type: array
+          items:
+            $ref: '#/components/schemas/LabeledInt'
+      required:
+      - id
+      - name
+      - gym_id
+    TemplateSlot:
+      type: object
+      description: Weekly opening window, not a bookable start. Monday 05:00-19:00 means 20:00 is closed
+        that day.
+      properties:
+        id:
+          type: integer
+        start_time:
+          type: string
+          example: 05:00
+        end_time:
+          type: string
+          example: '19:00'
+        day_of_week:
+          type: string
+          enum:
+          - Mon
+          - Tue
+          - Wed
+          - Thu
+          - Fri
+          - Sat
+          - Sun
+      required:
+      - start_time
+      - end_time
+      - day_of_week
+    UserReservationOnSchedule:
+      type: object
+      properties:
+        reservation_id:
+          type: integer
+        start_time:
+          type: string
+          example: '17:00'
+        end_time:
+          type: string
+          example: '18:00'
+        start_date_time:
+          type: string
+          example: '2026-08-17 17:00:00'
+        end_date_time:
+          type: string
+          example: '2026-08-17 18:00:00'
+        day_of_week:
+          type: string
+          example: Mon
+    ScheduleItem:
+      type: object
+      properties:
+        equipment:
+          $ref: '#/components/schemas/Equipment'
+        slots:
+          type: array
+          items:
+            $ref: '#/components/schemas/TemplateSlot'
+        block_schedules:
+          type: array
+          items:
+            type: object
+        current_user_reservations:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserReservationOnSchedule'
+    ScheduleResponse:
+      type: object
+      required:
+      - success
+      - schedule
+      properties:
+        success:
+          type: boolean
+        schedule:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduleItem'
+    AvailableDurationsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          description: Empty or omitted when that start is not offered. Court 2 Monday 20:00 returned
+            no durations; 06:00 through 18:00 returned `[{value:60,label:"60 mins"}]`.
+          items:
+            $ref: '#/components/schemas/LabeledInt'
+    AvailableTime:
+      type: object
+      description: Shape inferred from the embed dropdown mapper (`time_value`, `time_label`, `remarks`).
+        Not live-tested.
+      properties:
+        time_value:
+          type: string
+          example: 06:00
+        time_label:
+          type: string
+          example: 6:00am
+        remarks:
+          type: string
+          example: 1 spots remaining
+    ReserveRequest:
+      type: object
+      required:
+      - date
+      - equipment_id
+      - type
+      - time
+      - duration
+      - attending_persons
+      properties:
+        date:
+          type: string
+          format: date
+          example: '2026-08-17'
+        equipment_id:
+          type: integer
+          example: 12739
+        type:
+          type: string
+          const: equipment
+        time:
+          type: string
+          example: 06:00
+          description: 24h `HH:MM`. Primitives, not `{value,label}` objects.
+        duration:
+          type: integer
+          example: 60
+        attending_persons:
+          type: integer
+          example: 1
+    ReserveSuccess:
+      type: object
+      required:
+      - success
+      - id
+      - message
+      properties:
+        success:
+          type: boolean
+          const: true
+        id:
+          type: integer
+          example: 2176741740
+        start_time:
+          type: string
+          example: '2026-08-17 06:00:00'
+        end_time:
+          type: string
+          example: '2026-08-17 07:00:00'
+        message:
+          type: string
+          example: The reservation has been placed successfully
+        data:
+          type: object
+          properties:
+            reservation_id:
+              type: integer
+              example: 2176741740
+            equipment_name:
+              type: string
+            gym_name:
+              type: string
+            start_time:
+              type: string
+            end_time:
+              type: string
+    Reservation:
+      type: object
+      properties:
+        id:
+          type: integer
+        created:
+          type: string
+          example: '2026-08-14 17:26:02'
+        updated:
+          type: string
+        class_id:
+          type: integer
+          description: For equipment this is the equipment id.
+        ref_type:
+          type: integer
+          example: 14
+        user_id:
+          type: integer
+        client_id:
+          type: integer
+          example: 105
+        start_time:
+          type: string
+          example: '2026-08-14 20:00:00'
+        end_time:
+          type: string
+          example: '2026-08-14 21:00:00'
+        active:
+          type: integer
+        deleted:
+          type: integer
+        attending_persons:
+          type: integer
+        cancelled_on:
+          type:
+          - string
+          - 'null'
+        source:
+          type: string
+          example: API
+          description: Website bookings also show `API` / `RESERVED FROM v2 API`.
+        meta:
+          type:
+          - string
+          - 'null'
+          example: RESERVED FROM v2 API
+        equipment_id:
+          type: integer
+        equipment_type_id:
+          type: integer
+        equipment_name:
+          type: string
+        gym_id:
+          type: integer
+        gym_name:
+          type: string
+        room_id:
+          type: integer
+        room_name:
+          type: string
+        is_member:
+          type: integer
+        membership_id:
+          type: integer
+        membership_package:
+          type: string
+        first_name:
+          type: string
+        last_name:
+          type: string
+        email:
+          type: string
+          format: email
+      additionalProperties: true
+    ReservationsMineResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            reservations:
+              type: array
+              items:
+                $ref: '#/components/schemas/Reservation'
+    CancelRequest:
+      type: object
+      required:
+      - reservation_id
+      properties:
+        reservation_id:
+          type: integer
+          example: 2176741740
+    MessageResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+    WaitlistExitRequest:
+      type: object
+      required:
+      - waitlist_id
+      properties:
+        waitlist_id:
+          type: integer
+paths:
+  /auth/login/legacy:
+    post:
+      tags:
+      - Auth
+      operationId: loginLegacy
+      summary: Email/password login (Ches Penney / My Y)
+      description: Verified 2026-08-14. This is the path the embed uses when `isSalesForceLogin` is false.
+        Returns HTTP 200 with `token`.
+      parameters:
+      - $ref: '#/components/parameters/Origin'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginLegacyRequest'
+      responses:
+        '200':
+          description: Authenticated. `success` may still be false for instructor accounts.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: 'Invalid email or password. Embed copy: `Your email or password is invalid`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /integration/custom:
+    post:
+      tags:
+      - Auth
+      operationId: loginSalesforce
+      summary: YMCA North Salesforce SSO (not this Y)
+      description: Embed uses this when `isSalesForceLogin` is true, with `identifier=ynorth_sf_sso`.
+        Live call for university 105 returned HTTP 403 `Authorization code not found in response.` Use
+        `/auth/login/legacy` instead.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SalesforceLoginRequest'
+      responses:
+        '200':
+          description: Same shape as legacy login when SSO succeeds.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '403':
+          description: SSO not configured for this org.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+              example:
+                success: false
+                code: 403
+                message: Authorization code not found in response.
+  /auth/request_password_reset:
+    post:
+      tags:
+      - Auth
+      operationId: requestPasswordReset
+      summary: Request a reset PIN
+      description: From embed JS only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+      responses:
+        '200':
+          description: Password-reset email accepted or generic success.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /auth/password/reset/legacy:
+    post:
+      tags:
+      - Auth
+      operationId: confirmPasswordReset
+      summary: Confirm password reset with PIN
+      description: From embed JS only. Body is the reset form (`email`, `password`, `confirm_password`,
+        `pin`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirmRequest'
+      responses:
+        '200':
+          description: Password updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /equipment/schedules/unauth:
+    get:
+      tags:
+      - Equipment
+      operationId: listEquipmentSchedulesUnauth
+      summary: Public weekly template hours
+      description: Verified. No token. Returns opening windows per weekday, not per-date remaining spots.
+        `gym_id` on each equipment row is the authority; omitting `facility_id` returns every Y in the
+        org.
+      parameters:
+      - $ref: '#/components/parameters/university_id'
+      - $ref: '#/components/parameters/facility_id'
+      - $ref: '#/components/parameters/room_id'
+      - $ref: '#/components/parameters/equipment_type_id'
+      - $ref: '#/components/parameters/start_date'
+      - $ref: '#/components/parameters/end_date'
+      - $ref: '#/components/parameters/exclude_if_closed_or_cancelled'
+      - $ref: '#/components/parameters/exclude_past_classes'
+      - $ref: '#/components/parameters/X-SOURCE'
+      responses:
+        '200':
+          description: Schedule list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleResponse'
+  /equipment/schedules:
+    get:
+      tags:
+      - Equipment
+      operationId: listEquipmentSchedules
+      summary: Authenticated weekly template plus current-user reservations
+      description: Verified. Same query string as unauth. Adds `current_user_reservations` on each item.
+        Embed falls back to unauth on 401.
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/university_id'
+      - $ref: '#/components/parameters/facility_id'
+      - $ref: '#/components/parameters/room_id'
+      - $ref: '#/components/parameters/equipment_type_id'
+      - $ref: '#/components/parameters/start_date'
+      - $ref: '#/components/parameters/end_date'
+      - $ref: '#/components/parameters/exclude_if_closed_or_cancelled'
+      - $ref: '#/components/parameters/exclude_past_classes'
+      - $ref: '#/components/parameters/X-SOURCE'
+      responses:
+        '200':
+          description: Weekly template hours (not remaining spots).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleResponse'
+        '401':
+          description: Token expired. Embed retries the unauth URL.
+  /equipment/{equipmentId}/available_times:
+    get:
+      tags:
+      - Equipment
+      operationId: listAvailableTimes
+      summary: Start times for a date (dropdown)
+      description: 'From embed JS. `GET /equipment/{id}/available_times?date=YYYY-MM-DD`. Response `.data`
+        mapped to `{value: time_value, label: time_label + remarks}`.'
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/equipmentId'
+      - $ref: '#/components/parameters/date'
+      responses:
+        '200':
+          description: Start times for the date.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AvailableTime'
+  /equipment/{equipmentId}/available_durations:
+    get:
+      tags:
+      - Equipment
+      operationId: listAvailableDurations
+      summary: Durations for a date and start time
+      description: Verified. Needs Bearer token. Empty `.data` means do not POST `/reserve` for that start
+        — same as a missing dropdown option.
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/equipmentId'
+      - $ref: '#/components/parameters/date'
+      - $ref: '#/components/parameters/start_time'
+      responses:
+        '200':
+          description: Durations offered at that start; empty means do not reserve.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailableDurationsResponse'
+  /reserve:
+    post:
+      tags:
+      - Reservations
+      operationId: reserve
+      summary: Place an equipment reservation
+      description: |-
+        Verified. Shared with class booking; equipment uses `type=equipment` and primitive `time`/`duration`/`attending_persons` (not labeled objects).
+
+        Live: Court 2 2026-08-17 06:00 succeeded (`id` 2176741740, then cancelled). Court 2 20:00 returned 400 `The equipment is not open during the time you have requested this reservation!` because Monday hours end at 19:00.
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReserveRequest'
+            examples:
+              court2_0600:
+                summary: Throwaway that succeeded then was cancelled
+                value:
+                  date: '2026-08-17'
+                  equipment_id: 12739
+                  type: equipment
+                  time: 06:00
+                  duration: 60
+                  attending_persons: 1
+      responses:
+        '200':
+          description: Booked.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReserveSuccess'
+        '400':
+          description: Closed, full, or outside hours.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+              examples:
+                closed:
+                  value:
+                    success: false
+                    message: The equipment is not open during the time you have requested this reservation!
+  /reservations/mine:
+    get:
+      tags:
+      - Reservations
+      operationId: listMyReservations
+      summary: List the current user's reservations
+      description: Verified. Query `start_time` and `end_time` are `yyyy-MM-dd` (embed uses today through
+        +6 months).
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: start_time
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
+      - name: end_time
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date
+      responses:
+        '200':
+          description: Reservations for the authenticated user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationsMineResponse'
+  /reservations/cancel:
+    post:
+      tags:
+      - Reservations
+      operationId: cancelReservation
+      summary: Cancel a reservation
+      description: Verified. `POST {reservation_id}` returned `Reservation cancelled successfully` for
+        2176741740.
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelRequest'
+      responses:
+        '200':
+          description: Reservation cancelled.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                success: true
+                message: Reservation cancelled successfully
+  /waitlists/mine:
+    get:
+      tags:
+      - Waitlists
+      operationId: listMyWaitlists
+      summary: List the current user's class waitlists
+      description: From embed JS. Query includes `type=class`, `start_time`, `end_time`.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: type
+        in: query
+        schema:
+          type: string
+          example: class
+      - name: start_time
+        in: query
+        schema:
+          type: string
+          format: date
+      - name: end_time
+        in: query
+        schema:
+          type: string
+          format: date
+      responses:
+        '200':
+          description: Waitlists for the authenticated user.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+  /waitlists/exit:
+    post:
+      tags:
+      - Waitlists
+      operationId: exitWaitlist
+      summary: Leave a waitlist
+      description: From embed JS.
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WaitlistExitRequest'
+      responses:
+        '200':
+          description: Left the waitlist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /classes/list/unauth:
+    get:
+      tags:
+      - Classes
+      operationId: listClassesUnauth
+      summary: Public class list
+      description: From embed JS. Query includes `university_id`, `date`, plus embed search params; optional
+        `exclude_past_classes` and `exclude_if_closed_or_cancelled`. Header `X-SOURCE` is `EMBED` or `DISPLAY-EMBED`.
+        Response uses `.classes`.
+      parameters:
+      - $ref: '#/components/parameters/university_id'
+      - $ref: '#/components/parameters/date'
+      - $ref: '#/components/parameters/exclude_past_classes'
+      - $ref: '#/components/parameters/exclude_if_closed_or_cancelled'
+      - $ref: '#/components/parameters/X-SOURCE'
+      responses:
+        '200':
+          description: Public class list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  classes:
+                    type: array
+                    items:
+                      type: object
+  /classes/reservations/list:
+    get:
+      tags:
+      - Classes
+      operationId: listClassesAuthenticated
+      summary: Authenticated class list
+      description: From embed JS. Same query as unauth. Embed falls back to `/classes/list/unauth` on
+        401.
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/university_id'
+      - $ref: '#/components/parameters/date'
+      - $ref: '#/components/parameters/exclude_past_classes'
+      - $ref: '#/components/parameters/exclude_if_closed_or_cancelled'
+      - $ref: '#/components/parameters/X-SOURCE'
+      responses:
+        '200':
+          description: Authenticated class list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  classes:
+                    type: array
+                    items:
+                      type: object

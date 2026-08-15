@@ -1,0 +1,6 @@
+generatorName: python
+additionalProperties:
+  packageName: upace
+  projectName: upace
+  library: urllib3
+  generateSourceCodeOnly: false

@@ -1,0 +1,75 @@
+name: api-docs
+
+# Static Swagger UI. PRs get a workflow artifact + comment. main deploys GitHub Pages.
+
+on:
+  pull_request:
+    paths:
+      - "specs/**"
+      - "docs/api/**"
+      - "scripts/sdk-pages.sh"
+      - ".github/workflows/api-docs.yml"
+  push:
+    branches: [main]
+    paths:
+      - "specs/**"
+      - "docs/api/**"
+      - "scripts/sdk-pages.sh"
+      - ".github/workflows/api-docs.yml"
+
+concurrency:
+  group: api-docs-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+  pull-requests: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: stage
+        run: ./scripts/sdk-pages.sh build/api-docs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: swagger-ui
+          path: build/api-docs
+          if-no-files-found: error
+      - uses: actions/upload-pages-artifact@v3
+        if: github.event_name == 'push'
+        with:
+          path: build/api-docs
+
+  comment:
+    needs: build
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const run = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `### Spec preview\n\nSwagger UI artifact: [run ${context.runId}](${run}) (download \`swagger-ui\`). After merge: GitHub Pages from \`main\`.`,
+            });
+
+  deploy:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

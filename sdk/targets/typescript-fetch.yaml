@@ -1,0 +1,6 @@
+generatorName: typescript-fetch
+additionalProperties:
+  npmName: upace
+  supportsES6: true
+  typescriptThreePlus: true
+  withInterfaces: true
