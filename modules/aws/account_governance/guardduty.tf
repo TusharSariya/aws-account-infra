@@ -1,4 +1,5 @@
 resource "aws_guardduty_detector" "this" {
+  # checkov:skip=CKV2_AWS_3:This is a single-account detector in us-east-1; org-delegated GuardDuty does not apply.
   enable                       = true
   finding_publishing_frequency = "SIX_HOURS"
 }
