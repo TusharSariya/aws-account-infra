@@ -17,9 +17,19 @@ output "github_infra_ecr_push_role_arn" {
   description = "role-to-assume for .github/workflows/ecr-push.yml (apps/ecr images)."
 }
 
-output "github_lambda_package_role_arn" {
-  value       = aws_iam_role.github_lambda_package.arn
-  description = "role-to-assume for .github/workflows/lambda-package.yml (apps/lambda zips)."
+output "github_lambda_candidate_role_arn" {
+  value       = aws_iam_role.github_lambda_package["candidate"].arn
+  description = "role-to-assume on PRs for candidate/<name>/<sha>.zip uploads."
+}
+
+output "github_lambda_stable_role_arn" {
+  value       = aws_iam_role.github_lambda_package["stable"].arn
+  description = "role-to-assume on main for stable/<name>/<sha>.zip uploads."
+}
+
+output "lambda_releases_bucket" {
+  value       = aws_s3_bucket.lambda_releases.id
+  description = "Shared Lambda zip releases bucket (candidate/ and stable/ prefixes)."
 }
 
 output "github_sdk_candidate_role_arn" {

@@ -1,7 +1,7 @@
 locals {
   bookings_path = "${path.module}/../../../../../../../apps/ecr/court-booker/bookings.yaml"
   bookings      = yamldecode(file(local.bookings_path))
-  zip_ready     = var.booker_api_zip_key != ""
+  zip_ready     = startswith(var.booker_api_zip_key, "stable/")
 
   weekday_unlock = {
     Mon = "FRI"

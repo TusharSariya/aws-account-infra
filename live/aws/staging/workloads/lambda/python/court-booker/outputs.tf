@@ -1,6 +1,6 @@
 output "zip_bucket" {
-  value       = aws_s3_bucket.zips.id
-  description = "Upload target for scripts/lambda-package.sh python/3.12/court-booker."
+  value       = data.aws_s3_bucket.zips.id
+  description = "Account-level lambda-releases bucket. Pin booker_api_zip_key to stable/<name>/<sha>.zip."
 }
 
 output "secret_arn" {

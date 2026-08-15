@@ -1,8 +1,8 @@
 name: lambda-package
 
-# Build arm64 zips under apps/lambda/python/<runtime>/<name> and upload an
-# immutable git-sha object. Does not retarget Lambda; set booker_api_zip_key
-# and apply for that.
+# Build arm64 zips under apps/lambda/python/<runtime>/<name>.
+# PRs upload candidate/<name>/<sha>.zip; main uploads stable/<name>/<sha>.zip.
+# Does not retarget Lambda; set booker_api_zip_key to a stable/ key and apply.
 
 on:
   pull_request:
@@ -34,7 +34,9 @@ permissions:
 env:
   AWS_REGION: us-east-1
   AWS_ACCOUNT_ID: "992382747916"
-  LAMBDA_PACKAGE_ROLE_ARN: arn:aws:iam::992382747916:role/github-ci-lambda-package
+  LAMBDA_ZIP_BUCKET: lambda-releases-992382747916-us-east-1
+  LAMBDA_CANDIDATE_ROLE_ARN: arn:aws:iam::992382747916:role/github-ci-lambda-candidate
+  LAMBDA_STABLE_ROLE_ARN: arn:aws:iam::992382747916:role/github-ci-lambda-stable
 
 jobs:
   package:
@@ -45,24 +47,31 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - uses: aws-actions/configure-aws-credentials@v4
+      - id: aws
+        continue-on-error: true
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ env.LAMBDA_PACKAGE_ROLE_ARN }}
+          role-to-assume: ${{ github.event_name == 'pull_request' && env.LAMBDA_CANDIDATE_ROLE_ARN || env.LAMBDA_STABLE_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
       - name: Package and upload
+        if: steps.aws.outcome == 'success'
         env:
           TAG: ${{ github.sha }}
+          LAMBDA_ZIP_PREFIX: ${{ github.event_name == 'pull_request' && 'candidate/court-booker' || 'stable/court-booker' }}
         run: |
           chmod +x scripts/lambda-package.sh
           ./scripts/lambda-package.sh python/3.12/court-booker "$TAG"
+      - name: Skip until account apply
+        if: steps.aws.outcome != 'success'
+        run: echo "lambda-releases OIDC role not applied yet; skipping upload."
       - name: Comment key on PR
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && steps.aws.outcome == 'success'
         uses: actions/github-script@v7
         with:
           script: |
             const tag = '${{ github.sha }}';
-            const key = `court-booker/${tag}.zip`;
-            const body = `### lambda-package — \`court-booker-api\`\n\n\`${key}\`\n\nUploading does not retarget Lambda. Set \`booker_api_zip_key\` and apply. Playwright EventBridge stays off (\`schedule_enabled = false\`).`;
+            const key = `candidate/court-booker/${tag}.zip`;
+            const body = `### lambda-package — candidate\n\n\`${key}\`\n\nPromote by uploading the same sha to \`stable/\` on main, then set \`booker_api_zip_key\` and apply.`;
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,

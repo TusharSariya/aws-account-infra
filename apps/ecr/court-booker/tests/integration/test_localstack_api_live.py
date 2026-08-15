@@ -15,7 +15,12 @@ from zoneinfo import ZoneInfo
 
 import boto3
 import pytest
-from dotenv import load_dotenv
+
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    def load_dotenv(*_args, **_kwargs):
+        return False
 
 from booker.secrets import PASSWORD_KEY, USERNAME_KEY
 

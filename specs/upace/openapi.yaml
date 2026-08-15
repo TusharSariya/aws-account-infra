@@ -154,7 +154,7 @@ components:
       properties:
         success:
           type: boolean
-          description: Always JSON `false` on error. Avoid OpenAPI `const` — Python generators treat it as the string `'false'`.
+          const: false
         code:
           type: integer
         message:
@@ -451,7 +451,7 @@ components:
       properties:
         success:
           type: boolean
-          description: Always JSON `true` on success. Avoid OpenAPI `const` — Python generators treat it as the string `'true'`.
+          const: true
         id:
           type: integer
           example: 2176741740

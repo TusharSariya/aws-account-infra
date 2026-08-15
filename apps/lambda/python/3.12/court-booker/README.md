@@ -14,7 +14,7 @@ installs `upace==0.1.0` from CodeArtifact `sdk-stable`.
 
 # after the OpenTofu stack has created the bucket
 ./scripts/infra.sh aws-staging-court-booker-api apply \
-  -var booker_api_zip_key=court-booker/<git-sha>.zip
+  -var booker_api_zip_key=stable/court-booker/<git-sha>.zip
 ```
 
 Weekly EventBridge is on (`api_schedule_enabled = true`) once `booker_api_zip_key`

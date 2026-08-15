@@ -72,7 +72,7 @@ variable "schedule_enabled" {
 variable "booker_api_zip_key" {
   type        = string
   default     = ""
-  description = "S3 object key for the zip (git sha). Empty skips Lambda and schedules so the first apply can create the bucket."
+  description = "S3 object key under lambda-releases, e.g. stable/court-booker/<sha>.zip. Empty or non-stable skips Lambda and schedules."
 }
 
 variable "api_schedule_enabled" {

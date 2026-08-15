@@ -22,7 +22,7 @@ resource "aws_lambda_function" "booker" {
   memory_size   = 256
   timeout       = 30
 
-  s3_bucket         = aws_s3_bucket.zips.id
+  s3_bucket         = data.aws_s3_bucket.zips.id
   s3_key            = var.booker_api_zip_key
   s3_object_version = data.aws_s3_object.zip[0].version_id
 

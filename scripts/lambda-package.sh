@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Build an arm64 Lambda zip from apps/lambda/python/<runtime>/<name> and upload
-# it to the workload artifact bucket. Usage:
-#   ./scripts/lambda-package.sh python/3.12/court-booker [tag]
+# it to lambda-releases. Usage:
+#   LAMBDA_ZIP_PREFIX=stable/court-booker ./scripts/lambda-package.sh python/3.12/court-booker [tag]
 # Tag defaults to the full git sha (same as CI). Does not retarget Lambda.
 set -euo pipefail
 
@@ -14,8 +14,8 @@ ACCOUNT="${AWS_ACCOUNT_ID:-992382747916}"
 REGION="${AWS_REGION:-us-east-1}"
 DOMAIN="${CODEARTIFACT_DOMAIN:-aws-account-infra}"
 OWNER="${CODEARTIFACT_DOMAIN_OWNER:-992382747916}"
-BUCKET="${LAMBDA_ZIP_BUCKET:-court-booker-api-lambda-${ACCOUNT}-${REGION}}"
-KEY_PREFIX="${LAMBDA_ZIP_PREFIX:-court-booker}"
+BUCKET="${LAMBDA_ZIP_BUCKET:-lambda-releases-${ACCOUNT}-${REGION}}"
+KEY_PREFIX="${LAMBDA_ZIP_PREFIX:-stable/court-booker}"
 
 ARCH="$(uname -m)"
 if [[ "$ARCH" != "arm64" && "$ARCH" != "aarch64" ]]; then
