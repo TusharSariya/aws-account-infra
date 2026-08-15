@@ -191,7 +191,7 @@ Current state (verified 2026-07-16):
 - Flow: on-node CSR → controller signs → cert installed at
   `/etc/kubernetes/rolesanywhere/cert.pem`; `aws_signing_helper` exchanges it for
   STS creds. Trust anchor registered in
-  `live/aws/staging/account/ecr_pull_iam.tf` via `homelab_ca_certificate_pem`.
+  `modules/aws/account_identity/ecr_pull_iam.tf` via `homelab_ca_certificate_pem`.
 
 Changes:
 

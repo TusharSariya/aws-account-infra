@@ -22,18 +22,9 @@
 #
 # CKV_AWS_273 (no IAM users) and CKV_AWS_40 (no user-attached policies) are satisfied
 # structurally here — the ECR-read policy is attached to a role, not a user.
-
-# The operator's Certificate Authority cert (PEM). This is the PUBLIC CA certificate
-# whose private key signs each node's client cert; it is NOT a secret, but it is
-# environment-specific, so the operator brings their own and supplies it via tfvars
-# or `-var` at apply time. It is deliberately NOT committed to the repo.
-variable "homelab_ca_certificate_pem" {
-  type        = string
-  description = "PEM of the operator's CA certificate, registered as the Roles Anywhere trust anchor bundle. Operator-supplied via tfvars/CLI; never committed."
-  # Defaults to empty so the plan-only CI job (which cannot hold a CA) still runs;
-  # a real, non-empty PEM MUST be supplied at apply time for the trust anchor to work.
-  default = ""
-}
+#
+# The operator's CA cert (PEM) is public, environment-specific, and supplied via
+# var.homelab_ca_certificate_pem. It is deliberately not committed as a standalone file.
 
 locals {
   # The Roles Anywhere chain is created only when a CA cert is actually supplied.

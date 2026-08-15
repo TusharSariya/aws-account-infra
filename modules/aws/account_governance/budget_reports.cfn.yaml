@@ -1,0 +1,151 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Daily weekly and monthly Cost Explorer email reports. AWS Budgets Reports have no public API or CloudFormation type, so this nested stack sends the same cadence via Cost Explorer (about 0.01 USD per invoke).
+
+Parameters:
+  ReportEmail:
+    Type: String
+  BudgetName:
+    Type: String
+
+Resources:
+  MailerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: cost-report
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ce:GetCostAndUsage
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - ses:SendEmail
+                  - ses:SendRawEmail
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    ses:FromAddress: !Ref ReportEmail
+
+  Mailer:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.12
+      Handler: index.handler
+      Timeout: 30
+      MemorySize: 128
+      Role: !GetAtt MailerRole.Arn
+      Environment:
+        Variables:
+          TO: !Ref ReportEmail
+          BUDGET: !Ref BudgetName
+      Code:
+        ZipFile: |
+          import os, datetime, boto3
+          ce = boto3.client("ce", "us-east-1")
+          ses = boto3.client("ses")
+          TO = os.environ["TO"]
+          BUDGET = os.environ["BUDGET"]
+          def handler(event, context):
+              p = event.get("period", "DAILY")
+              end = datetime.date.today()
+              if p == "DAILY":
+                  start = end - datetime.timedelta(1); g = "DAILY"
+              elif p == "WEEKLY":
+                  start = end - datetime.timedelta(7); g = "DAILY"
+              else:
+                  start = end.replace(day=1); g = "MONTHLY"
+                  if start == end:
+                      start = (end.replace(day=1) - datetime.timedelta(1)).replace(day=1)
+              r = ce.get_cost_and_usage(
+                  TimePeriod={"Start": str(start), "End": str(end)},
+                  Granularity=g,
+                  Metrics=["UnblendedCost"],
+                  GroupBy=[{"Type": "DIMENSION", "Key": "SERVICE"}],
+              )
+              rows, tot = [], 0.0
+              for result in r.get("ResultsByTime", []):
+                  for grp in result.get("Groups", []):
+                      amt = float(grp["Metrics"]["UnblendedCost"]["Amount"])
+                      if amt >= 0.01:
+                          rows.append((amt, grp["Keys"][0])); tot += amt
+              rows.sort(reverse=True)
+              body = "Budget %s\nPeriod %s to %s (%s)\nTotal $%.2f\n\n" % (BUDGET, start, end, p, tot)
+              body += "\n".join("$%.2f  %s" % (a, n) for a, n in rows[:30])
+              ses.send_email(
+                  Source=TO,
+                  Destination={"ToAddresses": [TO]},
+                  Message={
+                      "Subject": {"Data": "AWS %s cost report (%s)" % (p.lower(), BUDGET)},
+                      "Body": {"Text": {"Data": body}},
+                  },
+              )
+              return {"ok": True}
+
+  DailyRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Daily Cost Explorer email
+      ScheduleExpression: cron(0 0 * * ? *)
+      State: ENABLED
+      Targets:
+        - Id: mailer
+          Arn: !GetAtt Mailer.Arn
+          Input: '{"period":"DAILY"}'
+
+  WeeklyRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Weekly Cost Explorer email
+      ScheduleExpression: cron(0 0 ? * MON *)
+      State: ENABLED
+      Targets:
+        - Id: mailer
+          Arn: !GetAtt Mailer.Arn
+          Input: '{"period":"WEEKLY"}'
+
+  MonthlyRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Monthly Cost Explorer email
+      ScheduleExpression: cron(0 0 1 * ? *)
+      State: ENABLED
+      Targets:
+        - Id: mailer
+          Arn: !GetAtt Mailer.Arn
+          Input: '{"period":"MONTHLY"}'
+
+  DailyInvoke:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref Mailer
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt DailyRule.Arn
+
+  WeeklyInvoke:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref Mailer
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt WeeklyRule.Arn
+
+  MonthlyInvoke:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref Mailer
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt MonthlyRule.Arn

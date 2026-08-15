@@ -46,6 +46,35 @@ variable "budget_notification_email" {
   description = "Email notified when the budget alarm trips."
 }
 
+variable "governance_alert_email" {
+  type        = string
+  description = "Destination for budget reports, cost-anomaly alerts, GuardDuty, and EventBridge security mail."
+}
+
+variable "governance_contact_name" {
+  type        = string
+  default     = "Tushar Sariya"
+  description = "Display name for account alternate contacts (billing, operations, security)."
+}
+
+variable "governance_contact_title" {
+  type        = string
+  default     = "Account owner"
+  description = "Title for account alternate contacts."
+}
+
+variable "governance_contact_phone" {
+  type        = string
+  default     = ""
+  description = "E.164 phone for account alternate contacts. Empty skips creating those contacts."
+}
+
+variable "homelab_ca_certificate_pem" {
+  type        = string
+  description = "PEM of the operator's CA certificate, registered as the Roles Anywhere trust anchor bundle. Operator-supplied via tfvars/CLI; never committed."
+  default     = ""
+}
+
 variable "state_bucket_name" {
   type    = string
   default = "tofu-state-992382747916-us-east-1"

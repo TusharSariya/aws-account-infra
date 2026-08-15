@@ -56,8 +56,14 @@ resource "aws_iam_role" "github_sdk_stable" {
 
 data "aws_iam_policy_document" "codeartifact_publish" {
   for_each = {
-    candidate = aws_codeartifact_repository.sdk_candidate
-    stable    = aws_codeartifact_repository.sdk_stable
+    candidate = {
+      arn        = var.sdk_candidate_repository_arn
+      repository = var.sdk_candidate_repository_name
+    }
+    stable = {
+      arn        = var.sdk_stable_repository_arn
+      repository = var.sdk_stable_repository_name
+    }
   }
 
   statement {
@@ -68,7 +74,7 @@ data "aws_iam_policy_document" "codeartifact_publish" {
       "codeartifact:DescribeDomain",
       "codeartifact:ListRepositoriesInDomain",
     ]
-    resources = [aws_codeartifact_domain.infra.arn]
+    resources = [var.codeartifact_domain_arn]
   }
 
   statement {
@@ -99,7 +105,7 @@ data "aws_iam_policy_document" "codeartifact_publish" {
     ]
     resources = [
       each.value.arn,
-      "arn:aws:codeartifact:${var.region}:${var.aws_account_id}:package/${aws_codeartifact_domain.infra.domain}/${each.value.repository}/*",
+      "arn:aws:codeartifact:${var.region}:${var.aws_account_id}:package/${var.codeartifact_domain_name}/${each.value.repository}/*",
     ]
   }
 
@@ -111,7 +117,7 @@ data "aws_iam_policy_document" "codeartifact_publish" {
       "kms:DescribeKey",
       "kms:GenerateDataKey",
     ]
-    resources = [aws_kms_key.codeartifact.arn]
+    resources = [var.codeartifact_kms_key_arn]
   }
 }
 
