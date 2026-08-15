@@ -15,22 +15,22 @@ weekly:
     time: "17:00"
     duration_min: 60
     people: 1
-    enabled: false
+    enabled: true
   - activity: court2
     weekday: Mon
     time: "20:00"
     duration_min: 60
     people: 1
-    enabled: true
-# Sunday 16 Aug one-shots (America/St_Johns). 04:00 court is outside hours and
-# should fail; 05:00 should book. Disable after they fire — a later apply with
-# a past `at()` will error.
+    enabled: false
+# Saturday 15 Aug night one-shots (America/St_Johns). Tuesday 04:00 is outside
+# hours and should fail; 05:00 should book. Disable after they fire — a later
+# apply with a past `at()` will error.
 oneshot:
   - name: tue-0400-closed
     activity: court2
     date: "2026-08-18"
     time: "04:00"
-    invoke_at: "2026-08-16T04:00:00"
+    invoke_at: "2026-08-15T22:00:00"
     duration_min: 60
     people: 1
     enabled: true
@@ -38,7 +38,7 @@ oneshot:
     activity: court2
     date: "2026-08-18"
     time: "05:00"
-    invoke_at: "2026-08-16T05:00:00"
+    invoke_at: "2026-08-15T22:05:00"
     duration_min: 60
     people: 1
     enabled: true
