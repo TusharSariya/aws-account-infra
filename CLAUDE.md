@@ -33,13 +33,15 @@ variables live under `config/environments`, and secrets must not be committed.
 - Application runtime code belongs in its workload repository, not here.
   Exception: `apps/ecr/court-booker/` is a small Playwright Lambda image whose infra lives in
   `live/aws/staging/workloads/court-booker/` (own state key `stacks/court-booker/terraform.tfstate`).
-  The HTTP booker is a zip Lambda under `apps/lambda/python/3.12/court-booker/` with infra in
+  The HTTP booker is a zip Lambda under `apps/lambda/python/3.14/court-booker/` with infra in
   `live/aws/staging/workloads/lambda/python/court-booker/` (state key `stacks/court-booker-api/terraform.tfstate`).
   GitHub Actions pushes `apps/ecr/<name>` to ECR and `apps/lambda/` zips to
   `lambda-releases` (`candidate/` on PRs, `stable/` on main). It does not retarget
   Lambda until `booker_image_tag` or `booker_api_zip_key` in `config/environments/aws/staging.tfvars`
   is updated. Playwright EventBridge is off (`schedule_enabled = false`); the API zip cron is on
-  (`api_schedule_enabled = true`) once a `stable/` zip key is set.
+  (`api_schedule_enabled = true`) once a `stable/` zip key is set. Each Lambda has its own
+  SSM SecureString (`/staging/court-booker/my-y` and `/staging/court-booker-api/my-y`); they
+  do not share credentials storage. Put values with `scripts/court-booker-put-secret.sh`.
   RAG and other products still keep runtime code out of this repo.
 
 ## Scope boundaries

@@ -3,9 +3,9 @@ output "zip_bucket" {
   description = "Account-level lambda-releases bucket. Pin booker_api_zip_key to stable/<name>/<sha>.zip."
 }
 
-output "secret_arn" {
-  value       = data.aws_secretsmanager_secret.my_y.arn
-  description = "Reuses staging/court-booker/my-y from the Playwright stack."
+output "credentials_parameter" {
+  value       = aws_ssm_parameter.my_y.name
+  description = "Own SSM parameter for this Lambda. Put My Y JSON with scripts/court-booker-put-secret.sh; never commit the value."
 }
 
 output "lambda_function_name" {

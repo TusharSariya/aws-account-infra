@@ -47,31 +47,39 @@ def load_dotenv_files() -> None:
             load_dotenv(path, override=False)
 
 
-def load_credentials(*, secret_arn: str | None = None) -> Credentials:
-    arn = secret_arn or os.environ.get("SECRET_ARN", "").strip()
-    if arn:
-        return _from_secrets_manager(arn)
+def load_credentials(*, parameter_name: str | None = None) -> Credentials:
+    name = parameter_name or os.environ.get("CREDENTIALS_PARAMETER", "").strip()
+    if name:
+        return _from_ssm(name)
     load_dotenv_files()
     return _from_mapping(os.environ)
 
 
-def _from_secrets_manager(secret_arn: str) -> Credentials:
-    import boto3
-
-    from booker.timing import Stopwatch
-
-    clock = Stopwatch("secretsmanager")
+def _client_kwargs() -> dict[str, str]:
     client_kwargs: dict[str, str] = {}
     endpoint = os.environ.get("AWS_ENDPOINT_URL", "").strip()
     if not endpoint and os.environ.get("LOCALSTACK_HOSTNAME"):
         endpoint = f"http://{os.environ['LOCALSTACK_HOSTNAME']}:4566"
     if endpoint:
         client_kwargs["endpoint_url"] = endpoint
-    client = boto3.client("secretsmanager", **client_kwargs)
+    return client_kwargs
+
+
+def _ssm_client():
+    import boto3
+
+    return boto3.client("ssm", **_client_kwargs())
+
+
+def _from_ssm(parameter_name: str) -> Credentials:
+    from booker.timing import Stopwatch
+
+    clock = Stopwatch("ssm")
+    client = _ssm_client()
     clock.mark("client")
-    payload = client.get_secret_value(SecretId=secret_arn)["SecretString"]
-    clock.mark("get_secret_value")
+    payload = client.get_parameter(Name=parameter_name, WithDecryption=True)["Parameter"]["Value"]
+    clock.mark("get_parameter")
     data = json.loads(payload)
     if not isinstance(data, dict):
-        raise CredentialError("secret JSON must be an object")
+        raise CredentialError("parameter JSON must be an object")
     return _from_mapping({str(k): str(v) for k, v in data.items()})

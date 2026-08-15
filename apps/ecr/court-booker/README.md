@@ -2,7 +2,8 @@
 
 Local CLI and AWS Lambda share `python -m booker`. Chromium talks to the published
 Upace equipment calendar. My Y credentials come from repo-root `.env` locally and
-from Secrets Manager in Lambda. Do not commit `.env`.
+from a dedicated SSM SecureString (`/staging/court-booker/my-y`) in Lambda. The HTTP
+zip Lambda has its own parameter (`/staging/court-booker-api/my-y`). Do not commit `.env`.
 
 The Upace HTTP contract lives at [`specs/upace/openapi.yaml`](../../../specs/upace/openapi.yaml),
 not in this image.
@@ -37,21 +38,26 @@ under `apps/ecr/court-booker/`; locally):
 ./scripts/ecr-image.sh court-booker
 ```
 
-The HTTP/API booker is a separate zip Lambda (`apps/lambda/python/3.12/court-booker`).
+The HTTP/API booker is a separate zip Lambda (`apps/lambda/python/3.14/court-booker`).
 Playwright EventBridge is DISABLED (`schedule_enabled = false`); the API zip cron is the live booker.
 
-Put My Y credentials once (never in git). The OpenTofu stack creates the empty
-secret; this copies `my_YMCA_username` / `my_YMCA_password` from repo-root `.env`:
+Put My Y credentials once (never in git). OpenTofu creates two standard SecureString
+parameters encrypted with `alias/aws/ssm`; this copies `my_YMCA_username` /
+`my_YMCA_password` from repo-root `.env` into both:
 
 ```bash
 ./scripts/court-booker-put-secret.sh
 ```
 
-Or paste JSON yourself:
+Or paste JSON yourself (once per Lambda):
 
 ```bash
-aws secretsmanager put-secret-value --secret-id staging/court-booker/my-y \
-  --secret-string '{"my_YMCA_username":"...","my_YMCA_password":"..."}'
+aws ssm put-parameter --name /staging/court-booker/my-y --type SecureString \
+  --key-id alias/aws/ssm --overwrite \
+  --value '{"my_YMCA_username":"...","my_YMCA_password":"..."}'
+aws ssm put-parameter --name /staging/court-booker-api/my-y --type SecureString \
+  --key-id alias/aws/ssm --overwrite \
+  --value '{"my_YMCA_username":"...","my_YMCA_password":"..."}'
 ```
 
 Weekly rules live in `bookings.yaml`. Playwright EventBridge is parked with `schedule_enabled = false`; the API zip cron uses `api_schedule_enabled`.

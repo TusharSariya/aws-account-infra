@@ -26,10 +26,22 @@ data "aws_iam_policy_document" "lambda" {
   }
 
   statement {
-    sid       = "Secret"
+    sid       = "Parameter"
     effect    = "Allow"
-    actions   = ["secretsmanager:GetSecretValue"]
-    resources = [aws_secretsmanager_secret.my_y.arn]
+    actions   = ["ssm:GetParameter"]
+    resources = [aws_ssm_parameter.my_y.arn]
+  }
+
+  statement {
+    sid       = "DecryptSsm"
+    effect    = "Allow"
+    actions   = ["kms:Decrypt"]
+    resources = [data.aws_kms_alias.ssm.target_key_arn]
+    condition {
+      test     = "StringEquals"
+      variable = "kms:ViaService"
+      values   = ["ssm.${var.region}.amazonaws.com"]
+    }
   }
 }
 
