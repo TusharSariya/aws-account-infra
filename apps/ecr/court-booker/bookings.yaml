@@ -30,10 +30,7 @@ oneshot:
     activity: court2
     booking_date: "2026-08-18"
     booking_time: "10:00"
-    invoke_at: "2026-08-15T10:34:00"
-    duration_min: 60
-    people: 1
-    enabled: true
+    enabled: false
   - name: wed-0400-closed
     activity: court2
     booking_date: "2026-08-19"
