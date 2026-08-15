@@ -31,10 +31,10 @@ default_tags = {
 # Court-booker. Playwright EventBridge stays DISABLED (`schedule_enabled`).
 # The HTTP zip Lambda is the live cron once `booker_api_zip_key` is set.
 # Pushing an image or zip does not retarget Lambda until the tag/key is updated.
-booker_image_tag      = "chromium-shm2"
-booker_api_zip_key    = ""
-schedule_enabled      = false
-api_schedule_enabled  = true
+booker_image_tag     = "chromium-shm2"
+booker_api_zip_key   = ""
+schedule_enabled     = false
+api_schedule_enabled = true
 
 # AWS Budgets monthly cost alarm (account/ stack).
 # TODO: set a real notification email and your tolerance.
