@@ -14,6 +14,7 @@ resource "aws_s3_bucket_versioning" "zips" {
   }
 }
 
+#trivy:ignore:AVD-AWS-0132 AES256 is enough for personal Lambda zips; a dedicated CMK would add a monthly KMS charge.
 resource "aws_s3_bucket_server_side_encryption_configuration" "zips" {
   # checkov:skip=CKV2_AWS_67:AES256 is enough for public SDK wheels plus this booker; a dedicated CMK would add a monthly KMS charge.
   bucket = aws_s3_bucket.zips.id
