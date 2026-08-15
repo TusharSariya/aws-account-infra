@@ -32,7 +32,7 @@ default_tags = {
 # The HTTP zip Lambda is the live cron once `booker_api_zip_key` is set.
 # Pushing an image or zip does not retarget Lambda until the tag/key is updated.
 booker_image_tag     = "chromium-shm2"
-booker_api_zip_key   = ""
+booker_api_zip_key   = "stable/court-booker/1496decee87520fcb00638958565485745340919.zip"
 schedule_enabled     = false
 api_schedule_enabled = true
 
