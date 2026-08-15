@@ -127,7 +127,7 @@ trust root, and only `.gitignore` stands between the key and a `git add -A`.
 ### 2. Register it with AWS
 
 The trust anchor, profile, and IAM role are Terraform, in
-`live/aws/staging/account/ecr_pull_iam.tf`. The CA's **public** certificate is not a
+`modules/aws/account_identity/ecr_pull_iam.tf`. The CA's **public** certificate is not a
 secret, and lives inline in `config/environments/aws/staging/account.tfvars` as
 `homelab_ca_certificate_pem`. Replacing the CA means replacing that PEM.
 

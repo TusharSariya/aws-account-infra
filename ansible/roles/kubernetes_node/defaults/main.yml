@@ -37,7 +37,7 @@ kubernetes_node_eviction_hard: >-
 #   Vault) --> aws_signing_helper `credential-process` --> temporary STS creds.
 #
 # The trust anchor / role / profile the helper targets are created in
-# live/aws/staging/account/ecr_pull_iam.tf; feed their ARNs in via the inventory
+# modules/aws/account_identity/ecr_pull_iam.tf; feed their ARNs in via the inventory
 # vars below. Enabled when the operator points at a CA to sign node CSRs (below);
 # the node's own key is generated on-node, so no secret gates this.
 kubernetes_node_ecr_credential_provider_enabled: >-

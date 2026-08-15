@@ -103,7 +103,7 @@ data "aws_iam_policy_document" "github_lambda_package" {
       "codeartifact:DescribeDomain",
       "codeartifact:ListRepositoriesInDomain",
     ]
-    resources = [aws_codeartifact_domain.infra.arn]
+    resources = [var.codeartifact_domain_arn]
   }
 
   statement {
@@ -131,8 +131,8 @@ data "aws_iam_policy_document" "github_lambda_package" {
       "codeartifact:GetPackageVersionReadme",
     ]
     resources = [
-      aws_codeartifact_repository.sdk_stable.arn,
-      "arn:aws:codeartifact:${var.region}:${var.aws_account_id}:package/${aws_codeartifact_domain.infra.domain}/${aws_codeartifact_repository.sdk_stable.repository}/*",
+      var.sdk_stable_repository_arn,
+      "arn:aws:codeartifact:${var.region}:${var.aws_account_id}:package/${var.codeartifact_domain_name}/${var.sdk_stable_repository_name}/*",
     ]
   }
 
@@ -143,7 +143,7 @@ data "aws_iam_policy_document" "github_lambda_package" {
       "kms:Decrypt",
       "kms:DescribeKey",
     ]
-    resources = [aws_kms_key.codeartifact.arn]
+    resources = [var.codeartifact_kms_key_arn]
   }
 
   statement {

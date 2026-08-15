@@ -23,6 +23,7 @@ default_tags = {
 # AWS Budgets monthly cost alarm.
 budget_monthly_limit_usd  = "20"
 budget_notification_email = "tushar.sariya77@gmail.com"
+governance_alert_email    = "tushar.97@hotmail.com"
 
 # Homelab ECR-pull identity (IAM Roles Anywhere). Public CA cert, not a secret.
 # Left as a PEM so a real CA is never invented here. Example:

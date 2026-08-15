@@ -49,7 +49,7 @@ The homelab nodes run off-cloud (no EC2 instance role, no OIDC), so kubelet's
 access key, the node uses IAM Roles Anywhere:
 
 1. The operator's **CA certificate** is registered as a Roles Anywhere trust
-   anchor in `live/aws/staging/account/ecr_pull_iam.tf`
+   anchor in `modules/aws/account_identity/ecr_pull_iam.tf`
    (`aws_rolesanywhere_trust_anchor`, input var `homelab_ca_certificate_pem`).
 2. That file also defines the IAM role (`homelab-ecr-pull`, trusting
    `rolesanywhere.amazonaws.com` and carrying the repo-scoped ECR-read policy)
@@ -73,7 +73,7 @@ live in **[`homelab-ca.md`](homelab-ca.md)** — that is the source of truth for
 this trust domain. In summary, before applying:
 
 - **Bring a CA and register the trust anchor.** See `homelab-ca.md`. The AWS side
-  is Terraform (`live/aws/staging/account/ecr_pull_iam.tf`); the CA's public PEM
+  is Terraform (`modules/aws/account_identity/ecr_pull_iam.tf`); the CA's public PEM
   lives in `config/environments/aws/staging/account.tfvars`. That variable `count`-gates the
   whole chain, so a hand-run apply that omits `-var-file` plans the trust anchor,
   role, and profile for **destruction** — breaking ECR pull on every node. CI always
