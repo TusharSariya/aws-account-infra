@@ -81,6 +81,11 @@ def unlock_weekday(weekday: str) -> str:
     return UNLOCK_WEEKDAY[normalize_weekday(weekday)]
 
 
+def slot_unlock_at(target_date: date, slot: time, horizon_hours: int = 72) -> datetime:
+    """EventBridge fire time: the court slot minus the booking horizon."""
+    return datetime.combine(target_date, slot) - timedelta(hours=horizon_hours)
+
+
 def unlock_cron(weekday: str, hhmm: str) -> tuple[int, int, str]:
     """EventBridge cron fields for the unlock instant: minute, hour, AWS day-of-week.
 
