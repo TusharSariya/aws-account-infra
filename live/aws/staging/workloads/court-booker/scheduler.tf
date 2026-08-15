@@ -8,7 +8,7 @@ resource "aws_scheduler_schedule" "weekly" {
 
   name                         = "court-booker-${each.key}"
   group_name                   = aws_scheduler_schedule_group.booker.name
-  description                  = "Unlock ${each.value.activity} ${each.value.weekday} ${each.value.time}; Step Functions retries 3 times, 60s apart"
+  description                  = "Unlock ${each.value.activity} ${each.value.weekday} ${each.value.time}; Step Functions retries 3 times, 60s apart. Parked DISABLED while the API zip booker is the live cron."
   schedule_expression          = "cron(${each.value.cron_minute} ${each.value.cron_hour} ? * ${each.value.cron_dow} *)"
   schedule_expression_timezone = "America/St_Johns"
   state                        = var.schedule_enabled ? "ENABLED" : "DISABLED"

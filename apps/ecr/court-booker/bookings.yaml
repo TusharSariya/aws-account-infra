@@ -6,6 +6,9 @@ calendar_url: https://embed.upace.app/equipment/105/calendar?gym_id=785&hide-fil
 activities:
   court1: "3-1 - Squash & Racquetball Court 1"
   court2: "3-2 - Squash & Racquetball Court 2"
+equipment_ids:
+  court1: 7412
+  court2: 12739
 weekly:
   - activity: court1
     weekday: Mon

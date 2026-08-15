@@ -1,0 +1,71 @@
+name: lambda-package
+
+# Build arm64 zips under apps/lambda/python/<runtime>/<name> and upload an
+# immutable git-sha object. Does not retarget Lambda; set booker_api_zip_key
+# and apply for that.
+
+on:
+  pull_request:
+    paths:
+      - "apps/lambda/**"
+      - "apps/ecr/court-booker/booker/**"
+      - "apps/ecr/court-booker/bookings.yaml"
+      - "scripts/lambda-package.sh"
+      - ".github/workflows/lambda-package.yml"
+  push:
+    branches: [main]
+    paths:
+      - "apps/lambda/**"
+      - "apps/ecr/court-booker/booker/**"
+      - "apps/ecr/court-booker/bookings.yaml"
+      - "scripts/lambda-package.sh"
+      - ".github/workflows/lambda-package.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: lambda-package-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+env:
+  AWS_REGION: us-east-1
+  AWS_ACCOUNT_ID: "992382747916"
+  LAMBDA_PACKAGE_ROLE_ARN: arn:aws:iam::992382747916:role/github-ci-lambda-package
+
+jobs:
+  package:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.LAMBDA_PACKAGE_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Package and upload
+        env:
+          TAG: ${{ github.sha }}
+        run: |
+          chmod +x scripts/lambda-package.sh
+          ./scripts/lambda-package.sh python/3.12/court-booker "$TAG"
+      - name: Comment key on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tag = '${{ github.sha }}';
+            const key = `court-booker/${tag}.zip`;
+            const body = `### lambda-package — \`court-booker-api\`\n\n\`${key}\`\n\nUploading does not retarget Lambda. Set \`booker_api_zip_key\` and apply. Playwright EventBridge stays off (\`schedule_enabled = false\`).`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });

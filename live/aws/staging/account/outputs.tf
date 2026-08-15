@@ -17,6 +17,11 @@ output "github_infra_ecr_push_role_arn" {
   description = "role-to-assume for .github/workflows/ecr-push.yml (apps/ecr images)."
 }
 
+output "github_lambda_package_role_arn" {
+  value       = aws_iam_role.github_lambda_package.arn
+  description = "role-to-assume for .github/workflows/lambda-package.yml (apps/lambda zips)."
+}
+
 output "github_sdk_candidate_role_arn" {
   value       = aws_iam_role.github_sdk_candidate.arn
   description = "role-to-assume for SDK candidate publishes to CodeArtifact sdk-candidate."

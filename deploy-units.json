@@ -38,6 +38,23 @@
         "apps/ecr/court-booker/bookings.yaml",
         "config/environments/aws/staging.tfvars"
       ]
+    },
+    {
+      "id": "aws-staging-court-booker-api",
+      "cloud": "aws",
+      "environment": "staging",
+      "path": "live/aws/staging/workloads/lambda/python/court-booker",
+      "var_file": "config/environments/aws/staging.tfvars",
+      "region": "us-east-1",
+      "dependencies": ["aws-staging-account", "aws-staging-court-booker"],
+      "ci": true,
+      "watch": [
+        "live/aws/staging/workloads/lambda/python/court-booker/",
+        "modules/aws/",
+        "apps/ecr/court-booker/bookings.yaml",
+        "apps/lambda/python/3.12/court-booker/",
+        "config/environments/aws/staging.tfvars"
+      ]
     }
   ]
 }

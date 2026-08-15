@@ -28,12 +28,13 @@ default_tags = {
   repo       = "aws-account-infra"
 }
 
-# Court-booker Lambda image + weekly schedules. Empty tag / false would destroy
-# or disable live resources on the next apply; keep these in the shared file so
-# CI does not need extra -var flags. Pushing a new image does not retarget
-# Lambda until this tag is updated.
-booker_image_tag = "chromium-shm2"
-schedule_enabled = true
+# Court-booker. Playwright EventBridge stays DISABLED (`schedule_enabled`).
+# The HTTP zip Lambda is the live cron once `booker_api_zip_key` is set.
+# Pushing an image or zip does not retarget Lambda until the tag/key is updated.
+booker_image_tag      = "chromium-shm2"
+booker_api_zip_key    = ""
+schedule_enabled      = false
+api_schedule_enabled  = true
 
 # AWS Budgets monthly cost alarm (account/ stack).
 # TODO: set a real notification email and your tolerance.

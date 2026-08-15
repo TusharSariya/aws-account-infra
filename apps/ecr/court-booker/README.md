@@ -37,6 +37,9 @@ under `apps/ecr/court-booker/`; locally):
 ./scripts/ecr-image.sh court-booker
 ```
 
+The HTTP/API booker is a separate zip Lambda (`apps/lambda/python/3.12/court-booker`).
+Playwright EventBridge is DISABLED (`schedule_enabled = false`); the API zip cron is the live booker.
+
 Put My Y credentials once (never in git). The OpenTofu stack creates the empty
 secret; this copies `my_YMCA_username` / `my_YMCA_password` from repo-root `.env`:
 
@@ -51,7 +54,7 @@ aws secretsmanager put-secret-value --secret-id staging/court-booker/my-y \
   --secret-string '{"my_YMCA_username":"...","my_YMCA_password":"..."}'
 ```
 
-Schedules stay off until a local book works. Then set `enabled: true` on the weekly rule in `bookings.yaml` and `schedule_enabled = true` in `config/environments/aws/staging.tfvars`.
+Weekly rules live in `bookings.yaml`. Playwright EventBridge is parked with `schedule_enabled = false`; the API zip cron uses `api_schedule_enabled`.
 
 Cron fires at the unlock instant (Monday 17:00 → Friday 17:00). Step Functions invokes Lambda up to **three times, 60 seconds apart**. The wait is in Step Functions, so Lambda is not billed for sleep. If the first attempt books, the later attempts never run. `already_held` on a later attempt is also success.
 

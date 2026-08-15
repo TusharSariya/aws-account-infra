@@ -63,10 +63,22 @@ variable "booker_image_tag" {
   description = "Immutable ECR tag (git sha). Empty skips Lambda and schedules so the first apply can create ECR."
 }
 
+variable "booker_api_zip_key" {
+  type        = string
+  default     = ""
+  description = "Declared so the shared environment file can also serve the API booker stack."
+}
+
 variable "schedule_enabled" {
   type        = bool
   default     = false
-  description = "When true, EventBridge schedules are ENABLED. Keep false until a local book succeeds."
+  description = "When true, Playwright EventBridge schedules are ENABLED. Parked false while the API zip booker is the live cron."
+}
+
+variable "api_schedule_enabled" {
+  type        = bool
+  default     = false
+  description = "Declared so the shared environment file can also serve the API booker stack."
 }
 
 variable "alert_email" {

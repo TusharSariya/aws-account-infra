@@ -34,6 +34,10 @@ def get_browser():
     mode = os.environ.get("BOOKER_BROWSER", "playwright").strip().lower()
     if mode == "stub":
         return StubUpace(scenario=os.environ.get("BOOKER_STUB_SCENARIO", "success"))
+    if mode == "api":
+        from booker.http import UpaceHttpBooker
+
+        return UpaceHttpBooker()
     from booker.upace import UpaceBooker
 
     return UpaceBooker()
@@ -101,6 +105,7 @@ def _run_weekly(
         people=people,
         dry_run=bool(event.get("dry_run", False)),
         calendar_url=config.calendar_url,
+        equipment_id=config.equipment_id(activity),
     )
     return browser.book(request, creds)
 
@@ -122,6 +127,7 @@ def _run_adhoc(
         people=int(event.get("people") or 1),
         dry_run=bool(event.get("dry_run", False)),
         calendar_url=config.calendar_url,
+        equipment_id=config.equipment_id(activity),
     )
     if event.get("cancel"):
         return browser.cancel(request, creds)

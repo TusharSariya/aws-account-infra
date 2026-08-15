@@ -65,6 +65,7 @@ def main(argv: list[str] | None = None) -> int:
         people=args.people,
         dry_run=args.dry_run,
         calendar_url=config.calendar_url,
+        equipment_id=config.equipment_id(args.activity),
     )
     result = browser.cancel(request, creds) if args.cancel else browser.book(request, creds)
     return _emit([result], as_json=args.json)
