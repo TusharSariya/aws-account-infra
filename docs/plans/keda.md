@@ -74,7 +74,7 @@ this trust domain. In summary, before applying:
 
 - **Bring a CA and register the trust anchor.** See `homelab-ca.md`. The AWS side
   is Terraform (`live/aws/staging/account/ecr_pull_iam.tf`); the CA's public PEM
-  lives in `config/environments/aws/staging.tfvars`. That variable `count`-gates the
+  lives in `config/environments/aws/staging/account.tfvars`. That variable `count`-gates the
   whole chain, so a hand-run apply that omits `-var-file` plans the trust anchor,
   role, and profile for **destruction** — breaking ECR pull on every node. CI always
   passes it.

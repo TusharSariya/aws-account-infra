@@ -128,12 +128,12 @@ trust root, and only `.gitignore` stands between the key and a `git add -A`.
 
 The trust anchor, profile, and IAM role are Terraform, in
 `live/aws/staging/account/ecr_pull_iam.tf`. The CA's **public** certificate is not a
-secret, and lives inline in `config/environments/aws/staging.tfvars` as
+secret, and lives inline in `config/environments/aws/staging/account.tfvars` as
 `homelab_ca_certificate_pem`. Replacing the CA means replacing that PEM.
 
 ```bash
 cd live/aws/staging/account
-tofu apply -var-file="$(git rev-parse --show-toplevel)/config/environments/aws/staging.tfvars"
+tofu apply -var-file="$(git rev-parse --show-toplevel)/config/environments/aws/staging/account.tfvars"
 ```
 
 The whole chain is `count`-gated on that variable being non-empty
@@ -145,7 +145,7 @@ That gate cuts both ways: an apply that omits the var-file evaluates the gate to
 false and plans the live trust anchor, role, and profile for **destruction**,
 breaking ECR pull on every node. CI always passes `-var-file` (see `tofu-apply.yml`),
 so the automated path is safe; the exposure is a hand-run `tofu apply` in this
-directory. `staging.tfvars` is not an auto-loaded filename — only `terraform.tfvars`
+directory. `account.tfvars` is not an auto-loaded filename — only `terraform.tfvars`
 and `*.auto.tfvars` are — so the flag is never optional.
 
 Record the three outputs: `ecr_pull_trust_anchor_arn`, `ecr_pull_profile_arn`,
@@ -269,7 +269,7 @@ signing helper → Roles Anywhere → CA → ECR.
 - **A hand-run `tofu apply` without `-var-file` destroys the ECR-pull chain.** CI
   always passes it, so the automated path is safe, but nothing stops an operator
   applying that unit directly and silently reaping the trust anchor, role, and
-  profile. Renaming `staging.tfvars` to `*.auto.tfvars` would make it auto-load and
+  profile. Renaming `account.tfvars` to `*.auto.tfvars` would make it auto-load and
   close this, at the cost of the plan-only CI job's empty-CA behaviour.
 - **No revocation.** There is no CRL and no OCSP. A leaked node key is valid until
   its cert expires. The only true revocation is replacing the CA and trust anchor.

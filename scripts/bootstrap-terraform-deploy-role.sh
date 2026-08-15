@@ -53,4 +53,4 @@ if [[ "$CALLER_ARN" == arn:aws:iam::*:user/* ]]; then
 fi
 
 echo "Done. Role ARN: ${ROLE_ARN}"
-echo "config/environments/aws/staging.tfvars references terraform_deploy_role_name = \"${ROLE_NAME}\" and aws_profile = \"${PROFILE}\"."
+echo "config/environments/aws/staging/*.tfvars reference terraform_deploy_role_name = \"${ROLE_NAME}\" and aws_profile = \"${PROFILE}\"."

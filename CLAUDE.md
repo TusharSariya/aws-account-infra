@@ -37,8 +37,10 @@ variables live under `config/environments`, and secrets must not be committed.
   `live/aws/staging/workloads/lambda/python/court-booker/` (state key `stacks/court-booker-api/terraform.tfstate`).
   GitHub Actions pushes `apps/ecr/<name>` to ECR and `apps/lambda/` zips to
   `lambda-releases` (`candidate/` on PRs, `stable/` on main). It does not retarget
-  Lambda until `booker_image_tag` or `booker_api_zip_key` in `config/environments/aws/staging.tfvars`
-  is updated. Playwright EventBridge is off (`schedule_enabled = false`); the API zip cron is on
+  Lambda until `booker_image_tag` in `config/environments/aws/staging/court-booker.tfvars`
+  or `booker_api_zip_key` in `config/environments/aws/staging/court-booker-api.tfvars`
+  is updated. Each deploy unit has its own var file under `config/environments/aws/staging/`.
+  Playwright EventBridge is off (`schedule_enabled = false`); the API zip cron is on
   (`api_schedule_enabled = true`) once a `stable/` zip key is set. Each Lambda has its own
   SSM SecureString (`/staging/court-booker/my-y` and `/staging/court-booker-api/my-y`); they
   do not share credentials storage. Put values with `scripts/court-booker-put-secret.sh`.

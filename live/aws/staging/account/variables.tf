@@ -1,4 +1,4 @@
-# --- Environment inputs (sourced from config/environments/aws/staging.tfvars) ---
+# --- Environment inputs (config/environments/aws/staging/account.tfvars) ---
 variable "aws_account_id" {
   type = string
 }
@@ -32,38 +32,6 @@ variable "github_owner" {
 variable "github_repo" {
   type        = string
   description = "GitHub repo name (for OIDC trust)."
-}
-
-# Declared (unused here) so the shared environment file can also serve the rag
-# workload stack's ECR-push OIDC trust — see workloads/rag/image_push_oidc.tf.
-variable "ecr_push_github_owner" {
-  type    = string
-  default = ""
-}
-variable "ecr_push_github_repo" {
-  type    = string
-  default = ""
-}
-
-# Declared so the shared environment file can also serve the court-booker stack.
-variable "booker_image_tag" {
-  type    = string
-  default = ""
-}
-
-variable "booker_api_zip_key" {
-  type    = string
-  default = ""
-}
-
-variable "schedule_enabled" {
-  type    = bool
-  default = false
-}
-
-variable "api_schedule_enabled" {
-  type    = bool
-  default = false
 }
 
 # --- account-specific ---

@@ -73,8 +73,8 @@ jobs:
         run: |
           [[ "${{ needs.detect.result }}" == "success" ]] || exit 1
           if [[ "${{ needs.detect.outputs.units }}" == "[]" ]]; then exit 0; fi
-          # No apply label: skip is intentional. Shared staging.tfvars would
-          # otherwise pull the account stack into CI apply.
+          # No apply label: skip is intentional. Each unit has its own var file,
+          # so a booker pin no longer marks the account stack as changed.
           if [[ "${{ needs.apply.result }}" == "skipped" ]]; then exit 0; fi
           [[ "${{ needs.apply.result }}" == "success" ]] || {
             echo "::error::Apply was requested (apply label) but failed."; exit 1;

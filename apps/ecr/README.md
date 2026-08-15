@@ -10,4 +10,4 @@ pushes an immutable git-sha tag. Lambda images must be built with
 ```
 
 Pushing an image does not retarget Lambda. Set `booker_image_tag` in
-`config/environments/aws/staging.tfvars` and apply the court-booker unit.
+`config/environments/aws/staging/court-booker.tfvars` and apply the court-booker unit.
