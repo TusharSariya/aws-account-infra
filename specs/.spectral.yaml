@@ -1,0 +1,8 @@
+# Shared OpenAPI lint. CI: .github/workflows/sdk.yml
+extends:
+  - [spectral:oas, recommended]
+
+rules:
+  # Reverse-engineered unpublished APIs; no public contact URL or license.
+  info-contact: off
+  info-license: off

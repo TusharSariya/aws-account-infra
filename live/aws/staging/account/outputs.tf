@@ -17,6 +17,29 @@ output "github_infra_ecr_push_role_arn" {
   description = "role-to-assume for .github/workflows/ecr-push.yml (apps/ecr images)."
 }
 
+output "github_sdk_candidate_role_arn" {
+  value       = aws_iam_role.github_sdk_candidate.arn
+  description = "role-to-assume for SDK candidate publishes to CodeArtifact sdk-candidate."
+}
+
+output "github_sdk_stable_role_arn" {
+  value       = aws_iam_role.github_sdk_stable.arn
+  description = "role-to-assume for SDK stable publishes (GitHub Environment sdk)."
+}
+
+output "codeartifact_domain" {
+  value       = aws_codeartifact_domain.infra.domain
+  description = "CodeArtifact domain for private SDK packages."
+}
+
+output "codeartifact_sdk_candidate_repository" {
+  value = aws_codeartifact_repository.sdk_candidate.repository
+}
+
+output "codeartifact_sdk_stable_repository" {
+  value = aws_codeartifact_repository.sdk_stable.repository
+}
+
 # IAM Roles Anywhere coordinates the homelab nodes pass to aws_signing_helper. All
 # three are needed for the credential_process invocation on each kubelet host — feed
 # them into the ansible inventory (kubernetes_node_ecr_rolesanywhere_*_arn).

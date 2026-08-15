@@ -1,0 +1,112 @@
+name: sdk-publish-stable
+
+# Apply-before-merge for SDK packages. Same shape as tofu-apply.yml:
+# label publish-stable + GitHub Environment sdk, then auto-merge.
+# Do not reuse apply / prod (those are tofu + AdministratorAccess).
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+concurrency:
+  group: sdk-publish-stable
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: read
+
+env:
+  AWS_REGION: us-east-1
+  SDK_STABLE_ROLE_ARN: arn:aws:iam::992382747916:role/github-ci-sdk-stable
+  CODEARTIFACT_DOMAIN: aws-account-infra
+  CODEARTIFACT_DOMAIN_OWNER: "992382747916"
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      required: ${{ steps.detect.outputs.required }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: detect
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import os
+          import subprocess
+
+          changed = subprocess.check_output(
+              ["git", "diff", "--name-only", os.environ["BASE_SHA"], os.environ["HEAD_SHA"], "--"],
+              text=True,
+          ).splitlines()
+          required = any(
+              path.startswith("sdk/targets/")
+              or (path.startswith("specs/") and path.endswith("openapi.yaml"))
+              for path in changed
+          )
+          print(f"required={'true' if required else 'false'}")
+          PY
+
+  publish-stable:
+    needs: detect
+    if: needs.detect.outputs.required == 'true' && contains(github.event.pull_request.labels.*.name, 'publish-stable')
+    runs-on: ubuntu-latest
+    environment: sdk
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - spec: upace
+            target: python
+          - spec: upace
+            target: typescript-fetch
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        if: matrix.target == 'typescript-fetch'
+        with:
+          node-version: "20"
+      - name: generate
+        run: ./scripts/sdk-generate.sh "${{ matrix.spec }}" "${{ matrix.target }}"
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.SDK_STABLE_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: publish
+        run: ./scripts/sdk-publish.sh "${{ matrix.spec }}" "${{ matrix.target }}" stable
+
+  publish-gate:
+    needs: [detect, publish-stable]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: gate
+        run: |
+          [[ "${{ needs.detect.result }}" == "success" ]] || exit 1
+          if [[ "${{ needs.detect.outputs.required }}" != "true" ]]; then exit 0; fi
+          [[ "${{ needs.publish-stable.result }}" == "success" ]] || {
+            echo "::error::Spec or generator targets changed but sdk-stable was not published. Add the publish-stable label and approve Environment sdk.";
+            exit 1;
+          }
+
+  enable-auto-merge:
+    needs: publish-stable
+    if: needs.publish-stable.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: enable auto-merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr merge "${{ github.event.pull_request.number }}" --repo "${{ github.repository }}" --auto --squash
