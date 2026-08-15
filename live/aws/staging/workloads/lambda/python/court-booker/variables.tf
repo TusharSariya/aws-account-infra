@@ -22,53 +22,6 @@ variable "default_tags" {
   default = {}
 }
 
-variable "github_owner" {
-  type    = string
-  default = ""
-}
-
-variable "github_repo" {
-  type    = string
-  default = ""
-}
-
-variable "budget_monthly_limit_usd" {
-  type    = string
-  default = ""
-}
-
-variable "budget_notification_email" {
-  type    = string
-  default = ""
-}
-
-variable "ecr_push_github_owner" {
-  type    = string
-  default = ""
-}
-
-variable "ecr_push_github_repo" {
-  type    = string
-  default = ""
-}
-
-variable "homelab_ca_certificate_pem" {
-  type    = string
-  default = ""
-}
-
-# Declared because this unit shares config/environments/aws/staging.tfvars
-# with the Playwright court-booker stack. Do not use them here.
-variable "booker_image_tag" {
-  type    = string
-  default = ""
-}
-
-variable "schedule_enabled" {
-  type    = bool
-  default = false
-}
-
 variable "booker_api_zip_key" {
   type        = string
   default     = ""
@@ -78,7 +31,7 @@ variable "booker_api_zip_key" {
 variable "api_schedule_enabled" {
   type        = bool
   default     = false
-  description = "When true, EventBridge schedules for the API booker are ENABLED. Playwright stays on schedule_enabled (currently parked false)."
+  description = "When true, EventBridge schedules for the API booker are ENABLED."
 }
 
 variable "alert_email" {

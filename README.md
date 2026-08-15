@@ -70,9 +70,10 @@ cd ../../../..
 CI plans changed deploy units using AWS GitHub OIDC. Adding the `apply` label runs the
 serialized, gated apply-before-merge workflow. Bootstrap is never run in CI. Changes
 under `apps/ecr/` are built and pushed to ECR by `.github/workflows/ecr-push.yml`;
-update `booker_image_tag` and apply to retarget the Playwright Lambda. Changes under
+update `booker_image_tag` in `config/environments/aws/staging/court-booker.tfvars` and apply to retarget the Playwright Lambda. Changes under
 `apps/lambda/` are zipped by `.github/workflows/lambda-package.yml` into
-`lambda-releases` (`candidate/` / `stable/`); update `booker_api_zip_key` to a
+`lambda-releases` (`candidate/` / `stable/`); update `booker_api_zip_key` in
+`config/environments/aws/staging/court-booker-api.tfvars` to a
 `stable/` key and apply to retarget the HTTP booker. Playwright EventBridge is
 off; the API zip cron is the live weekly booker.
 

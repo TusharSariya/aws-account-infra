@@ -41,7 +41,7 @@ locals {
     }
   }
 
-  # Playwright oneshots only while the API zip is not retargeted.
+  # Playwright oneshots from bookings.yaml. Keep enabled: false after they fire.
   oneshot = {
     for name, rule in local.oneshot_input :
     name => {
@@ -63,7 +63,7 @@ locals {
         )
       )
     }
-    if rule.enabled && var.booker_image_tag != "" && var.booker_api_zip_key == "" && (
+    if rule.enabled && var.booker_image_tag != "" && (
       rule.invoke_at != "" || (rule.booking_date != "" && rule.booking_time != "")
     )
   }

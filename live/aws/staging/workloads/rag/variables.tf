@@ -1,4 +1,4 @@
-# --- Environment inputs (sourced from config/environments/aws/staging.tfvars) ---
+# --- Environment inputs (config/environments/aws/staging/rag.tfvars) ---
 variable "aws_account_id" {
   type = string
 }
@@ -23,24 +23,6 @@ variable "default_tags" {
   default = {}
 }
 
-# Declared (unused here) so the environment file can be shared by staging deploy units.
-variable "github_owner" {
-  type    = string
-  default = ""
-}
-variable "github_repo" {
-  type    = string
-  default = ""
-}
-variable "budget_monthly_limit_usd" {
-  type    = string
-  default = ""
-}
-variable "budget_notification_email" {
-  type    = string
-  default = ""
-}
-
 # GitHub repo whose Actions runs are trusted to assume the ECR-push OIDC role
 # (see image_push_oidc.tf) — the workload repo that builds these images, not
 # this infra repo (that trust lives in the account stack's github_owner/repo).
@@ -51,27 +33,6 @@ variable "ecr_push_github_owner" {
 variable "ecr_push_github_repo" {
   type    = string
   default = ""
-}
-
-# Declared so the shared environment file can also serve the court-booker stack.
-variable "booker_image_tag" {
-  type    = string
-  default = ""
-}
-
-variable "booker_api_zip_key" {
-  type    = string
-  default = ""
-}
-
-variable "schedule_enabled" {
-  type    = bool
-  default = false
-}
-
-variable "api_schedule_enabled" {
-  type    = bool
-  default = false
 }
 
 # --- rag-specific ---
