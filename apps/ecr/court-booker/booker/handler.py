@@ -11,6 +11,7 @@ from booker.results import LATE, BookingFailed, BookingResult
 from booker.schedule import resolve_weekly_target
 from booker.secrets import Credentials, load_credentials
 from booker.stub import BookingRequest, StubUpace
+from booker.timing import Stopwatch
 
 
 def parse_event(event: Any) -> dict[str, Any]:
@@ -150,10 +151,17 @@ def finalize_lambda(result: BookingResult) -> dict[str, Any]:
 
 
 def lambda_handler(event, context):  # noqa: ARG001
+    clock = Stopwatch("lambda_handler")
     parsed = parse_event(event)
+    clock.mark("parse_event")
     config = load_bookings()
+    clock.mark("load_bookings")
     creds = load_credentials()
+    clock.mark("load_credentials")
+    browser = get_browser()
+    clock.mark("get_browser", browser=type(browser).__name__)
     tz = ZoneInfo(config.timezone)
     now = _now(tz)
-    result = run_booking(parsed, config=config, creds=creds, browser=get_browser(), now=now)
+    result = run_booking(parsed, config=config, creds=creds, browser=browser, now=now)
+    clock.mark("run_booking", status=result.status)
     return finalize_lambda(result)

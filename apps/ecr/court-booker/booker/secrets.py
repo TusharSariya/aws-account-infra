@@ -58,6 +58,9 @@ def load_credentials(*, secret_arn: str | None = None) -> Credentials:
 def _from_secrets_manager(secret_arn: str) -> Credentials:
     import boto3
 
+    from booker.timing import Stopwatch
+
+    clock = Stopwatch("secretsmanager")
     client_kwargs: dict[str, str] = {}
     endpoint = os.environ.get("AWS_ENDPOINT_URL", "").strip()
     if not endpoint and os.environ.get("LOCALSTACK_HOSTNAME"):
@@ -65,7 +68,9 @@ def _from_secrets_manager(secret_arn: str) -> Credentials:
     if endpoint:
         client_kwargs["endpoint_url"] = endpoint
     client = boto3.client("secretsmanager", **client_kwargs)
+    clock.mark("client")
     payload = client.get_secret_value(SecretId=secret_arn)["SecretString"]
+    clock.mark("get_secret_value")
     data = json.loads(payload)
     if not isinstance(data, dict):
         raise CredentialError("secret JSON must be an object")

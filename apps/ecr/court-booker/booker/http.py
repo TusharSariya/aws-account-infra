@@ -19,6 +19,7 @@ from booker.results import (
 )
 from booker.secrets import Credentials
 from booker.stub import BookingRequest
+from booker.timing import Stopwatch
 
 ORIGIN = "https://embed.upace.app"
 USER_AGENT = (
@@ -262,17 +263,22 @@ class UpaceHttpBooker:
             activity=request.activity_key,
             time=request.hhmm,
         )
+        clock = Stopwatch("upace_http", activity=request.activity_key, time=request.hhmm)
         if request.equipment_id is None:
             return BookingResult(status=UNEXPECTED_UI, message="missing equipment_id", **meta)
         session = self._session_factory()
+        clock.mark("session")
         try:
             session.login(creds.username, creds.password)
         except UpaceHttpError as exc:
+            clock.mark("login", error=True)
             if exc.status in {0, 401, 403}:
                 return BookingResult(status=AUTH_FAIL, message=exc.message, **meta)
             return BookingResult(status=UNEXPECTED_UI, message=exc.message, **meta)
+        clock.mark("login")
 
         held = self._matching(session, request)
+        clock.mark("list_reservations", held=held is not None)
         if cancel:
             if held is None:
                 return BookingResult(status=UNEXPECTED_UI, message="matching reservation not found", **meta)
@@ -281,7 +287,9 @@ class UpaceHttpBooker:
             try:
                 session.cancel(held.id)
             except UpaceHttpError as exc:
+                clock.mark("cancel", error=True)
                 return BookingResult(status=UNEXPECTED_UI, message=exc.message, **meta)
+            clock.mark("cancel")
             return BookingResult(status=CANCELLED, message="cancelled matching reservation", **meta)
         if held is not None:
             return BookingResult(status=ALREADY_HELD, message="already in My Reservations", **meta)
@@ -291,7 +299,9 @@ class UpaceHttpBooker:
                 request.equipment_id, request.target_date, request.hhmm
             )
         except UpaceHttpError as exc:
+            clock.mark("list_durations", error=True)
             return BookingResult(status=_classify_bad_request(exc.message), message=exc.message, **meta)
+        clock.mark("list_durations", durations=len(durations))
         if not durations:
             return BookingResult(status=CLOSED, message=f"no start time {request.hhmm}", **meta)
         if request.duration_min not in durations:
@@ -311,9 +321,12 @@ class UpaceHttpBooker:
                 people=request.people,
             )
         except UpaceHttpError as exc:
+            clock.mark("reserve", error=True)
             return BookingResult(status=_classify_bad_request(exc.message), message=exc.message, **meta)
         except Exception as exc:
+            clock.mark("reserve", error=True)
             return BookingResult(status=UNEXPECTED_UI, message=str(exc), **meta)
+        clock.mark("reserve")
         return BookingResult(status=BOOKED, message="reservation complete", reserve_clicks=1, **meta)
 
     def _matching(self, session: UpaceSession, request: BookingRequest) -> HeldReservation | None:
