@@ -10,6 +10,7 @@ namespaces, not implemented environments.
 ./scripts/infra.sh aws-staging-account plan
 ./scripts/infra.sh aws-staging-rag plan
 ./scripts/infra.sh aws-staging-court-booker plan
+./scripts/infra.sh aws-staging-court-booker-api plan
 ./scripts/localstack.sh up
 ./scripts/localstack.sh smoke
 ANSIBLE_CONFIG=ansible/ansible.cfg ansible-playbook ansible/playbooks/workstation.yml --check --diff
@@ -32,8 +33,13 @@ variables live under `config/environments`, and secrets must not be committed.
 - Application runtime code belongs in its workload repository, not here.
   Exception: `apps/ecr/court-booker/` is a small Playwright Lambda image whose infra lives in
   `live/aws/staging/workloads/court-booker/` (own state key `stacks/court-booker/terraform.tfstate`).
-  GitHub Actions pushes `apps/ecr/<name>` to ECR; it does not retarget Lambda until
-  `booker_image_tag` in `config/environments/aws/staging.tfvars` is updated.
+  The HTTP booker is a zip Lambda under `apps/lambda/python/3.12/court-booker/` with infra in
+  `live/aws/staging/workloads/lambda/python/court-booker/` (state key `stacks/court-booker-api/terraform.tfstate`).
+  GitHub Actions pushes `apps/ecr/<name>` to ECR and `apps/lambda/` zips to
+  `lambda-releases` (`candidate/` on PRs, `stable/` on main). It does not retarget
+  Lambda until `booker_image_tag` or `booker_api_zip_key` in `config/environments/aws/staging.tfvars`
+  is updated. Playwright EventBridge is off (`schedule_enabled = false`); the API zip cron is on
+  (`api_schedule_enabled = true`) once a `stable/` zip key is set.
   RAG and other products still keep runtime code out of this repo.
 
 ## Scope boundaries

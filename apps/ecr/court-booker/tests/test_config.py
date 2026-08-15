@@ -10,6 +10,9 @@ def test_default_bookings_yaml():
     assert config.timezone == "America/St_Johns"
     assert config.horizon_hours == 72
     assert config.gym_id == 785
+    assert config.equipment_ids["court1"] == 7412
+    assert config.equipment_ids["court2"] == 12739
+    assert config.equipment_id("court2") == 12739
     assert "court1" in config.activities
     assert config.activity_label("court1").startswith("3-1")
     assert config.weekly[0].weekday == "Mon"

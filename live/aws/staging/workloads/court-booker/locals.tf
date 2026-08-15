@@ -26,4 +26,19 @@ locals {
     }
     if try(rule.enabled, false) && var.booker_image_tag != ""
   }
+
+  # One-shot `at()` schedules. Run on Playwright only while the API zip is not
+  # retargeted, so both stacks cannot fire the same booking.
+  oneshot = {
+    for rule in try(local.bookings.oneshot, []) :
+    rule.name => {
+      activity     = rule.activity
+      date         = tostring(rule.date)
+      time         = tostring(rule.time)
+      invoke_at    = tostring(rule.invoke_at)
+      duration_min = try(tonumber(rule.duration_min), 60)
+      people       = try(tonumber(rule.people), 1)
+    }
+    if try(rule.enabled, false) && var.booker_image_tag != "" && var.booker_api_zip_key == ""
+  }
 }

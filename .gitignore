@@ -26,6 +26,7 @@ tfplan.binary
 # OpenAPI Generator output and Swagger UI staging (rebuilt in CI)
 generated/
 build/api-docs/
+build/lambda/
 
 # Secrets and local Python (court-booker CLI reads repo-root .env)
 .env

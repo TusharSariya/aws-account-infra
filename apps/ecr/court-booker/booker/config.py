@@ -31,6 +31,7 @@ class BookingsConfig:
     university_id: int
     calendar_url: str
     activities: dict[str, str]
+    equipment_ids: dict[str, int]
     weekly: list[WeeklyRule]
     path: Path
 
@@ -41,11 +42,22 @@ class BookingsConfig:
             known = ", ".join(sorted(self.activities))
             raise ValueError(f"unknown activity {key!r}; expected one of: {known}") from exc
 
+    def equipment_id(self, key: str) -> int:
+        try:
+            return self.equipment_ids[key]
+        except KeyError as exc:
+            known = ", ".join(sorted(self.equipment_ids))
+            raise ValueError(f"unknown activity {key!r}; expected equipment id for: {known}") from exc
+
 
 def load_bookings(path: Path | None = None) -> BookingsConfig:
     bookings_path = path or Path(os.environ.get("BOOKINGS_PATH", DEFAULT_BOOKINGS_PATH))
     raw: dict[str, Any] = yaml.safe_load(bookings_path.read_text(encoding="utf-8"))
     activities = {str(key): str(label) for key, label in (raw.get("activities") or {}).items()}
+    equipment_ids = {str(key): int(value) for key, value in (raw.get("equipment_ids") or {}).items()}
+    missing_ids = sorted(set(activities) - set(equipment_ids))
+    if missing_ids:
+        raise ValueError(f"activities missing equipment_ids: {', '.join(missing_ids)}")
     weekly: list[WeeklyRule] = []
     for item in raw.get("weekly") or []:
         activity = str(item["activity"])
@@ -70,6 +82,7 @@ def load_bookings(path: Path | None = None) -> BookingsConfig:
         university_id=int(raw["university_id"]),
         calendar_url=str(raw["calendar_url"]),
         activities=activities,
+        equipment_ids=equipment_ids,
         weekly=weekly,
         path=bookings_path,
     )

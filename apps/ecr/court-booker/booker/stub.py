@@ -27,6 +27,7 @@ class BookingRequest:
     people: int
     dry_run: bool = False
     calendar_url: str = ""
+    equipment_id: int | None = None
 
 
 class StubUpace:

@@ -59,7 +59,17 @@ variable "booker_image_tag" {
   default = ""
 }
 
+variable "booker_api_zip_key" {
+  type    = string
+  default = ""
+}
+
 variable "schedule_enabled" {
+  type    = bool
+  default = false
+}
+
+variable "api_schedule_enabled" {
   type    = bool
   default = false
 }

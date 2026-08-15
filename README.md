@@ -15,6 +15,7 @@ their resources share one abstraction.
 | `config/environments/` | Non-secret variables grouped by cloud and environment |
 | `ansible/` | macOS administration workstation and Ubuntu compute configuration |
 | `apps/ecr/` | Container image sources; CI pushes each subdirectory to ECR |
+| `apps/lambda/` | Zip Lambda sources; CI uploads arm64 packages to S3 |
 | `mocks/localstack/` | Disposable local AWS sandbox |
 | `docs/plans/kubernetes.md` | Review-only Kubernetes proposal; nothing implements it yet |
 
@@ -24,7 +25,8 @@ The existing remote state bucket and lock table are unchanged. Keys:
 
 - `account/terraform.tfstate` — account baseline
 - `stacks/rag/terraform.tfstate` — RAG
-- `stacks/court-booker/terraform.tfstate` — court booker (new; first apply creates it)
+- `stacks/court-booker/terraform.tfstate` — court booker Playwright container
+- `stacks/court-booker-api/terraform.tfstate` — court booker HTTP zip Lambda
 
 For an existing checkout, reattach each relocated root before making changes:
 
@@ -35,6 +37,8 @@ For an existing checkout, reattach each relocated root before making changes:
 ./scripts/infra.sh aws-staging-rag plan
 ./scripts/infra.sh aws-staging-court-booker init
 ./scripts/infra.sh aws-staging-court-booker plan
+./scripts/infra.sh aws-staging-court-booker-api init
+./scripts/infra.sh aws-staging-court-booker-api plan
 ```
 
 Both migration plans must show no resource changes. Do not apply a migration plan that
@@ -59,12 +63,18 @@ cd ../../../..
 ./scripts/infra.sh aws-staging-rag apply
 ./scripts/infra.sh aws-staging-court-booker init
 ./scripts/infra.sh aws-staging-court-booker apply
+./scripts/infra.sh aws-staging-court-booker-api init
+./scripts/infra.sh aws-staging-court-booker-api apply
 ```
 
 CI plans changed deploy units using AWS GitHub OIDC. Adding the `apply` label runs the
 serialized, gated apply-before-merge workflow. Bootstrap is never run in CI. Changes
 under `apps/ecr/` are built and pushed to ECR by `.github/workflows/ecr-push.yml`;
-update `booker_image_tag` and apply to retarget Lambda.
+update `booker_image_tag` and apply to retarget the Playwright Lambda. Changes under
+`apps/lambda/` are zipped by `.github/workflows/lambda-package.yml` into
+`lambda-releases` (`candidate/` / `stable/`); update `booker_api_zip_key` to a
+`stable/` key and apply to retarget the HTTP booker. Playwright EventBridge is
+off; the API zip cron is the live weekly booker.
 
 ## Local systems
 
