@@ -86,6 +86,43 @@ def slot_unlock_at(target_date: date, slot: time, horizon_hours: int = 72) -> da
     return datetime.combine(target_date, slot) - timedelta(hours=horizon_hours)
 
 
+@dataclass(frozen=True)
+class OneshotTimes:
+    booking_date: str
+    booking_time: str
+    invoke_at: str
+
+
+def resolve_oneshot_times(
+    *,
+    booking_date: str | None = None,
+    booking_time: str | None = None,
+    invoke_at: str | None = None,
+    horizon_hours: int = 72,
+) -> OneshotTimes:
+    """Fill the missing oneshot field with a horizon_hours offset.
+
+    Set both to decouple EventBridge from the court slot (adhoc tests).
+    """
+    date_s = (booking_date or "").strip() or None
+    time_s = (booking_time or "").strip() or None
+    invoke_s = (invoke_at or "").strip() or None
+    if (date_s is None) ^ (time_s is None):
+        raise ScheduleError("booking_date and booking_time must be set together")
+    if date_s is None and invoke_s is None:
+        raise ScheduleError("oneshot needs booking_date/time and/or invoke_at")
+    if date_s is not None and invoke_s is not None:
+        parse_hhmm(time_s)
+        return OneshotTimes(date_s, time_s, invoke_s)
+    if date_s is not None:
+        parse_hhmm(time_s)
+        fire = slot_unlock_at(date.fromisoformat(date_s), parse_hhmm(time_s), horizon_hours)
+        return OneshotTimes(date_s, time_s, fire.strftime("%Y-%m-%dT%H:%M:%S"))
+    fire = datetime.fromisoformat(invoke_s)
+    book = fire + timedelta(hours=horizon_hours)
+    return OneshotTimes(book.strftime("%Y-%m-%d"), book.strftime("%H:%M"), invoke_s)
+
+
 def unlock_cron(weekday: str, hhmm: str) -> tuple[int, int, str]:
     """EventBridge cron fields for the unlock instant: minute, hour, AWS day-of-week.
 

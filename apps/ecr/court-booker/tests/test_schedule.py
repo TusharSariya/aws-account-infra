@@ -8,6 +8,7 @@ from booker.schedule import (
     format_people,
     format_ui_time,
     parse_hhmm,
+    resolve_oneshot_times,
     resolve_weekly_target,
     slot_unlock_at,
     unlock_cron,
@@ -40,6 +41,23 @@ def test_unlock_cron_monday_1700_is_friday_1700():
 def test_oneshot_eventbridge_is_slot_minus_horizon():
     assert slot_unlock_at(date(2026, 8, 19), time(5, 0), 72) == datetime(2026, 8, 16, 5, 0)
     assert slot_unlock_at(date(2026, 8, 19), time(4, 0), 72) == datetime(2026, 8, 16, 4, 0)
+
+
+def test_oneshot_defaults_the_missing_side_to_horizon_offset():
+    from_booking = resolve_oneshot_times(booking_date="2026-08-19", booking_time="05:00")
+    assert from_booking.invoke_at == "2026-08-16T05:00:00"
+    from_invoke = resolve_oneshot_times(invoke_at="2026-08-15T10:32:00")
+    assert (from_invoke.booking_date, from_invoke.booking_time) == ("2026-08-18", "10:32")
+
+
+def test_oneshot_keeps_decoupled_invoke_and_booking():
+    both = resolve_oneshot_times(
+        booking_date="2026-08-18",
+        booking_time="10:00",
+        invoke_at="2026-08-15T10:32:00",
+    )
+    assert both.invoke_at == "2026-08-15T10:32:00"
+    assert (both.booking_date, both.booking_time) == ("2026-08-18", "10:00")
 
 
 def test_warmup_cron_monday_1800_is_friday_1758():
