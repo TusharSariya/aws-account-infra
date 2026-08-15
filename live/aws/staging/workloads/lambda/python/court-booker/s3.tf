@@ -41,6 +41,9 @@ resource "aws_s3_bucket_lifecycle_configuration" "zips" {
     id     = "expire-old-versions"
     status = "Enabled"
     filter {}
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
     noncurrent_version_expiration {
       noncurrent_days = 14
     }
