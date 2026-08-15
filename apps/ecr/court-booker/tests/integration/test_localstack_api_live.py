@@ -115,10 +115,10 @@ def _package_api_zip(work: Path) -> Path:
     return dest
 
 
-def _lambda_env(secret_arn: str) -> dict[str, str]:
+def _lambda_env(parameter_name: str) -> dict[str, str]:
     return {
         "BOOKER_BROWSER": "api",
-        "SECRET_ARN": secret_arn,
+        "CREDENTIALS_PARAMETER": parameter_name,
         "BOOKINGS_PATH": "bookings.yaml",
         "TZ": "America/St_Johns",
     }
@@ -129,13 +129,17 @@ def api_stack(tmp_path_factory):
     work = tmp_path_factory.mktemp("booker-api-zip")
     zip_path = _package_api_zip(work)
     suffix = uuid.uuid4().hex[:8]
-    secret_name = f"staging/court-booker/my-y-live-{suffix}"
+    parameter_name = f"/staging/court-booker-api/my-y-live-{suffix}"
     function_name = f"court-booker-api-{suffix}"
     role_arn = "arn:aws:iam::000000000000:role/court-booker-lambda"
-    secrets = _client("secretsmanager")
+    ssm = _client("ssm")
     lam = _client("lambda")
-    created = secrets.create_secret(Name=secret_name, SecretString=json.dumps(_creds()))
-    secret_arn = created["ARN"]
+    ssm.put_parameter(
+        Name=parameter_name,
+        Value=json.dumps(_creds()),
+        Type="SecureString",
+        Overwrite=True,
+    )
     with zip_path.open("rb") as handle:
         lam.create_function(
             FunctionName=function_name,
@@ -146,19 +150,19 @@ def api_stack(tmp_path_factory):
             Timeout=60,
             MemorySize=256,
             Architectures=["arm64"] if platform.machine().lower() in {"arm64", "aarch64"} else ["x86_64"],
-            Environment={"Variables": _lambda_env(secret_arn)},
+            Environment={"Variables": _lambda_env(parameter_name)},
         )
     try:
         lam.get_waiter("function_active").wait(FunctionName=function_name)
     except Exception:
         time.sleep(3)
-    yield {"function_name": function_name, "secret_arn": secret_arn, "suffix": suffix}
+    yield {"function_name": function_name, "parameter_name": parameter_name, "suffix": suffix}
     try:
         lam.delete_function(FunctionName=function_name)
     except Exception:
         pass
     try:
-        secrets.delete_secret(SecretId=secret_arn, ForceDeleteWithoutRecovery=True)
+        ssm.delete_parameter(Name=parameter_name)
     except Exception:
         pass
 
@@ -216,10 +220,12 @@ def _find_open_slot(target: date) -> str | None:
 
 def test_bad_password_fails_the_lambda(api_stack):
     lam = _client("lambda")
-    secrets = _client("secretsmanager")
-    secrets.put_secret_value(
-        SecretId=api_stack["secret_arn"],
-        SecretString=json.dumps({USERNAME_KEY: "nobody@example.com", PASSWORD_KEY: "wrong"}),
+    ssm = _client("ssm")
+    ssm.put_parameter(
+        Name=api_stack["parameter_name"],
+        Value=json.dumps({USERNAME_KEY: "nobody@example.com", PASSWORD_KEY: "wrong"}),
+        Type="SecureString",
+        Overwrite=True,
     )
     time.sleep(1)
     try:
@@ -231,10 +237,15 @@ def test_bad_password_fails_the_lambda(api_stack):
         assert body["status"] == "auth_fail"
         assert body.get("reserve_clicks", 0) == 0
     finally:
-        secrets.put_secret_value(SecretId=api_stack["secret_arn"], SecretString=json.dumps(_creds()))
+        ssm.put_parameter(
+            Name=api_stack["parameter_name"],
+            Value=json.dumps(_creds()),
+            Type="SecureString",
+            Overwrite=True,
+        )
         lam.update_function_configuration(
             FunctionName=api_stack["function_name"],
-            Environment={"Variables": _lambda_env(api_stack["secret_arn"])},
+            Environment={"Variables": _lambda_env(api_stack["parameter_name"])},
         )
         time.sleep(1)
 

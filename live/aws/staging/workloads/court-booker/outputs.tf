@@ -3,9 +3,9 @@ output "ecr_repository_url" {
   description = "Push target for scripts/ecr-image.sh court-booker."
 }
 
-output "secret_arn" {
-  value       = aws_secretsmanager_secret.my_y.arn
-  description = "Put My Y JSON here; never commit the value."
+output "credentials_parameter" {
+  value       = aws_ssm_parameter.my_y.name
+  description = "Put My Y JSON here with scripts/court-booker-put-secret.sh; never commit the value."
 }
 
 output "lambda_function_name" {

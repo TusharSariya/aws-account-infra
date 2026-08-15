@@ -52,13 +52,13 @@ def _localstack_up() -> bool:
 pytestmark = pytest.mark.skipif(not _localstack_up(), reason="LocalStack is not running on :4566")
 
 
-def _lambda_env(secret_arn: str, scenario: str = "success") -> dict[str, str]:
+def _lambda_env(parameter_name: str, scenario: str = "success") -> dict[str, str]:
     return {
         "BOOKER_BROWSER": "stub",
         "BOOKER_STUB_SCENARIO": scenario,
         "BOOKER_SKIP_WAIT": "1",
         "BOOKER_NOW": "2026-08-14T17:58:00-02:30",
-        "SECRET_ARN": secret_arn,
+        "CREDENTIALS_PARAMETER": parameter_name,
         "BOOKINGS_PATH": "bookings.yaml",
     }
 
@@ -102,18 +102,19 @@ def stack(tmp_path_factory):
     work = tmp_path_factory.mktemp("booker-zip")
     zip_path = _package_zip(work)
     suffix = uuid.uuid4().hex[:8]
-    secret_name = f"staging/court-booker/my-y-{suffix}"
+    parameter_name = f"/staging/court-booker/my-y-{suffix}"
     function_name = f"court-booker-{suffix}"
     role_arn = "arn:aws:iam::000000000000:role/court-booker-lambda"
-    secrets = _client("secretsmanager")
+    ssm = _client("ssm")
     lam = _client("lambda")
-    created = secrets.create_secret(
-        Name=secret_name,
-        SecretString=json.dumps(
+    ssm.put_parameter(
+        Name=parameter_name,
+        Value=json.dumps(
             {"my_YMCA_username": "user@example.com", "my_YMCA_password": "stub"}
         ),
+        Type="SecureString",
+        Overwrite=True,
     )
-    secret_arn = created["ARN"]
     with zip_path.open("rb") as handle:
         lam.create_function(
             FunctionName=function_name,
@@ -122,19 +123,19 @@ def stack(tmp_path_factory):
             Handler="booker.handler.lambda_handler",
             Code={"ZipFile": handle.read()},
             Timeout=30,
-            Environment={"Variables": _lambda_env(secret_arn)},
+            Environment={"Variables": _lambda_env(parameter_name)},
         )
     try:
         lam.get_waiter("function_active").wait(FunctionName=function_name)
     except Exception:
         time.sleep(2)
-    yield {"function_name": function_name, "secret_arn": secret_arn, "suffix": suffix}
+    yield {"function_name": function_name, "parameter_name": parameter_name, "suffix": suffix}
     try:
         lam.delete_function(FunctionName=function_name)
     except Exception:
         pass
     try:
-        secrets.delete_secret(SecretId=secret_arn, ForceDeleteWithoutRecovery=True)
+        ssm.delete_parameter(Name=parameter_name)
     except Exception:
         pass
 
@@ -167,7 +168,7 @@ def test_auth_fail_does_not_reserve(stack):
     lam = _client("lambda")
     lam.update_function_configuration(
         FunctionName=stack["function_name"],
-        Environment={"Variables": _lambda_env(stack["secret_arn"], scenario="auth_fail")},
+        Environment={"Variables": _lambda_env(stack["parameter_name"], scenario="auth_fail")},
     )
     time.sleep(1)
     body = _invoke(stack["function_name"], WEEKLY_PAYLOAD, allow_error=True)
@@ -175,7 +176,7 @@ def test_auth_fail_does_not_reserve(stack):
     assert body["reserve_clicks"] == 0
     lam.update_function_configuration(
         FunctionName=stack["function_name"],
-        Environment={"Variables": _lambda_env(stack["secret_arn"])},
+        Environment={"Variables": _lambda_env(stack["parameter_name"])},
     )
 
 

@@ -1,7 +1,7 @@
 # LocalStack sandbox
 
 This mock environment is independent from live OpenTofu state. It provides S3, SQS,
-STS, Secrets Manager, Lambda, and EventBridge Scheduler for local experiments. The
+STS, SSM Parameter Store, Lambda, and EventBridge Scheduler for local experiments. The
 court-booker integration tests deploy a stubbed zip Lambda here; they never point a
 live OpenTofu root at these endpoints.
 

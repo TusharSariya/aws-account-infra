@@ -10,3 +10,5 @@ is copied from the ECR app so both stacks share one schedule file.
 ```
 
 Runtime is `python3.14` (arm64). boto3 comes from the Lambda runtime, not the zip.
+Credentials are `/staging/court-booker-api/my-y` (SSM SecureString), not shared with
+the Playwright Lambda.

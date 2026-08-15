@@ -6,7 +6,7 @@ services:
     environment:
       AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
       DEBUG: ${LOCALSTACK_DEBUG:-0}
-      SERVICES: ${LOCALSTACK_SERVICES:-s3,sqs,sts,secretsmanager,lambda,scheduler,iam,logs}
+      SERVICES: ${LOCALSTACK_SERVICES:-s3,sqs,sts,ssm,lambda,scheduler,iam,logs}
     volumes:
       - ./init:/etc/localstack/init/ready.d:ro
       # Lambda zip execution (court-booker integration tests) needs the host Docker engine.

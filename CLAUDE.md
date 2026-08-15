@@ -39,7 +39,9 @@ variables live under `config/environments`, and secrets must not be committed.
   `lambda-releases` (`candidate/` on PRs, `stable/` on main). It does not retarget
   Lambda until `booker_image_tag` or `booker_api_zip_key` in `config/environments/aws/staging.tfvars`
   is updated. Playwright EventBridge is off (`schedule_enabled = false`); the API zip cron is on
-  (`api_schedule_enabled = true`) once a `stable/` zip key is set.
+  (`api_schedule_enabled = true`) once a `stable/` zip key is set. Each Lambda has its own
+  SSM SecureString (`/staging/court-booker/my-y` and `/staging/court-booker-api/my-y`); they
+  do not share credentials storage. Put values with `scripts/court-booker-put-secret.sh`.
   RAG and other products still keep runtime code out of this repo.
 
 ## Scope boundaries

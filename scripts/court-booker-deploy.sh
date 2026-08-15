@@ -5,8 +5,7 @@
 # 3) Apply Lambda with schedule_enabled=false
 #
 # Put My Y credentials after step 1:
-#   aws secretsmanager put-secret-value --secret-id staging/court-booker/my-y \
-#     --secret-string '{"my_YMCA_username":"...","my_YMCA_password":"..."}'
+#   ./scripts/court-booker-put-secret.sh
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
