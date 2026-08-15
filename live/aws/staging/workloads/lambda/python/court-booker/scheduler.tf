@@ -41,7 +41,7 @@ resource "aws_scheduler_schedule" "oneshot" {
 
   name                         = "court-booker-api-oneshot-${each.key}"
   group_name                   = aws_scheduler_schedule_group.booker.name
-  description                  = "T-72h one-shot for ${each.value.activity} ${each.value.date} ${each.value.time}; expected ${each.key}"
+  description                  = "One-shot ${each.value.activity} ${each.value.date} ${each.value.time}; EventBridge at ${each.value.invoke_at}; expected ${each.key}"
   schedule_expression          = "at(${each.value.invoke_at})"
   schedule_expression_timezone = "America/St_Johns"
   state                        = var.api_schedule_enabled ? "ENABLED" : "DISABLED"

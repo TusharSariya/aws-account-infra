@@ -22,21 +22,29 @@ weekly:
     duration_min: 60
     people: 1
     enabled: false
-# Court slots only. EventBridge fires horizon_hours (72) earlier at the same
-# clock time (Wed 05:00 → Sun 05:00). Disable after they fire — a later apply
-# with a past `at()` will error.
+# booking_date/time = court slot. invoke_at = EventBridge. Omit one and the
+# other is filled with a horizon_hours (72) offset. Set both to decouple.
+# Disable after a oneshot fires — a later apply with a past `at()` will error.
 oneshot:
+  - name: tue-1000-open
+    activity: court2
+    booking_date: "2026-08-18"
+    booking_time: "10:00"
+    invoke_at: "2026-08-15T10:34:00"
+    duration_min: 60
+    people: 1
+    enabled: true
   - name: wed-0400-closed
     activity: court2
-    date: "2026-08-19"
-    time: "04:00"
+    booking_date: "2026-08-19"
+    booking_time: "04:00"
     duration_min: 60
     people: 1
-    enabled: true
+    enabled: false
   - name: wed-0500
     activity: court2
-    date: "2026-08-19"
-    time: "05:00"
+    booking_date: "2026-08-19"
+    booking_time: "05:00"
     duration_min: 60
     people: 1
-    enabled: true
+    enabled: false
