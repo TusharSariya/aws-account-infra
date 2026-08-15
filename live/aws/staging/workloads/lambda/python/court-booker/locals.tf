@@ -27,4 +27,17 @@ locals {
     }
     if try(rule.enabled, false) && local.zip_ready
   }
+
+  oneshot = {
+    for rule in try(local.bookings.oneshot, []) :
+    rule.name => {
+      activity     = rule.activity
+      date         = tostring(rule.date)
+      time         = tostring(rule.time)
+      invoke_at    = tostring(rule.invoke_at)
+      duration_min = try(tonumber(rule.duration_min), 60)
+      people       = try(tonumber(rule.people), 1)
+    }
+    if try(rule.enabled, false) && local.zip_ready
+  }
 }
