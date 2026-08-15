@@ -126,6 +126,7 @@ resource "aws_s3_bucket_policy" "cloudtrail" {
 }
 
 resource "aws_cloudtrail" "account" {
+  #trivy:ignore:AVD-AWS-0015 SSE-S3 on the log bucket is enough; a CloudTrail CMK would add a monthly KMS charge.
   # checkov:skip=CKV_AWS_35:CloudWatch Logs ingestion is skipped on purpose; EventBridge on the default bus covers alerting without a paid log group.
   # checkov:skip=CKV_AWS_36:SSE-S3 on the log bucket is enough; a CloudTrail CMK would add a monthly KMS charge.
   # checkov:skip=CKV_AWS_252:Same as CKV_AWS_35 - no CloudWatch Logs group for this personal trail.
