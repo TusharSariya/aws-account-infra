@@ -31,8 +31,8 @@ default_tags = {
 # Court-booker. Playwright EventBridge stays DISABLED (`schedule_enabled`).
 # The HTTP zip Lambda is the live cron once `booker_api_zip_key` is set.
 # Pushing an image or zip does not retarget Lambda until the tag/key is updated.
-booker_image_tag     = "chromium-shm2"
-booker_api_zip_key   = "stable/court-booker/1496decee87520fcb00638958565485745340919.zip"
+booker_image_tag     = "56f6af3"
+booker_api_zip_key   = "stable/court-booker/56f6af31e49f2c9274e98f20cdade4d169081a42.zip"
 schedule_enabled     = false
 api_schedule_enabled = true
 
