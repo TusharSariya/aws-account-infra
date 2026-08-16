@@ -52,9 +52,15 @@ jobs:
         env:
           PREVIOUS_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
         run: |
-          if [[ -n "$PREVIOUS_REF" && ! "$PREVIOUS_REF" =~ ^0+$ ]]; then
+          if [[ -z "$PREVIOUS_REF" || "$PREVIOUS_REF" =~ ^0+$ ]]; then
+            python3 scripts/service-catalog.py validate
+          elif ! git cat-file -e "${PREVIOUS_REF}^{commit}"; then
+            echo "Previous catalog ref does not exist: $PREVIOUS_REF" >&2
+            exit 1
+          elif git cat-file -e "${PREVIOUS_REF}:catalog/catalog.json" 2>/dev/null; then
             python3 scripts/service-catalog.py validate --previous-ref "$PREVIOUS_REF"
           else
+            echo "No catalog exists at $PREVIOUS_REF; validating initial catalog activation"
             python3 scripts/service-catalog.py validate
           fi
       - run: python3 -m pytest -q tests/catalog
