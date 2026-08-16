@@ -1,0 +1,16 @@
+vulnerabilities:
+  - id: GHSA-6v7p-g79w-8964
+    purls:
+      - pkg:pypi/msgpack@1.1.2
+    expired_at: 2026-11-16
+    statement: >-
+      The Playwright base layers retain an SBOM record for msgpack 1.1.2 after
+      the final image replaces it with the scanned msgpack 1.2.1 package.
+  - id: CVE-2025-47273
+    purls:
+      - pkg:pypi/setuptools@70.3.0
+    expired_at: 2026-11-16
+    statement: >-
+      The Playwright base layers retain an SBOM record for setuptools 70.3.0
+      after the final image replaces it with the scanned setuptools 84.0.0
+      package.

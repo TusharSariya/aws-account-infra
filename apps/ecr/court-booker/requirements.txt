@@ -3,3 +3,6 @@ pyyaml==6.0.2
 boto3>=1.35.0,<2
 python-dotenv==1.1.1
 awslambdaric==3.1.1
+# Override vulnerable packages inherited from the Playwright base image.
+msgpack==1.2.1
+setuptools==84.0.0
