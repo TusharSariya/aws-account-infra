@@ -4,22 +4,36 @@ on:
   pull_request:
     paths:
       - live/aws/organization/**
+      - live/external/**
+      - modules/external/**
+      - templates/service-stack/**
       - modules/aws/module_distribution/**
       - modules/aws/vended_account_baseline/**
       - catalog/policies/**
       - scripts/vend-account.sh
       - scripts/repository-tofu.py
+      - scripts/external-provider-reconciler.py
+      - scripts/supabase-restore.py
+      - scripts/supabase-auth-canary.py
+      - scripts/supabase-local-auth-canary.py
       - scripts/publish-module.sh
       - scripts/verify-module.sh
   push:
     branches: [main]
     paths:
       - live/aws/organization/**
+      - live/external/**
+      - modules/external/**
+      - templates/service-stack/**
       - modules/aws/module_distribution/**
       - modules/aws/vended_account_baseline/**
       - catalog/policies/**
       - scripts/vend-account.sh
       - scripts/repository-tofu.py
+      - scripts/external-provider-reconciler.py
+      - scripts/supabase-restore.py
+      - scripts/supabase-auth-canary.py
+      - scripts/supabase-local-auth-canary.py
       - scripts/publish-module.sh
       - scripts/verify-module.sh
 
@@ -39,8 +53,12 @@ jobs:
           - live/aws/organization/bootstrap
           - live/aws/organization/repositories
           - live/aws/organization/security
+          - live/aws/organization/external-control
+          - live/aws/organization/template-bootstrap
+          - live/external/supabase
           - modules/aws/module_distribution
           - modules/aws/vended_account_baseline
+          - modules/external/supabase_project
     defaults:
       run:
         working-directory: ${{ matrix.root }}
@@ -60,7 +78,7 @@ jobs:
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.13"
-      - run: python3 -m py_compile scripts/repository-tofu.py
+      - run: python3 -m py_compile scripts/repository-tofu.py scripts/external-provider-reconciler.py scripts/supabase-restore.py scripts/supabase-auth-canary.py scripts/supabase-local-auth-canary.py
       - run: bash -n scripts/vend-account.sh scripts/publish-module.sh scripts/verify-module.sh
       - run: python3 -m json.tool catalog/policies/court-booker.json >/dev/null
       - run: python3 -m json.tool catalog/policies/platform.json >/dev/null

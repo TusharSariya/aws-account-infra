@@ -20,6 +20,9 @@ their resources share one abstraction.
 | `apps/lambda/` | Zip Lambda sources; CI uploads arm64 packages to S3 |
 | `mocks/localstack/` | Disposable local AWS sandbox |
 | `docs/kubernetes-vending.md` | Kubernetes 1.35 rebuild, vending controls, rollout gates, and recovery runbook |
+| `docs/service-vending.md` | Catalog v2, dedicated Supabase vending, repository bootstrap, lifecycle, and agent access |
+| `live/external/` | Provider-native external service roots; live reconciliation is local and serialized |
+| `templates/service-stack/` | Golden service repository seeded before normal repository vending |
 
 ## AWS staging
 

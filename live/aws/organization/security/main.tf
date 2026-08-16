@@ -181,6 +181,18 @@ resource "aws_cloudtrail" "organization" {
     include_management_events = true
   }
 
+  dynamic "event_selector" {
+    for_each = var.external_state_bucket_arn == "" ? [] : [var.external_state_bucket_arn]
+    content {
+      read_write_type           = "All"
+      include_management_events = false
+      data_resource {
+        type   = "AWS::S3::Object"
+        values = ["${event_selector.value}/"]
+      }
+    }
+  }
+
   depends_on = [
     aws_organizations_aws_service_access.cloudtrail,
     aws_s3_bucket_policy.cloudtrail,

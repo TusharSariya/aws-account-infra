@@ -23,8 +23,9 @@ Before the first account is created:
 5. Confirm every manifest root email is a controlled distribution address and has never
    been associated with an AWS account.
 6. Install the AWS Agent Toolkit secret-safety plugin so `asm-exec` is available.
-7. Create the private `service-stack-template` GitHub template repository before vending
-   a service whose manifest references it.
+7. Apply `live/aws/organization/template-bootstrap`, seed the private template from
+   `templates/service-stack`, and protect its initial branch before vending a service
+   whose manifest references it. This bootstrap root has no template dependency.
 
 The organization root enables IAM trusted access plus `RootCredentialsManagement` and
 `RootSessions`. It also creates the OUs declared in `catalog/catalog.json`.

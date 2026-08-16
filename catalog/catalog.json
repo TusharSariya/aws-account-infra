@@ -97,6 +97,7 @@
           "root_email": "tushar.97+aws-court-booker-prod@hotmail.com"
         }
       },
+      "external_services": {},
       "kubernetes": {
         "homelab": {
           "backend": {
@@ -127,11 +128,18 @@
           "source_path": "deploy/kubernetes"
         }
       },
-      "provisioner": "organizations-v1",
+      "provisioner": "service-v2",
       "repository": {
+        "agent_data_access": "none",
         "identity": "TusharSariya/court-booker",
         "migration": "filtered-history",
         "name": "court-booker",
+        "protection_profile": "service",
+        "required_status_checks": [
+          "test",
+          "tofu-plan"
+        ],
+        "spec_layout": "root",
         "template": null,
         "visibility": "private"
       },
@@ -141,7 +149,7 @@
         "owner": "platform",
         "uid": "1485b9ce-c1c0-5c61-b585-5fb330769ebc"
       },
-      "version": 1
+      "version": 2
     },
     "platform": {
       "accounts": {
@@ -156,6 +164,7 @@
           "root_email": "tushar.97+aws-shared-services@hotmail.com"
         }
       },
+      "external_services": {},
       "kubernetes": {
         "homelab": {
           "backend": {
@@ -174,11 +183,18 @@
           "source_path": "deploy/kubernetes"
         }
       },
-      "provisioner": "organizations-v1",
+      "provisioner": "service-v2",
       "repository": {
+        "agent_data_access": "none",
         "identity": "TusharSariya/platform-components",
         "migration": "template",
         "name": "platform-components",
+        "protection_profile": "infrastructure",
+        "required_status_checks": [
+          "test",
+          "tofu-plan"
+        ],
+        "spec_layout": "product",
         "template": "service-stack-template",
         "visibility": "private"
       },
@@ -188,8 +204,8 @@
         "owner": "platform",
         "uid": "a050f9c4-62c6-553d-aea2-3c7e537081b9"
       },
-      "version": 1
+      "version": 2
     }
   },
-  "version": 1
+  "version": 2
 }

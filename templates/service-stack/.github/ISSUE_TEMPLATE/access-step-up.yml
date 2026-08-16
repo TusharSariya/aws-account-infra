@@ -1,0 +1,46 @@
+name: Temporary access step-up
+description: Request time-bounded access beyond the default read-only or no-data role.
+title: "access: "
+labels: [access-request]
+body:
+  - type: dropdown
+    id: boundary
+    attributes:
+      label: Boundary
+      options:
+        - AWS workload operator
+        - AWS emergency administrator
+        - Supabase database rows
+        - Other provider control plane
+    validations:
+      required: true
+  - type: input
+    id: resources
+    attributes:
+      label: Exact resources
+      description: List the account, service, project, tables, and actions required.
+    validations:
+      required: true
+  - type: input
+    id: duration
+    attributes:
+      label: Duration
+      description: Give the shortest useful expiry; permanent access is not accepted here.
+    validations:
+      required: true
+  - type: textarea
+    id: reason
+    attributes:
+      label: Reason and verification
+      description: Explain the task, why read-only is insufficient, and how removal will be verified.
+    validations:
+      required: true
+  - type: checkboxes
+    id: acknowledgements
+    attributes:
+      label: Acknowledgements
+      options:
+        - label: I will not retrieve or expose credential values outside the approved runtime path.
+          required: true
+        - label: I understand approval does not itself grant access; an operator must apply and later revoke it.
+          required: true

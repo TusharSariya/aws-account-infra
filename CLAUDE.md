@@ -1,5 +1,8 @@
 # Repository guidance
 
+`AGENTS.md` is the canonical cross-agent policy. This file adds repository-specific
+context and must not weaken that policy.
+
 This repository manages AWS staging infrastructure, local host configuration, and a
 LocalStack sandbox. Kubernetes is managed by gated Ansible, Helmfile, and catalog-generated
 manifests. GCP and Azure are future provider

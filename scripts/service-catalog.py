@@ -8,6 +8,7 @@ span records, depend on capacity, or compare with an earlier catalog revision.
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import re
 import subprocess
@@ -25,11 +26,19 @@ SERVICE_SCHEMA_PATH = ROOT / "catalog" / "schema" / "service.schema.json"
 CLUSTER_SCHEMA_PATH = ROOT / "catalog" / "schema" / "cluster.schema.json"
 
 ACCOUNT_ID = re.compile(r"^[0-9]{12}$")
+SUPABASE_PROJECT_REF = re.compile(r"^[a-z]{20}$")
 QUANTITY = re.compile(r"^(?P<number>[0-9]+)(?P<unit>m|Mi|Gi)$")
 LIFECYCLE_TRANSITIONS = {
     "active": {"active", "suspended"},
     "suspended": {"suspended", "archived"},
     "archived": {"archived"},
+}
+EXTERNAL_LIFECYCLE_TRANSITIONS = {
+    "active": {"active", "suspended"},
+    "suspended": {"suspended", "archived"},
+    "archived": {"archived", "purge_requested"},
+    "purge_requested": {"purge_requested", "purged"},
+    "purged": {"purged"},
 }
 CAPACITY_FIELDS = (
     "requests_cpu",
@@ -71,6 +80,22 @@ def _validate_schema(path: Path, raw: object, schema_path: Path) -> dict:
     )
     if errors:
         error = errors[0]
+        # oneOf reports only "not valid under any schema" at the root. Prefer a
+        # concrete leaf error so catalog authors get an actionable field message.
+        pending = list(error.context)
+        leaves = []
+        while pending:
+            candidate = pending.pop(0)
+            if candidate.context:
+                pending.extend(candidate.context)
+            else:
+                leaves.append(candidate)
+        additional = next(
+            (candidate for candidate in leaves if candidate.validator == "additionalProperties"),
+            None,
+        )
+        if additional is not None:
+            error = additional
         location = ".".join(str(part) for part in error.absolute_path) or "<root>"
         fail(path, f"{location}: {error.message}")
     assert isinstance(raw, dict)
@@ -79,6 +104,29 @@ def _validate_schema(path: Path, raw: object, schema_path: Path) -> dict:
 
 def load_manifest(path: Path) -> dict:
     return _validate_schema(path, _load_yaml(path), SERVICE_SCHEMA_PATH)
+
+
+def normalize_manifest(manifest: dict) -> dict:
+    """Normalize accepted manifest versions to the v2 internal representation."""
+    normalized = copy.deepcopy(manifest)
+    if "version" not in normalized:
+        normalized.setdefault("external_services", {})
+        return normalized
+    if normalized["version"] == 1:
+        service_id = normalized["service"]["id"]
+        infrastructure = service_id == "platform"
+        normalized["repository"]["protection_profile"] = (
+            "infrastructure" if infrastructure else "service"
+        )
+        normalized["repository"]["spec_layout"] = "product" if infrastructure else "root"
+        # Preserve the v1 repository root's historical defaults exactly. V2 makes
+        # checks explicit so a new repository cannot inherit contexts it never emits.
+        normalized["repository"]["required_status_checks"] = ["test", "tofu-plan"]
+        normalized["repository"]["agent_data_access"] = "none"
+        normalized["external_services"] = {}
+        normalized["version"] = 2
+        normalized["provisioner"] = "service-v2"
+    return normalized
 
 
 def load_cluster(path: Path) -> dict:
@@ -153,7 +201,7 @@ def build_catalog() -> dict:
         for field in ("uid", "repository identity", "account email", "account name", "namespace", "ECR repository", "hostname")
     }
     for path in sorted(SERVICES.glob("*.yaml")):
-        manifest = load_manifest(path)
+        manifest = normalize_manifest(load_manifest(path))
         service_id = manifest["service"]["id"]
         if service_id in services:
             fail(path, f"duplicate service.id {service_id!r}")
@@ -184,10 +232,25 @@ def build_catalog() -> dict:
                 if secret["name"] in secret_names:
                     fail(path, f"duplicate secret contract {owner}/{secret['name']}")
                 secret_names.add(secret["name"])
+        supabase = manifest["external_services"].get("supabase")
+        if supabase:
+            _claim_unique(
+                claims.setdefault("Supabase project name", {}),
+                supabase["project_name"],
+                service_id,
+                "Supabase project name",
+            )
+            if supabase.get("project_ref"):
+                _claim_unique(
+                    claims.setdefault("Supabase project ref", {}),
+                    supabase["project_ref"],
+                    service_id,
+                    "Supabase project ref",
+                )
         services[service_id] = manifest
 
     _validate_capacity(services, clusters)
-    return {"version": 1, "kubernetes_clusters": clusters, "services": services}
+    return {"version": 2, "kubernetes_clusters": clusters, "services": services}
 
 
 def check_immutable(previous: dict, current: dict, allow_lifecycle_reversal: bool = False) -> None:
@@ -196,7 +259,22 @@ def check_immutable(previous: dict, current: dict, allow_lifecycle_reversal: boo
     for service_id, old_service in previous_services.items():
         if service_id not in current_services:
             raise CatalogError(f"service {service_id!r} cannot be deleted; archive its targets")
-        new_service = current_services[service_id]
+        old_service = normalize_manifest(old_service)
+        new_service = normalize_manifest(current_services[service_id])
+        for field, old_value, new_value in (
+            (
+                "catalog UID",
+                old_service.get("service", {}).get("uid"),
+                new_service.get("service", {}).get("uid"),
+            ),
+            (
+                "repository identity",
+                old_service.get("repository", {}).get("identity"),
+                new_service.get("repository", {}).get("identity"),
+            ),
+        ):
+            if old_value != new_value:
+                raise CatalogError(f"{field} for activated service {service_id} is immutable")
         new_accounts = new_service["accounts"]
         for environment, old_account in old_service["accounts"].items():
             if environment not in new_accounts:
@@ -223,8 +301,6 @@ def check_immutable(previous: dict, current: dict, allow_lifecycle_reversal: boo
                     f"{old_lifecycle} -> {new_lifecycle} requires operator override"
                 )
             immutable = {
-                "catalog UID": (old_service["service"].get("uid"), new_service["service"].get("uid")),
-                "repository identity": (old_service["repository"].get("identity"), new_service["repository"].get("identity")),
                 "namespace": (f"{service_id}-local", f"{new_service['service']['id']}-local"),
                 "ECR repository": (old_target["ecr_repository"], new_target["ecr_repository"]),
                 "hostname": (old_target["ingress_hostname"], new_target["ingress_hostname"]),
@@ -232,6 +308,31 @@ def check_immutable(previous: dict, current: dict, allow_lifecycle_reversal: boo
             for field, (old_value, new_value) in immutable.items():
                 if old_value != new_value:
                     raise CatalogError(f"{field} for activated target {service_id}/{cluster_id} is immutable")
+
+        old_supabase = old_service["external_services"].get("supabase")
+        new_supabase = new_service["external_services"].get("supabase")
+        if old_supabase and not new_supabase:
+            raise CatalogError(
+                f"Supabase target {service_id} cannot be deleted; advance it through purge"
+            )
+        if old_supabase and new_supabase:
+            old_lifecycle = old_supabase["lifecycle"]
+            new_lifecycle = new_supabase["lifecycle"]
+            if (
+                not allow_lifecycle_reversal
+                and new_lifecycle not in EXTERNAL_LIFECYCLE_TRANSITIONS[old_lifecycle]
+            ):
+                raise CatalogError(
+                    f"Supabase lifecycle transition {service_id} "
+                    f"{old_lifecycle} -> {new_lifecycle} requires operator override"
+                )
+            for field in ("organization_id", "project_name", "region"):
+                if old_supabase[field] != new_supabase[field]:
+                    raise CatalogError(f"Supabase {field} for {service_id} is immutable")
+            if old_supabase.get("project_ref") and (
+                new_supabase.get("project_ref") != old_supabase["project_ref"]
+            ):
+                raise CatalogError(f"Supabase project_ref for {service_id} is immutable")
 
 
 def _load_previous_ref(previous_ref: str) -> dict:
@@ -293,6 +394,27 @@ def record_account(service_id: str, environment: str, account_id: str) -> int:
     return render(check=False)
 
 
+def record_supabase_ref(service_id: str, project_ref: str) -> int:
+    if not SUPABASE_PROJECT_REF.fullmatch(project_ref):
+        raise CatalogError("Supabase project_ref must contain exactly 20 lowercase letters")
+    matches = []
+    for path in sorted(SERVICES.glob("*.yaml")):
+        manifest = load_manifest(path)
+        if manifest["service"]["id"] == service_id:
+            matches.append((path, manifest))
+    if len(matches) != 1:
+        raise CatalogError(f"expected exactly one manifest for service {service_id!r}")
+    path, manifest = matches[0]
+    if manifest["version"] != 2 or "supabase" not in manifest["external_services"]:
+        raise CatalogError(f"service {service_id!r} has no v2 Supabase binding")
+    current = manifest["external_services"]["supabase"].get("project_ref")
+    if current and current != project_ref:
+        raise CatalogError(f"Supabase project_ref for {service_id} is already {current}")
+    manifest["external_services"]["supabase"]["project_ref"] = project_ref
+    path.write_text(yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8")
+    return render(check=False)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -304,10 +426,15 @@ def main() -> int:
     record.add_argument("service_id")
     record.add_argument("environment")
     record.add_argument("account_id")
+    record_supabase = subparsers.add_parser("record-supabase-ref")
+    record_supabase.add_argument("service_id")
+    record_supabase.add_argument("project_ref")
     args = parser.parse_args()
     try:
         if args.command == "record-account":
             return record_account(args.service_id, args.environment, args.account_id)
+        if args.command == "record-supabase-ref":
+            return record_supabase_ref(args.service_id, args.project_ref)
         return render(
             check=args.command == "validate",
             previous_ref=getattr(args, "previous_ref", None),

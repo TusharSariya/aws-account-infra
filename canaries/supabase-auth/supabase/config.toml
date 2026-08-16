@@ -1,0 +1,70 @@
+project_id = "service-vending-auth-canary"
+
+[api]
+enabled = true
+port = 55421
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 55422
+shadow_port = 55420
+major_version = 17
+
+[db.migrations]
+enabled = true
+schema_paths = []
+
+[db.seed]
+enabled = false
+sql_paths = []
+
+[realtime]
+enabled = false
+
+[analytics]
+enabled = false
+port = 55427
+
+[edge_runtime]
+enabled = false
+
+[studio]
+enabled = false
+port = 55423
+
+[local_smtp]
+enabled = true
+port = 55424
+
+[storage]
+enabled = false
+file_size_limit = "1MiB"
+
+[auth]
+enabled = true
+site_url = "https://auth-canary.example.com"
+additional_redirect_urls = ["https://auth-canary.example.com/auth/callback"]
+jwt_expiry = 300
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 0
+enable_signup = false
+enable_anonymous_sign_ins = false
+minimum_password_length = 12
+password_requirements = "lower_upper_letters_digits_symbols"
+
+[auth.email]
+# Keep the email/password provider enabled for invited operators. The global
+# auth.enable_signup=false gate above blocks all self-service user creation.
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = true
+secure_password_change = true
+max_frequency = "1s"
+otp_length = 6
+otp_expiry = 300
+
+[auth.sms]
+enable_signup = false
+enable_confirmations = false

@@ -27,6 +27,11 @@ tfplan.binary
 generated/
 build/api-docs/
 build/lambda/
+build/external-provider-journal.json
+build/external-provider-journal.json.lock
+build/fake-external-providers/
+canaries/**/supabase/.branches/
+canaries/**/supabase/.temp/
 
 # Secrets and local Python (court-booker CLI reads repo-root .env)
 .env

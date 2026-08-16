@@ -6,9 +6,18 @@ on:
       - catalog/**
       - scripts/service-catalog.py
       - scripts/kubernetes-vending.py
+      - scripts/external-provider-reconciler.py
+      - scripts/supabase-auth-canary.py
+      - scripts/supabase-local-auth-canary.py
+      - scripts/supabase-restore.py
+      - templates/service-stack/**
+      - modules/external/**
+      - live/external/**
       - ansible/roles/kubernetes_tenants/**
       - ansible/roles/cluster_addons/**
       - ansible/roles/kubernetes_control_plane/**
+      - ansible/roles/cluster_harvester/**
+      - ansible/roles/cluster_apps/**
       - docs/kubernetes-vending.md
       - .github/workflows/ecr-push.yml
       - modules/aws/account_identity/ecr_push_oidc.tf
@@ -22,9 +31,18 @@ on:
       - catalog/**
       - scripts/service-catalog.py
       - scripts/kubernetes-vending.py
+      - scripts/external-provider-reconciler.py
+      - scripts/supabase-auth-canary.py
+      - scripts/supabase-local-auth-canary.py
+      - scripts/supabase-restore.py
+      - templates/service-stack/**
+      - modules/external/**
+      - live/external/**
       - ansible/roles/kubernetes_tenants/**
       - ansible/roles/cluster_addons/**
       - ansible/roles/kubernetes_control_plane/**
+      - ansible/roles/cluster_harvester/**
+      - ansible/roles/cluster_apps/**
       - docs/kubernetes-vending.md
       - .github/workflows/ecr-push.yml
       - modules/aws/account_identity/ecr_push_oidc.tf

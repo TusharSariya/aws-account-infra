@@ -16,8 +16,3 @@ variable "enable_protection" {
   default     = true
   description = "Keep false until filtered history has established main for migration repositories."
 }
-
-variable "required_status_checks" {
-  type    = list(string)
-  default = ["test", "tofu-plan"]
-}

@@ -35,22 +35,11 @@
   register: cluster_apps_pihole_ns_apply
   changed_when: "'unchanged' not in cluster_apps_pihole_ns_apply.stdout"
 
-- name: Render the Pi-hole admin secret from Vault (when provided)
-  ansible.builtin.command: >-
-    kubectl --kubeconfig {{ cluster_apps_kubeconfig }} create secret generic
-    {{ cluster_apps_pihole_secret }} --namespace {{ cluster_apps_pihole_namespace }}
-    --from-literal=password={{ vault_pihole_admin_password }}
-    --dry-run=client --output yaml
-  register: cluster_apps_pihole_secret_manifest
-  changed_when: false
-  no_log: true
-  when: vault_pihole_admin_password is defined
-
 - name: Apply the Pi-hole admin secret
   ansible.builtin.command: >-
     kubectl --kubeconfig {{ cluster_apps_kubeconfig }} apply --filename -
   args:
-    stdin: "{{ cluster_apps_pihole_secret_manifest.stdout }}"
+    stdin: "{{ lookup('ansible.builtin.template', 'pihole-secret.yml.j2') }}"
   no_log: true
   changed_when: true
   when: vault_pihole_admin_password is defined

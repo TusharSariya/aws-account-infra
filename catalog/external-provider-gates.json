@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "harvester_credential_rotated": false,
+  "sensitive_state_ready": false,
+  "template_ready": false,
+  "adapter_canary_passed": false,
+  "live_service_vending_enabled": false
+}

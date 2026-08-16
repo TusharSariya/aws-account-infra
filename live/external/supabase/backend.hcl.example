@@ -1,0 +1,6 @@
+bucket         = "replace-with-external-state-bucket"
+key            = "supabase/service-id/terraform.tfstate"
+region         = "us-east-1"
+dynamodb_table = "external-provider-state-locks"
+encrypt        = true
+kms_key_id     = "replace-with-external-state-kms-key-arn"

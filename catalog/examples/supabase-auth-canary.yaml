@@ -1,0 +1,34 @@
+version: 2
+provisioner: service-v2
+service:
+  uid: 4fa03054-6f90-4f96-bd58-b9b6c08aa07c
+  id: auth-canary
+  display_name: Auth Canary
+  owner: platform
+repository:
+  identity: TusharSariya/auth-canary
+  name: auth-canary
+  visibility: private
+  template: service-stack-template
+  migration: template
+  protection_profile: service
+  spec_layout: root
+  required_status_checks: [test]
+  agent_data_access: none
+accounts: {}
+kubernetes: {}
+external_services:
+  supabase:
+    lifecycle: active
+    organization_id: replace-with-supabase-org
+    project_name: auth-canary
+    project_ref: null
+    region: us-east-1
+    plan: free
+    storage: disabled
+    backup_profile: none
+    auth:
+      mode: operator-only
+      site_url: https://auth-canary.example.com
+      redirect_urls: [https://auth-canary.example.com/auth/callback]
+      public_signup: false

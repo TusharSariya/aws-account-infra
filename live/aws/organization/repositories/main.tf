@@ -74,7 +74,7 @@ resource "github_branch_protection" "main" {
 
   required_status_checks {
     strict   = true
-    contexts = var.required_status_checks
+    contexts = local.repository.required_status_checks
   }
 
   required_pull_request_reviews {

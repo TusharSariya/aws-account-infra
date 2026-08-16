@@ -30,3 +30,17 @@ variable "enable_guardduty" {
   default     = false
   description = "Enable paid organization GuardDuty only after reviewing its projected regional cost."
 }
+
+variable "external_state_bucket_arn" {
+  type        = string
+  default     = ""
+  description = "Optional exact sensitive external-provider state bucket ARN for CloudTrail S3 object data events."
+
+  validation {
+    condition = (
+      var.external_state_bucket_arn == "" ||
+      can(regex("^arn:aws:s3:::[a-z0-9][a-z0-9.-]+$", var.external_state_bucket_arn))
+    )
+    error_message = "external_state_bucket_arn must be empty or an exact S3 bucket ARN."
+  }
+}
