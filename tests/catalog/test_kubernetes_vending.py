@@ -108,8 +108,12 @@ def test_catalog_fqdn_egress_is_exact_and_https_only():
 
 def test_generated_manifests_contain_contracts_but_no_secret_values():
     native_text = (ROOT / "ansible/roles/kubernetes_tenants/files/homelab-native.yaml").read_text()
+    argocd_text = (ROOT / "ansible/roles/kubernetes_tenants/files/homelab-argocd.yaml").read_text()
     assert "court-booker-credentials" in native_text
     assert "kind: Secret\n" not in native_text
+    assert "\nrules:\n  - apiGroups:" in argocd_text
+    assert max(len(line) for line in native_text.splitlines()) <= 160
+    assert max(len(line) for line in argocd_text.splitlines()) <= 160
     list(yaml.safe_load_all(native_text))
 
 

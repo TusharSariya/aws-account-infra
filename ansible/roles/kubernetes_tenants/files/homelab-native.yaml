@@ -9,101 +9,102 @@ spec:
   failurePolicy: Fail
   matchConstraints:
     resourceRules:
-    - apiGroups:
-      - '*'
-      apiVersions:
-      - '*'
-      operations:
-      - CREATE
-      - UPDATE
-      resources:
-      - '*'
-      - '*/*'
-      scope: Namespaced
+      - apiGroups:
+          - '*'
+        apiVersions:
+          - '*'
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - '*'
+          - '*/*'
+        scope: Namespaced
   validations:
-  - expression: '''system:masters'' in request.userInfo.groups || request.kind.kind
-      in [''Pod'', ''Deployment'', ''StatefulSet'', ''ReplicaSet'', ''Job'', ''CronJob'',
-      ''ConfigMap'', ''Service'', ''ServiceAccount'', ''HorizontalPodAutoscaler'',
-      ''ScaledObject'']'
-    message: kind is platform-owned or prohibited in vended namespaces
-  - expression: '''system:masters'' in request.userInfo.groups || request.kind.kind
-      != ''Service'' || (object.spec.type == ''ClusterIP'' && !has(object.spec.externalIPs))'
-    message: Services must be ClusterIP without externalIPs; ExternalName is prohibited
-  - expression: '''system:masters'' in request.userInfo.groups || !(request.kind.kind
-      in [''Pod'', ''Deployment'', ''StatefulSet'', ''ReplicaSet'', ''Job'', ''CronJob''])
-      || (request.kind.kind == ''Pod'' ? ((!has(object.spec.hostNetwork) || !object.spec.hostNetwork)
-      && (!has(object.spec.hostPID) || !object.spec.hostPID) && (!has(object.spec.hostIPC)
-      || !object.spec.hostIPC)) : (request.kind.kind == ''CronJob'' ? ((!has(object.spec.jobTemplate.spec.template.spec.hostNetwork)
-      || !object.spec.jobTemplate.spec.template.spec.hostNetwork) && (!has(object.spec.jobTemplate.spec.template.spec.hostPID)
-      || !object.spec.jobTemplate.spec.template.spec.hostPID) && (!has(object.spec.jobTemplate.spec.template.spec.hostIPC)
-      || !object.spec.jobTemplate.spec.template.spec.hostIPC)) : ((!has(object.spec.template.spec.hostNetwork)
-      || !object.spec.template.spec.hostNetwork) && (!has(object.spec.template.spec.hostPID)
-      || !object.spec.template.spec.hostPID) && (!has(object.spec.template.spec.hostIPC)
-      || !object.spec.template.spec.hostIPC))))'
-    message: host network, PID and IPC access are prohibited
-  - expression: '''system:masters'' in request.userInfo.groups || !(request.kind.kind
-      in [''Deployment'', ''StatefulSet'', ''ReplicaSet'']) || !has(object.spec.replicas)
-      || object.spec.replicas <= 3'
-    message: controller replicas may not exceed 3
-  - expression: '''system:masters'' in request.userInfo.groups || request.kind.kind
-      != ''Pod'' || (object.spec.containers.all(c, has(c.resources.requests.cpu) &&
-      has(c.resources.requests.memory) && has(c.resources.requests[''ephemeral-storage''])
-      && has(c.resources.limits.cpu) && has(c.resources.limits.memory) && has(c.resources.limits[''ephemeral-storage'']))
-      && (!has(object.spec.initContainers) || object.spec.initContainers.all(c, has(c.resources.requests.cpu)
-      && has(c.resources.requests.memory) && has(c.resources.requests[''ephemeral-storage''])
-      && has(c.resources.limits.cpu) && has(c.resources.limits.memory) && has(c.resources.limits[''ephemeral-storage'']))))'
-    message: every container must declare CPU, memory and ephemeral-storage requests
-      and limits
-  - expression: '''system:masters'' in request.userInfo.groups || !(request.kind.kind
-      in [''Deployment'', ''StatefulSet'', ''ReplicaSet'', ''Job'']) || (object.spec.template.spec.containers.all(c,
-      has(c.resources.requests.cpu) && has(c.resources.requests.memory) && has(c.resources.requests[''ephemeral-storage''])
-      && has(c.resources.limits.cpu) && has(c.resources.limits.memory) && has(c.resources.limits[''ephemeral-storage'']))
-      && (!has(object.spec.template.spec.initContainers) || object.spec.template.spec.initContainers.all(c,
-      has(c.resources.requests.cpu) && has(c.resources.requests.memory) && has(c.resources.requests[''ephemeral-storage''])
-      && has(c.resources.limits.cpu) && has(c.resources.limits.memory) && has(c.resources.limits[''ephemeral-storage'']))))'
-    message: every workload container must declare CPU, memory and ephemeral-storage
-      requests and limits
-  - expression: '''system:masters'' in request.userInfo.groups || request.kind.kind
-      != ''CronJob'' || (object.spec.jobTemplate.spec.template.spec.containers.all(c,
-      has(c.resources.requests.cpu) && has(c.resources.requests.memory) && has(c.resources.requests[''ephemeral-storage''])
-      && has(c.resources.limits.cpu) && has(c.resources.limits.memory) && has(c.resources.limits[''ephemeral-storage'']))
-      && (!has(object.spec.jobTemplate.spec.template.spec.initContainers) || object.spec.jobTemplate.spec.template.spec.initContainers.all(c,
-      has(c.resources.requests.cpu) && has(c.resources.requests.memory) && has(c.resources.requests[''ephemeral-storage''])
-      && has(c.resources.limits.cpu) && has(c.resources.limits.memory) && has(c.resources.limits[''ephemeral-storage'']))))'
-    message: every CronJob container must declare CPU, memory and ephemeral-storage
-      requests and limits
-  - expression: '''system:masters'' in request.userInfo.groups || !(request.kind.kind
-      in [''Pod'', ''Deployment'', ''StatefulSet'', ''ReplicaSet'', ''Job'', ''CronJob''])
-      || (request.kind.kind == ''Pod'' ? (!has(object.spec.volumes) || object.spec.volumes.all(v,
-      !has(v.hostPath) && (!has(v.emptyDir) || has(v.emptyDir.sizeLimit)))) : (request.kind.kind
-      == ''CronJob'' ? (!has(object.spec.jobTemplate.spec.template.spec.volumes) ||
-      object.spec.jobTemplate.spec.template.spec.volumes.all(v, !has(v.hostPath) &&
-      (!has(v.emptyDir) || has(v.emptyDir.sizeLimit)))) : (!has(object.spec.template.spec.volumes)
-      || object.spec.template.spec.volumes.all(v, !has(v.hostPath) && (!has(v.emptyDir)
-      || has(v.emptyDir.sizeLimit))))))'
-    message: hostPath is prohibited and emptyDir requires sizeLimit
-  - expression: '''system:masters'' in request.userInfo.groups || !(request.kind.kind
-      in [''Pod'', ''Deployment'', ''StatefulSet'', ''ReplicaSet'', ''Job'', ''CronJob''])
-      || (request.kind.kind == ''Pod'' ? (!has(object.spec.priorityClassName) || object.spec.priorityClassName
-      == ''tenant-normal'') : (request.kind.kind == ''CronJob'' ? (!has(object.spec.jobTemplate.spec.template.spec.priorityClassName)
-      || object.spec.jobTemplate.spec.template.spec.priorityClassName == ''tenant-normal'')
-      : (!has(object.spec.template.spec.priorityClassName) || object.spec.template.spec.priorityClassName
-      == ''tenant-normal'')))'
-    message: platform priority classes are prohibited
-  - expression: '''system:masters'' in request.userInfo.groups || request.kind.kind
-      != ''Job'' || (has(object.spec.ttlSecondsAfterFinished) && object.spec.ttlSecondsAfterFinished
-      <= 86400)'
-    message: Jobs require ttlSecondsAfterFinished no greater than one day
-  - expression: '''system:masters'' in request.userInfo.groups || request.kind.kind
-      != ''CronJob'' || (has(object.spec.successfulJobsHistoryLimit) && object.spec.successfulJobsHistoryLimit
-      <= 3 && has(object.spec.failedJobsHistoryLimit) && object.spec.failedJobsHistoryLimit
-      <= 3 && has(object.spec.jobTemplate.spec.ttlSecondsAfterFinished) && object.spec.jobTemplate.spec.ttlSecondsAfterFinished
-      <= 86400)'
-    message: CronJobs require bounded history and Job TTL
-  - expression: '''system:masters'' in request.userInfo.groups || request.kind.kind
-      != ''ScaledObject'' || (object.spec.minReplicaCount >= 0 && object.spec.maxReplicaCount
-      <= 3 && object.spec.minReplicaCount <= object.spec.maxReplicaCount)'
-    message: KEDA replica bounds must remain between 0 and 3
+    - expression: '''system:masters'' in request.userInfo.groups || request.kind.kind
+        in [''Pod'', ''Deployment'', ''StatefulSet'', ''ReplicaSet'', ''Job'', ''CronJob'',
+        ''ConfigMap'', ''Service'', ''ServiceAccount'', ''HorizontalPodAutoscaler'',
+        ''ScaledObject'']'
+      message: kind is platform-owned or prohibited in vended namespaces
+    - expression: '''system:masters'' in request.userInfo.groups || request.kind.kind
+        != ''Service'' || (object.spec.type == ''ClusterIP'' && !has(object.spec.externalIPs))'
+      message: Services must be ClusterIP without externalIPs; ExternalName is prohibited
+    - expression: '''system:masters'' in request.userInfo.groups || !(request.kind.kind
+        in [''Pod'', ''Deployment'', ''StatefulSet'', ''ReplicaSet'', ''Job'', ''CronJob''])
+        || (request.kind.kind == ''Pod'' ? ((!has(object.spec.hostNetwork) || !object.spec.hostNetwork)
+        && (!has(object.spec.hostPID) || !object.spec.hostPID) && (!has(object.spec.hostIPC)
+        || !object.spec.hostIPC)) : (request.kind.kind == ''CronJob'' ? ((!has(object.spec.jobTemplate.spec.template.spec.hostNetwork)
+        || !object.spec.jobTemplate.spec.template.spec.hostNetwork) && (!has(object.spec.jobTemplate.spec.template.spec.hostPID)
+        || !object.spec.jobTemplate.spec.template.spec.hostPID) && (!has(object.spec.jobTemplate.spec.template.spec.hostIPC)
+        || !object.spec.jobTemplate.spec.template.spec.hostIPC)) : ((!has(object.spec.template.spec.hostNetwork)
+        || !object.spec.template.spec.hostNetwork) && (!has(object.spec.template.spec.hostPID)
+        || !object.spec.template.spec.hostPID) && (!has(object.spec.template.spec.hostIPC)
+        || !object.spec.template.spec.hostIPC))))'
+      message: host network, PID and IPC access are prohibited
+    - expression: '''system:masters'' in request.userInfo.groups || !(request.kind.kind
+        in [''Deployment'', ''StatefulSet'', ''ReplicaSet'']) || !has(object.spec.replicas)
+        || object.spec.replicas <= 3'
+      message: controller replicas may not exceed 3
+    - expression: '''system:masters'' in request.userInfo.groups || request.kind.kind
+        != ''Pod'' || (object.spec.containers.all(c, has(c.resources.requests.cpu)
+        && has(c.resources.requests.memory) && has(c.resources.requests[''ephemeral-storage''])
+        && has(c.resources.limits.cpu) && has(c.resources.limits.memory) && has(c.resources.limits[''ephemeral-storage'']))
+        && (!has(object.spec.initContainers) || object.spec.initContainers.all(c,
+        has(c.resources.requests.cpu) && has(c.resources.requests.memory) && has(c.resources.requests[''ephemeral-storage''])
+        && has(c.resources.limits.cpu) && has(c.resources.limits.memory) && has(c.resources.limits[''ephemeral-storage'']))))'
+      message: every container must declare CPU, memory and ephemeral-storage requests
+        and limits
+    - expression: '''system:masters'' in request.userInfo.groups || !(request.kind.kind
+        in [''Deployment'', ''StatefulSet'', ''ReplicaSet'', ''Job'']) || (object.spec.template.spec.containers.all(c,
+        has(c.resources.requests.cpu) && has(c.resources.requests.memory) && has(c.resources.requests[''ephemeral-storage''])
+        && has(c.resources.limits.cpu) && has(c.resources.limits.memory) && has(c.resources.limits[''ephemeral-storage'']))
+        && (!has(object.spec.template.spec.initContainers) || object.spec.template.spec.initContainers.all(c,
+        has(c.resources.requests.cpu) && has(c.resources.requests.memory) && has(c.resources.requests[''ephemeral-storage''])
+        && has(c.resources.limits.cpu) && has(c.resources.limits.memory) && has(c.resources.limits[''ephemeral-storage'']))))'
+      message: every workload container must declare CPU, memory and ephemeral-storage
+        requests and limits
+    - expression: '''system:masters'' in request.userInfo.groups || request.kind.kind
+        != ''CronJob'' || (object.spec.jobTemplate.spec.template.spec.containers.all(c,
+        has(c.resources.requests.cpu) && has(c.resources.requests.memory) && has(c.resources.requests[''ephemeral-storage''])
+        && has(c.resources.limits.cpu) && has(c.resources.limits.memory) && has(c.resources.limits[''ephemeral-storage'']))
+        && (!has(object.spec.jobTemplate.spec.template.spec.initContainers) || object.spec.jobTemplate.spec.template.spec.initContainers.all(c,
+        has(c.resources.requests.cpu) && has(c.resources.requests.memory) && has(c.resources.requests[''ephemeral-storage''])
+        && has(c.resources.limits.cpu) && has(c.resources.limits.memory) && has(c.resources.limits[''ephemeral-storage'']))))'
+      message: every CronJob container must declare CPU, memory and ephemeral-storage
+        requests and limits
+    - expression: '''system:masters'' in request.userInfo.groups || !(request.kind.kind
+        in [''Pod'', ''Deployment'', ''StatefulSet'', ''ReplicaSet'', ''Job'', ''CronJob''])
+        || (request.kind.kind == ''Pod'' ? (!has(object.spec.volumes) || object.spec.volumes.all(v,
+        !has(v.hostPath) && (!has(v.emptyDir) || has(v.emptyDir.sizeLimit)))) : (request.kind.kind
+        == ''CronJob'' ? (!has(object.spec.jobTemplate.spec.template.spec.volumes)
+        || object.spec.jobTemplate.spec.template.spec.volumes.all(v, !has(v.hostPath)
+        && (!has(v.emptyDir) || has(v.emptyDir.sizeLimit)))) : (!has(object.spec.template.spec.volumes)
+        || object.spec.template.spec.volumes.all(v, !has(v.hostPath) && (!has(v.emptyDir)
+        || has(v.emptyDir.sizeLimit))))))'
+      message: hostPath is prohibited and emptyDir requires sizeLimit
+    - expression: '''system:masters'' in request.userInfo.groups || !(request.kind.kind
+        in [''Pod'', ''Deployment'', ''StatefulSet'', ''ReplicaSet'', ''Job'', ''CronJob''])
+        || (request.kind.kind == ''Pod'' ? (!has(object.spec.priorityClassName) ||
+        object.spec.priorityClassName == ''tenant-normal'') : (request.kind.kind ==
+        ''CronJob'' ? (!has(object.spec.jobTemplate.spec.template.spec.priorityClassName)
+        || object.spec.jobTemplate.spec.template.spec.priorityClassName == ''tenant-normal'')
+        : (!has(object.spec.template.spec.priorityClassName) || object.spec.template.spec.priorityClassName
+        == ''tenant-normal'')))'
+      message: platform priority classes are prohibited
+    - expression: '''system:masters'' in request.userInfo.groups || request.kind.kind
+        != ''Job'' || (has(object.spec.ttlSecondsAfterFinished) && object.spec.ttlSecondsAfterFinished
+        <= 86400)'
+      message: Jobs require ttlSecondsAfterFinished no greater than one day
+    - expression: '''system:masters'' in request.userInfo.groups || request.kind.kind
+        != ''CronJob'' || (has(object.spec.successfulJobsHistoryLimit) && object.spec.successfulJobsHistoryLimit
+        <= 3 && has(object.spec.failedJobsHistoryLimit) && object.spec.failedJobsHistoryLimit
+        <= 3 && has(object.spec.jobTemplate.spec.ttlSecondsAfterFinished) && object.spec.jobTemplate.spec.ttlSecondsAfterFinished
+        <= 86400)'
+      message: CronJobs require bounded history and Job TTL
+    - expression: '''system:masters'' in request.userInfo.groups || request.kind.kind
+        != ''ScaledObject'' || (object.spec.minReplicaCount >= 0 && object.spec.maxReplicaCount
+        <= 3 && object.spec.minReplicaCount <= object.spec.maxReplicaCount)'
+      message: KEDA replica bounds must remain between 0 and 3
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicyBinding
@@ -114,7 +115,7 @@ metadata:
 spec:
   policyName: vended-tenant-baseline
   validationActions:
-  - Deny
+    - Deny
   matchResources:
     namespaceSelector:
       matchLabels:
@@ -174,15 +175,15 @@ metadata:
   namespace: court-booker-local
 spec:
   limits:
-  - type: Container
-    min:
-      cpu: 10m
-      memory: 16Mi
-      ephemeral-storage: 16Mi
-    max:
-      cpu: 1000m
-      memory: 1Gi
-      ephemeral-storage: 4Gi
+    - type: Container
+      min:
+        cpu: 10m
+        memory: 16Mi
+        ephemeral-storage: 16Mi
+      max:
+        cpu: 1000m
+        memory: 1Gi
+        ephemeral-storage: 4Gi
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -198,7 +199,9 @@ data:
   ecr_repository: court-booker
   hostname: court-booker.homelab.tfdraw.dev
   lifecycle: active
-  runtime_contracts: '[{"keys":["username","password"],"name":"court-booker-credentials","owner":"platform","restart_on_rotation":true,"rotation_id":"1","type":"Opaque"}]'
+  runtime_contracts: '[{"keys": ["username", "password"], "name": "court-booker-credentials",
+    "owner": "platform", "restart_on_rotation": true, "rotation_id": "1", "type":
+    "Opaque"}]'
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -210,8 +213,8 @@ metadata:
 spec:
   podSelector: {}
   policyTypes:
-  - Ingress
-  - Egress
+    - Ingress
+    - Egress
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -223,20 +226,20 @@ metadata:
 spec:
   podSelector: {}
   policyTypes:
-  - Egress
+    - Egress
   egress:
-  - to:
-    - namespaceSelector:
-        matchLabels:
-          kubernetes.io/metadata.name: kube-system
-      podSelector:
-        matchLabels:
-          k8s-app: kube-dns
-    ports:
-    - protocol: UDP
-      port: 53
-    - protocol: TCP
-      port: 53
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -248,14 +251,14 @@ metadata:
 spec:
   podSelector: {}
   policyTypes:
-  - Ingress
-  - Egress
+    - Ingress
+    - Egress
   ingress:
-  - from:
-    - podSelector: {}
+    - from:
+        - podSelector: {}
   egress:
-  - to:
-    - podSelector: {}
+    - to:
+        - podSelector: {}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -267,15 +270,15 @@ metadata:
 spec:
   podSelector: {}
   policyTypes:
-  - Ingress
+    - Ingress
   ingress:
-  - from:
-    - namespaceSelector:
-        matchLabels:
-          kubernetes.io/metadata.name: istio-ingress
-      podSelector:
-        matchLabels:
-          gateway.networking.k8s.io/gateway-name: homelab
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: istio-ingress
+          podSelector:
+            matchLabels:
+              gateway.networking.k8s.io/gateway-name: homelab
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -286,15 +289,15 @@ metadata:
   namespace: court-booker-local
 spec:
   parentRefs:
-  - name: homelab
-    namespace: istio-ingress
-    sectionName: https
+    - name: homelab
+      namespace: istio-ingress
+      sectionName: https
   hostnames:
-  - court-booker.homelab.tfdraw.dev
+    - court-booker.homelab.tfdraw.dev
   rules:
-  - backendRefs:
-    - name: court-booker
-      port: 80
+    - backendRefs:
+        - name: court-booker
+          port: 80
 ---
 apiVersion: v1
 kind: Namespace
@@ -350,15 +353,15 @@ metadata:
   namespace: platform-local
 spec:
   limits:
-  - type: Container
-    min:
-      cpu: 10m
-      memory: 16Mi
-      ephemeral-storage: 16Mi
-    max:
-      cpu: 1000m
-      memory: 1Gi
-      ephemeral-storage: 4Gi
+    - type: Container
+      min:
+        cpu: 10m
+        memory: 16Mi
+        ephemeral-storage: 16Mi
+      max:
+        cpu: 1000m
+        memory: 1Gi
+        ephemeral-storage: 4Gi
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -386,8 +389,8 @@ metadata:
 spec:
   podSelector: {}
   policyTypes:
-  - Ingress
-  - Egress
+    - Ingress
+    - Egress
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -399,20 +402,20 @@ metadata:
 spec:
   podSelector: {}
   policyTypes:
-  - Egress
+    - Egress
   egress:
-  - to:
-    - namespaceSelector:
-        matchLabels:
-          kubernetes.io/metadata.name: kube-system
-      podSelector:
-        matchLabels:
-          k8s-app: kube-dns
-    ports:
-    - protocol: UDP
-      port: 53
-    - protocol: TCP
-      port: 53
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -424,14 +427,14 @@ metadata:
 spec:
   podSelector: {}
   policyTypes:
-  - Ingress
-  - Egress
+    - Ingress
+    - Egress
   ingress:
-  - from:
-    - podSelector: {}
+    - from:
+        - podSelector: {}
   egress:
-  - to:
-    - podSelector: {}
+    - to:
+        - podSelector: {}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -443,15 +446,15 @@ metadata:
 spec:
   podSelector: {}
   policyTypes:
-  - Ingress
+    - Ingress
   ingress:
-  - from:
-    - namespaceSelector:
-        matchLabels:
-          kubernetes.io/metadata.name: istio-ingress
-      podSelector:
-        matchLabels:
-          gateway.networking.k8s.io/gateway-name: homelab
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: istio-ingress
+          podSelector:
+            matchLabels:
+              gateway.networking.k8s.io/gateway-name: homelab
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -462,12 +465,12 @@ metadata:
   namespace: platform-local
 spec:
   parentRefs:
-  - name: homelab
-    namespace: istio-ingress
-    sectionName: https
+    - name: homelab
+      namespace: istio-ingress
+      sectionName: https
   hostnames:
-  - platform.homelab.tfdraw.dev
+    - platform.homelab.tfdraw.dev
   rules:
-  - backendRefs:
-    - name: platform
-      port: 80
+    - backendRefs:
+        - name: platform
+          port: 80

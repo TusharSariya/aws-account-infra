@@ -20,72 +20,72 @@ metadata:
     platform.homelab.tfdraw.dev/managed: 'true'
   namespace: court-booker-local
 rules:
-- apiGroups:
-  - ''
-  resources:
-  - pods
-  - configmaps
-  - services
-  - serviceaccounts
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
-- apiGroups:
-  - apps
-  resources:
-  - deployments
-  - statefulsets
-  - replicasets
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
-- apiGroups:
-  - batch
-  resources:
-  - jobs
-  - cronjobs
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
-- apiGroups:
-  - autoscaling
-  resources:
-  - horizontalpodautoscalers
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
-- apiGroups:
-  - keda.sh
-  resources:
-  - scaledobjects
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
+  - apiGroups:
+      - ''
+    resources:
+      - pods
+      - configmaps
+      - services
+      - serviceaccounts
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+      - statefulsets
+      - replicasets
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - batch
+    resources:
+      - jobs
+      - cronjobs
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - autoscaling
+    resources:
+      - horizontalpodautoscalers
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - keda.sh
+    resources:
+      - scaledobjects
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -95,9 +95,9 @@ metadata:
     platform.homelab.tfdraw.dev/managed: 'true'
   namespace: court-booker-local
 subjects:
-- kind: ServiceAccount
-  name: argocd-application-controller
-  namespace: argocd
+  - kind: ServiceAccount
+    name: argocd-application-controller
+    namespace: argocd
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -112,32 +112,32 @@ metadata:
   namespace: argocd
 spec:
   sourceRepos:
-  - https://github.com/TusharSariya/court-booker.git
+    - https://github.com/TusharSariya/court-booker.git
   destinations:
-  - server: https://kubernetes.default.svc
-    namespace: court-booker-local
+    - server: https://kubernetes.default.svc
+      namespace: court-booker-local
   clusterResourceWhitelist: []
   namespaceResourceWhitelist:
-  - group: ''
-    kind: ConfigMap
-  - group: ''
-    kind: Service
-  - group: ''
-    kind: ServiceAccount
-  - group: apps
-    kind: Deployment
-  - group: apps
-    kind: StatefulSet
-  - group: apps
-    kind: ReplicaSet
-  - group: batch
-    kind: Job
-  - group: batch
-    kind: CronJob
-  - group: autoscaling
-    kind: HorizontalPodAutoscaler
-  - group: keda.sh
-    kind: ScaledObject
+    - group: ''
+      kind: ConfigMap
+    - group: ''
+      kind: Service
+    - group: ''
+      kind: ServiceAccount
+    - group: apps
+      kind: Deployment
+    - group: apps
+      kind: StatefulSet
+    - group: apps
+      kind: ReplicaSet
+    - group: batch
+      kind: Job
+    - group: batch
+      kind: CronJob
+    - group: autoscaling
+      kind: HorizontalPodAutoscaler
+    - group: keda.sh
+      kind: ScaledObject
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -161,9 +161,9 @@ spec:
       selfHeal: true
       allowEmpty: false
     syncOptions:
-    - CreateNamespace=false
-    - PrunePropagationPolicy=foreground
-    - PruneLast=true
+      - CreateNamespace=false
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
     retry:
       limit: 5
       backoff:
@@ -179,72 +179,72 @@ metadata:
     platform.homelab.tfdraw.dev/managed: 'true'
   namespace: platform-local
 rules:
-- apiGroups:
-  - ''
-  resources:
-  - pods
-  - configmaps
-  - services
-  - serviceaccounts
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
-- apiGroups:
-  - apps
-  resources:
-  - deployments
-  - statefulsets
-  - replicasets
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
-- apiGroups:
-  - batch
-  resources:
-  - jobs
-  - cronjobs
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
-- apiGroups:
-  - autoscaling
-  resources:
-  - horizontalpodautoscalers
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
-- apiGroups:
-  - keda.sh
-  resources:
-  - scaledobjects
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
+  - apiGroups:
+      - ''
+    resources:
+      - pods
+      - configmaps
+      - services
+      - serviceaccounts
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+      - statefulsets
+      - replicasets
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - batch
+    resources:
+      - jobs
+      - cronjobs
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - autoscaling
+    resources:
+      - horizontalpodautoscalers
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - keda.sh
+    resources:
+      - scaledobjects
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -254,9 +254,9 @@ metadata:
     platform.homelab.tfdraw.dev/managed: 'true'
   namespace: platform-local
 subjects:
-- kind: ServiceAccount
-  name: argocd-application-controller
-  namespace: argocd
+  - kind: ServiceAccount
+    name: argocd-application-controller
+    namespace: argocd
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -271,32 +271,32 @@ metadata:
   namespace: argocd
 spec:
   sourceRepos:
-  - https://github.com/TusharSariya/platform-components.git
+    - https://github.com/TusharSariya/platform-components.git
   destinations:
-  - server: https://kubernetes.default.svc
-    namespace: platform-local
+    - server: https://kubernetes.default.svc
+      namespace: platform-local
   clusterResourceWhitelist: []
   namespaceResourceWhitelist:
-  - group: ''
-    kind: ConfigMap
-  - group: ''
-    kind: Service
-  - group: ''
-    kind: ServiceAccount
-  - group: apps
-    kind: Deployment
-  - group: apps
-    kind: StatefulSet
-  - group: apps
-    kind: ReplicaSet
-  - group: batch
-    kind: Job
-  - group: batch
-    kind: CronJob
-  - group: autoscaling
-    kind: HorizontalPodAutoscaler
-  - group: keda.sh
-    kind: ScaledObject
+    - group: ''
+      kind: ConfigMap
+    - group: ''
+      kind: Service
+    - group: ''
+      kind: ServiceAccount
+    - group: apps
+      kind: Deployment
+    - group: apps
+      kind: StatefulSet
+    - group: apps
+      kind: ReplicaSet
+    - group: batch
+      kind: Job
+    - group: batch
+      kind: CronJob
+    - group: autoscaling
+      kind: HorizontalPodAutoscaler
+    - group: keda.sh
+      kind: ScaledObject
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -320,9 +320,9 @@ spec:
       selfHeal: true
       allowEmpty: false
     syncOptions:
-    - CreateNamespace=false
-    - PrunePropagationPolicy=foreground
-    - PruneLast=true
+      - CreateNamespace=false
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
     retry:
       limit: 5
       backoff:

@@ -33,6 +33,13 @@ class ReconcilePending(RuntimeError):
     """The cluster cannot currently prove that reconciliation is safe."""
 
 
+class IndentedSafeDumper(yaml.SafeDumper):
+    """Emit block sequences at the indentation expected by ansible-lint."""
+
+    def increase_indent(self, flow: bool = False, indentless: bool = False):
+        return super().increase_indent(flow, indentless=False)
+
+
 def metadata(name: str, namespace: str | None = None, labels: dict | None = None) -> dict:
     value = {"name": name, "labels": {MANAGED_LABEL: "true", **(labels or {})}}
     if namespace:
@@ -209,7 +216,7 @@ def tenant_resources(service_id: str, service: dict, target_id: str, cluster: di
                 "ecr_repository": target["ecr_repository"],
                 "hostname": target["ingress_hostname"],
                 "lifecycle": lifecycle,
-                "runtime_contracts": json.dumps(target["secrets"], separators=(",", ":"), sort_keys=True),
+                "runtime_contracts": json.dumps(target["secrets"], sort_keys=True),
             },
         },
         {
@@ -345,7 +352,7 @@ def render_target(target: str, phase: str = "all") -> list[dict]:
 
 def serialize(resources: list[dict]) -> str:
     return "---\n" + "---\n".join(
-        yaml.safe_dump(resource, sort_keys=False) for resource in resources
+        yaml.dump(resource, Dumper=IndentedSafeDumper, sort_keys=False) for resource in resources
     )
 
 
