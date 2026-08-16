@@ -5,3 +5,8 @@
 # CloudWatch cannot publish to an SNS topic encrypted with alias/aws/sns.
 # A customer-managed key would add a monthly KMS charge for weekly alarm JSON.
 AVD-AWS-0095
+
+# Vended application Roles may manage same-namespace ClusterIP Services. Native
+# admission denies ExternalName and externalIPs, and tenants cannot manage
+# Endpoint/EndpointSlice objects, so this does not permit selectorless proxying.
+KSV-0056

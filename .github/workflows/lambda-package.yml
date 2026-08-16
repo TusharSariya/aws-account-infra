@@ -25,9 +25,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  id-token: write
   contents: read
-  pull-requests: write
 
 env:
   AWS_REGION: us-east-1
@@ -41,40 +39,51 @@ jobs:
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
         with:
           python-version: "3.14"
       - name: Test
         run: uv run --directory apps/lambda/python/3.14/court-booker pytest
-      - id: aws
-        continue-on-error: true
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ github.event_name == 'pull_request' && env.LAMBDA_CANDIDATE_ROLE_ARN || env.LAMBDA_STABLE_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-      - name: Package and upload
-        if: steps.aws.outcome == 'success'
+      - name: Package without cloud credentials
         env:
           TAG: ${{ github.sha }}
           LAMBDA_ZIP_PREFIX: ${{ github.event_name == 'pull_request' && 'candidate/court-booker' || 'stable/court-booker' }}
+          LAMBDA_SKIP_UPLOAD: "true"
         run: |
           chmod +x scripts/lambda-package.sh
           ./scripts/lambda-package.sh python/3.14/court-booker "$TAG"
-      - name: Skip until account apply
-        if: steps.aws.outcome != 'success'
-        run: echo "lambda-releases OIDC role not applied yet; skipping upload."
-      - name: Comment key on PR
-        if: github.event_name == 'pull_request' && steps.aws.outcome == 'success'
-        uses: actions/github-script@v7
+
+      - name: Preserve package artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          script: |
-            const tag = '${{ github.sha }}';
-            const key = `candidate/court-booker/${tag}.zip`;
-            const body = `### lambda-package — candidate\n\n\`${key}\`\n\nPromote by uploading the same sha to \`stable/\` on main, then set \`booker_api_zip_key\` and apply.`;
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body,
-            });
+          name: court-booker-${{ github.sha }}
+          path: build/lambda/**/court-booker-*.zip
+          if-no-files-found: error
+
+  upload-stable:
+    needs: package
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: court-booker-${{ github.sha }}
+          path: package
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
+        with:
+          role-to-assume: ${{ env.LAMBDA_STABLE_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Upload stable artifact
+        env:
+          TAG: ${{ github.sha }}
+        run: |
+          ZIP_PATH="$(find package -type f -name 'court-booker-*.zip' -print -quit)"
+          test -n "$ZIP_PATH"
+          aws s3 cp "$ZIP_PATH" \
+            "s3://${LAMBDA_ZIP_BUCKET}/stable/court-booker/${TAG}.zip" \
+            --region "$AWS_REGION"

@@ -1,0 +1,37 @@
+version: 1
+provisioner: organizations-v1
+service:
+  uid: a050f9c4-62c6-553d-aea2-3c7e537081b9
+  id: platform
+  display_name: Platform Services
+  owner: platform
+repository:
+  identity: TusharSariya/platform-components
+  name: platform-components
+  visibility: private
+  template: service-stack-template
+  migration: template
+accounts:
+  shared-services:
+    account_id: null
+    name: Platform-SharedServices
+    root_email: tushar.97+aws-shared-services@hotmail.com
+    ou_path: Platform/SharedServices
+    region: us-east-1
+    budget_usd: 20
+    deployment: approval
+    lifecycle: active
+kubernetes:
+  homelab:
+    lifecycle: active
+    quota_profile: small
+    ingress_hostname: platform.homelab.tfdraw.dev
+    gpu_mode: none
+    ecr_repository: platform-components
+    source_path: deploy/kubernetes
+    backend:
+      service: platform
+      port: 80
+    secrets: []
+    egress:
+      dns_names: []

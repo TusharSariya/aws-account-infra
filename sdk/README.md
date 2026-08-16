@@ -11,7 +11,11 @@ OpenAPI Generator targets for specs under [`specs/`](../specs/). Never edit
 Image pin: `openapitools/openapi-generator-cli:v7.24.0` (digest in
 [`openapitools.json`](openapitools.json) and the workflows).
 
-Packages go to CodeArtifact, not public registries:
+Generated clients are vendored directly into application deployment artifacts during
+the pilot. CodeArtifact publishing is retained only for the existing staging account
+until its old state is retired; new vended accounts do not depend on it.
+
+The historical publishing workflows used these repositories:
 
 | Repository | When | Version |
 | --- | --- | --- |

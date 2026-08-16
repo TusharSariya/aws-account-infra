@@ -12,7 +12,7 @@ DNS is served.
 flowchart TB
   laptop["Laptop / Mac<br/>browser + DNS client"]
 
-  subgraph node["ubuntu-desktop · single node · k8s 1.36 · NVIDIA GPU"]
+  subgraph node["ubuntu-desktop · single node · k8s 1.35 · NVIDIA GPU"]
     pihole_svc["Pi-hole Service (LoadBalancer)<br/>10.0.0.232 :53 TCP/UDP DNS + :80"]
     istio_svc["Istio gateway Service (LoadBalancer)<br/>10.0.0.234 :80 HTTP"]
 
@@ -130,4 +130,3 @@ flowchart LR
   and `docs/superpowers/specs/2026-07-06-istio-grafana-ingress-design.md` for the
   design record.
 ```
-

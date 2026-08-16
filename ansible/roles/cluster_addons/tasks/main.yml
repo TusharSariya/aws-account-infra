@@ -20,6 +20,32 @@
     state: directory
     mode: "0700"
 
+- name: Assert supply-chain policy gates
+  ansible.builtin.assert:
+    that:
+      - cluster_addons_kyverno_enabled | bool
+      - cluster_addons_kyverno_registry_secret_name | length > 0
+      - cluster_addons_kyverno_certificate_identity | length > 0
+      - cluster_addons_kyverno_certificate_issuer | length > 0
+    fail_msg: >-
+      Image verification requires a ready Kyverno installation, a dedicated
+      runtime-refreshed ECR registry credential, and exact signing identity values.
+  when: cluster_addons_kyverno_image_verification_enabled | bool
+
+- name: Render protected platform priority class
+  ansible.builtin.template:
+    src: platform-priority.yml.j2
+    dest: "{{ cluster_addons_work_dir }}/platform-priority.yml"
+    mode: "0600"
+
+- name: Apply protected platform priority class
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_addons_kubeconfig }} apply --server-side
+    --field-manager=ansible-cluster-addons
+    --filename {{ cluster_addons_work_dir }}/platform-priority.yml
+  register: cluster_addons_priority_apply
+  changed_when: "'unchanged' not in cluster_addons_priority_apply.stdout"
+
 - name: Download pinned local-path provisioner source
   ansible.builtin.get_url:
     url: >-
@@ -124,12 +150,62 @@
   register: cluster_addons_helmfile
   changed_when: "'Affected releases are:' in cluster_addons_helmfile.stdout"
 
+- name: Wait for Kyverno admission to become available
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_addons_kubeconfig }} wait
+    deployment/kyverno-admission-controller --namespace kyverno
+    --for=condition=Available --timeout=5m
+  changed_when: false
+  when: cluster_addons_kyverno_enabled | bool
+
+- name: Verify Kyverno admission service has ready endpoints
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - --kubeconfig
+      - "{{ cluster_addons_kubeconfig }}"
+      - get
+      - endpoints
+      - kyverno-svc
+      - --namespace
+      - kyverno
+      - -o
+      - jsonpath={.subsets[0].addresses[0].ip}
+  register: cluster_addons_kyverno_endpoint
+  changed_when: false
+  failed_when: cluster_addons_kyverno_endpoint.stdout | length == 0
+  when: cluster_addons_kyverno_enabled | bool
+
+- name: Render Kyverno image verification policy
+  ansible.builtin.template:
+    src: kyverno-image-policy.yml.j2
+    dest: "{{ cluster_addons_work_dir }}/kyverno-image-policy.yml"
+    mode: "0600"
+  when: cluster_addons_kyverno_image_verification_enabled | bool
+
+- name: Apply Kyverno image verification policy
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_addons_kubeconfig }} apply --server-side
+    --field-manager=ansible-cluster-addons
+    --filename {{ cluster_addons_work_dir }}/kyverno-image-policy.yml
+  register: cluster_addons_kyverno_policy_apply
+  changed_when: "'unchanged' not in cluster_addons_kyverno_policy_apply.stdout"
+  when: cluster_addons_kyverno_image_verification_enabled | bool
+
 - name: Wait for the KEDA operator to be available
   ansible.builtin.command: >-
     kubectl --kubeconfig {{ cluster_addons_kubeconfig }} wait
     deployment/keda-operator --namespace keda
     --for=condition=Available --timeout=5m
   changed_when: false
+
+- name: Mark the Ansible-owned monitoring namespace as an active route source
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_addons_kubeconfig }} label namespace monitoring
+    platform.homelab.tfdraw.dev/managed=true
+    platform.homelab.tfdraw.dev/active-tenant=true --overwrite
+  register: cluster_addons_monitoring_labels
+  changed_when: "'not labeled' not in cluster_addons_monitoring_labels.stdout"
 
 - name: Render Gateway API resources
   ansible.builtin.template:
@@ -143,30 +219,6 @@
     --filename {{ cluster_addons_work_dir }}/gateway-resources.yml
   register: cluster_addons_gateway_apply
   changed_when: "'unchanged' not in cluster_addons_gateway_apply.stdout"
-
-- name: Wait for the shared Gateway
-  ansible.builtin.command: >-
-    kubectl --kubeconfig {{ cluster_addons_kubeconfig }} wait
-    gateway/{{ cluster_addons_gateway_name }}
-    --namespace {{ cluster_addons_gateway_namespace }}
-    --for=condition=Programmed --timeout=10m
-  changed_when: false
-
-- name: Wait for the Grafana HTTPRoute
-  ansible.builtin.command: >-
-    kubectl --kubeconfig {{ cluster_addons_kubeconfig }} wait
-    httproute/grafana --namespace monitoring
-    --for=jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].status}'=True
-    --timeout=5m
-  changed_when: false
-
-- name: Verify Grafana through Gateway API
-  ansible.builtin.uri:
-    url: "http://{{ cluster_addons_gateway_address }}/login"
-    headers:
-      Host: "{{ cluster_addons_grafana_hostname }}"
-    status_code: 200
-    use_proxy: false
 
 - name: Check for the retired Envoy Gateway release
   ansible.builtin.command: helm status envoy-gateway --namespace envoy-gateway-system
@@ -252,3 +304,35 @@
     clusterissuer/{{ cluster_addons_acme_issuer }}
     --for=condition=Ready --timeout=2m
   changed_when: false
+
+- name: Wait for the homelab wildcard certificate
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_addons_kubeconfig }} wait
+    certificate/homelab-wildcard --namespace {{ cluster_addons_gateway_namespace }}
+    --for=condition=Ready --timeout=10m
+  changed_when: false
+
+- name: Wait for the shared Gateway
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_addons_kubeconfig }} wait
+    gateway/{{ cluster_addons_gateway_name }}
+    --namespace {{ cluster_addons_gateway_namespace }}
+    --for=condition=Programmed --timeout=10m
+  changed_when: false
+
+- name: Wait for the Grafana HTTPRoute
+  ansible.builtin.command: >-
+    kubectl --kubeconfig {{ cluster_addons_kubeconfig }} wait
+    httproute/grafana --namespace monitoring
+    --for=jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].status}'=True
+    --timeout=5m
+  changed_when: false
+
+- name: Verify Grafana through Gateway API HTTPS listener
+  ansible.builtin.uri:
+    url: "https://{{ cluster_addons_gateway_address }}/login"
+    headers:
+      Host: "{{ cluster_addons_grafana_hostname }}"
+    status_code: 200
+    use_proxy: false
+    validate_certs: "{{ cluster_addons_acme_issuer == 'letsencrypt-prod' }}"

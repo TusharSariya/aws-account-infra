@@ -1,0 +1,39 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-vended-ecr-images
+  labels:
+    app.kubernetes.io/managed-by: ansible
+spec:
+  admission: true
+  background: false
+  webhookConfiguration:
+    failurePolicy: Fail
+    timeoutSeconds: 15
+  rules:
+    - name: verify-court-booker-image
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaceSelector:
+                matchLabels:
+                  platform.homelab.tfdraw.dev/managed: "true"
+      verifyImages:
+        - imageReferences:
+            - "{{ cluster_addons_kyverno_ecr_registry }}/{{ cluster_addons_kyverno_ecr_repository }}@sha256:*"
+          failureAction: {{ 'Enforce' if cluster_addons_kyverno_enforce | bool else 'Audit' }}
+          required: true
+          mutateDigest: false
+          verifyDigest: true
+          imageRegistryCredentials:
+            secrets:
+              - "{{ cluster_addons_kyverno_registry_secret_name }}"
+          attestors:
+            - entries:
+                - keyless:
+                    subject: "{{ cluster_addons_kyverno_certificate_identity }}"
+                    issuer: "{{ cluster_addons_kyverno_certificate_issuer }}"
+                    rekor:
+                      url: https://rekor.sigstore.dev

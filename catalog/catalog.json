@@ -1,0 +1,195 @@
+{
+  "kubernetes_clusters": {
+    "homelab": {
+      "capacity": {
+        "limits_ephemeral_storage": "16Gi",
+        "limits_memory": "8Gi",
+        "physical_storage": "0Gi",
+        "pods": 40,
+        "requests_cpu": "2000m",
+        "requests_ephemeral_storage": "8Gi",
+        "requests_memory": "4Gi"
+      },
+      "capacity_basis": {
+        "declared_platform_budget": {
+          "limits_ephemeral_storage": "16Gi",
+          "limits_memory": "8Gi",
+          "physical_storage": "0Gi",
+          "pods": 30,
+          "requests_cpu": "2000m",
+          "requests_ephemeral_storage": "8Gi",
+          "requests_memory": "4Gi"
+        },
+        "eviction_recovery_headroom": {
+          "limits_ephemeral_storage": "8Gi",
+          "limits_memory": "2Gi",
+          "physical_storage": "0Gi",
+          "pods": 10,
+          "requests_cpu": "500m",
+          "requests_ephemeral_storage": "8Gi",
+          "requests_memory": "2Gi"
+        },
+        "system_reservations": {
+          "limits_ephemeral_storage": "4Gi",
+          "limits_memory": "1Gi",
+          "physical_storage": "0Gi",
+          "pods": 10,
+          "requests_cpu": "500m",
+          "requests_ephemeral_storage": "4Gi",
+          "requests_memory": "1Gi"
+        }
+      },
+      "cluster": "homelab",
+      "gpu": {
+        "evidence": "MIG geometry and exclusive-use reboot validation not yet recorded",
+        "vending_enabled": false
+      },
+      "quota_profiles": {
+        "small": {
+          "configmaps": 8,
+          "cronjobs": 2,
+          "deployments": 2,
+          "httproutes": 1,
+          "jobs": 4,
+          "limits_cpu": "1000m",
+          "limits_ephemeral_storage": "4Gi",
+          "limits_memory": "1Gi",
+          "physical_storage": "0Gi",
+          "pods": 10,
+          "replicasets": 4,
+          "requests_cpu": "500m",
+          "requests_ephemeral_storage": "2Gi",
+          "requests_memory": "512Mi",
+          "scaledobjects": 2,
+          "secrets": 8,
+          "serviceaccounts": 4,
+          "services": 3,
+          "statefulsets": 1
+        }
+      },
+      "storage": {
+        "tenant_pvcs_enabled": false
+      },
+      "version": 1
+    }
+  },
+  "services": {
+    "court-booker": {
+      "accounts": {
+        "dev": {
+          "account_id": null,
+          "budget_usd": 10,
+          "deployment": "automatic",
+          "lifecycle": "active",
+          "name": "CourtBooker-Dev",
+          "ou_path": "Workloads/CourtBooker/NonProd",
+          "region": "us-east-1",
+          "root_email": "tushar.97+aws-court-booker-dev@hotmail.com"
+        },
+        "prod": {
+          "account_id": null,
+          "budget_usd": 10,
+          "deployment": "approval",
+          "lifecycle": "active",
+          "name": "CourtBooker-Prod",
+          "ou_path": "Workloads/CourtBooker/Prod",
+          "region": "us-east-1",
+          "root_email": "tushar.97+aws-court-booker-prod@hotmail.com"
+        }
+      },
+      "kubernetes": {
+        "homelab": {
+          "backend": {
+            "port": 80,
+            "service": "court-booker"
+          },
+          "ecr_repository": "court-booker",
+          "egress": {
+            "dns_names": []
+          },
+          "gpu_mode": "none",
+          "ingress_hostname": "court-booker.homelab.tfdraw.dev",
+          "lifecycle": "active",
+          "quota_profile": "small",
+          "secrets": [
+            {
+              "keys": [
+                "username",
+                "password"
+              ],
+              "name": "court-booker-credentials",
+              "owner": "platform",
+              "restart_on_rotation": true,
+              "rotation_id": "1",
+              "type": "Opaque"
+            }
+          ],
+          "source_path": "deploy/kubernetes"
+        }
+      },
+      "provisioner": "organizations-v1",
+      "repository": {
+        "identity": "TusharSariya/court-booker",
+        "migration": "filtered-history",
+        "name": "court-booker",
+        "template": null,
+        "visibility": "private"
+      },
+      "service": {
+        "display_name": "Court Booker",
+        "id": "court-booker",
+        "owner": "platform",
+        "uid": "1485b9ce-c1c0-5c61-b585-5fb330769ebc"
+      },
+      "version": 1
+    },
+    "platform": {
+      "accounts": {
+        "shared-services": {
+          "account_id": null,
+          "budget_usd": 20,
+          "deployment": "approval",
+          "lifecycle": "active",
+          "name": "Platform-SharedServices",
+          "ou_path": "Platform/SharedServices",
+          "region": "us-east-1",
+          "root_email": "tushar.97+aws-shared-services@hotmail.com"
+        }
+      },
+      "kubernetes": {
+        "homelab": {
+          "backend": {
+            "port": 80,
+            "service": "platform"
+          },
+          "ecr_repository": "platform-components",
+          "egress": {
+            "dns_names": []
+          },
+          "gpu_mode": "none",
+          "ingress_hostname": "platform.homelab.tfdraw.dev",
+          "lifecycle": "active",
+          "quota_profile": "small",
+          "secrets": [],
+          "source_path": "deploy/kubernetes"
+        }
+      },
+      "provisioner": "organizations-v1",
+      "repository": {
+        "identity": "TusharSariya/platform-components",
+        "migration": "template",
+        "name": "platform-components",
+        "template": "service-stack-template",
+        "visibility": "private"
+      },
+      "service": {
+        "display_name": "Platform Services",
+        "id": "platform",
+        "owner": "platform",
+        "uid": "a050f9c4-62c6-553d-aea2-3c7e537081b9"
+      },
+      "version": 1
+    }
+  },
+  "version": 1
+}

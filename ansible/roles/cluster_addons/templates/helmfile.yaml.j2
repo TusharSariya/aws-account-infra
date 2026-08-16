@@ -5,6 +5,8 @@ helmDefaults:
   atomic: true
 
 repositories:
+  - name: argo
+    url: https://argoproj.github.io/argo-helm
   - name: cilium
     url: https://helm.cilium.io
   - name: grafana-community
@@ -23,8 +25,85 @@ repositories:
     url: https://prometheus-community.github.io/helm-charts
   - name: jetstack
     url: https://charts.jetstack.io
+  - name: kyverno
+    url: https://kyverno.github.io/kyverno
 
 releases:
+  - name: argocd
+    namespace: argocd
+    createNamespace: true
+    installed: {{ cluster_addons_argocd_enabled | bool | lower }}
+    chart: argo/argo-cd
+    version: "{{ cluster_addons_argocd_version }}"
+    values:
+      - createClusterRoles: false
+        global:
+          priorityClassName: platform-critical
+          networkPolicy:
+            create: true
+        controller:
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {cpu: 1, memory: 1Gi}
+        server:
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+        repoServer:
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {cpu: 1, memory: 1Gi}
+        redis:
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+        dex:
+          enabled: false
+        applicationSet:
+          enabled: false
+        notifications:
+          enabled: false
+
+  - name: kyverno
+    namespace: kyverno
+    createNamespace: true
+    installed: {{ cluster_addons_kyverno_enabled | bool | lower }}
+    chart: kyverno/kyverno
+    version: "{{ cluster_addons_kyverno_version }}"
+    values:
+      - global:
+          priorityClassName: platform-critical
+        config:
+          webhooks:
+            namespaceSelector:
+              matchLabels:
+                platform.homelab.tfdraw.dev/managed: "true"
+        admissionController:
+          replicas: 1
+          podDisruptionBudget:
+            enabled: true
+            minAvailable: 1
+          initContainer:
+            resources:
+              requests: {cpu: 10m, memory: 64Mi}
+              limits: {cpu: 100m, memory: 256Mi}
+          container:
+            resources:
+              requests: {cpu: 100m, memory: 256Mi}
+              limits: {cpu: 1, memory: 1Gi}
+        backgroundController:
+          enabled: true
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+        cleanupController:
+          enabled: false
+        reportsController:
+          enabled: true
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+
   - name: cilium
     namespace: kube-system
     chart: cilium/cilium

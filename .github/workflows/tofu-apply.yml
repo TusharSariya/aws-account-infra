@@ -1,8 +1,9 @@
 name: tofu-apply
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened, labeled, unlabeled]
+  push:
+    branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: tofu-apply
@@ -11,7 +12,6 @@ concurrency:
 permissions:
   id-token: write
   contents: read
-  pull-requests: read
 
 jobs:
   detect:
@@ -19,27 +19,31 @@ jobs:
     outputs:
       units: ${{ steps.units.outputs.units }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
       - id: units
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_SHA: ${{ github.event.before }}
           HEAD_SHA: ${{ github.sha }}
-        run: echo "units=$(python3 scripts/deploy-units.py changed "$BASE_SHA" "$HEAD_SHA")" >> "$GITHUB_OUTPUT"
+        run: |
+          if [[ "$BASE_SHA" =~ ^0+$ || -z "$BASE_SHA" ]]; then
+            BASE_SHA="${HEAD_SHA}^"
+          fi
+          echo "units=$(python3 scripts/deploy-units.py changed "$BASE_SHA" "$HEAD_SHA")" >> "$GITHUB_OUTPUT"
 
   apply:
     needs: detect
-    if: needs.detect.outputs.units != '[]' && contains(github.event.pull_request.labels.*.name, 'apply')
+    if: needs.detect.outputs.units != '[]'
     runs-on: ubuntu-latest
-    environment: prod
+    environment: platform-prod
     steps:
-      - uses: actions/checkout@v4
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
         with:
           role-to-assume: ${{ vars.TOFU_APPLY_ROLE_ARN }}
           aws-region: us-east-1
-      - uses: opentofu/setup-opentofu@v1
+      - uses: opentofu/setup-opentofu@9d84900f3238fab8cd84ce47d658d25dd008be2f # v1
         with:
           tofu_version: 1.11.5
       - name: Apply deploy units in dependency order
@@ -73,22 +77,7 @@ jobs:
         run: |
           [[ "${{ needs.detect.result }}" == "success" ]] || exit 1
           if [[ "${{ needs.detect.outputs.units }}" == "[]" ]]; then exit 0; fi
-          # No apply label: skip is intentional. Each unit has its own var file,
-          # so a booker pin no longer marks the account stack as changed.
           if [[ "${{ needs.apply.result }}" == "skipped" ]]; then exit 0; fi
           [[ "${{ needs.apply.result }}" == "success" ]] || {
-            echo "::error::Apply was requested (apply label) but failed."; exit 1;
+            echo "::error::Main-branch apply failed."; exit 1;
           }
-
-  enable-auto-merge:
-    needs: apply
-    if: needs.apply.result == 'success'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-    steps:
-      - name: enable auto-merge
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh pr merge "${{ github.event.pull_request.number }}" --repo "${{ github.repository }}" --auto --squash

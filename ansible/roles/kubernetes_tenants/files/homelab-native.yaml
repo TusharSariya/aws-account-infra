@@ -1,0 +1,473 @@
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: vended-tenant-baseline
+  labels:
+    platform.homelab.tfdraw.dev/managed: 'true'
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+    - apiGroups:
+      - '*'
+      apiVersions:
+      - '*'
+      operations:
+      - CREATE
+      - UPDATE
+      resources:
+      - '*'
+      - '*/*'
+      scope: Namespaced
+  validations:
+  - expression: '''system:masters'' in request.userInfo.groups || request.kind.kind
+      in [''Pod'', ''Deployment'', ''StatefulSet'', ''ReplicaSet'', ''Job'', ''CronJob'',
+      ''ConfigMap'', ''Service'', ''ServiceAccount'', ''HorizontalPodAutoscaler'',
+      ''ScaledObject'']'
+    message: kind is platform-owned or prohibited in vended namespaces
+  - expression: '''system:masters'' in request.userInfo.groups || request.kind.kind
+      != ''Service'' || (object.spec.type == ''ClusterIP'' && !has(object.spec.externalIPs))'
+    message: Services must be ClusterIP without externalIPs; ExternalName is prohibited
+  - expression: '''system:masters'' in request.userInfo.groups || !(request.kind.kind
+      in [''Pod'', ''Deployment'', ''StatefulSet'', ''ReplicaSet'', ''Job'', ''CronJob''])
+      || (request.kind.kind == ''Pod'' ? ((!has(object.spec.hostNetwork) || !object.spec.hostNetwork)
+      && (!has(object.spec.hostPID) || !object.spec.hostPID) && (!has(object.spec.hostIPC)
+      || !object.spec.hostIPC)) : (request.kind.kind == ''CronJob'' ? ((!has(object.spec.jobTemplate.spec.template.spec.hostNetwork)
+      || !object.spec.jobTemplate.spec.template.spec.hostNetwork) && (!has(object.spec.jobTemplate.spec.template.spec.hostPID)
+      || !object.spec.jobTemplate.spec.template.spec.hostPID) && (!has(object.spec.jobTemplate.spec.template.spec.hostIPC)
+      || !object.spec.jobTemplate.spec.template.spec.hostIPC)) : ((!has(object.spec.template.spec.hostNetwork)
+      || !object.spec.template.spec.hostNetwork) && (!has(object.spec.template.spec.hostPID)
+      || !object.spec.template.spec.hostPID) && (!has(object.spec.template.spec.hostIPC)
+      || !object.spec.template.spec.hostIPC))))'
+    message: host network, PID and IPC access are prohibited
+  - expression: '''system:masters'' in request.userInfo.groups || !(request.kind.kind
+      in [''Deployment'', ''StatefulSet'', ''ReplicaSet'']) || !has(object.spec.replicas)
+      || object.spec.replicas <= 3'
+    message: controller replicas may not exceed 3
+  - expression: '''system:masters'' in request.userInfo.groups || request.kind.kind
+      != ''Pod'' || (object.spec.containers.all(c, has(c.resources.requests.cpu) &&
+      has(c.resources.requests.memory) && has(c.resources.requests[''ephemeral-storage''])
+      && has(c.resources.limits.cpu) && has(c.resources.limits.memory) && has(c.resources.limits[''ephemeral-storage'']))
+      && (!has(object.spec.initContainers) || object.spec.initContainers.all(c, has(c.resources.requests.cpu)
+      && has(c.resources.requests.memory) && has(c.resources.requests[''ephemeral-storage''])
+      && has(c.resources.limits.cpu) && has(c.resources.limits.memory) && has(c.resources.limits[''ephemeral-storage'']))))'
+    message: every container must declare CPU, memory and ephemeral-storage requests
+      and limits
+  - expression: '''system:masters'' in request.userInfo.groups || !(request.kind.kind
+      in [''Deployment'', ''StatefulSet'', ''ReplicaSet'', ''Job'']) || (object.spec.template.spec.containers.all(c,
+      has(c.resources.requests.cpu) && has(c.resources.requests.memory) && has(c.resources.requests[''ephemeral-storage''])
+      && has(c.resources.limits.cpu) && has(c.resources.limits.memory) && has(c.resources.limits[''ephemeral-storage'']))
+      && (!has(object.spec.template.spec.initContainers) || object.spec.template.spec.initContainers.all(c,
+      has(c.resources.requests.cpu) && has(c.resources.requests.memory) && has(c.resources.requests[''ephemeral-storage''])
+      && has(c.resources.limits.cpu) && has(c.resources.limits.memory) && has(c.resources.limits[''ephemeral-storage'']))))'
+    message: every workload container must declare CPU, memory and ephemeral-storage
+      requests and limits
+  - expression: '''system:masters'' in request.userInfo.groups || request.kind.kind
+      != ''CronJob'' || (object.spec.jobTemplate.spec.template.spec.containers.all(c,
+      has(c.resources.requests.cpu) && has(c.resources.requests.memory) && has(c.resources.requests[''ephemeral-storage''])
+      && has(c.resources.limits.cpu) && has(c.resources.limits.memory) && has(c.resources.limits[''ephemeral-storage'']))
+      && (!has(object.spec.jobTemplate.spec.template.spec.initContainers) || object.spec.jobTemplate.spec.template.spec.initContainers.all(c,
+      has(c.resources.requests.cpu) && has(c.resources.requests.memory) && has(c.resources.requests[''ephemeral-storage''])
+      && has(c.resources.limits.cpu) && has(c.resources.limits.memory) && has(c.resources.limits[''ephemeral-storage'']))))'
+    message: every CronJob container must declare CPU, memory and ephemeral-storage
+      requests and limits
+  - expression: '''system:masters'' in request.userInfo.groups || !(request.kind.kind
+      in [''Pod'', ''Deployment'', ''StatefulSet'', ''ReplicaSet'', ''Job'', ''CronJob''])
+      || (request.kind.kind == ''Pod'' ? (!has(object.spec.volumes) || object.spec.volumes.all(v,
+      !has(v.hostPath) && (!has(v.emptyDir) || has(v.emptyDir.sizeLimit)))) : (request.kind.kind
+      == ''CronJob'' ? (!has(object.spec.jobTemplate.spec.template.spec.volumes) ||
+      object.spec.jobTemplate.spec.template.spec.volumes.all(v, !has(v.hostPath) &&
+      (!has(v.emptyDir) || has(v.emptyDir.sizeLimit)))) : (!has(object.spec.template.spec.volumes)
+      || object.spec.template.spec.volumes.all(v, !has(v.hostPath) && (!has(v.emptyDir)
+      || has(v.emptyDir.sizeLimit))))))'
+    message: hostPath is prohibited and emptyDir requires sizeLimit
+  - expression: '''system:masters'' in request.userInfo.groups || !(request.kind.kind
+      in [''Pod'', ''Deployment'', ''StatefulSet'', ''ReplicaSet'', ''Job'', ''CronJob''])
+      || (request.kind.kind == ''Pod'' ? (!has(object.spec.priorityClassName) || object.spec.priorityClassName
+      == ''tenant-normal'') : (request.kind.kind == ''CronJob'' ? (!has(object.spec.jobTemplate.spec.template.spec.priorityClassName)
+      || object.spec.jobTemplate.spec.template.spec.priorityClassName == ''tenant-normal'')
+      : (!has(object.spec.template.spec.priorityClassName) || object.spec.template.spec.priorityClassName
+      == ''tenant-normal'')))'
+    message: platform priority classes are prohibited
+  - expression: '''system:masters'' in request.userInfo.groups || request.kind.kind
+      != ''Job'' || (has(object.spec.ttlSecondsAfterFinished) && object.spec.ttlSecondsAfterFinished
+      <= 86400)'
+    message: Jobs require ttlSecondsAfterFinished no greater than one day
+  - expression: '''system:masters'' in request.userInfo.groups || request.kind.kind
+      != ''CronJob'' || (has(object.spec.successfulJobsHistoryLimit) && object.spec.successfulJobsHistoryLimit
+      <= 3 && has(object.spec.failedJobsHistoryLimit) && object.spec.failedJobsHistoryLimit
+      <= 3 && has(object.spec.jobTemplate.spec.ttlSecondsAfterFinished) && object.spec.jobTemplate.spec.ttlSecondsAfterFinished
+      <= 86400)'
+    message: CronJobs require bounded history and Job TTL
+  - expression: '''system:masters'' in request.userInfo.groups || request.kind.kind
+      != ''ScaledObject'' || (object.spec.minReplicaCount >= 0 && object.spec.maxReplicaCount
+      <= 3 && object.spec.minReplicaCount <= object.spec.maxReplicaCount)'
+    message: KEDA replica bounds must remain between 0 and 3
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: vended-tenant-baseline
+  labels:
+    platform.homelab.tfdraw.dev/managed: 'true'
+spec:
+  policyName: vended-tenant-baseline
+  validationActions:
+  - Deny
+  matchResources:
+    namespaceSelector:
+      matchLabels:
+        platform.homelab.tfdraw.dev/managed: 'true'
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: court-booker-local
+  labels:
+    platform.homelab.tfdraw.dev/managed: 'true'
+    kubernetes.io/metadata.name: court-booker-local
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: v1.35
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/audit-version: v1.35
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/warn-version: v1.35
+    platform.homelab.tfdraw.dev/active-tenant: 'true'
+    platform.homelab.tfdraw.dev/service-id: court-booker
+    platform.homelab.tfdraw.dev/lifecycle: active
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: tenant-quota
+  labels:
+    platform.homelab.tfdraw.dev/managed: 'true'
+  namespace: court-booker-local
+spec:
+  hard:
+    requests.cpu: 500m
+    limits.cpu: 1000m
+    requests.memory: 512Mi
+    limits.memory: 1Gi
+    requests.ephemeral-storage: 2Gi
+    limits.ephemeral-storage: 4Gi
+    pods: '10'
+    count/deployments.apps: '2'
+    count/statefulsets.apps: '1'
+    count/replicasets.apps: '4'
+    count/jobs.batch: '4'
+    count/cronjobs.batch: '2'
+    services: '3'
+    configmaps: '8'
+    secrets: '8'
+    count/serviceaccounts: '4'
+    count/httproutes.gateway.networking.k8s.io: '1'
+    count/scaledobjects.keda.sh: '2'
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: tenant-bounds
+  labels:
+    platform.homelab.tfdraw.dev/managed: 'true'
+  namespace: court-booker-local
+spec:
+  limits:
+  - type: Container
+    min:
+      cpu: 10m
+      memory: 16Mi
+      ephemeral-storage: 16Mi
+    max:
+      cpu: 1000m
+      memory: 1Gi
+      ephemeral-storage: 4Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tenant-platform-metadata
+  labels:
+    platform.homelab.tfdraw.dev/managed: 'true'
+  namespace: court-booker-local
+data:
+  catalog_uid: 1485b9ce-c1c0-5c61-b585-5fb330769ebc
+  service_id: court-booker
+  repository_identity: TusharSariya/court-booker
+  ecr_repository: court-booker
+  hostname: court-booker.homelab.tfdraw.dev
+  lifecycle: active
+  runtime_contracts: '[{"keys":["username","password"],"name":"court-booker-credentials","owner":"platform","restart_on_rotation":true,"rotation_id":"1","type":"Opaque"}]'
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  labels:
+    platform.homelab.tfdraw.dev/managed: 'true'
+  namespace: court-booker-local
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  labels:
+    platform.homelab.tfdraw.dev/managed: 'true'
+  namespace: court-booker-local
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-same-namespace
+  labels:
+    platform.homelab.tfdraw.dev/managed: 'true'
+  namespace: court-booker-local
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector: {}
+  egress:
+  - to:
+    - podSelector: {}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-gateway-ingress
+  labels:
+    platform.homelab.tfdraw.dev/managed: 'true'
+  namespace: court-booker-local
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: istio-ingress
+      podSelector:
+        matchLabels:
+          gateway.networking.k8s.io/gateway-name: homelab
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: court-booker
+  labels:
+    platform.homelab.tfdraw.dev/managed: 'true'
+  namespace: court-booker-local
+spec:
+  parentRefs:
+  - name: homelab
+    namespace: istio-ingress
+    sectionName: https
+  hostnames:
+  - court-booker.homelab.tfdraw.dev
+  rules:
+  - backendRefs:
+    - name: court-booker
+      port: 80
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: platform-local
+  labels:
+    platform.homelab.tfdraw.dev/managed: 'true'
+    kubernetes.io/metadata.name: platform-local
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: v1.35
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/audit-version: v1.35
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/warn-version: v1.35
+    platform.homelab.tfdraw.dev/active-tenant: 'true'
+    platform.homelab.tfdraw.dev/service-id: platform
+    platform.homelab.tfdraw.dev/lifecycle: active
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: tenant-quota
+  labels:
+    platform.homelab.tfdraw.dev/managed: 'true'
+  namespace: platform-local
+spec:
+  hard:
+    requests.cpu: 500m
+    limits.cpu: 1000m
+    requests.memory: 512Mi
+    limits.memory: 1Gi
+    requests.ephemeral-storage: 2Gi
+    limits.ephemeral-storage: 4Gi
+    pods: '10'
+    count/deployments.apps: '2'
+    count/statefulsets.apps: '1'
+    count/replicasets.apps: '4'
+    count/jobs.batch: '4'
+    count/cronjobs.batch: '2'
+    services: '3'
+    configmaps: '8'
+    secrets: '8'
+    count/serviceaccounts: '4'
+    count/httproutes.gateway.networking.k8s.io: '1'
+    count/scaledobjects.keda.sh: '2'
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: tenant-bounds
+  labels:
+    platform.homelab.tfdraw.dev/managed: 'true'
+  namespace: platform-local
+spec:
+  limits:
+  - type: Container
+    min:
+      cpu: 10m
+      memory: 16Mi
+      ephemeral-storage: 16Mi
+    max:
+      cpu: 1000m
+      memory: 1Gi
+      ephemeral-storage: 4Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tenant-platform-metadata
+  labels:
+    platform.homelab.tfdraw.dev/managed: 'true'
+  namespace: platform-local
+data:
+  catalog_uid: a050f9c4-62c6-553d-aea2-3c7e537081b9
+  service_id: platform
+  repository_identity: TusharSariya/platform-components
+  ecr_repository: platform-components
+  hostname: platform.homelab.tfdraw.dev
+  lifecycle: active
+  runtime_contracts: '[]'
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  labels:
+    platform.homelab.tfdraw.dev/managed: 'true'
+  namespace: platform-local
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  labels:
+    platform.homelab.tfdraw.dev/managed: 'true'
+  namespace: platform-local
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-same-namespace
+  labels:
+    platform.homelab.tfdraw.dev/managed: 'true'
+  namespace: platform-local
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector: {}
+  egress:
+  - to:
+    - podSelector: {}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-gateway-ingress
+  labels:
+    platform.homelab.tfdraw.dev/managed: 'true'
+  namespace: platform-local
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: istio-ingress
+      podSelector:
+        matchLabels:
+          gateway.networking.k8s.io/gateway-name: homelab
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: platform
+  labels:
+    platform.homelab.tfdraw.dev/managed: 'true'
+  namespace: platform-local
+spec:
+  parentRefs:
+  - name: homelab
+    namespace: istio-ingress
+    sectionName: https
+  hostnames:
+  - platform.homelab.tfdraw.dev
+  rules:
+  - backendRefs:
+    - name: platform
+      port: 80

@@ -3,8 +3,8 @@
 # trusts the excalidraw-tf-rag workload repo (role github-ci-ecr-push).
 
 locals {
-  infra_ecr_push_sub_push = "${local.github_sub_prefix}:ref:refs/heads/main"
-  infra_ecr_push_sub_pr   = "${local.github_sub_prefix}:pull_request"
+  infra_ecr_push_sub = "${local.github_sub_prefix}:environment:image-publish"
+  infra_ecr_repo_arn = "arn:aws:ecr:${var.region}:${var.aws_account_id}:repository/court-booker"
 }
 
 data "aws_iam_policy_document" "github_infra_ecr_push_trust" {
@@ -23,7 +23,27 @@ data "aws_iam_policy_document" "github_infra_ecr_push_trust" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = [local.infra_ecr_push_sub_push, local.infra_ecr_push_sub_pr]
+      values   = [local.infra_ecr_push_sub]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:repository"
+      values   = ["${var.github_owner}/${var.github_repo}"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:workflow"
+      values   = ["ecr-push"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:ref"
+      values   = ["refs/heads/main"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:environment"
+      values   = ["image-publish"]
     }
   }
 }
@@ -33,11 +53,10 @@ resource "aws_iam_role" "github_infra_ecr_push" {
   assume_role_policy = data.aws_iam_policy_document.github_infra_ecr_push_trust.json
 }
 
-# CI discovers apps/ecr/<name> at build time and may create the repo on first
-# push, so repo ARNs are not known here. The OIDC trust policy is the boundary.
+# Publishing is intentionally scoped to the one repository represented in the
+# service catalog. Repository creation and lifecycle management remain IaC-owned.
 data "aws_iam_policy_document" "github_infra_ecr_push" {
-  # checkov:skip=CKV_AWS_111:Write access is unconstrained by resource — ECR repo names are discovered from apps/ecr/ at build time; the OIDC trust policy (this repo, main or pull_request) is the actual boundary.
-  # checkov:skip=CKV_AWS_356:Same rationale as CKV_AWS_111 — "*" is required because repo ARNs are not known at plan time.
+  # checkov:skip=CKV_AWS_356:ecr:GetAuthorizationToken has no resource-level ARN.
   statement {
     sid       = "EcrAuth"
     effect    = "Allow"
@@ -46,13 +65,11 @@ data "aws_iam_policy_document" "github_infra_ecr_push" {
   }
 
   statement {
-    sid    = "EcrManage"
+    sid    = "CourtBookerImagePublish"
     effect = "Allow"
     actions = [
-      "ecr:CreateRepository",
       "ecr:DescribeRepositories",
-      "ecr:PutImageScanningConfiguration",
-      "ecr:PutLifecyclePolicy",
+      "ecr:DescribeImages",
       "ecr:BatchCheckLayerAvailability",
       "ecr:InitiateLayerUpload",
       "ecr:UploadLayerPart",
@@ -60,7 +77,7 @@ data "aws_iam_policy_document" "github_infra_ecr_push" {
       "ecr:PutImage",
       "ecr:BatchGetImage",
     ]
-    resources = ["*"]
+    resources = [local.infra_ecr_repo_arn]
   }
 }
 

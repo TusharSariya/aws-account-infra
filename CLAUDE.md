@@ -1,7 +1,8 @@
 # Repository guidance
 
 This repository manages AWS staging infrastructure, local host configuration, and a
-LocalStack sandbox. Kubernetes is documentation-only. GCP and Azure are future provider
+LocalStack sandbox. Kubernetes is managed by gated Ansible, Helmfile, and catalog-generated
+manifests. GCP and Azure are future provider
 namespaces, not implemented environments.
 
 ## Commands
@@ -48,8 +49,9 @@ variables live under `config/environments`, and secrets must not be committed.
 
 ## Scope boundaries
 
-- Ansible can manage the Mac workstation and Ubuntu compute baseline. It must not install
-  Kubernetes until `docs/plans/kubernetes.md` has been separately reviewed and approved.
+- Ansible manages the Mac workstation, Ubuntu compute baseline, Kubernetes platform, and
+  catalog-generated tenant controls. Keep all Kubernetes vending gates false until the
+  corresponding evidence in `docs/kubernetes-vending.md` is recorded.
 - LocalStack is for disposable experiments and smoke tests. Live roots must not be
   redirected to its endpoints.
 - Cloud-specific modules are preferred over cross-cloud wrappers.

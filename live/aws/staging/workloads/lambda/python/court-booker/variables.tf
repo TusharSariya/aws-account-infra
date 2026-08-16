@@ -34,6 +34,12 @@ variable "api_schedule_enabled" {
   description = "When true, EventBridge schedules for the API booker are ENABLED."
 }
 
+variable "booking_enabled" {
+  type        = bool
+  default     = false
+  description = "Deployment-level kill switch. False forces every invocation to dry-run regardless of its payload."
+}
+
 variable "alert_email" {
   type        = string
   default     = "tushar.97@hotmail.com"

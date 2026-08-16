@@ -13,7 +13,7 @@ set -uo pipefail
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "$REPO_ROOT" || exit 1
 
-TRIVY_IMAGE="${TRIVY_IMAGE:-aquasec/trivy:0.58.1}"
+TRIVY_IMAGE="${TRIVY_IMAGE:-aquasec/trivy:0.74.0}"
 CHECKOV_IMAGE="${CHECKOV_IMAGE:-bridgecrew/checkov:latest}"
 GITLEAKS_IMAGE="${GITLEAKS_IMAGE:-zricethezav/gitleaks:latest}"
 TFLINT_IMAGE="${TFLINT_IMAGE:-ghcr.io/terraform-linters/tflint:v0.54.0}"

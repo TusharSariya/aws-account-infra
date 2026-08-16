@@ -18,6 +18,28 @@ networking:
   podSubnet: "{{ kubernetes_pod_subnet }}"
   serviceSubnet: "{{ kubernetes_service_subnet }}"
 apiServer:
+  extraArgs:
+    - name: audit-policy-file
+      value: "{{ kubernetes_control_plane_audit_policy_path }}"
+    - name: audit-log-path
+      value: "{{ kubernetes_control_plane_audit_log_path }}"
+    - name: audit-log-maxage
+      value: "{{ kubernetes_control_plane_audit_log_max_age }}"
+    - name: audit-log-maxbackup
+      value: "{{ kubernetes_control_plane_audit_log_max_backups }}"
+    - name: audit-log-maxsize
+      value: "{{ kubernetes_control_plane_audit_log_max_size_mb }}"
+  extraVolumes:
+    - name: audit-policy
+      hostPath: "{{ kubernetes_control_plane_audit_policy_path }}"
+      mountPath: "{{ kubernetes_control_plane_audit_policy_path }}"
+      readOnly: true
+      pathType: File
+    - name: audit-logs
+      hostPath: "{{ kubernetes_control_plane_audit_log_path | dirname }}"
+      mountPath: "{{ kubernetes_control_plane_audit_log_path | dirname }}"
+      readOnly: false
+      pathType: Directory
   certSANs:
     - "{{ kubernetes_api_endpoint }}"
     - "{{ ansible_host }}"

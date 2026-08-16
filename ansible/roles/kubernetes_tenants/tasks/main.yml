@@ -1,0 +1,43 @@
+---
+- name: Assert Kubernetes vending rollout gates
+  ansible.builtin.assert:
+    that:
+      - kubernetes_tenants_compatibility_matrix_verified | bool
+      - kubernetes_tenants_secret_encryption_verified | bool
+      - kubernetes_tenants_audit_logging_verified | bool
+      - not (kubernetes_tenants_argocd_ready | bool) or (kubernetes_tenants_secret_contracts_ready | bool)
+      - not (kubernetes_tenants_argocd_ready | bool) or (kubernetes_tenants_kyverno_ready | bool)
+    fail_msg: >-
+      Kubernetes vending is fail-closed. Record the compatibility and API Secret
+      encryption evidence first; Argo also requires externally materialized secret
+      contracts and a ready Kyverno admission endpoint before synchronization is enabled.
+
+- name: Validate the merged service catalog
+  ansible.builtin.command:
+    argv:
+      - "{{ kubernetes_tenants_python }}"
+      - "{{ playbook_dir }}/../../scripts/service-catalog.py"
+      - validate
+  changed_when: false
+
+- name: Reconcile native controls and optionally Argo resources
+  ansible.builtin.command:
+    argv: >-
+      {{
+        [
+          kubernetes_tenants_python,
+          playbook_dir ~ '/../../scripts/kubernetes-vending.py',
+          'reconcile',
+          '--target', kubernetes_tenants_target,
+          '--kubeconfig', kubernetes_tenants_kubeconfig
+        ]
+        + (['--argocd-ready'] if kubernetes_tenants_argocd_ready | bool else [])
+      }}
+  register: kubernetes_tenants_reconcile
+  changed_when: kubernetes_tenants_reconcile.rc == 0
+  failed_when: kubernetes_tenants_reconcile.rc not in [0, 2]
+
+- name: Report reconciliation pending without stale capacity fallback
+  ansible.builtin.fail:
+    msg: "{{ kubernetes_tenants_reconcile.stderr }}"
+  when: kubernetes_tenants_reconcile.rc | default(0) == 2

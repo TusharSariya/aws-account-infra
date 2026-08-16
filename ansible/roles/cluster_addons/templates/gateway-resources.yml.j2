@@ -3,6 +3,9 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: {{ cluster_addons_gateway_namespace }}
+  labels:
+    platform.homelab.tfdraw.dev/managed: "true"
+    platform.homelab.tfdraw.dev/active-tenant: "true"
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
@@ -20,7 +23,40 @@ spec:
       port: 80
       allowedRoutes:
         namespaces:
-          from: All
+          from: Same
+    - name: https
+      protocol: HTTPS
+      port: 443
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: homelab-tls
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              platform.homelab.tfdraw.dev/active-tenant: "true"
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: https-redirect
+  namespace: {{ cluster_addons_gateway_namespace }}
+spec:
+  parentRefs:
+    - name: {{ cluster_addons_gateway_name }}
+      sectionName: http
+  hostnames:
+    - {{ cluster_addons_homelab_domain | quote }}
+    - {{ ('*.' ~ cluster_addons_homelab_domain) | quote }}
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            statusCode: 301
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -31,7 +67,7 @@ spec:
   parentRefs:
     - name: {{ cluster_addons_gateway_name }}
       namespace: {{ cluster_addons_gateway_namespace }}
-      sectionName: http
+      sectionName: https
   hostnames:
     - {{ cluster_addons_grafana_hostname | quote }}
   rules:

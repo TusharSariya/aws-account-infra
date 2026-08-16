@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/TusharSariya/aws-account-infra/catalog/schema/cluster.schema.json",
+  "title": "Kubernetes tenant capacity budget",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "cluster", "capacity", "capacity_basis", "quota_profiles", "storage", "gpu"],
+  "properties": {
+    "version": { "const": 1 },
+    "cluster": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,31}$" },
+    "capacity": { "$ref": "#/$defs/resources", "unevaluatedProperties": false },
+    "capacity_basis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["declared_platform_budget", "system_reservations", "eviction_recovery_headroom"],
+      "properties": {
+        "declared_platform_budget": { "$ref": "#/$defs/resources", "unevaluatedProperties": false },
+        "system_reservations": { "$ref": "#/$defs/resources", "unevaluatedProperties": false },
+        "eviction_recovery_headroom": { "$ref": "#/$defs/resources", "unevaluatedProperties": false }
+      }
+    },
+    "quota_profiles": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "$ref": "#/$defs/quota" }
+    },
+    "storage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenant_pvcs_enabled"],
+      "properties": { "tenant_pvcs_enabled": { "const": false } }
+    },
+    "gpu": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["vending_enabled", "evidence"],
+      "properties": {
+        "vending_enabled": { "const": false },
+        "evidence": { "type": "string", "maxLength": 256 }
+      }
+    }
+  },
+  "$defs": {
+    "resources": {
+      "type": "object",
+      "required": ["requests_cpu", "requests_memory", "limits_memory", "requests_ephemeral_storage", "limits_ephemeral_storage", "pods", "physical_storage"],
+      "properties": {
+        "requests_cpu": { "type": "string", "pattern": "^[1-9][0-9]*m$" },
+        "requests_memory": { "type": "string", "pattern": "^[1-9][0-9]*(Mi|Gi)$" },
+        "limits_memory": { "type": "string", "pattern": "^[1-9][0-9]*(Mi|Gi)$" },
+        "requests_ephemeral_storage": { "type": "string", "pattern": "^[1-9][0-9]*(Mi|Gi)$" },
+        "limits_ephemeral_storage": { "type": "string", "pattern": "^[1-9][0-9]*(Mi|Gi)$" },
+        "pods": { "type": "integer", "minimum": 1 },
+        "physical_storage": { "const": "0Gi" }
+      }
+    },
+    "quota": {
+      "unevaluatedProperties": false,
+      "allOf": [
+        { "$ref": "#/$defs/resources" },
+        {
+          "type": "object",
+          "required": ["limits_cpu", "deployments", "statefulsets", "replicasets", "jobs", "cronjobs", "services", "configmaps", "secrets", "serviceaccounts", "httproutes", "scaledobjects"],
+          "properties": {
+            "limits_cpu": { "type": "string", "pattern": "^[1-9][0-9]*m$" },
+            "deployments": { "type": "integer", "minimum": 0 },
+            "statefulsets": { "type": "integer", "minimum": 0 },
+            "replicasets": { "type": "integer", "minimum": 0 },
+            "jobs": { "type": "integer", "minimum": 0 },
+            "cronjobs": { "type": "integer", "minimum": 0 },
+            "services": { "type": "integer", "minimum": 0 },
+            "configmaps": { "type": "integer", "minimum": 0 },
+            "secrets": { "type": "integer", "minimum": 0 },
+            "serviceaccounts": { "type": "integer", "minimum": 0 },
+            "httproutes": { "type": "integer", "minimum": 0 },
+            "scaledobjects": { "type": "integer", "minimum": 0 }
+          }
+        }
+      ]
+    }
+  }
+}

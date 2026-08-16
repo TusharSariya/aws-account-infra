@@ -6,7 +6,7 @@ from booker.http import (
     UpaceHttpError,
     _reservation_id,
 )
-from booker.results import ALREADY_HELD, AUTH_FAIL, BOOKED, CANCELLED, CLOSED, DRY_RUN, FULL
+from booker.results import ALREADY_HELD, AUTH_FAIL, BOOKED, CANCELLED, CLOSED, DRY_RUN, FULL, RECONCILE
 from booker.secrets import Credentials
 from booker.stub import BookingRequest
 
@@ -65,11 +65,75 @@ class FakeSession:
         self.cancelled_ids.append(reservation_id)
 
 
+class FakeIdempotencyStore:
+    def __init__(self, existing=None) -> None:
+        self.existing = existing
+        self.completed = []
+        self.reconciled = []
+        self.released = []
+
+    def acquire(self, request):
+        return self.existing
+
+    def complete(self, request):
+        self.completed.append(request)
+
+    def reconcile(self, request, reason):
+        self.reconciled.append((request, reason))
+
+    def release(self, request):
+        self.released.append(request)
+
+
 def test_books_when_duration_is_offered():
     session = FakeSession()
     result = UpaceHttpBooker(session_factory=lambda: session).book(_request(), CREDS)
     assert result.status == BOOKED
     assert session.reserve_calls == 1
+
+
+def test_successful_booking_completes_idempotency_record():
+    session = FakeSession()
+    store = FakeIdempotencyStore()
+    result = UpaceHttpBooker(
+        session_factory=lambda: session,
+        idempotency_store=store,
+    ).book(_request(), CREDS)
+    assert result.status == BOOKED
+    assert len(store.completed) == 1
+
+
+def test_pending_booking_never_calls_reserve():
+    session = FakeSession()
+    store = FakeIdempotencyStore(existing="PENDING")
+    result = UpaceHttpBooker(
+        session_factory=lambda: session,
+        idempotency_store=store,
+    ).book(_request(), CREDS)
+    assert result.status == RECONCILE
+    assert session.reserve_calls == 0
+
+
+def test_succeeded_booking_is_idempotent_success():
+    session = FakeSession()
+    store = FakeIdempotencyStore(existing="SUCCEEDED")
+    result = UpaceHttpBooker(
+        session_factory=lambda: session,
+        idempotency_store=store,
+    ).book(_request(), CREDS)
+    assert result.status == ALREADY_HELD
+    assert session.reserve_calls == 0
+
+
+def test_ambiguous_reserve_failure_requires_reconciliation():
+    session = FakeSession(reserve_error=UpaceHttpError(503, "upstream unavailable"))
+    store = FakeIdempotencyStore()
+    result = UpaceHttpBooker(
+        session_factory=lambda: session,
+        idempotency_store=store,
+    ).book(_request(), CREDS)
+    assert result.status == RECONCILE
+    assert len(store.reconciled) == 1
 
 
 def test_empty_durations_is_closed():

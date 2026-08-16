@@ -1,8 +1,8 @@
 ---
 # Kubernetes packages use a repository per minor release. Upgrade this value
 # deliberately and follow the kubeadm upgrade procedure before applying it.
-kubernetes_node_minor_version: v1.36
-kubernetes_node_package_version: 1.36.2-2.1
+kubernetes_node_minor_version: v1.35
+kubernetes_node_package_version: 1.35.7-1.1
 kubernetes_node_disable_swap: true
 kubernetes_node_packages:
   - kubelet
@@ -43,14 +43,14 @@ kubernetes_node_eviction_hard: >-
 kubernetes_node_ecr_credential_provider_enabled: >-
   {{ (kubernetes_node_ecr_ca_certificate_path | default('') | length > 0)
      and (kubernetes_node_ecr_ca_privatekey_path | default('') | length > 0) }}
-# Deliberately pinned BEHIND the cluster's Kubernetes minor (v1.36). The
+# Deliberately pinned behind the cluster's Kubernetes minor (v1.35). The
 # cloud-provider-aws project stopped publishing prebuilt ecr-credential-provider
 # binaries to artifacts.k8s.io after v1.31.0 — every later path 404s, and the GitHub
 # releases carry no binary assets — so v1.31.0 is the newest official artifact that
 # exists. The skew is inert: kubelet talks to this plugin over the STABLE
 # credentialprovider.kubelet.k8s.io/v1 contract, which both ends speak. Verified on
-# 2026-07-16 against the v1.36.2 node: correct CredentialProviderResponse and a live
-# ECR token (the only difference from a v1.36 build is a cosmetic region warning).
+# 2026-07-16 against the former v1.36.2 node: correct CredentialProviderResponse and a
+# live ECR token. Re-test after the v1.35 rebuild before enabling tenant pulls.
 # Building from source would track the minor but yields a non-reproducible binary that
 # no one else can re-fetch and verify — an official pinned artifact beats that here.
 kubernetes_node_ecr_credential_provider_version: v1.31.0

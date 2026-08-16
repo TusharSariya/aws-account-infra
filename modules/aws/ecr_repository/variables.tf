@@ -42,6 +42,12 @@ variable "max_images" {
   description = "Keep at most this many images total (older ones expire)."
 }
 
+variable "preserve_oci_reference_artifacts" {
+  type        = bool
+  default     = false
+  description = "Keep untagged OCI signature, SBOM, and provenance manifests; expire only image-* subjects by count."
+}
+
 variable "tags" {
   type    = map(string)
   default = {}

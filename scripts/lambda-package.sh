@@ -16,8 +16,6 @@ SHORT="$(git -C "$REPO_ROOT" rev-parse --short HEAD)"
 SRC="${REPO_ROOT}/apps/lambda/${REL}"
 ACCOUNT="${AWS_ACCOUNT_ID:-992382747916}"
 REGION="${AWS_REGION:-us-east-1}"
-DOMAIN="${CODEARTIFACT_DOMAIN:-aws-account-infra}"
-OWNER="${CODEARTIFACT_DOMAIN_OWNER:-992382747916}"
 BUCKET="${LAMBDA_ZIP_BUCKET:-lambda-releases-${ACCOUNT}-${REGION}}"
 KEY_PREFIX="${LAMBDA_ZIP_PREFIX:-stable/court-booker}"
 PY="${LAMBDA_PYTHON:-3.14}"
@@ -60,14 +58,11 @@ uv export --directory "$SRC" --frozen --no-dev --no-hashes --no-annotate --no-he
 uv pip install --python "$PY" --python-version "$PY" --python-platform "$PLATFORM" \
   --only-binary :all: --no-cache --target "$STAGE" -r "$REQS"
 
-TOKEN="$(aws codeartifact get-authorization-token \
-  --domain "$DOMAIN" --domain-owner "$OWNER" --region "$REGION" \
-  --query authorizationToken --output text --duration-seconds 900)"
+# Generate and vendor the private client into the deployment artifact. This keeps
+# application packaging independent of a cross-account CodeArtifact token.
+"$REPO_ROOT/scripts/sdk-generate.sh" upace python 0.1.0
 uv pip install --python "$PY" --python-version "$PY" --python-platform "$PLATFORM" \
-  --no-cache --target "$STAGE" \
-  "upace==0.1.0" \
-  --index-url "https://aws:${TOKEN}@${DOMAIN}-${OWNER}.d.codeartifact.${REGION}.amazonaws.com/pypi/sdk-stable/simple/" \
-  --extra-index-url https://pypi.org/simple
+  --no-cache --target "$STAGE" "$REPO_ROOT/generated/upace/python"
 
 # App source last so it wins over any similarly named files from wheels.
 cp -R "${SRC}/booker" "${STAGE}/booker"
@@ -92,6 +87,12 @@ with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_DEFLATED) as zf:
         if path.is_file():
             zf.write(path, path.relative_to(root).as_posix())
 PY
+
+if [[ "${LAMBDA_SKIP_UPLOAD:-false}" == "true" ]]; then
+  echo "$ZIP" >"${REPO_ROOT}/build/lambda/package-path.txt"
+  echo "Built $ZIP"
+  exit 0
+fi
 
 aws s3 cp "$ZIP" "s3://${BUCKET}/${KEY_PREFIX}/${TAG}.zip" --region "$REGION"
 echo "Uploaded s3://${BUCKET}/${KEY_PREFIX}/${TAG}.zip"

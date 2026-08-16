@@ -1,0 +1,331 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: default
+  labels:
+    platform.homelab.tfdraw.dev/managed: 'true'
+  namespace: argocd
+spec:
+  sourceRepos: []
+  destinations: []
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist: []
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: argocd-court-booker
+  labels:
+    platform.homelab.tfdraw.dev/managed: 'true'
+  namespace: court-booker-local
+rules:
+- apiGroups:
+  - ''
+  resources:
+  - pods
+  - configmaps
+  - services
+  - serviceaccounts
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  - statefulsets
+  - replicasets
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  - cronjobs
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - autoscaling
+  resources:
+  - horizontalpodautoscalers
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - keda.sh
+  resources:
+  - scaledobjects
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argocd-court-booker
+  labels:
+    platform.homelab.tfdraw.dev/managed: 'true'
+  namespace: court-booker-local
+subjects:
+- kind: ServiceAccount
+  name: argocd-application-controller
+  namespace: argocd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: argocd-court-booker
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: court-booker
+  labels:
+    platform.homelab.tfdraw.dev/managed: 'true'
+  namespace: argocd
+spec:
+  sourceRepos:
+  - https://github.com/TusharSariya/court-booker.git
+  destinations:
+  - server: https://kubernetes.default.svc
+    namespace: court-booker-local
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+  - group: ''
+    kind: ConfigMap
+  - group: ''
+    kind: Service
+  - group: ''
+    kind: ServiceAccount
+  - group: apps
+    kind: Deployment
+  - group: apps
+    kind: StatefulSet
+  - group: apps
+    kind: ReplicaSet
+  - group: batch
+    kind: Job
+  - group: batch
+    kind: CronJob
+  - group: autoscaling
+    kind: HorizontalPodAutoscaler
+  - group: keda.sh
+    kind: ScaledObject
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: court-booker
+  labels:
+    platform.homelab.tfdraw.dev/managed: 'true'
+  namespace: argocd
+spec:
+  project: court-booker
+  source:
+    repoURL: https://github.com/TusharSariya/court-booker.git
+    targetRevision: main
+    path: deploy/kubernetes
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: court-booker-local
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+    - CreateNamespace=false
+    - PrunePropagationPolicy=foreground
+    - PruneLast=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: argocd-platform
+  labels:
+    platform.homelab.tfdraw.dev/managed: 'true'
+  namespace: platform-local
+rules:
+- apiGroups:
+  - ''
+  resources:
+  - pods
+  - configmaps
+  - services
+  - serviceaccounts
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  - statefulsets
+  - replicasets
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  - cronjobs
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - autoscaling
+  resources:
+  - horizontalpodautoscalers
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - keda.sh
+  resources:
+  - scaledobjects
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argocd-platform
+  labels:
+    platform.homelab.tfdraw.dev/managed: 'true'
+  namespace: platform-local
+subjects:
+- kind: ServiceAccount
+  name: argocd-application-controller
+  namespace: argocd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: argocd-platform
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform
+  labels:
+    platform.homelab.tfdraw.dev/managed: 'true'
+  namespace: argocd
+spec:
+  sourceRepos:
+  - https://github.com/TusharSariya/platform-components.git
+  destinations:
+  - server: https://kubernetes.default.svc
+    namespace: platform-local
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+  - group: ''
+    kind: ConfigMap
+  - group: ''
+    kind: Service
+  - group: ''
+    kind: ServiceAccount
+  - group: apps
+    kind: Deployment
+  - group: apps
+    kind: StatefulSet
+  - group: apps
+    kind: ReplicaSet
+  - group: batch
+    kind: Job
+  - group: batch
+    kind: CronJob
+  - group: autoscaling
+    kind: HorizontalPodAutoscaler
+  - group: keda.sh
+    kind: ScaledObject
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform
+  labels:
+    platform.homelab.tfdraw.dev/managed: 'true'
+  namespace: argocd
+spec:
+  project: platform
+  source:
+    repoURL: https://github.com/TusharSariya/platform-components.git
+    targetRevision: main
+    path: deploy/kubernetes
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: platform-local
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+    - CreateNamespace=false
+    - PrunePropagationPolicy=foreground
+    - PruneLast=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m

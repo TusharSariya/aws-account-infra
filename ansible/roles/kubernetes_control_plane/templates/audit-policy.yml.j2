@@ -1,0 +1,40 @@
+---
+apiVersion: audit.k8s.io/v1
+kind: Policy
+omitStages:
+  - RequestReceived
+omitManagedFields: true
+rules:
+  # Secret and credential-bearing APIs never log request or response bodies.
+  - level: Metadata
+    resources:
+      - group: ""
+        resources: ["secrets", "serviceaccounts/token"]
+      - group: authentication.k8s.io
+        resources: ["tokenreviews"]
+      - group: authorization.k8s.io
+        resources: ["subjectaccessreviews", "selfsubjectaccessreviews", "localsubjectaccessreviews"]
+  - level: RequestResponse
+    verbs: ["create", "update", "patch", "delete", "deletecollection", "bind", "escalate", "impersonate"]
+    resources:
+      - group: rbac.authorization.k8s.io
+        resources: ["roles", "rolebindings", "clusterroles", "clusterrolebindings"]
+      - group: admissionregistration.k8s.io
+        resources: ["validatingadmissionpolicies", "validatingadmissionpolicybindings", "validatingwebhookconfigurations", "mutatingwebhookconfigurations"]
+      - group: gateway.networking.k8s.io
+        resources: ["gateways", "gatewayclasses", "httproutes", "referencegrants"]
+      - group: networking.k8s.io
+        resources: ["networkpolicies"]
+      - group: cilium.io
+        resources: ["ciliumnetworkpolicies", "ciliumclusterwidenetworkpolicies"]
+      - group: kyverno.io
+        resources: ["policies", "clusterpolicies"]
+      - group: argoproj.io
+        resources: ["applications", "appprojects"]
+  - level: RequestResponse
+    resources:
+      - group: ""
+        resources: ["pods/exec", "pods/attach", "pods/portforward"]
+  # Metadata captures ordinary access, denials, authentication failures and the
+  # caller/impersonation identity without unbounded request bodies.
+  - level: Metadata

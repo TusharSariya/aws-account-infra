@@ -20,9 +20,36 @@ locals {
   lock_table_arn   = "arn:aws:dynamodb:${var.region}:${var.aws_account_id}:table/${var.lock_table_name}"
 }
 
-# Inline policy: read/write state objects + lock table. Plan needs it (lock + read);
-# apply needs it too.
-data "aws_iam_policy_document" "tofu_state_access" {
+data "aws_iam_policy_document" "tofu_plan_state_access" {
+  statement {
+    sid       = "StateBucketList"
+    effect    = "Allow"
+    actions   = ["s3:ListBucket"]
+    resources = [local.state_bucket_arn]
+  }
+  statement {
+    sid       = "StateObjectRead"
+    effect    = "Allow"
+    actions   = ["s3:GetObject"]
+    resources = ["${local.state_bucket_arn}/*"]
+  }
+  statement {
+    sid    = "DenyCredentialAndRoleAccess"
+    effect = "Deny"
+    actions = [
+      "kms:Decrypt",
+      "secretsmanager:GetSecretValue",
+      "secretsmanager:BatchGetSecretValue",
+      "ssm:GetParameter",
+      "ssm:GetParameters",
+      "ssm:GetParametersByPath",
+      "sts:AssumeRole",
+    ]
+    resources = ["*"]
+  }
+}
+
+data "aws_iam_policy_document" "tofu_apply_state_access" {
   statement {
     sid       = "StateBucketList"
     effect    = "Allow"
@@ -79,7 +106,7 @@ resource "aws_iam_role_policy_attachment" "plan_readonly" {
 resource "aws_iam_role_policy" "plan_state" {
   name   = "tofu-state-access"
   role   = aws_iam_role.github_plan.id
-  policy = data.aws_iam_policy_document.tofu_state_access.json
+  policy = data.aws_iam_policy_document.tofu_plan_state_access.json
 }
 
 # ---- Apply role (prod environment only): admin + state access -------------
@@ -96,15 +123,13 @@ data "aws_iam_policy_document" "github_apply_trust" {
       variable = "token.actions.githubusercontent.com:aud"
       values   = ["sts.amazonaws.com"]
     }
-    # Apply-before-merge: apply runs on the PR branch, gated by the `prod`
-    # GitHub Environment (required reviewer). A job that declares `environment: prod`
-    # gets sub=repo:<owner>/<repo>:environment:prod regardless of branch, so we pin
-    # trust to the approved environment — tighter than a branch, and the only path
-    # that can assume admin is an approved prod deployment.
+    # Applies run only from main in the workflow. GitHub's environment subject does
+    # not include the ref, so the environment itself must restrict deployment branches
+    # to main and require an approver.
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["${local.github_sub_prefix}:environment:prod"]
+      values   = ["${local.github_sub_prefix}:environment:platform-prod"]
     }
   }
 }
@@ -123,5 +148,5 @@ resource "aws_iam_role_policy_attachment" "apply_admin" {
 resource "aws_iam_role_policy" "apply_state" {
   name   = "tofu-state-access"
   role   = aws_iam_role.github_apply.id
-  policy = data.aws_iam_policy_document.tofu_state_access.json
+  policy = data.aws_iam_policy_document.tofu_apply_state_access.json
 }

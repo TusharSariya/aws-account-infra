@@ -13,6 +13,10 @@ class BookingFailed(RuntimeError):
         super().__init__(json.dumps(result.as_dict()))
 
 
+class RetryableBookingFailed(BookingFailed):
+    """The booking request was not submitted and the workflow may retry safely."""
+
+
 BOOKED = "booked"
 ALREADY_HELD = "already_held"
 CLOSED = "closed"
@@ -23,6 +27,7 @@ UNEXPECTED_UI = "unexpected_ui"
 LATE = "late"
 DRY_RUN = "dry_run"
 CANCELLED = "cancelled"
+RECONCILE = "reconcile"
 
 
 @dataclass(frozen=True)

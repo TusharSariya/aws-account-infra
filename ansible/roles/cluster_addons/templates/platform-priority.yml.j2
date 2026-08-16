@@ -1,0 +1,10 @@
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: platform-critical
+  labels:
+    app.kubernetes.io/managed-by: ansible
+value: 1000000
+globalDefault: false
+preemptionPolicy: PreemptLowerPriority
+description: Protected homelab platform components

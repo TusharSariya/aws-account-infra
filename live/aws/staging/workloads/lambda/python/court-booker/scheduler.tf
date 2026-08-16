@@ -2,6 +2,13 @@ resource "aws_scheduler_schedule_group" "booker" {
   name = "court-booker-api"
 }
 
+resource "aws_sqs_queue" "scheduler_dlq" {
+  # checkov:skip=CKV_AWS_27:SSE-SQS is sufficient for payloads containing no credentials.
+  name                      = "court-booker-api-scheduler-dlq"
+  message_retention_seconds = 1209600
+  sqs_managed_sse_enabled   = true
+}
+
 resource "aws_scheduler_schedule" "weekly" {
   # checkov:skip=CKV_AWS_297:A dedicated CMK for one weekly cron payload is not worth the monthly KMS charge.
   for_each = local.weekly_cron
@@ -28,6 +35,9 @@ resource "aws_scheduler_schedule" "weekly" {
       duration_min = each.value.duration_min
       people       = each.value.people
     })
+    dead_letter_config {
+      arn = aws_sqs_queue.scheduler_dlq.arn
+    }
     retry_policy {
       maximum_retry_attempts       = 0
       maximum_event_age_in_seconds = 60
@@ -62,6 +72,9 @@ resource "aws_scheduler_schedule" "oneshot" {
       duration_min = each.value.duration_min
       people       = each.value.people
     })
+    dead_letter_config {
+      arn = aws_sqs_queue.scheduler_dlq.arn
+    }
     retry_policy {
       maximum_retry_attempts       = 0
       maximum_event_age_in_seconds = 60

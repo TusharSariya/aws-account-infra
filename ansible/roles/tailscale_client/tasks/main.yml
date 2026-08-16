@@ -1,0 +1,68 @@
+---
+- name: Assert the host is Ubuntu
+  ansible.builtin.assert:
+    that:
+      - ansible_facts["distribution"] == "Ubuntu"
+    fail_msg: "The Tailscale client role supports Ubuntu only."
+
+- name: Locate the Tailscale client
+  ansible.builtin.stat:
+    path: "{{ tailscale_client_binary }}"
+  register: tailscale_client_binary_state
+
+- name: Require an installed Tailscale client
+  ansible.builtin.assert:
+    that:
+      - tailscale_client_binary_state.stat.exists
+      - tailscale_client_binary_state.stat.executable
+    fail_msg: >-
+      {{ tailscale_client_binary }} is missing or not executable. Install
+      Tailscale and authenticate once with `sudo tailscale up` before applying
+      this role.
+
+- name: Enable and start tailscaled
+  ansible.builtin.systemd_service:
+    name: tailscaled.service
+    enabled: true
+    state: started
+    daemon_reload: true
+
+# Check mode must remain a useful preview when the daemon is currently stopped:
+# the systemd task above cannot actually start it, so live connectivity checks
+# would turn the expected pending change into a misleading failure.
+- name: Wait for the Tailscale interface
+  ansible.builtin.wait_for:
+    path: "/sys/class/net/{{ tailscale_client_interface }}"
+    state: present
+    timeout: "{{ tailscale_client_interface_timeout }}"
+  when: not ansible_check_mode
+
+- name: Read the Tailscale backend status
+  ansible.builtin.command: "{{ tailscale_client_binary }} status --json"
+  register: tailscale_client_status_raw
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Resolve the Tailscale IPv4 address
+  ansible.builtin.set_fact:
+    tailscale_client_status: "{{ tailscale_client_status_raw.stdout | from_json }}"
+    tailscale_client_ipv4: >-
+      {{ (tailscale_client_status_raw.stdout | from_json).Self.TailscaleIPs
+         | default([], true)
+         | select("match", "^100\\.")
+         | first
+         | default("") }}
+  when: not ansible_check_mode
+
+- name: Require an authenticated running tailnet connection
+  ansible.builtin.assert:
+    that:
+      - tailscale_client_status.BackendState == "Running"
+      - >-
+        tailscale_client_ipv4 is
+        match('^100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.')
+    fail_msg: >-
+      tailscaled is enabled but is not connected with a valid 100.64.0.0/10
+      address. Run `sudo tailscale up` interactively, then reapply Ansible.
+    success_msg: "Tailscale is connected as {{ tailscale_client_ipv4 }}."
+  when: not ansible_check_mode

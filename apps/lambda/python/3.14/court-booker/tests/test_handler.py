@@ -5,9 +5,17 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from booker.config import load_bookings
-from booker.handler import finalize_lambda, get_browser, parse_event, run_booking
+from booker.handler import booking_enabled, finalize_lambda, get_browser, parse_event, run_booking
 from booker.http import UpaceHttpBooker
-from booker.results import AUTH_FAIL, BOOKED, CLOSED, LATE, BookingFailed, BookingResult
+from booker.results import (
+    AUTH_FAIL,
+    BOOKED,
+    CLOSED,
+    LATE,
+    BookingFailed,
+    BookingResult,
+    RetryableBookingFailed,
+)
 from booker.secrets import Credentials
 from booker.stub import StubUpace
 
@@ -23,6 +31,15 @@ def _config():
 def test_parse_event_unwraps_body():
     assert parse_event('{"source":"weekly"}')["source"] == "weekly"
     assert parse_event({"body": '{"source":"adhoc"}'})["source"] == "adhoc"
+
+
+def test_booking_enabled_defaults_off_and_requires_true(monkeypatch):
+    monkeypatch.delenv("BOOKING_ENABLED", raising=False)
+    assert booking_enabled() is False
+    monkeypatch.setenv("BOOKING_ENABLED", "true")
+    assert booking_enabled() is True
+    monkeypatch.setenv("BOOKING_ENABLED", "false")
+    assert booking_enabled() is False
 
 
 def test_weekly_success_on_unlock_day():
@@ -98,6 +115,15 @@ def test_finalize_lambda_raises_on_booking_failures():
             finalize_lambda(result)
         assert caught.value.result == result
         assert status in str(caught.value)
+
+
+def test_closed_is_the_only_retryable_booking_failure():
+    closed = BookingResult(status=CLOSED, message="not open yet")
+    with pytest.raises(RetryableBookingFailed):
+        finalize_lambda(closed)
+    with pytest.raises(BookingFailed) as caught:
+        finalize_lambda(BookingResult(status="reconcile", message="ambiguous"))
+    assert not isinstance(caught.value, RetryableBookingFailed)
 
 
 def test_get_browser_is_http_only():

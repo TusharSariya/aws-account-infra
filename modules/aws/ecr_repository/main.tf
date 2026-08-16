@@ -20,7 +20,21 @@ resource "aws_ecr_repository" "this" {
 resource "aws_ecr_lifecycle_policy" "this" {
   repository = aws_ecr_repository.this.name
 
-  policy = jsonencode({
+  policy = var.preserve_oci_reference_artifacts ? jsonencode({
+    rules = [
+      {
+        rulePriority = 1
+        description  = "Keep the most recent ${var.max_images} signed image subjects and their OCI reference artifacts"
+        selection = {
+          tagStatus     = "tagged"
+          tagPrefixList = ["image-"]
+          countType     = "imageCountMoreThan"
+          countNumber   = var.max_images
+        }
+        action = { type = "expire" }
+      }
+    ]
+    }) : jsonencode({
     rules = [
       {
         rulePriority = 1
@@ -42,7 +56,7 @@ resource "aws_ecr_lifecycle_policy" "this" {
           countNumber = var.max_images
         }
         action = { type = "expire" }
-      },
+      }
     ]
   })
 }

@@ -180,6 +180,42 @@ resource "aws_cloudwatch_metric_alarm" "booker_throttles" {
   alarm_actions = [aws_sns_topic.alerts.arn]
 }
 
+resource "aws_cloudwatch_metric_alarm" "booker_errors" {
+  alarm_name          = "court-booker-api-errors"
+  alarm_description   = "Court booker Lambda reported an application or integration error."
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = 1
+  datapoints_to_alarm = 1
+  metric_name         = "Errors"
+  namespace           = "AWS/Lambda"
+  period              = 60
+  statistic           = "Sum"
+  threshold           = 1
+  treat_missing_data  = "notBreaching"
+  dimensions = {
+    FunctionName = "court-booker-api"
+  }
+  alarm_actions = [aws_sns_topic.alerts.arn]
+}
+
+resource "aws_cloudwatch_metric_alarm" "scheduler_dlq" {
+  alarm_name          = "court-booker-api-scheduler-dlq"
+  alarm_description   = "EventBridge Scheduler placed a failed target invocation on the DLQ."
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = 1
+  datapoints_to_alarm = 1
+  metric_name         = "ApproximateNumberOfMessagesVisible"
+  namespace           = "AWS/SQS"
+  period              = 60
+  statistic           = "Maximum"
+  threshold           = 1
+  treat_missing_data  = "notBreaching"
+  dimensions = {
+    QueueName = aws_sqs_queue.scheduler_dlq.name
+  }
+  alarm_actions = [aws_sns_topic.alerts.arn]
+}
+
 resource "aws_cloudwatch_metric_alarm" "scheduler_target_errors" {
   alarm_name          = "court-booker-api-scheduler-target-errors"
   alarm_description   = "EventBridge Scheduler failed to invoke court-booker-api. Emails ${var.alert_email} via SES."

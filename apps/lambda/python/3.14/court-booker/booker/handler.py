@@ -7,7 +7,7 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 from booker.config import BookingsConfig, load_bookings
-from booker.results import LATE, BookingFailed, BookingResult
+from booker.results import CLOSED, LATE, BookingFailed, BookingResult, RetryableBookingFailed
 from booker.schedule import resolve_weekly_target
 from booker.secrets import Credentials, load_credentials
 from booker.stub import BookingRequest
@@ -33,8 +33,13 @@ def parse_event(event: Any) -> dict[str, Any]:
 
 def get_browser():
     from booker.http import UpaceHttpBooker
+    from booker.idempotency import store_from_environment
 
-    return UpaceHttpBooker()
+    return UpaceHttpBooker(idempotency_store=store_from_environment())
+
+
+def booking_enabled() -> bool:
+    return os.environ.get("BOOKING_ENABLED", "false").strip().lower() == "true"
 
 
 def run_booking(
@@ -139,6 +144,8 @@ def finalize_lambda(result: BookingResult) -> dict[str, Any]:
     payload = result.as_dict()
     print(json.dumps(payload), flush=True)
     if not result.ok:
+        if result.status == CLOSED:
+            raise RetryableBookingFailed(result)
         raise BookingFailed(result)
     return payload
 
@@ -146,6 +153,10 @@ def finalize_lambda(result: BookingResult) -> dict[str, Any]:
 def lambda_handler(event, context):  # noqa: ARG001
     clock = Stopwatch("lambda_handler")
     parsed = parse_event(event)
+    # This deployment-level kill switch cannot be overridden by Scheduler or an
+    # ad-hoc event payload. A disabled deployment always exercises dry-run behavior.
+    if not booking_enabled():
+        parsed["dry_run"] = True
     clock.mark("parse_event")
     config = load_bookings()
     clock.mark("load_bookings")

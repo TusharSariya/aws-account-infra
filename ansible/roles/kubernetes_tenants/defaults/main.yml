@@ -1,0 +1,12 @@
+---
+kubernetes_tenants_target: homelab
+kubernetes_tenants_kubeconfig: "{{ lookup('env', 'HOME') }}/.kube/config"
+kubernetes_tenants_python: python3
+# These gates must be set in reviewed local inventory only after the corresponding
+# evidence in docs/kubernetes-vending.md is complete.
+kubernetes_tenants_compatibility_matrix_verified: false
+kubernetes_tenants_secret_encryption_verified: false
+kubernetes_tenants_audit_logging_verified: false
+kubernetes_tenants_argocd_ready: false
+kubernetes_tenants_kyverno_ready: false
+kubernetes_tenants_secret_contracts_ready: false

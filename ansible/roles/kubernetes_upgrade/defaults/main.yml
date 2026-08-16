@@ -1,5 +1,7 @@
 ---
-kubernetes_upgrade_version: v1.36.2
-kubernetes_upgrade_minor_version: v1.36
-kubernetes_upgrade_package_version: 1.36.2-2.1
+# This role is forward-upgrade-only. It must not be used to move a v1.36 cluster
+# to v1.35; use the rebuild/restore runbook in docs/kubernetes-vending.md.
+kubernetes_upgrade_version: v1.35.7
+kubernetes_upgrade_minor_version: v1.35
+kubernetes_upgrade_package_version: 1.35.7-1.1
 kubernetes_upgrade_reboot: false

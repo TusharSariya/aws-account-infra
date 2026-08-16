@@ -32,6 +32,8 @@ resource "aws_lambda_function" "booker" {
       BOOKINGS_PATH         = "/var/task/bookings.yaml"
       TZ                    = "America/St_Johns"
       BOOKER_BROWSER        = "api"
+      BOOKING_ENABLED       = tostring(var.booking_enabled)
+      IDEMPOTENCY_TABLE     = aws_dynamodb_table.idempotency.name
     }
   }
 

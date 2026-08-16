@@ -12,7 +12,7 @@ VAULT := inventories/local/group_vars/all/vault.yml
 CHECK ?=            # set CHECK=1 for a dry run: make -C ansible harvester CHECK=1
 _CHECK := $(if $(CHECK),--check --diff,)
 
-.PHONY: deps check syntax-check node-prepare addons harvester validate \
+.PHONY: deps check syntax-check compute node-prepare addons harvester validate \
         vault-edit vault-view vault-create vault-encrypt vault-rekey
 
 deps:  ## Install pinned collections
@@ -27,6 +27,7 @@ syntax-check:  ## Parse every playbook without contacting hosts
 	ansible-playbook playbooks/site.yml --syntax-check
 
 ## --- Deploy (append CHECK=1 for --check --diff) ---
+compute:;      ansible-playbook playbooks/compute.yml --limit ubuntu_desktop $(_CHECK)
 node-prepare:; ansible-playbook playbooks/node-prepare.yml $(_CHECK)
 addons:;       ansible-playbook playbooks/addons.yml $(_CHECK)
 harvester:;    ansible-playbook playbooks/harvester.yml $(_CHECK)

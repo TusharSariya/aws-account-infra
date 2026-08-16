@@ -14,6 +14,7 @@ from booker.results import (
     DRY_RUN,
     FULL,
     MEMBERSHIP,
+    RECONCILE,
     UNEXPECTED_UI,
     BookingResult,
 )
@@ -248,8 +249,14 @@ class GeneratedUpaceSession:
 class UpaceHttpBooker:
     """Book via POST /api rather than driving the embed calendar in Chromium."""
 
-    def __init__(self, *, session_factory: Callable[[], UpaceSession] | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        session_factory: Callable[[], UpaceSession] | None = None,
+        idempotency_store=None,
+    ) -> None:
         self._session_factory = session_factory or GeneratedUpaceSession
+        self._idempotency_store = idempotency_store
 
     def book(self, request: BookingRequest, creds: Credentials) -> BookingResult:
         return self._run(request, creds, cancel=False)
@@ -312,6 +319,17 @@ class UpaceHttpBooker:
             )
         if request.dry_run:
             return BookingResult(status=DRY_RUN, message="slot available, reserve skipped", **meta)
+
+        if self._idempotency_store is not None:
+            existing = self._idempotency_store.acquire(request)
+            if existing == "SUCCEEDED":
+                return BookingResult(status=ALREADY_HELD, message="idempotent booking already succeeded", **meta)
+            if existing is not None:
+                return BookingResult(
+                    status=RECONCILE,
+                    message=f"booking has unresolved idempotency state {existing}",
+                    **meta,
+                )
         try:
             session.reserve(
                 equipment_id=request.equipment_id,
@@ -322,11 +340,22 @@ class UpaceHttpBooker:
             )
         except UpaceHttpError as exc:
             clock.mark("reserve", error=True)
+            if self._idempotency_store is not None:
+                if 400 <= exc.status < 500:
+                    self._idempotency_store.release(request)
+                else:
+                    self._idempotency_store.reconcile(request, f"reserve HTTP {exc.status}: {exc.message}")
+                    return BookingResult(status=RECONCILE, message="ambiguous reserve response", **meta)
             return BookingResult(status=_classify_bad_request(exc.message), message=exc.message, **meta)
         except Exception as exc:
             clock.mark("reserve", error=True)
+            if self._idempotency_store is not None:
+                self._idempotency_store.reconcile(request, f"reserve exception: {type(exc).__name__}")
+                return BookingResult(status=RECONCILE, message="ambiguous reserve exception", **meta)
             return BookingResult(status=UNEXPECTED_UI, message=str(exc), **meta)
         clock.mark("reserve")
+        if self._idempotency_store is not None:
+            self._idempotency_store.complete(request)
         return BookingResult(status=BOOKED, message="reservation complete", reserve_clicks=1, **meta)
 
     def _matching(self, session: UpaceSession, request: BookingRequest) -> HeldReservation | None:

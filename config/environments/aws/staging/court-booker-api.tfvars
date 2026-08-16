@@ -14,4 +14,8 @@ default_tags = {
 
 booker_api_zip_key   = "stable/court-booker/56f6af31e49f2c9274e98f20cdade4d169081a42.zip"
 api_schedule_enabled = true
-alert_email          = "tushar.97@hotmail.com"
+# This root is the currently active workload. New vended accounts default to
+# disabled, but retaining true here prevents an infrastructure-only rollout
+# from silently turning off the existing booking schedule before cutover.
+booking_enabled = true
+alert_email     = "tushar.97@hotmail.com"

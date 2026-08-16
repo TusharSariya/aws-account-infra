@@ -1,0 +1,64 @@
+name: service-catalog
+
+on:
+  pull_request:
+    paths:
+      - catalog/**
+      - scripts/service-catalog.py
+      - scripts/kubernetes-vending.py
+      - ansible/roles/kubernetes_tenants/**
+      - ansible/roles/cluster_addons/**
+      - ansible/roles/kubernetes_control_plane/**
+      - docs/kubernetes-vending.md
+      - .github/workflows/ecr-push.yml
+      - modules/aws/account_identity/ecr_push_oidc.tf
+      - modules/aws/ecr_repository/**
+      - live/aws/staging/workloads/court-booker/ecr.tf
+      - requirements-vending.txt
+      - tests/catalog/**
+  push:
+    branches: [main]
+    paths:
+      - catalog/**
+      - scripts/service-catalog.py
+      - scripts/kubernetes-vending.py
+      - ansible/roles/kubernetes_tenants/**
+      - ansible/roles/cluster_addons/**
+      - ansible/roles/kubernetes_control_plane/**
+      - docs/kubernetes-vending.md
+      - .github/workflows/ecr-push.yml
+      - modules/aws/account_identity/ecr_push_oidc.tf
+      - modules/aws/ecr_repository/**
+      - live/aws/staging/workloads/court-booker/ecr.tf
+      - requirements-vending.txt
+      - tests/catalog/**
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.13"
+      - run: pip install --disable-pip-version-check -r requirements-vending.txt pytest==8.4.2
+      - name: Validate generated and immutable catalog
+        env:
+          PREVIOUS_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [[ -n "$PREVIOUS_REF" && ! "$PREVIOUS_REF" =~ ^0+$ ]]; then
+            python3 scripts/service-catalog.py validate --previous-ref "$PREVIOUS_REF"
+          else
+            python3 scripts/service-catalog.py validate
+          fi
+      - run: python3 -m pytest -q tests/catalog
+      - name: Validate generated Kubernetes bundles
+        run: |
+          python3 scripts/kubernetes-vending.py validate --phase native
+          python3 scripts/kubernetes-vending.py validate --phase argocd

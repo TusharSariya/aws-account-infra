@@ -84,6 +84,20 @@ that user.
 
 ## What Ansible manages
 
+The `tailscale_client` role, enabled per host with
+`tailscale_client_enabled: true`, owns the local daemon lifecycle. It enables
+and starts `tailscaled.service`, waits for `tailscale0`, and refuses to continue
+unless the client reports a running connection with a `100.64.0.0/10` address.
+It runs before subnet routing and the tailnet-only SSH configuration so a reboot
+cannot leave either role depending on a disabled daemon.
+
+Reconcile the desktop, or preview it first, with:
+
+```bash
+make -C ansible compute CHECK=1
+make -C ansible compute
+```
+
 The `tailscale_subnet_router` role, applied by `playbooks/compute.yml` to hosts
 with `tailscale_subnet_router_enabled: true`:
 
@@ -104,6 +118,11 @@ non-default flag to be restated on each invocation and silently resets the ones
 omitted — not something a repeatedly-run playbook can do safely.
 
 ## What Ansible cannot manage
+
+Initial node authentication remains interactive: run `sudo tailscale up` once
+on a new or reimaged host. Ansible does not store a reusable auth key or call
+`tailscale up` on every run, so it cannot silently reset non-default client
+preferences.
 
 Two settings are tailnet-wide control-plane state, not node state. They are
 reached through the admin console or the Tailscale API, and applying them from

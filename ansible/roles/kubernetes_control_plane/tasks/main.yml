@@ -1,4 +1,20 @@
 ---
+- name: Create bounded Kubernetes audit log directory
+  ansible.builtin.file:
+    path: "{{ kubernetes_control_plane_audit_log_path | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Install Kubernetes API audit policy
+  ansible.builtin.template:
+    src: audit-policy.yml.j2
+    dest: "{{ kubernetes_control_plane_audit_policy_path }}"
+    owner: root
+    group: root
+    mode: "0600"
+
 - name: Render kubeadm initialization configuration
   ansible.builtin.template:
     src: kubeadm-init.yaml.j2

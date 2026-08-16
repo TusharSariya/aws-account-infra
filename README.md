@@ -10,6 +10,8 @@ their resources share one abstraction.
 | Path | Purpose |
 |---|---|
 | `deploy-units.json` | Deployable OpenTofu roots, dependencies, variables, and change detection |
+| `catalog/` | Immutable service, repository, OU, account, budget, and deployment declarations |
+| `live/aws/organization/` | Recoverable organization, account, bootstrap, access, and GitHub repository roots |
 | `live/aws/staging/` | State bootstrap, account baseline, and staging workloads |
 | `modules/aws/` | Reusable AWS-only OpenTofu modules |
 | `config/environments/` | Non-secret variables grouped by cloud and environment |
@@ -17,7 +19,7 @@ their resources share one abstraction.
 | `apps/ecr/` | Container image sources; CI pushes each subdirectory to ECR |
 | `apps/lambda/` | Zip Lambda sources; CI uploads arm64 packages to S3 |
 | `mocks/localstack/` | Disposable local AWS sandbox |
-| `docs/plans/kubernetes.md` | Review-only Kubernetes proposal; nothing implements it yet |
+| `docs/kubernetes-vending.md` | Kubernetes 1.35 rebuild, vending controls, rollout gates, and recovery runbook |
 
 ## AWS staging
 
@@ -44,10 +46,10 @@ For an existing checkout, reattach each relocated root before making changes:
 Both migration plans must show no resource changes. Do not apply a migration plan that
 proposes replacement or deletion.
 
-For a new account, copy the staging `live/aws` shape, create a separate environment
-variable file, bootstrap that account's state backend manually, then add its roots and
-dependencies to `deploy-units.json`. Use account-specific state storage and GitHub OIDC
-roles. Never reuse staging state keys for another account.
+New accounts are declared under `catalog/services/` and created one at a time through the
+protected `account-vend` workflow. Each account gets its own state bucket, budget, cost
+anomaly alert, deployment artifact bucket, and repository-scoped GitHub OIDC roles. See
+[docs/account-vending.md](docs/account-vending.md) for initialization and recovery.
 
 ### Initial staging bootstrap
 
@@ -67,12 +69,14 @@ cd ../../../..
 ./scripts/infra.sh aws-staging-court-booker-api apply
 ```
 
-CI plans changed deploy units using AWS GitHub OIDC. Adding the `apply` label runs the
-serialized, gated apply-before-merge workflow. Bootstrap is never run in CI. Changes
+Pull requests run formatting and provider validation without AWS credentials. After merge,
+the serialized `tofu-apply` workflow runs through the protected `platform-prod` environment;
+that environment must require approval and restrict deployments to `main`. Changes
 under `apps/ecr/` are built and pushed to ECR by `.github/workflows/ecr-push.yml`;
 update `booker_image_tag` in `config/environments/aws/staging/court-booker.tfvars` and apply to retarget the Playwright Lambda. Changes under
-`apps/lambda/` are zipped by `.github/workflows/lambda-package.yml` into
-`lambda-releases` (`candidate/` / `stable/`); update `booker_api_zip_key` in
+`apps/lambda/` are tested and zipped without AWS credentials on pull requests. The
+main-branch job assumes the stable publisher role and uploads to `lambda-releases/stable/`;
+update `booker_api_zip_key` in
 `config/environments/aws/staging/court-booker-api.tfvars` to a
 `stable/` key and apply to retarget the HTTP booker. Playwright EventBridge is
 off; the API zip cron is the live weekly booker.
@@ -119,5 +123,7 @@ cloud-specific variables under `config/environments/<cloud>/`. Extend CI authent
 for that provider before setting a unit's `ci` field to true. Do not place credentials in
 variable files or create generic modules whose inputs merely mirror provider resources.
 
-Kubernetes remains intentionally deferred. Review and complete every open prerequisite
-in [docs/plans/kubernetes.md](docs/plans/kubernetes.md) before adding automation.
+Kubernetes service vending is implemented as gated IaC. Ansible owns cluster and tenant
+controls, Helmfile owns pinned add-ons, and Argo owns only the explicit application-kind
+allowlist. All enablement flags remain false until the evidence in
+[docs/kubernetes-vending.md](docs/kubernetes-vending.md) is recorded.

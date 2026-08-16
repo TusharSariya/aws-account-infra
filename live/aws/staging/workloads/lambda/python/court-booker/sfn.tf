@@ -70,7 +70,7 @@ resource "aws_sfn_state_machine" "booker" {
   }
 
   definition = jsonencode({
-    Comment        = "Three API attempts, 60s apart. Wait is here so Lambda is not billed for sleep."
+    Comment        = "Retry only Lambda service failures and pre-submit closed responses. Ambiguous booking outcomes are never retried."
     StartAt        = "Book"
     TimeoutSeconds = 180
     States = {
@@ -83,11 +83,21 @@ resource "aws_sfn_state_machine" "booker" {
         }
         Retry = [
           {
-            ErrorEquals     = ["States.ALL"]
+            ErrorEquals = [
+              "Lambda.ServiceException",
+              "Lambda.SdkClientException",
+            ]
+            IntervalSeconds = 2
+            MaxAttempts     = 2
+            BackoffRate     = 2
+            JitterStrategy  = "FULL"
+          },
+          {
+            ErrorEquals     = ["RetryableBookingFailed"]
             IntervalSeconds = 60
             MaxAttempts     = 2
             BackoffRate     = 1
-            JitterStrategy  = "NONE"
+            JitterStrategy  = "FULL"
           }
         ]
         OutputPath = "$.Payload"

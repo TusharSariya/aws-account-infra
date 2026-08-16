@@ -7,6 +7,18 @@ data "aws_iam_policy_document" "lambda_trust" {
       identifiers = ["lambda.amazonaws.com"]
     }
   }
+
+  statement {
+    sid    = "BookingIdempotency"
+    effect = "Allow"
+    actions = [
+      "dynamodb:DeleteItem",
+      "dynamodb:GetItem",
+      "dynamodb:PutItem",
+      "dynamodb:UpdateItem",
+    ]
+    resources = [aws_dynamodb_table.idempotency.arn]
+  }
 }
 
 resource "aws_iam_role" "lambda" {
@@ -73,6 +85,13 @@ data "aws_iam_policy_document" "scheduler" {
     effect    = "Allow"
     actions   = ["states:StartExecution"]
     resources = ["arn:aws:states:${var.region}:${var.aws_account_id}:stateMachine:court-booker-api"]
+  }
+
+  statement {
+    sid       = "SchedulerDeadLetterQueue"
+    effect    = "Allow"
+    actions   = ["sqs:SendMessage"]
+    resources = [aws_sqs_queue.scheduler_dlq.arn]
   }
 }
 

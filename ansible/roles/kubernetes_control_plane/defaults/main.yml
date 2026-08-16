@@ -1,5 +1,5 @@
 ---
-kubernetes_control_plane_version: v1.36.2
+kubernetes_control_plane_version: v1.35.7
 kubernetes_control_plane_cri_socket: unix:///run/containerd/containerd.sock
 kubernetes_control_plane_kubeconfig_local: "{{ lookup('env', 'HOME') }}/.kube/config"
 
@@ -15,3 +15,8 @@ kubernetes_control_plane_lan_context: homelab-lan
 # Whether to drop a copy of admin.conf in the node user's home. Off by default: it
 # widens cluster-admin from root-only to any process running as that user.
 kubernetes_control_plane_user_kubeconfig: false
+kubernetes_control_plane_audit_policy_path: /etc/kubernetes/audit-policy.yml
+kubernetes_control_plane_audit_log_path: /var/log/kubernetes/audit.log
+kubernetes_control_plane_audit_log_max_age: 14
+kubernetes_control_plane_audit_log_max_backups: 10
+kubernetes_control_plane_audit_log_max_size_mb: 100

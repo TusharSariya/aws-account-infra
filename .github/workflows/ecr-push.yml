@@ -1,8 +1,5 @@
 name: ecr-push
 
-# Build linux/arm64 images under apps/ecr/<name> and push an immutable git-sha
-# tag. Does not retarget Lambda; set booker_image_tag and apply for that.
-
 on:
   pull_request:
     paths:
@@ -20,9 +17,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  id-token: write
   contents: read
-  pull-requests: write
 
 env:
   AWS_REGION: us-east-1
@@ -35,9 +30,10 @@ jobs:
     outputs:
       images: ${{ steps.images.outputs.images }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
+          persist-credentials: false
       - id: images
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -47,35 +43,25 @@ jobs:
           python3 - <<'PY' >> "$GITHUB_OUTPUT"
           import json
           import os
+          import subprocess
           from pathlib import Path
 
           root = Path("apps/ecr")
-          all_names = sorted(
-              p.parent.name for p in root.glob("*/Dockerfile") if p.is_file()
-          )
-          event = os.environ["EVENT_NAME"]
-          if event == "workflow_dispatch" or not os.environ.get("BASE_SHA") or set(os.environ.get("BASE_SHA", "")) == {"0"}:
+          all_names = sorted(path.parent.name for path in root.glob("*/Dockerfile") if path.is_file())
+          base = os.environ.get("BASE_SHA", "")
+          if os.environ["EVENT_NAME"] == "workflow_dispatch" or not base or set(base) == {"0"}:
               selected = all_names
           else:
-              import subprocess
-
               changed = subprocess.check_output(
-                  ["git", "diff", "--name-only", os.environ["BASE_SHA"], os.environ["HEAD_SHA"], "--"],
-                  text=True,
+                  ["git", "diff", "--name-only", base, os.environ["HEAD_SHA"], "--"], text=True
               ).splitlines()
-              selected = []
-              workflow_changed = any(path == ".github/workflows/ecr-push.yml" for path in changed)
-              if workflow_changed:
-                  selected = all_names
-              else:
-                  for name in all_names:
-                      prefix = f"apps/ecr/{name}/"
-                      if any(path.startswith(prefix) for path in changed):
-                          selected.append(name)
+              selected = all_names if ".github/workflows/ecr-push.yml" in changed else [
+                  name for name in all_names if any(path.startswith(f"apps/ecr/{name}/") for path in changed)
+              ]
           print("images=" + json.dumps(selected, separators=(",", ":")))
           PY
 
-  push:
+  verify:
     needs: detect
     if: needs.detect.outputs.images != '[]'
     runs-on: ubuntu-24.04-arm
@@ -85,53 +71,79 @@ jobs:
       matrix:
         name: ${{ fromJSON(needs.detect.outputs.images) }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+      - name: Build image for scanning
+        env:
+          NAME: ${{ matrix.name }}
+          TAG: ${{ github.sha }}
+        run: >-
+          docker buildx build
+          --platform linux/arm64
+          --load
+          --tag "${NAME}:image-${TAG}"
+          "apps/ecr/${NAME}"
+      - name: Scan image
+        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
+        with:
+          image-ref: ${{ matrix.name }}:image-${{ github.sha }}
+          format: table
+          exit-code: "1"
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          trivyignores: .trivyignore
+
+  publish:
+    needs: [detect, verify]
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && needs.detect.outputs.images != '[]'
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 45
+    environment: image-publish
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        name: ${{ fromJSON(needs.detect.outputs.images) }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
         with:
           role-to-assume: ${{ env.ECR_PUSH_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
-      - uses: aws-actions/amazon-ecr-login@v2
-      - name: Ensure repository
-        env:
-          NAME: ${{ matrix.name }}
-        run: |
-          aws ecr describe-repositories --repository-names "$NAME" >/dev/null 2>&1 \
-            || aws ecr create-repository \
-              --repository-name "$NAME" \
-              --image-tag-mutability IMMUTABLE \
-              --image-scanning-configuration scanOnPush=true
-      - name: Build and push
+      - uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2
+      - uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # v3.10.1
+      - name: Build and push signed image with SBOM and provenance
         env:
           NAME: ${{ matrix.name }}
           TAG: ${{ github.sha }}
         run: |
+          set -euo pipefail
           URI="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${NAME}"
-          SHORT="${TAG:0:7}"
-          if aws ecr describe-images --repository-name "$NAME" --image-ids imageTag="$TAG" >/dev/null 2>&1; then
-            echo "Already in ECR: ${URI}:${TAG}"
+          IMAGE_TAG="image-${TAG}"
+          if aws ecr describe-images --repository-name "$NAME" --image-ids imageTag="$IMAGE_TAG" >/dev/null 2>&1; then
+            echo "Already in ECR: ${URI}:${IMAGE_TAG}"
             exit 0
           fi
+          METADATA_FILE="${RUNNER_TEMP}/build-metadata-${NAME}.json"
           docker buildx build \
             --platform linux/arm64 \
-            --provenance=false \
-            --sbom=false \
-            -t "${URI}:${TAG}" \
-            -t "${URI}:${SHORT}" \
+            --provenance=mode=max \
+            --sbom=true \
+            --tag "${URI}:${IMAGE_TAG}" \
+            --metadata-file "$METADATA_FILE" \
             --push \
             "apps/ecr/${NAME}"
-          echo "Pushed ${URI}:${TAG} and ${URI}:${SHORT}"
-      - name: Comment tag on PR
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const name = '${{ matrix.name }}';
-            const tag = '${{ github.sha }}';
-            const short = tag.slice(0, 7);
-            const body = `### ecr-push — \`${name}\`\n\n\`${tag}\` (short \`${short}\`)\n\nPushing does not retarget Lambda. For court-booker, set \`booker_image_tag\` and apply.`;
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body,
-            });
+          DIGEST="$(jq -r '.["containerimage.digest"]' "$METADATA_FILE")"
+          test -n "$DIGEST" && test "$DIGEST" != null
+          cosign sign --yes "${URI}@${DIGEST}"
+          cosign verify \
+            --certificate-identity "https://github.com/${GITHUB_REPOSITORY}/.github/workflows/ecr-push.yml@refs/heads/main" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "${URI}@${DIGEST}"

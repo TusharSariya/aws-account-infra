@@ -1,0 +1,52 @@
+version: 1
+provisioner: organizations-v1
+service:
+  uid: 1485b9ce-c1c0-5c61-b585-5fb330769ebc
+  id: court-booker
+  display_name: Court Booker
+  owner: platform
+repository:
+  identity: TusharSariya/court-booker
+  name: court-booker
+  visibility: private
+  template: null
+  migration: filtered-history
+accounts:
+  dev:
+    account_id: null
+    name: CourtBooker-Dev
+    root_email: tushar.97+aws-court-booker-dev@hotmail.com
+    ou_path: Workloads/CourtBooker/NonProd
+    region: us-east-1
+    budget_usd: 10
+    deployment: automatic
+    lifecycle: active
+  prod:
+    account_id: null
+    name: CourtBooker-Prod
+    root_email: tushar.97+aws-court-booker-prod@hotmail.com
+    ou_path: Workloads/CourtBooker/Prod
+    region: us-east-1
+    budget_usd: 10
+    deployment: approval
+    lifecycle: active
+kubernetes:
+  homelab:
+    lifecycle: active
+    quota_profile: small
+    ingress_hostname: court-booker.homelab.tfdraw.dev
+    gpu_mode: none
+    ecr_repository: court-booker
+    source_path: deploy/kubernetes
+    backend:
+      service: court-booker
+      port: 80
+    secrets:
+      - name: court-booker-credentials
+        type: Opaque
+        keys: [username, password]
+        owner: platform
+        rotation_id: "1"
+        restart_on_rotation: true
+    egress:
+      dns_names: []

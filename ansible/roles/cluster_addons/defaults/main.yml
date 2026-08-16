@@ -34,3 +34,18 @@ cluster_addons_gateway_name: "{{ kubernetes_gateway_name }}"
 cluster_addons_gateway_address: "{{ kubernetes_gateway_address }}"
 cluster_addons_grafana_hostname: "{{ kubernetes_grafana_hostname }}"
 cluster_addons_local_storage_path: /var/local-path-provisioner
+
+# Vending add-ons are pinned but disabled until the Kubernetes 1.35 rebuild and
+# compatibility checks in docs/kubernetes-vending.md have completed.
+cluster_addons_argocd_enabled: false
+cluster_addons_argocd_version: 10.3.3
+cluster_addons_kyverno_enabled: false
+cluster_addons_kyverno_version: 3.8.2
+cluster_addons_kyverno_image_verification_enabled: false
+cluster_addons_kyverno_enforce: false
+cluster_addons_kyverno_ecr_registry: 992382747916.dkr.ecr.us-east-1.amazonaws.com
+cluster_addons_kyverno_ecr_repository: court-booker
+cluster_addons_kyverno_registry_secret_name: ""
+cluster_addons_kyverno_certificate_identity: >-
+  https://github.com/TusharSariyaOrg/aws-account-infra/.github/workflows/ecr-push.yml@refs/heads/main
+cluster_addons_kyverno_certificate_issuer: https://token.actions.githubusercontent.com

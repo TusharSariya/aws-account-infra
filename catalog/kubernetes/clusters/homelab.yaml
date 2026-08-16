@@ -1,0 +1,65 @@
+version: 1
+cluster: homelab
+# Reviewed tenant budget. Reconciliation must additionally prove live API health and
+# compare allocatable minus measured/declared platform use, reservations and headroom.
+capacity:
+  requests_cpu: 2000m
+  requests_memory: 4Gi
+  limits_memory: 8Gi
+  requests_ephemeral_storage: 8Gi
+  limits_ephemeral_storage: 16Gi
+  pods: 40
+  physical_storage: 0Gi
+capacity_basis:
+  # These are reviewed floors, not measurements. Reconciliation uses the larger
+  # of this platform budget and current non-tenant Pod declarations.
+  declared_platform_budget:
+    requests_cpu: 2000m
+    requests_memory: 4Gi
+    limits_memory: 8Gi
+    requests_ephemeral_storage: 8Gi
+    limits_ephemeral_storage: 16Gi
+    pods: 30
+    physical_storage: 0Gi
+  system_reservations:
+    requests_cpu: 500m
+    requests_memory: 1Gi
+    limits_memory: 1Gi
+    requests_ephemeral_storage: 4Gi
+    limits_ephemeral_storage: 4Gi
+    pods: 10
+    physical_storage: 0Gi
+  eviction_recovery_headroom:
+    requests_cpu: 500m
+    requests_memory: 2Gi
+    limits_memory: 2Gi
+    requests_ephemeral_storage: 8Gi
+    limits_ephemeral_storage: 8Gi
+    pods: 10
+    physical_storage: 0Gi
+quota_profiles:
+  small:
+    requests_cpu: 500m
+    limits_cpu: 1000m
+    requests_memory: 512Mi
+    limits_memory: 1Gi
+    requests_ephemeral_storage: 2Gi
+    limits_ephemeral_storage: 4Gi
+    pods: 10
+    physical_storage: 0Gi
+    deployments: 2
+    statefulsets: 1
+    replicasets: 4
+    jobs: 4
+    cronjobs: 2
+    services: 3
+    configmaps: 8
+    secrets: 8
+    serviceaccounts: 4
+    httproutes: 1
+    scaledobjects: 2
+storage:
+  tenant_pvcs_enabled: false
+gpu:
+  vending_enabled: false
+  evidence: "MIG geometry and exclusive-use reboot validation not yet recorded"

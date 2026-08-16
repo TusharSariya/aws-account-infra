@@ -1,0 +1,7 @@
+---
+# Opt in per host. Authentication is deliberately not automated: the durable
+# node login state is established once with `sudo tailscale up`.
+tailscale_client_enabled: false
+tailscale_client_binary: /usr/bin/tailscale
+tailscale_client_interface: tailscale0
+tailscale_client_interface_timeout: 30

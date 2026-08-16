@@ -6,6 +6,10 @@
   roles:
     - ubuntu_baseline
     - ubuntu_compute
+    # Own the daemon lifecycle before any role reads its preferences or binds
+    # another service to the tailnet interface.
+    - role: tailscale_client
+      when: tailscale_client_enabled | bool
     # Before ssh_tailnet: this only reads tailscaled and sets a preference, so
     # it must not run after the task that restarts the SSH daemon carrying it.
     - role: tailscale_subnet_router
