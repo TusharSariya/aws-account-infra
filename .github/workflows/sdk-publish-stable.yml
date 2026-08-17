@@ -48,7 +48,7 @@ jobs:
           required = any(
               path.startswith("sdk/targets/")
               or path.startswith("scripts/sdk-")
-              or (path.startswith("specs/") and path.endswith("openapi.yaml"))
+              or (path.startswith("contracts/openapi/") and path.endswith("openapi.yaml"))
               for path in changed
           )
           print(f"required={'true' if required else 'false'}")

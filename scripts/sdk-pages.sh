@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Stage Swagger UI + specs for GitHub Pages or a workflow artifact.
+# Stage Swagger UI + OpenAPI contracts for GitHub Pages or a workflow artifact.
 # Usage: ./scripts/sdk-pages.sh [dest]
 set -euo pipefail
 
@@ -11,7 +11,7 @@ rm -rf "$DEST"
 mkdir -p "$DEST/specs"
 
 cp "$REPO_ROOT/docs/api/index.html" "$DEST/index.html"
-cp -R "$REPO_ROOT/specs/." "$DEST/specs/"
+cp -R "$REPO_ROOT/contracts/openapi/." "$DEST/specs/"
 
 python3 - <<PY
 from pathlib import Path
@@ -21,7 +21,7 @@ urls = []
 for spec in sorted((dest / "specs").glob("*/openapi.yaml")):
     urls.append({"url": f"./specs/{spec.parent.name}/openapi.yaml", "name": spec.parent.name})
 if not urls:
-    raise SystemExit("no specs/*/openapi.yaml to publish")
+    raise SystemExit("no contracts/openapi/*/openapi.yaml to publish")
 (dest / "urls.js").write_text("window.SPEC_URLS = " + json.dumps(urls) + ";\n")
 print("urls:", ", ".join(u["name"] for u in urls))
 PY

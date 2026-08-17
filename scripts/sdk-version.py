@@ -29,7 +29,7 @@ def main() -> None:
     args = parser.parse_args()
 
     repo = Path(__file__).resolve().parents[1]
-    version = spec_version(repo / "specs" / args.spec / "openapi.yaml")
+    version = spec_version(repo / "contracts" / "openapi" / args.spec / "openapi.yaml")
     if args.channel == "stable":
         print(version)
         return

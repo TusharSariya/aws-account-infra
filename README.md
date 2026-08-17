@@ -11,6 +11,8 @@ their resources share one abstraction.
 |---|---|
 | `deploy-units.json` | Deployable OpenTofu roots, dependencies, variables, and change detection |
 | `catalog/` | Immutable service, repository, OU, account, budget, and deployment declarations |
+| `specs/` | Numbered Spec Kit feature intent, plans, evidence, and audit guides |
+| `contracts/openapi/` | Canonical HTTP API descriptions used by SDK and documentation workflows |
 | `live/aws/organization/` | Recoverable organization, account, bootstrap, access, and GitHub repository roots |
 | `live/aws/staging/` | State bootstrap, account baseline, and staging workloads |
 | `modules/aws/` | Reusable AWS-only OpenTofu modules |
@@ -23,6 +25,13 @@ their resources share one abstraction.
 | `docs/service-vending.md` | Catalog v2, dedicated Supabase vending, repository bootstrap, lifecycle, and agent access |
 | `live/external/` | Provider-native external service roots; live reconciliation is local and serialized |
 | `templates/service-stack/` | Golden service repository seeded before normal repository vending |
+| `docs/adr/` | Reviewed authority, lifecycle, specification, and repository-intelligence decisions |
+
+PR #30's retrospective intent and evidence are indexed in
+[`specs/001-safe-service-vending/`](specs/001-safe-service-vending/). Local repository
+intelligence is pinned and documented in
+[`docs/repository-intelligence.md`](docs/repository-intelligence.md); generated indexes
+remain ignored and supplementary.
 
 ## AWS staging
 

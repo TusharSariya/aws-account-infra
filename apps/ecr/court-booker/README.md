@@ -5,7 +5,7 @@ Upace equipment calendar. My Y credentials come from repo-root `.env` locally an
 from a dedicated SSM SecureString (`/staging/court-booker/my-y`) in Lambda. The HTTP
 zip Lambda has its own parameter (`/staging/court-booker-api/my-y`). Do not commit `.env`.
 
-The Upace HTTP contract lives at [`specs/upace/openapi.yaml`](../../../specs/upace/openapi.yaml),
+The Upace HTTP contract lives at [`contracts/openapi/upace/openapi.yaml`](../../../contracts/openapi/upace/openapi.yaml),
 not in this image.
 
 ```bash

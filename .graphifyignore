@@ -1,0 +1,22 @@
+# Local environments and provider caches
+.venv/
+**/.terraform/
+**/__pycache__/
+
+# Generated clients, packages, state and plan artifacts
+generated/
+build/
+*.tfstate
+*.tfstate.*
+*.tfplan
+plan.json
+
+# Repository-intelligence outputs must never index themselves
+.repowise/
+graphify-out/
+
+# Host/runtime data outside the reviewed source corpus
+pihole-etc-backup/
+ansible/inventories/local/
+canaries/**/supabase/.branches/
+canaries/**/supabase/.temp/

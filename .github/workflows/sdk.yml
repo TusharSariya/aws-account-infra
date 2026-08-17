@@ -7,7 +7,7 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
-      - "specs/**"
+      - "contracts/openapi/**"
       - "sdk/**"
       - "scripts/sdk-*"
       - ".github/workflows/sdk.yml"
@@ -37,7 +37,7 @@ jobs:
         with:
           node-version: "20"
       - name: Spectral
-        run: npx --yes @stoplight/spectral-cli@6.15.0 lint "specs/*/openapi.yaml" -r specs/.spectral.yaml
+        run: npx --yes @stoplight/spectral-cli@6.15.0 lint "contracts/openapi/*/openapi.yaml" -r contracts/openapi/.spectral.yaml
 
   generate:
     needs: lint

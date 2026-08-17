@@ -23,9 +23,24 @@ def test_template_has_one_canonical_agent_policy():
         assert "AGENTS.md" in (TEMPLATE / wrapper).read_text()
 
 
-def test_analysis_wrapper_checks_worktree_cleanliness():
-    wrapper = (TEMPLATE / "scripts/run-analysis-clean.sh").read_text()
-    assert wrapper.count("git status --porcelain") == 2
+def test_repository_intelligence_commands_have_explicit_write_boundaries():
+    wrapper = (TEMPLATE / "scripts/repository-intelligence.sh").read_text()
+    assert "repowise-init" in wrapper
+    assert "repowise-update" in wrapper
+    assert "graphify-generate" in wrapper
+    assert "run_query" in wrapper
+    assert "REPOWISE_SKIP_EDITOR_SETUP=1" in wrapper
+    assert "run-analysis-clean" not in wrapper
+
+
+def test_template_is_pinned_spec_kit_ready():
+    manifest = (TEMPLATE / ".specify/integration.json").read_text()
+    assert '"version": "0.16.4"' in manifest
+    assert '"integration": "codex"' in manifest
+    constitution = (TEMPLATE / ".specify/memory/constitution.md").read_text()
+    assert "[PRINCIPLE_" not in constitution
+    for command in ("specify", "plan", "tasks", "analyze", "converge"):
+        assert (TEMPLATE / f".agents/skills/speckit-{command}/SKILL.md").is_file()
 
 
 def test_template_actions_are_pinned_by_full_commit_sha():

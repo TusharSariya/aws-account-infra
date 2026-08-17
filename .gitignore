@@ -40,6 +40,10 @@ __pycache__/
 .pytest_cache/
 .venv/
 
+# Local repository intelligence. These indexes are reproducible audit inputs, not source.
+.repowise/
+graphify-out/
+
 # --- Homelab PKI: NEVER commit private keys or the CA. This is a guardrail, not a
 # security boundary — keep real keys outside the checkout (e.g. ~/.config/...).
 # The CA's PUBLIC cert is not secret, but it belongs in config/environments/aws/

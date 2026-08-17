@@ -1,5 +1,5 @@
 # Specifications
 
-Use this root for Spec Kit feature specifications in a normal service repository.
-Infrastructure monorepos use `product/` instead so product artifacts do not collide with
-deployable components.
+Use this root for numbered Spec Kit feature specifications. Each feature directory must
+contain an auditable specification, implementation plan, evidence-bearing tasks, and the
+required review checklists. API contracts belong under a separate `contracts/` tree.

@@ -1,6 +1,6 @@
 # SDK factory
 
-OpenAPI Generator targets for specs under [`specs/`](../specs/). Never edit
+OpenAPI Generator targets for contracts under [`contracts/openapi/`](../contracts/openapi/). Never edit
 `generated/` — it is gitignored and rebuilt in CI.
 
 ```bash

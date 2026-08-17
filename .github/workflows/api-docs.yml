@@ -5,14 +5,14 @@ name: api-docs
 on:
   pull_request:
     paths:
-      - "specs/**"
+      - "contracts/openapi/**"
       - "docs/api/**"
       - "scripts/sdk-pages.sh"
       - ".github/workflows/api-docs.yml"
   push:
     branches: [main]
     paths:
-      - "specs/**"
+      - "contracts/openapi/**"
       - "docs/api/**"
       - "scripts/sdk-pages.sh"
       - ".github/workflows/api-docs.yml"

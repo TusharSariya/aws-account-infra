@@ -1,3 +1,6 @@
-# Spec and generator-target changes need a review before they become SDKs.
+# Product specifications and API contract changes need review.
 /specs/ @TusharSariya
+/contracts/openapi/ @TusharSariya
+/.specify/ @TusharSariya
+/.agents/skills/speckit-*/ @TusharSariya
 /sdk/targets/ @TusharSariya

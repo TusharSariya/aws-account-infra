@@ -1,0 +1,56 @@
+name: spec-kit-audit
+
+on:
+  pull_request:
+    paths:
+      - .agents/skills/speckit-*/**
+      - .specify/**
+      - contracts/openapi/**
+      - specs/**
+      - templates/service-stack/**
+      - docs/adr/**
+      - docs/reviews/**
+      - tooling/repository-intelligence.json
+      - scripts/spec-kit-audit.py
+      - scripts/terraform-docs.sh
+      - .github/workflows/spec-kit-audit.yml
+  push:
+    branches: [main]
+    paths:
+      - .agents/skills/speckit-*/**
+      - .specify/**
+      - contracts/openapi/**
+      - specs/**
+      - templates/service-stack/**
+      - docs/adr/**
+      - docs/reviews/**
+      - tooling/repository-intelligence.json
+      - scripts/spec-kit-audit.py
+      - scripts/terraform-docs.sh
+      - .github/workflows/spec-kit-audit.yml
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.13"
+      - run: python3 scripts/spec-kit-audit.py
+      - run: python3 templates/service-stack/scripts/check_repo_contract.py
+      - run: python3 -m pytest -q tests/catalog/test_service_template.py
+      - name: Install terraform-docs
+        run: |
+          curl --fail --location --silent --show-error \
+            --output /tmp/terraform-docs.tar.gz \
+            https://github.com/terraform-docs/terraform-docs/releases/download/v0.24.0/terraform-docs-v0.24.0-linux-amd64.tar.gz
+          echo "9005daf969de0b50134493a2c00078b49f5f5b39d021cda7c89bf4d4f3d776d3  /tmp/terraform-docs.tar.gz" | sha256sum --check
+          tar -xzf /tmp/terraform-docs.tar.gz -C /tmp terraform-docs
+      - run: TERRAFORM_DOCS=/tmp/terraform-docs scripts/terraform-docs.sh --check

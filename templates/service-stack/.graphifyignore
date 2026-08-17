@@ -1,0 +1,9 @@
+.repowise/
+graphify-out/
+.venv/
+**/.terraform/
+**/__pycache__/
+generated/
+build/
+*.tfstate
+*.tfstate.*

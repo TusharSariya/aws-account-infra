@@ -10,5 +10,6 @@ credentials outside Git.
 python3 scripts/check_repo_contract.py
 ```
 
-RepoWise and Graphify are optional local analysis tools. Run them through
-`scripts/run-analysis-clean.sh -- <command>` so any repository mutation fails the run.
+RepoWise and Graphify are optional local analysis tools. Their versions and safe commands
+are defined in `tooling/repository-intelligence.json` and
+`scripts/repository-intelligence.sh`; source mutations fail the run.

@@ -182,8 +182,9 @@ sensitive-state readiness.
 
 `live/aws/organization/template-bootstrap` creates the template repository without a
 template dependency. Seed it once from `templates/service-stack`, review the initial
-commit, then enable the profile-specific required checks. Service repos keep Spec Kit at
-`specs/`; this infrastructure monorepo uses `product/` for new product artifacts.
+commit, then enable the profile-specific required checks. Service repos and this
+infrastructure monorepo keep numbered Spec Kit features at `specs/`. HTTP API
+descriptions are separate contracts under `contracts/openapi/`.
 
 RepoWise and Graphify are opt-in local analysis tools. The golden repo wrapper compares
 the complete worktree before and after analysis and fails if a tool writes generated
