@@ -12,11 +12,11 @@ output "restore_policy_arn" {
 }
 
 output "backup_trust_anchor_arn" {
-  value = aws_rolesanywhere_trust_anchor.backup.arn
+  value = one(aws_rolesanywhere_trust_anchor.backup[*].arn)
 }
 output "backup_profile_arn" {
-  value = aws_rolesanywhere_profile.backup.arn
+  value = one(aws_rolesanywhere_profile.backup[*].arn)
 }
 output "backup_upload_role_arn" {
-  value = aws_iam_role.upload.arn
+  value = one(aws_iam_role.upload[*].arn)
 }

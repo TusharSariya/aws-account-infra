@@ -3,7 +3,7 @@
 Dedicated OpenTofu deployment `aws-staging-homelab-recovery`, account
 992382747916, us-east-1. Uses the existing encrypted S3 module and independent
 state key `stacks/homelab-recovery/terraform.tfstate` in the existing AWS backend.
-Cloud CI is disabled until this deployment is reviewed. The provider lockfile
+AWS plan/apply CI is disabled; deployment remains manual. The provider lockfile
 pins the resolved AWS provider. No secrets belong in tfvars or Terraform outputs.
 
 The proposed bucket is `homelab-recovery-992382747916-us-east-1`:
@@ -23,8 +23,8 @@ The proposed bucket is `homelab-recovery-992382747916-us-east-1`:
 - Incomplete multipart uploads aborted after seven days. No archive-class
   transition that would delay bootstrap recovery.
 
-Upload and restore IAM policies are separate. A dedicated Roles Anywhere upload
-role now attaches the upload policy and uses it as a permissions boundary; the
+Upload and restore IAM policies are separate. An optional Roles Anywhere upload
+role attaches the upload policy and uses it as a permissions boundary; the
 restore policy remains unattached. See [identity setup and certificate lifecycle](IDENTITY.md). Neither grants deletion or Object
 Lock bypass. Upload policy includes KMS Decrypt for S3 multipart upload support,
 but no S3 GetObject. The uploader uses a dedicated CA, trust anchor and exact certificate CN.
@@ -32,7 +32,10 @@ The existing ECR CA and role are not reused. An independently recoverable human
 restore login remains required. No long-lived
 access keys are created by this deployment.
 
-Supply the required public backup CA certificate as described in [IDENTITY.md](IDENTITY.md).
+The checked-in tfvars use `create_backup_identity = false`: start with the
+[manual encrypted backup procedure](MANUAL-BACKUP.md) using the existing AWS
+administrator login. No CA is needed. To enable automated identity later, set
+`create_backup_identity = true` and follow [IDENTITY.md](IDENTITY.md).
 From the repo root:
 
 ```sh

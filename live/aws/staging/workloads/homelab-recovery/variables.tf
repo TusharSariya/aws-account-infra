@@ -18,12 +18,19 @@ variable "default_tags" {
   default = {}
 }
 
+variable "create_backup_identity" {
+  type        = bool
+  default     = true
+  description = "Create the optional Roles Anywhere uploader. Turning off an existing identity destroys it; use backup_identity_enabled=false to suspend sessions instead."
+}
+
 variable "backup_ca_certificate_pem" {
+  default     = ""
   type        = string
   nullable    = false
-  description = "Public certificate of the dedicated backup CA; supply on every plan/apply. Never supply a private key."
+  description = "Public backup CA certificate, required only when create_backup_identity is true. Never supply a private key."
   validation {
-    condition     = startswith(trimspace(var.backup_ca_certificate_pem), "-----BEGIN CERTIFICATE-----") && endswith(trimspace(var.backup_ca_certificate_pem), "-----END CERTIFICATE-----") && !strcontains(var.backup_ca_certificate_pem, "PRIVATE KEY")
+    condition     = !var.create_backup_identity || (startswith(trimspace(var.backup_ca_certificate_pem), "-----BEGIN CERTIFICATE-----") && endswith(trimspace(var.backup_ca_certificate_pem), "-----END CERTIFICATE-----") && !strcontains(var.backup_ca_certificate_pem, "PRIVATE KEY"))
     error_message = "Supply a public PEM certificate, never a private key or an empty value."
   }
 }
