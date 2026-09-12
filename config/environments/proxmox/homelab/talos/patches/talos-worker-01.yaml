@@ -1,0 +1,19 @@
+machine:
+  nodeLabels:
+    workload.security/shared: "true"
+---
+apiVersion: v1alpha1
+kind: HostnameConfig
+auto: "off"
+hostname: talos-worker-01
+---
+apiVersion: v1alpha1
+kind: LinkAliasConfig
+name: homelab
+selector:
+  match: mac(link.permanent_addr) == "02:42:00:00:01:02"
+---
+apiVersion: v1alpha1
+kind: DHCPv4Config
+name: homelab
+clientIdentifier: mac

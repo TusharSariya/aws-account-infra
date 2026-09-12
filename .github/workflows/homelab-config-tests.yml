@@ -1,0 +1,29 @@
+name: homelab-config-tests
+on:
+  pull_request:
+    paths:
+      - 'live/proxmox/**'
+      - 'config/environments/proxmox/**'
+      - 'scripts/homelab-*'
+      - 'scripts/proxmox-*'
+      - '.github/workflows/homelab-config-tests.yml'
+permissions:
+  contents: read
+jobs:
+  offline-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: 1.11.5
+      - name: Check shell and Python syntax
+        run: |
+          for script in scripts/homelab-*.sh scripts/proxmox-*.sh; do bash -n "$script"; done
+          python3 -m py_compile scripts/homelab-*.py
+      - name: Validate Proxmox definitions without a backend or credentials
+        run: |
+          tofu fmt -check -recursive live/proxmox/homelab
+          tofu -chdir=live/proxmox/homelab init -backend=false -lockfile=readonly
+          tofu -chdir=live/proxmox/homelab validate
+          tofu -chdir=live/proxmox/homelab test -var-file=../../../config/environments/proxmox/homelab/vms.tfvars

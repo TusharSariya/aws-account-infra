@@ -1,0 +1,9 @@
+machine:
+  install:
+    wipe: false
+cluster:
+  network:
+    cni:
+      name: none
+  proxy:
+    disabled: false

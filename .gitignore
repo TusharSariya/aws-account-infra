@@ -72,3 +72,8 @@ ansible/inventories/local/group_vars/*
 !ansible/inventories/local/group_vars/all/
 ansible/inventories/local/group_vars/all/*
 !ansible/inventories/local/group_vars/all/vault.yml
+
+# Generated Talos secrets stay outside Git.
+talos-secrets.yaml
+*.machineconfig.yaml
+talosconfig

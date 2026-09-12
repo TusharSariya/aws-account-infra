@@ -14,8 +14,8 @@ physical failure domain.
 
 Preserve the repository's existing architecture:
 
-- Proxmox hosts a Talos control plane, trusted worker, sandbox worker, and a
-  separate Debian NAS.
+- Proxmox hosts two Talos VMs: a 2-vCPU/4-GiB control plane and a 38-vCPU/172-GiB shared worker with worker-local persistent storage. The dedicated NAS and sandbox VMs were removed by the approved 2026-09-12 revision.
+- Tailscale runs directly on Proxmox for private remote administration independent of Kubernetes; package source, enrollment, enabled service and off-home authenticated HTTPS/SSH are verified (OpenSpec task 2.9). Fresh-machine recovery remains pending.
 - Ansible and Helmfile bootstrap cluster-critical add-ons.
 - Argo CD reconciles allowlisted applications, not its own dependencies.
 - Helm packages third-party software; Kustomize manages first-party bases and
@@ -100,6 +100,20 @@ records remain in:
   the LAN or tailnet.
 - Do not expose a wildcard route from Cloudflare to Istio. Every public
   hostname must be catalog-declared and individually approved.
+
+### Host-level Tailscale administration
+
+The operator reports Tailscale installed directly on `pve` on 2026-09-12. Treat installation as reported evidence, not proof of enrollment, remote reachability or route approval. Record the installed version, package source, service persistence, tailnet identity and non-secret connection settings during verification.
+
+Use Tailscale on the Proxmox host for private UI (HTTPS 8006) and ordinary SSH (TCP 22) from authorized administrator devices. Keep Proxmox authentication and SSH keys; Tailscale SSH is a separate optional feature, not implied by installing the client. Preserve trusted TLS verification for automation and document the certificate trust path. Do not expose administration through public port forwarding, Cloudflare Tunnel or Tailscale Funnel.
+
+Plan Proxmox as the subnet router for `10.42.0.0/24` so authorized administrators can reach Talos and selected service addresses without adding Tailscale to every Talos VM. Subnet-route advertisement, tailnet route approval, client route acceptance, forwarding and the operator-approved access policy must be recorded and verified before this path is accepted. No route advertisement or firewall change is inferred from the installation. Review default subnet SNAT and return paths explicitly; management access is not proof that an external GPU worker has the bidirectional node/Cilium connectivity it needs.
+
+The laptop remains the physical internet gateway and must be powered on for remote access. Its existing local SSH path and the Proxmox console remain recovery fallbacks. Tailscale on the laptop is optional separate work, not a completed installation. No third VM or Kubernetes-hosted operator is needed for host recovery access.
+
+Include the package/version source, service setup, tags, tailnet grants/ACLs, approved routes, certificate handling, key-expiry policy, administrator account recovery and device re-enrollment/revocation in the DR procedure. Keep auth keys and node private state out of plaintext Git. Enrollment and recovery access must not depend solely on this Kubernetes cluster or its Authentik instance. Verify UI and SSH from a separate internet connection such as a phone hotspot, and verify local fallback without Tailscale before declaring remote recovery ready.
+
+References: [Proxmox integration](https://tailscale.com/docs/integrations/proxmox), [subnet route acceptance](https://tailscale.com/docs/reference/route-injection), [subnet SNAT and routing](https://tailscale.com/docs/features/site-to-site).
 
 ### Identity and authorization
 
@@ -254,10 +268,7 @@ Monitor:
 
 ## Storage and recovery
 
-- Keep the NAS outside Kubernetes and consume it through statically brokered
-  NFS CSI volumes. Do not permit arbitrary dynamic tenant PVCs.
-- Keep local-path storage only for disposable data and latency-sensitive local
-  state.
+- Use the shared worker's separate 1,200-GiB data disk for local persistent volumes. Accepted durable data requires independent, tested backups; losing the worker interrupts its storage. The former NAS/brokered-NFS design is deferred.
 - Never place Prometheus TSDB or live PostgreSQL data directories on NFS.
 - Deploy CloudNativePG with separate databases and roles for Authentik,
   OpenFGA, the broker, Backstage, and Paperless-ngx.
@@ -267,7 +278,7 @@ Monitor:
 - Maintain three recovery layers:
   - Git, OpenTofu, Ansible, Helmfile, and Kustomize for desired state.
   - Automated off-cluster Talos etcd snapshots.
-  - Application-native database and NAS backups.
+  - Application-native database and worker-data backups.
 - Use Velero later for Kubernetes API objects and selected non-database volumes
   only after a restore proof. Do not make its privileged NFS filesystem backup
   the primary NAS or database strategy. See [Velero filesystem-backup
@@ -384,14 +395,15 @@ Later candidates:
 
 ### 2. Recovery and hardware gate
 
-- Finish ServeRAID, SMART, IPMI, UPS, thin-pool, and NAS monitoring.
+- Finish ServeRAID, SMART, IPMI, UPS, thin-pool and worker-storage monitoring.
+- Verify Tailscale on pve, remote UI/SSH from a phone hotspot, documented current tailnet policy, planned subnet-route behavior and local recovery fallback; preserve reproducible re-enrollment instructions.
 - Back up Talos machine secrets and break-glass credentials offline.
 - Automate etcd snapshots and prove bare-cluster restoration before adding
   dependencies.
 
 ### 3. Talos platform foundation
 
-- Deploy the control plane, trusted worker, sandbox worker, and separate NAS.
+- Deploy the control plane and shared worker using the approved two-VM allocation; retain gVisor policy for sandbox pods sharing the worker.
 - Reconcile CoreDNS, Cilium, metrics-server, MetalLB, Gateway API, Istio, and
   cert-manager.
 - Establish default-deny network policy and HTTPS for private services.
@@ -448,11 +460,14 @@ Later candidates:
 
 ## Acceptance tests
 
+- Verify private Proxmox UI and SSH access from outside home through host-level Tailscale, scoped subnet management access when enabled, startup persistence and local fallback.
+- Recover Tailscale enrollment and tailnet policy/routes without Kubernetes or cluster-hosted identity services.
+
 - Rebuild the cluster from Git and restore etcd without Authentik, Argo CD, or
   the NAS being initially available.
 - Restore CloudNativePG to a timestamp and run application-level verification
   queries.
-- Restore a NAS resource and a deleted S3 object version with checksum
+- Restore a worker-local resource and a deleted S3 object version with checksum
   verification.
 - Confirm an unapproved hostname cannot traverse Cloudflare Tunnel or attach to
   the Gateway.
@@ -521,3 +536,7 @@ Later candidates:
 - [NFS CSI driver](https://github.com/kubernetes-csi/csi-driver-nfs)
 - [CloudNativePG backups](https://cloudnative-pg.io/docs/1.28/backup/)
 - [Paperless-ngx](https://docs.paperless-ngx.com/)
+
+### Optional Tailscale access hardening
+
+Operator decision: retain the supplied default allow-all tailnet network policy for the initial personal build. Tailnet membership is the accepted network trust boundary; all members/devices can reach advertised destinations broadly. This does not make Serve public. The proposed account/port-scoped policy in `config/environments/proxmox/homelab/tailscale/policy.json` is an unapplied optional improvement, including removal of Funnel permission. Revisit before adding other users or less-trusted devices. Do not block VM creation or subnet-route acceptance on adopting it. Tailnet-only management, existing host authentication and recovery prerequisites remain required.

@@ -1,0 +1,18 @@
+{
+  "name": "homelab",
+  "endpoint": "https://10.42.0.224:6443",
+  "talos_endpoint": "10.42.0.220",
+  "kubernetes_version": "v1.36.3",
+  "nodes": [
+    {
+      "name": "talos-cp-01",
+      "type": "controlplane",
+      "installer": "factory.talos.dev/metal-installer/ce4c980550dd2ab1b17bbf2b08801c7eb59418eafe8f279833297925d67c7515:v1.13.9@sha256:c193e7aa60a2d79faf37ee73dbb8e00345028fd2aac02c6586674c6f519b0260"
+    },
+    {
+      "name": "talos-worker-01",
+      "type": "worker",
+      "installer": "factory.talos.dev/metal-installer/8e8827b5b91420728f8415f3dc200fbf23b425ec07bf27cdc92a676367ee9edf:v1.13.9@sha256:d44d70c735408a1e51d2899da72276d7f5cf3b6f071becbcb72a1d0252ea190c"
+    }
+  ]
+}
