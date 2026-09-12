@@ -1,0 +1,17 @@
+# OpenSSL 3 certificate extensions. Never copy requested CSR extensions.
+[req]
+distinguished_name = dn
+prompt = no
+[dn]
+CN = homelab-backup-ca
+[ca_extensions]
+basicConstraints = critical,CA:TRUE,pathlen:0
+keyUsage = critical,keyCertSign,cRLSign
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always
+[client_extensions]
+basicConstraints = critical,CA:FALSE
+keyUsage = critical,digitalSignature
+extendedKeyUsage = clientAuth
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always
