@@ -21,6 +21,13 @@ module "bucket" {
 
   bucket = var.bucket_name
 
+  object_lock_enabled = var.object_lock_retention_days != null
+  object_lock_configuration = var.object_lock_retention_days == null ? {} : {
+    rule = {
+      default_retention = { mode = "GOVERNANCE", days = var.object_lock_retention_days }
+    }
+  }
+
   versioning = {
     status = "Enabled"
   }
