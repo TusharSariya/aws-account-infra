@@ -77,15 +77,15 @@ run "reject_wildcard_identity" {
 run "manual_backups_need_no_ca" {
   command = plan
   variables {
-    create_backup_identity = false
+    create_backup_identity    = false
     backup_ca_certificate_pem = ""
   }
   assert {
-    condition = length(aws_rolesanywhere_trust_anchor.backup) == 0 && length(aws_iam_role.upload) == 0 && length(aws_rolesanywhere_profile.backup) == 0 && length(aws_iam_role_policy_attachment.upload) == 0
+    condition     = length(aws_rolesanywhere_trust_anchor.backup) == 0 && length(aws_iam_role.upload) == 0 && length(aws_rolesanywhere_profile.backup) == 0 && length(aws_iam_role_policy_attachment.upload) == 0
     error_message = "Manual backup mode must create no certificate identity resources."
   }
   assert {
-    condition = output.backup_trust_anchor_arn == null && output.backup_profile_arn == null && output.backup_upload_role_arn == null
+    condition     = output.backup_trust_anchor_arn == null && output.backup_profile_arn == null && output.backup_upload_role_arn == null
     error_message = "Manual backup mode must expose null identity coordinates."
   }
 }
