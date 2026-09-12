@@ -23,14 +23,16 @@ The proposed bucket is `homelab-recovery-992382747916-us-east-1`:
 - Incomplete multipart uploads aborted after seven days. No archive-class
   transition that would delay bootstrap recovery.
 
-Upload and restore IAM policies are separate and intentionally unattached until
-recovery identities are selected and verified. Neither grants deletion or Object
+Upload and restore IAM policies are separate. A dedicated Roles Anywhere upload
+role now attaches the upload policy and uses it as a permissions boundary; the
+restore policy remains unattached. See [identity setup and certificate lifecycle](IDENTITY.md). Neither grants deletion or Object
 Lock bypass. Upload policy includes KMS Decrypt for S3 multipart upload support,
-but no S3 GetObject. Use a dedicated Roles Anywhere uploader identity and an
-independently recoverable human restore identity. The existing ECR trust anchor
-can be evaluated for reuse, but its role is not a backup role. No long-lived
+but no S3 GetObject. The uploader uses a dedicated CA, trust anchor and exact certificate CN.
+The existing ECR CA and role are not reused. An independently recoverable human
+restore login remains required. No long-lived
 access keys are created by this deployment.
 
+Supply the required public backup CA certificate as described in [IDENTITY.md](IDENTITY.md).
 From the repo root:
 
 ```sh
@@ -41,7 +43,7 @@ From the repo root:
 
 Review before apply, especially Object Lock's permanence and KMS recovery.
 Creating the bucket alone does not complete disaster recovery. Pending work:
-identity attachment and isolation checks; independently recoverable AWS login;
+live identity enrollment and isolation checks; independently recoverable AWS login;
 client-side encryption and independent key custody; encrypted upload/download
 and restore test; explicit RPO/RTO; preservation of reviewed repository revision
 and package/artifact inputs. CloudWatch capacity alarms have no notification
