@@ -5,36 +5,27 @@ Use this procedure after merging the manual-backup change. The staging tfvars se
 The existing AWS `admin` profile supplies access for both upload and restore.
 The separate upload/restore policies remain available for later automation.
 
-## Deploy the storage from a clean checkout on the Mac
+## Deploy storage through the reviewed CI workflow
 
-Keep the existing homelab work-in-progress checkout intact. Clone once into a new
-directory (if that directory already exists, inspect it instead of overwriting it):
+AWS resources are deployed by OpenTofu in GitHub Actions. Review the pull request's
+`tofu-plan` output, then add the `apply` label to run the existing apply workflow.
+The workflow uses the repository's OIDC roles and enables auto-merge after success.
+Verify the apply job succeeded before uploading backups. Creating storage does not
+upload any files or prove disaster recovery.
 
-```sh
-git clone https://github.com/TusharSariyaOrg/aws-account-infra.git \
-  "$HOME/Projects/aws-account-infra-recovery"
-cd "$HOME/Projects/aws-account-infra-recovery"
-aws --profile admin sts get-caller-identity
-./scripts/infra.sh aws-staging-homelab-recovery init
-./scripts/infra.sh aws-staging-homelab-recovery validate
-./scripts/infra.sh aws-staging-homelab-recovery plan
-```
-
-Confirm account **992382747916** and region **us-east-1**. Review the plan: a fresh
-storage deployment should create the bucket, KMS key, policies and related storage
-resources, with no Roles Anywhere identity. Stop if it proposes unexpected changes
-or deletion. If an identity was previously deployed, disabling its creation will
-remove it; keep creation enabled and supply its public CA certificate instead.
-
-Then run the interactive apply and approve only the reviewed changes:
-
-```sh
-./scripts/infra.sh aws-staging-homelab-recovery apply
-```
+Confirm account **992382747916** and region **us-east-1**. The fresh recovery plan
+must contain no Roles Anywhere resources and no unexpected changes or deletion.
+Changing the deployment manifest currently plans all enabled units; inspect those
+plans too before approving apply. If an identity was previously deployed, disabling
+its creation removes it; preserve creation and provide its public CA instead.
 
 Object Lock is permanent once enabled. Its 30-day GOVERNANCE retention protects
 object versions from ordinary deletion, but sufficiently privileged administrators
-can bypass it. No upload is made by OpenTofu.
+can bypass it.
+
+For manual backup uploads after CI deployment, use the reviewed checkout on your
+Mac and verify `aws --profile admin sts get-caller-identity`. Local OpenTofu apply
+is not needed. The bucket name is fixed for this account and region below.
 
 ## Encrypt a harmless test file, upload it, and restore it
 
@@ -44,7 +35,7 @@ on any error. Use a new test directory per run. Keep it outside the checkout.
 ```sh
 umask 077
 BACKUP_TEST_DIR=$(mktemp -d "$HOME/backup-restore-test.XXXXXXXX")
-BACKUP_BUCKET=$(tofu -chdir=live/aws/staging/workloads/homelab-recovery output -raw bucket_name)
+BACKUP_BUCKET=homelab-recovery-992382747916-us-east-1
 BACKUP_TEST_KEY="routine/manual-test-$(date -u +%Y%m%dT%H%M%SZ)-$(basename "$BACKUP_TEST_DIR").txt.age"
 printf 'Homelab encrypted backup restore test\n' > "$BACKUP_TEST_DIR/original.txt"
 age -p -o "$BACKUP_TEST_DIR/test.txt.age" "$BACKUP_TEST_DIR/original.txt"
