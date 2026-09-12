@@ -70,3 +70,13 @@ variable "attach_deny_insecure_transport_policy" {
   default     = true
   description = "Deny all S3 actions when aws:SecureTransport is false."
 }
+
+variable "object_lock_retention_days" {
+  description = "Optional governance retention; null preserves existing buckets without Object Lock. Enabling Object Lock cannot be undone."
+  type        = number
+  default     = null
+  validation {
+    condition     = var.object_lock_retention_days == null ? true : (var.object_lock_retention_days >= 1 && var.object_lock_retention_days == floor(var.object_lock_retention_days))
+    error_message = "Retention must be null or a positive whole number of days."
+  }
+}

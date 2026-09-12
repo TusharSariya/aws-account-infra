@@ -55,6 +55,23 @@
         "apps/lambda/python/3.14/court-booker/",
         "config/environments/aws/staging/court-booker-api.tfvars"
       ]
+    },
+    {
+      "id": "aws-staging-homelab-recovery",
+      "cloud": "aws",
+      "environment": "staging",
+      "path": "live/aws/staging/workloads/homelab-recovery",
+      "var_file": "config/environments/aws/staging/homelab-recovery.tfvars",
+      "region": "us-east-1",
+      "dependencies": [
+        "aws-staging-account"
+      ],
+      "ci": false,
+      "watch": [
+        "live/aws/staging/workloads/homelab-recovery/",
+        "modules/aws/encrypted_s3_bucket/",
+        "config/environments/aws/staging/homelab-recovery.tfvars"
+      ]
     }
   ]
 }
