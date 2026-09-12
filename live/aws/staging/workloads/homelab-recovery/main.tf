@@ -31,8 +31,8 @@ module "recovery" {
   tags = merge(var.default_tags, { component = "homelab-recovery" })
 }
 
-# These policies are deliberately not attached to identities yet. Choose and
-# verify certificate-scoped uploader and independent recovery identities first.
+# The upload policy is attached to the certificate-scoped role in identity.tf.
+# The restore policy remains available for a separate human recovery identity.
 resource "aws_iam_policy" "upload" {
   name = "homelab-recovery-upload"
   policy = jsonencode({
