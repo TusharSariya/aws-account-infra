@@ -3,7 +3,8 @@
 Dedicated OpenTofu deployment `aws-staging-homelab-recovery`, account
 992382747916, us-east-1. Uses the existing encrypted S3 module and independent
 state key `stacks/homelab-recovery/terraform.tfstate` in the existing AWS backend.
-AWS plan/apply CI is disabled; deployment remains manual. The provider lockfile
+Pull requests plan this deployment in CI. After reviewing the plan, the `apply`
+label triggers the existing OIDC-authenticated OpenTofu apply workflow. The provider lockfile
 pins the resolved AWS provider. No secrets belong in tfvars or Terraform outputs.
 
 The proposed bucket is `homelab-recovery-992382747916-us-east-1`:
@@ -44,7 +45,7 @@ From the repo root:
 ./scripts/infra.sh aws-staging-homelab-recovery plan
 ```
 
-Review before apply, especially Object Lock's permanence and KMS recovery.
+Review the CI plan before adding the `apply` label, especially Object Lock's permanence and KMS recovery.
 Creating the bucket alone does not complete disaster recovery. Pending work:
 live identity enrollment and isolation checks; independently recoverable AWS login;
 client-side encryption and independent key custody; encrypted upload/download
