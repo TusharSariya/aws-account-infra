@@ -1,0 +1,30 @@
+name: homelab-recovery-tests
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/homelab-recovery-tests.yml'
+      - 'live/aws/staging/workloads/homelab-recovery/**'
+      - 'modules/aws/encrypted_s3_bucket/**'
+      - 'config/environments/aws/staging/homelab-recovery/**'
+      - 'scripts/tests/homelab-backup-certificates.sh'
+
+permissions:
+  contents: read
+
+jobs:
+  identity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: 1.11.5
+      - name: Validate and test identity with mock AWS provider
+        working-directory: live/aws/staging/workloads/homelab-recovery
+        run: |
+          tofu init -backend=false -lockfile=readonly -input=false
+          tofu validate
+          tofu test
+      - name: Exercise disposable certificate chain
+        run: bash scripts/tests/homelab-backup-certificates.sh
