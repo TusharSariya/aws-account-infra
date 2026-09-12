@@ -1,6 +1,7 @@
-# This CA is independent of the existing ECR CA. Only its PUBLIC certificate
-# enters state. Required input prevents omission from silently deleting identity.
+# Optional automated uploader. Manual backups use the independent AWS admin login.
+# Only the public CA certificate enters state when this identity is enabled.
 resource "aws_rolesanywhere_trust_anchor" "backup" {
+  count   = var.create_backup_identity ? 1 : 0
   name    = "homelab-backup"
   enabled = var.backup_identity_enabled
   source {
@@ -12,6 +13,7 @@ resource "aws_rolesanywhere_trust_anchor" "backup" {
 }
 
 resource "aws_iam_role" "upload" {
+  count                = var.create_backup_identity ? 1 : 0
   name                 = "homelab-recovery-upload"
   path                 = "/homelab/"
   max_session_duration = 3600
@@ -23,7 +25,7 @@ resource "aws_iam_role" "upload" {
       Principal = { Service = "rolesanywhere.amazonaws.com" }
       Action    = ["sts:AssumeRole", "sts:TagSession", "sts:SetSourceIdentity"]
       Condition = {
-        ArnEquals = { "aws:SourceArn" = aws_rolesanywhere_trust_anchor.backup.arn }
+        ArnEquals = { "aws:SourceArn" = aws_rolesanywhere_trust_anchor.backup[0].arn }
         StringEquals = {
           "aws:SourceAccount"               = var.aws_account_id
           "aws:PrincipalTag/x509Subject/CN" = var.backup_certificate_common_name
@@ -34,13 +36,15 @@ resource "aws_iam_role" "upload" {
 }
 
 resource "aws_iam_role_policy_attachment" "upload" {
-  role       = aws_iam_role.upload.name
+  count      = var.create_backup_identity ? 1 : 0
+  role       = aws_iam_role.upload[0].name
   policy_arn = aws_iam_policy.upload.arn
 }
 
 resource "aws_rolesanywhere_profile" "backup" {
+  count            = var.create_backup_identity ? 1 : 0
   name             = "homelab-backup-upload"
   enabled          = var.backup_identity_enabled
   duration_seconds = 3600
-  role_arns        = [aws_iam_role.upload.arn]
+  role_arns        = [aws_iam_role.upload[0].arn]
 }

@@ -24,21 +24,21 @@ run "upload_identity_is_scoped" {
   command = apply
   assert {
     condition = (
-      jsondecode(aws_iam_role.upload.assume_role_policy).Statement[0].Principal.Service == "rolesanywhere.amazonaws.com" &&
-      jsondecode(aws_iam_role.upload.assume_role_policy).Statement[0].Condition.ArnEquals["aws:SourceArn"] == aws_rolesanywhere_trust_anchor.backup.arn &&
-      jsondecode(aws_iam_role.upload.assume_role_policy).Statement[0].Condition.StringEquals["aws:SourceAccount"] == "992382747916" &&
-      jsondecode(aws_iam_role.upload.assume_role_policy).Statement[0].Condition.StringEquals["aws:PrincipalTag/x509Subject/CN"] == "homelab-backup-uploader-01"
+      jsondecode(aws_iam_role.upload[0].assume_role_policy).Statement[0].Principal.Service == "rolesanywhere.amazonaws.com" &&
+      jsondecode(aws_iam_role.upload[0].assume_role_policy).Statement[0].Condition.ArnEquals["aws:SourceArn"] == aws_rolesanywhere_trust_anchor.backup[0].arn &&
+      jsondecode(aws_iam_role.upload[0].assume_role_policy).Statement[0].Condition.StringEquals["aws:SourceAccount"] == "992382747916" &&
+      jsondecode(aws_iam_role.upload[0].assume_role_policy).Statement[0].Condition.StringEquals["aws:PrincipalTag/x509Subject/CN"] == "homelab-backup-uploader-01"
     )
     error_message = "Trust must restrict the service, account, anchor and exact certificate identity."
   }
   assert {
     condition = (
-      aws_iam_role.upload.permissions_boundary == aws_iam_policy.upload.arn &&
-      aws_iam_role_policy_attachment.upload.policy_arn == aws_iam_policy.upload.arn &&
-      aws_iam_role_policy_attachment.upload.role == aws_iam_role.upload.name &&
-      toset(aws_rolesanywhere_profile.backup.role_arns) == toset([aws_iam_role.upload.arn]) &&
-      aws_rolesanywhere_profile.backup.duration_seconds == 3600 &&
-      aws_iam_role.upload.max_session_duration == 3600
+      aws_iam_role.upload[0].permissions_boundary == aws_iam_policy.upload.arn &&
+      aws_iam_role_policy_attachment.upload[0].policy_arn == aws_iam_policy.upload.arn &&
+      aws_iam_role_policy_attachment.upload[0].role == aws_iam_role.upload[0].name &&
+      toset(aws_rolesanywhere_profile.backup[0].role_arns) == toset([aws_iam_role.upload[0].arn]) &&
+      aws_rolesanywhere_profile.backup[0].duration_seconds == 3600 &&
+      aws_iam_role.upload[0].max_session_duration == 3600
     )
     error_message = "Only the bounded upload role may be issued, for at most one hour."
   }
@@ -48,7 +48,7 @@ run "disable_new_sessions" {
   command = plan
   variables { backup_identity_enabled = false }
   assert {
-    condition     = !aws_rolesanywhere_trust_anchor.backup.enabled && !aws_rolesanywhere_profile.backup.enabled
+    condition     = !aws_rolesanywhere_trust_anchor.backup[0].enabled && !aws_rolesanywhere_profile.backup[0].enabled
     error_message = "The emergency switch must disable both anchor and profile."
   }
 }
@@ -57,7 +57,7 @@ run "rotate_identity" {
   command = plan
   variables { backup_certificate_common_name = "homelab-backup-uploader-02" }
   assert {
-    condition     = jsondecode(aws_iam_role.upload.assume_role_policy).Statement[0].Condition.StringEquals["aws:PrincipalTag/x509Subject/CN"] == "homelab-backup-uploader-02"
+    condition     = jsondecode(aws_iam_role.upload[0].assume_role_policy).Statement[0].Condition.StringEquals["aws:PrincipalTag/x509Subject/CN"] == "homelab-backup-uploader-02"
     error_message = "Rotation must replace the permitted CN, not retain the old identity."
   }
 }
@@ -72,4 +72,20 @@ run "reject_wildcard_identity" {
   command = plan
   variables { backup_certificate_common_name = "*" }
   expect_failures = [var.backup_certificate_common_name]
+}
+
+run "manual_backups_need_no_ca" {
+  command = plan
+  variables {
+    create_backup_identity    = false
+    backup_ca_certificate_pem = ""
+  }
+  assert {
+    condition     = length(aws_rolesanywhere_trust_anchor.backup) == 0 && length(aws_iam_role.upload) == 0 && length(aws_rolesanywhere_profile.backup) == 0 && length(aws_iam_role_policy_attachment.upload) == 0
+    error_message = "Manual backup mode must create no certificate identity resources."
+  }
+  assert {
+    condition     = output.backup_trust_anchor_arn == null && output.backup_profile_arn == null && output.backup_upload_role_arn == null
+    error_message = "Manual backup mode must expose null identity coordinates."
+  }
 }

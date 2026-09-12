@@ -6,3 +6,6 @@ default_tags               = { managed_by = "opentofu", repo = "aws-account-infr
 
 # Increment when replacing a compromised/lost uploader identity.
 backup_certificate_common_name = "homelab-backup-uploader-01"
+
+# Start with manual encrypted uploads using the existing AWS administrator login.
+create_backup_identity = false
