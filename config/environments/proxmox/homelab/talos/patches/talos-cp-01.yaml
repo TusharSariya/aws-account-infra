@@ -1,0 +1,26 @@
+machine:
+  nodeLabels:
+    workload.security/trusted: "true"
+cluster:
+  allowSchedulingOnControlPlanes: false
+---
+apiVersion: v1alpha1
+kind: HostnameConfig
+auto: "off"
+hostname: talos-cp-01
+---
+apiVersion: v1alpha1
+kind: LinkAliasConfig
+name: homelab
+selector:
+  match: mac(link.permanent_addr) == "02:42:00:00:01:00"
+---
+apiVersion: v1alpha1
+kind: DHCPv4Config
+name: homelab
+clientIdentifier: mac
+---
+apiVersion: v1alpha1
+kind: Layer2VIPConfig
+name: 10.42.0.224
+link: homelab

@@ -12,9 +12,8 @@ Recommended baseline:
   Proxmox VMs.
 - Kubernetes is pinned initially to v1.36.3.
 - The existing Ubuntu 26.04 desktop remains a conventional GPU worker.
-- Mixed or untrusted workloads run on a separate Talos VM through gVisor.
-- A separate Debian NAS VM serves general storage and brokered Kubernetes
-  workspaces; the NAS is not part of the Kubernetes cluster.
+- Trusted services and sandbox workloads share one large Talos worker; sandbox pods require gVisor.
+- Persistent data uses a separate worker-local virtual disk with independent backups. No NAS VM is deployed.
 - Backups go to a dedicated encrypted AWS S3 bucket.
 - No USB installer is needed. Upload the Talos ISO to Proxmox and boot the VMs
   from it.
@@ -58,7 +57,7 @@ isolation and recovery 15%, ecosystem 15%, and migration effort 10%.
 
 | Distribution | Score | Finding |
 |---|---:|---|
-| Talos Linux | 8.9/10 | Best clean-slate Kubernetes appliance and best fit for isolated trusted and sandbox VMs |
+| Talos Linux | 8.9/10 | Best clean-slate Kubernetes appliance and fit for the control plane and shared worker |
 | Ubuntu Server 26.04 LTS | 8.2/10 | Best conventional Linux option and the selected GPU-worker OS |
 | Flatcar Container Linux | 7.6/10 | Strong immutable design, but kubeadm, extensions, and diagnostics require more assembly than Talos |
 | Debian 13 | 7.5/10 | Stable and lean, but offers little practical advantage over Ubuntu for this cluster |
@@ -97,50 +96,27 @@ Before creating the cluster:
   and individual drive health using an appropriate MegaRAID or StorCLI
   utility.
 - Enable VT-x, VT-d/IOMMU, ECC reporting, and hardware virtualization.
-- Disable Hyper-Threading/SMT because mixed or untrusted workloads will run on
-  an Ivy Bridge host with SMT-sensitive speculative-execution exposure.
+- Retain SMT. CPU affinity and NUMA tuning are deferred; no exclusive cores or physical workload isolation are claimed.
 - Keep the existing `vmbr0` 1 GbE network for the first deployment.
 - Do not enable virtual-disk discard.
-- Reserve a fixed Kubernetes API address outside `10.0.0.231-253`, which
+- Reserve a fixed Kubernetes API address outside `10.42.0.231-253`, which
   remains the MetalLB pool.
-- Protect Proxmox management access with the trusted LAN and Tailscale only.
+- Protect Proxmox management access with the trusted LAN and host-level Tailscale. The operator reports Tailscale installed on pve; verify enrollment, service persistence and access from outside home. Plan scoped subnet routing through pve for Talos administration, with route approval and firewall tests. Retain local fallback and independent re-enrollment instructions; the laptop remains the required internet gateway. See tasks 2.9-2.11 in the provisioning change.
 
 ### VM allocation
 
-| VM | Purpose | vCPU | Memory | Disk | Placement |
-|---|---|---:|---:|---:|---|
-| `talos-cp-01` | Control plane and etcd | 2 | 4 GiB | 100 GiB | Trusted only, no application workloads |
-| `talos-worker-01` | Trusted CPU workloads | 8 | 64 GiB | 200 GiB | Trusted workloads and system add-ons |
-| `talos-sandbox-01` | Mixed or untrusted workloads | 10 | 80 GiB | 200 GiB | gVisor-only application namespaces |
-| `agent-nas-01` | General NAS and Kubernetes workspace storage | 2 | 8 GiB | 32 GiB OS plus 1 TiB data | Outside Kubernetes; trusted infrastructure |
+Operator-approved two-VM revision, 2026-09-12:
 
-This assigns 22 vCPUs and 156 GiB of the server's 24 physical cores and 188 GiB
-usable RAM. Memory remains fixed, leaving 32 GiB unassigned for Proxmox,
-filesystem cache, and recovery work. Configure the NAS with two visible vCPUs
-but an aggregate CPU limit equivalent to one physical core and a lower CPU
-weight than the control plane. With all guests CPU-bound, that policy leaves
-approximately three cores of host scheduling capacity.
+| VM | Purpose | vCPU | Memory | Disk |
+|---|---|---:|---:|---|
+| `talos-cp-01` | Control plane and etcd; no applications | 2 | 4 GiB | 100 GiB OS |
+| `talos-worker-01` | Trusted services and gVisor sandbox workloads | 38 | 172 GiB | 100 GiB OS + 1,200 GiB data |
 
-The vCPU counts are configurable Proxmox scheduling limits rather than permanent
-hardware partitions. Resize them during a planned VM shutdown as measurements
-change. Keep memory ballooning disabled so kubelet sees stable capacity. The
-control plane starts at Talos's documented minimum core count with its
-recommended 4 GiB memory allocation. This is intentionally below the four-core
-production recommendation for a small cluster. One core is below the documented
-minimum. Increase control-plane resources if API, etcd, CPU, or memory metrics
-demonstrate pressure. See the [Talos system
-requirements](https://docs.siderolabs.com/talos/v1.13/getting-started/system-requirements).
+This exposes 40 vCPUs and 176 GiB RAM, leaving approximately 12 GiB of the observed 188 GiB for host processes, QEMU overhead and cache. This reserve is a starting budget to measure under load. Serial model jobs still share worker memory with Kubernetes and Celery services. vCPUs are scheduling capacity, not dedicated physical cores.
 
-The virtual disks total approximately 1,556 GiB of the last-observed 1.75 TiB
-thin pool and leave about 236 GiB unallocated. Reconfirm physical and thin-pool
-capacity before creating the NAS data disk.
+The 1,400 GiB of primary disks leaves approximately 395.992 GiB in the observed 1,795.992-GiB thin pool before two EFI volumes. Reconfirm capacity before allocation. The control plane and worker install onto /dev/sda; phase 6 provisions the separate worker /dev/sdb as a Talos user volume mounted at /var/mnt/local-path-provisioner. Data needs independent application-consistent backups.
 
-After disabling SMT, keep the control-plane and trusted-worker VM CPUs within
-one NUMA locality where practical and the sandbox worker within the other. Do
-not exclusively pin every physical core: Proxmox and the NAS need scheduling
-headroom for I/O. Derive exact CPU affinity and memory locality from `lscpu -e`
-after the BIOS change, then validate them under concurrent compute and storage
-load.
+The 172-GiB worker spans NUMA memory. CPU affinity and virtual NUMA tuning remain deferred. The former dedicated sandbox NUMA and physical-core isolation policy is superseded by shared-worker operation.
 
 All Talos VMs use:
 
@@ -154,8 +130,7 @@ All Talos VMs use:
 - Memory hotplug disabled.
 - Discard disabled.
 
-Use the VM startup order: control plane, NAS, trusted worker, then sandbox
-worker.
+Use the VM startup order: control plane, then shared worker.
 
 Multiple control-plane VMs on this one physical server would create false high
 availability. Use one control plane until another independent physical machine
@@ -185,33 +160,19 @@ Talos machine configuration will:
 - Use a stable API IP and certificate SAN.
 - Pin installer and system-extension image digests.
 - Install the QEMU guest-agent extension.
-- Install the gVisor extension only on `talos-sandbox-01`.
+- Install the gVisor extension only on `talos-worker-01`.
 - Create a user volume mounted at `/var/mnt/local-path-provisioner`.
 - Keep KubeSpan disabled because an external Ubuntu worker will participate.
 
-### Trusted and untrusted scheduling
+### Trusted and sandbox workloads on a shared worker
 
-Create explicit scheduling boundaries:
+- Keep application scheduling disabled on the control plane.
+- Label the worker `workload.security/shared=true`; remove the former sandbox-only node taint and trusted-only worker selector.
+- Trusted services use the normal runtime; sandbox namespaces require the gVisor RuntimeClass using `runsc` and shared-worker placement.
+- Enforce restricted Pod Security Admission and policies denying privileged containers, host networking, host PID/IPC, unsafe capabilities and arbitrary host paths in sandbox namespaces.
+- Use default-deny Cilium network policies with explicit allowances and resource quotas/limits.
 
-- Control plane taint: `node-role.kubernetes.io/control-plane:NoSchedule`.
-- Sandbox label: `workload.security/sandbox=true`.
-- Sandbox taint: `workload.security/sandbox=true:NoSchedule`.
-- Trusted-worker label: `workload.security/trusted=true`.
-- gVisor `RuntimeClass` using the Talos `runsc` runtime.
-- Dedicated sandbox namespaces with Pod Security Admission `restricted`.
-- Kyverno policy requiring the gVisor RuntimeClass and sandbox-node selector in
-  sandbox namespaces.
-- Deny privileged containers, host networking, host PID/IPC, unsafe
-  capabilities, and arbitrary host paths in sandbox namespaces.
-- Default-deny Cilium ingress and egress policies, followed by explicit
-  workload-specific allowances.
-- Resource quotas and limits for every sandbox namespace.
-
-gVisor reduces kernel attack surface but does not protect against CPU
-side-channel attacks, which is why SMT is disabled and the workloads are
-separated into their own VM. See the [gVisor security
-model](https://gvisor.dev/docs/architecture_guide/security/) and [Kubernetes
-RuntimeClass](https://kubernetes.io/docs/concepts/containers/runtime-class/).
+This replaces the separate sandbox VM and NAS architecture. gVisor remains useful but does not provide the old separate-VM or physical-core boundary. Namespace policies and backups must be tested before accepting workloads.
 
 ## Repository and interface changes
 
@@ -309,17 +270,18 @@ workloads move from the Ubuntu worker to Talos.
 
 ### 3. Proxmox preparation
 
-- Disable SMT and validate 24 visible physical CPUs.
-- Create the three VMs.
+- Retain SMT and validate 24 physical cores, 48 logical CPUs, two threads per
+  core, two NUMA nodes, and zero EDAC errors.
+- Create the two VMs.
 - Upload the Talos ISO to Proxmox and boot from it.
-- Apply CPU, memory, disk, NUMA, and startup settings.
+- Apply approved CPU, memory, disk and startup settings; NUMA tuning is deferred.
 
 ### 4. Parallel Talos bootstrap
 
 - Generate fresh Talos PKI and machine configurations.
 - Bootstrap `talos-cp-01`.
 - Install Cilium and verify core DNS and networking.
-- Add the trusted worker, followed by the sandbox worker.
+- Add the shared worker with QEMU Guest Agent and gVisor.
 - Install MetalLB, cert-manager, Istio, Kyverno, storage provisioner,
   monitoring, and backup components.
 
@@ -353,12 +315,14 @@ workloads move from the Ubuntu worker to Talos.
 
 The rebuild is complete only when:
 
-- Proxmox reports 24 physical CPUs with SMT disabled and no ECC errors.
+- Proxmox reports 24 physical cores, 48 logical CPUs with SMT enabled, two NUMA
+  nodes, and no ECC errors.
+- The two-VM capacity budget leaves host headroom; measured pressure remains acceptable. CPU/NUMA affinity is not an acceptance gate.
 - RAID monitoring can identify every physical disk and alert on degradation.
-- All three Talos VMs survive orderly reboot and return Ready automatically.
+- Both Talos VMs survive orderly reboot and return Ready automatically.
 - Loss and recreation of a worker VM does not require manual cluster repair.
 - The control-plane VM runs no ordinary workloads.
-- A normal pod cannot schedule onto the sandbox node.
+- Trusted services and sandbox pods can coexist on the shared worker with enforced runtime and resource policies.
 - A sandbox pod cannot run without gVisor.
 - Privileged, host-network, host-PID, and unauthorized hostPath pods are
   rejected in sandbox namespaces.

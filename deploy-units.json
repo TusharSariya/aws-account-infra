@@ -72,6 +72,19 @@
         "modules/aws/encrypted_s3_bucket/",
         "config/environments/aws/staging/homelab-recovery.tfvars"
       ]
+    },
+    {
+      "id": "proxmox-homelab",
+      "cloud": "proxmox",
+      "environment": "homelab",
+      "path": "live/proxmox/homelab",
+      "var_file": "config/environments/proxmox/homelab/vms.tfvars",
+      "dependencies": [],
+      "ci": false,
+      "watch": [
+        "live/proxmox/homelab/",
+        "config/environments/proxmox/homelab/"
+      ]
     }
   ]
 }

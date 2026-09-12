@@ -1,5 +1,7 @@
 # Authorized Agent NAS with Versioned S3 Recovery
 
+> Deferred as of 2026-09-12: the active Proxmox build now has two Talos VMs and worker-local storage. This document preserves the earlier NAS proposal for possible future use; it is not an implementation requirement. See [the current plan](talos-kubernetes-rebuild.md).
+
 ## Status
 
 Proposed design. This document does not authorize deployment or live infrastructure changes.
@@ -32,13 +34,13 @@ Revise the Talos VM allocation as follows:
 | VM | vCPU | RAM | Disks |
 |---|---:|---:|---|
 | `talos-cp-01` | 2 | 4 GiB | 100 GiB |
-| `talos-worker-01` | 8 | 64 GiB | 200 GiB |
-| `talos-sandbox-01` | 10 | 80 GiB | 200 GiB |
+| `talos-worker-01` | 16 | 64 GiB | 200 GiB |
+| `talos-sandbox-01` | 20 | 80 GiB | 200 GiB |
 | `agent-nas-01` | 2 | 8 GiB | 32 GiB OS plus 1 TiB data |
 
-This assigns 22 vCPUs and 156 GiB of the server's last-observed 24 physical cores and 188 GiB usable memory. Proxmox retains 32 GiB of unassigned memory. The NAS receives two visible vCPUs so file serving and maintenance can run concurrently, but its aggregate CPU limit should initially be set to the equivalent of one physical core with a lower CPU weight than the control plane. Under simultaneous guest saturation this leaves approximately three cores of CPU capacity for Proxmox and host I/O work.
+This exposes 40 guest vCPUs and 156 GiB of the server's last-observed 24 physical cores, 48 SMT threads, and 188 GiB usable memory. Guest affinity leaves eight logical CPUs representing four complete physical cores unassigned, split across the two NUMA nodes, while Proxmox retains 32 GiB of unassigned memory. The NAS receives two visible vCPUs so file serving and maintenance can run concurrently, but its aggregate CPU quota should initially be one host logical CPU with a lower CPU weight than the control plane. SMT siblings do not provide the throughput of independent physical cores.
 
-The vCPU counts are configurable scheduling limits, not permanent hardware partitions. Except where explicit CPU affinity is required for the sandbox trust boundary, Proxmox may schedule guest vCPUs across eligible physical cores. VM memory remains fixed and memory ballooning stays disabled so Kubernetes observes stable node capacity. Resize VMs during a planned shutdown after reviewing utilization and NUMA placement.
+The vCPU counts are configurable scheduling limits, not permanent hardware partitions. Assign every guest complete physical-core sibling pairs, place the control plane, trusted worker, and NAS within one NUMA locality, and place the sandbox worker within the other without sharing a physical core across the sandbox and trusted boundary. Exact affinity follows the observed `lscpu -e` sibling map. VM memory remains fixed and memory ballooning stays disabled so Kubernetes observes stable node capacity. Resize VMs during a planned shutdown after reviewing utilization and NUMA placement.
 
 The two-core, 4 GiB control plane uses Talos's documented minimum core count and recommended memory allocation. It is intentionally below the four-core production recommendation for this small cluster. Increase it if API-server latency, etcd latency, CPU saturation, or memory pressure indicates a need. One control-plane core is below the documented minimum. See [Talos system requirements](https://docs.siderolabs.com/talos/v1.13/getting-started/system-requirements).
 
