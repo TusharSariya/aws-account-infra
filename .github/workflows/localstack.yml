@@ -1,4 +1,4 @@
-name: localstack
+name: court-booker-localstack
 
 on:
   pull_request:
@@ -8,6 +8,7 @@ permissions:
 
 jobs:
   smoke:
+    name: court-booker-localstack
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
