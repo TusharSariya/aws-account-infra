@@ -1,0 +1,108 @@
+name: Guarded Talos deployment
+description: Visible OpenTofu stages with private identity and diagnostic handling
+inputs:
+  mode:
+    description: plan or apply
+    required: true
+  secrets-b64:
+    description: Original cluster identity from the prod environment
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Allocate private deployment workspace
+      id: private
+      shell: bash
+      env:
+        MODE: ${{ inputs.mode }}
+      run: |
+        [[ "$MODE" == plan || "$MODE" == apply ]]
+        umask 077
+        echo "path=$(mktemp -d "$RUNNER_TEMP/talos-ci.XXXXXXXX")" >> "$GITHUB_OUTPUT"
+    - name: Set up pinned Talos tools and verified charts
+      shell: bash
+      env:
+        MODE: ${{ inputs.mode }}
+      run: |
+        extra=()
+        if [[ "$MODE" == apply ]]; then extra+=(--acceptance); fi
+        uv run scripts/talos-ci.py setup "${extra[@]}"
+    - name: Prepare original private Talos identity
+      shell: bash
+      env:
+        TALOS_SECRETS_B64: ${{ inputs.secrets-b64 }}
+        PRIVATE: ${{ steps.private.outputs.path }}
+      run: uv run scripts/talos-ci.py prepare --private "$PRIVATE"
+    - name: Verify live identity, dry-run configuration and disk safety
+      shell: bash
+      env:
+        PRIVATE: ${{ steps.private.outputs.path }}
+      run: uv run scripts/talos-ci.py preflight --private "$PRIVATE"
+    - name: Initialize Talos OpenTofu backend
+      shell: bash
+      env:
+        PRIVATE: ${{ steps.private.outputs.path }}
+      run: >-
+        uv run scripts/talos-ci.py exec --private "$PRIVATE" --
+        tofu -chdir=live/talos/homelab init -input=false -lockfile=readonly
+    - name: Validate Talos OpenTofu configuration
+      shell: bash
+      env:
+        PRIVATE: ${{ steps.private.outputs.path }}
+      run: >-
+        uv run scripts/talos-ci.py exec --private "$PRIVATE" --
+        tofu -chdir=live/talos/homelab validate
+    - name: Plan Talos changes privately
+      shell: bash
+      env:
+        PRIVATE: ${{ steps.private.outputs.path }}
+      run: >-
+        uv run scripts/talos-ci.py exec --private "$PRIVATE" --
+        tofu -chdir=live/talos/homelab plan -input=false -lock-timeout=60s
+        -var-file="$GITHUB_WORKSPACE/config/environments/talos/homelab/cluster.tfvars"
+        -out="$PRIVATE/tfplan"
+    - name: Reject unsafe plan actions and publish sanitized summary
+      shell: bash
+      env:
+        PRIVATE: ${{ steps.private.outputs.path }}
+      run: |
+        set -o pipefail
+        uv run scripts/talos-ci.py guard --private "$PRIVATE" | tee talos-plan.txt
+    - name: Apply the guarded Talos plan
+      if: inputs.mode == 'apply'
+      shell: bash
+      env:
+        PRIVATE: ${{ steps.private.outputs.path }}
+      run: >-
+        uv run scripts/talos-ci.py exec --private "$PRIVATE" --
+        tofu -chdir=live/talos/homelab apply -input=false -lock-timeout=60s "$PRIVATE/tfplan"
+    - name: Verify persisted state excludes credentials
+      if: inputs.mode == 'apply'
+      shell: bash
+      env:
+        PRIVATE: ${{ steps.private.outputs.path }}
+      run: uv run scripts/talos-ci.py state --private "$PRIVATE"
+    - name: Verify storage readiness and first-provision persistence
+      if: inputs.mode == 'apply'
+      shell: bash
+      env:
+        PRIVATE: ${{ steps.private.outputs.path }}
+      run: uv run scripts/talos-ci.py storage --private "$PRIVATE"
+    - name: Verify Cilium networking acceptance
+      if: inputs.mode == 'apply'
+      shell: bash
+      env:
+        PRIVATE: ${{ steps.private.outputs.path }}
+      run: uv run scripts/talos-ci.py network --private "$PRIVATE"
+    - name: Verify worker PVC acceptance
+      if: inputs.mode == 'apply'
+      shell: bash
+      env:
+        PRIVATE: ${{ steps.private.outputs.path }}
+      run: uv run scripts/talos-ci.py pvc --private "$PRIVATE"
+    - name: Remove private configurations, plans and credentials
+      if: always() && steps.private.outputs.path != ''
+      shell: bash
+      env:
+        PRIVATE: ${{ steps.private.outputs.path }}
+      run: rm -rf -- "$PRIVATE"

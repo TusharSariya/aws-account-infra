@@ -57,12 +57,6 @@ class PlanGuardTests(unittest.TestCase):
                           values=[ci.yaml.safe_dump(values)])
         self.plan['resource_changes'].append(cilium)
         self.assertEqual(ci.guard_plan(self.plan)[-1]['actions'], ['create'])
-        for field, value in [('kubeProxyReplacement', True), ('routingMode', 'native')]:
-            with self.subTest(field=field):
-                wrong = dict(values, **{field: value})
-                cilium['change']['after']['values'] = [ci.yaml.safe_dump(wrong)]
-                with self.assertRaisesRegex(ValueError, 'retain kube-proxy'):
-                    ci.guard_plan(self.plan)
         cilium['change']['actions'] = ['delete', 'create']
         with self.assertRaisesRegex(ValueError, 'destructive'):
             ci.guard_plan(self.plan)

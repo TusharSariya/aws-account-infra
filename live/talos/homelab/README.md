@@ -16,7 +16,11 @@ After reviewing the plan, add the existing `apply` label. CI applies before
 merge and the apply gate blocks merge on failure. Talos is ordered after the
 Proxmox root when both are selected. Talos changes do not require a local apply.
 
-scripts/talos-ci.py uses the hash-verified pinned talosctl only to generate and
+The shared `.github/actions/talos-deploy` action exposes setup, private identity
+preparation, live preflight, init, validate, plan, plan guard, apply, state
+inspection, storage readiness and networking/PVC acceptance as named steps.
+`scripts/talos-ci.py` is a stage adapter, not the workflow orchestrator. It uses
+the hash-verified pinned talosctl only to generate and
 validate YAML and inspect the existing cluster/dry-run changes. Actual machine
 configuration is applied by the Terraform provider. Only sanitized action
 summaries enter CI logs/PR comments; raw generated YAML, plans, diagnostics and
@@ -72,11 +76,12 @@ unchanged. No saved plan or state is committed or uploaded as a CI artifact.
 For a local preview only:
 
 ```bash
-AWS_PROFILE=admin uv run scripts/talos-ci.py plan \
-  --secrets-file "$HOME/.config/aws-account-infra/talos/homelab/talos-secrets.yaml"
+AWS_PROFILE=admin bash scripts/talos-plan-local.sh \
+  "$HOME/.config/aws-account-infra/talos/homelab/talos-secrets.yaml"
 ```
 
-The wrapper refuses local applies. Normal updates use GitHub CI. Plan summaries
+The private command adapter refuses local applies and checks that apply uses
+the exact saved plan approved by the structural guard. Normal updates use GitHub CI. Plan summaries
 show resource actions and bootstrap import, without configuration content.
 Review the public patch diff as well as the plan summary.
 
@@ -155,3 +160,28 @@ remain outstanding; no automatic destructive rollback is implemented.
 Sources: [Talos Cilium guide](https://docs.siderolabs.com/kubernetes-guides/cni/deploying-cilium),
 [Cilium Kubernetes compatibility](https://docs.cilium.io/en/v1.20/network/kubernetes/requirements/),
 [Helm provider release schema](https://github.com/hashicorp/terraform-provider-helm/blob/v3.3.0/docs/resources/release.md).
+
+## Task 8.2 migration boundary
+
+The native OpenTofu command and flags are visible in the shared action. The
+`exec` adapter injects ephemeral inputs in a filtered child environment and
+suppresses potentially secret-bearing provider diagnostics. No private values
+are written to GITHUB_ENV/GITHUB_OUTPUT or uploaded as artifacts. The action
+always removes its private workspace on completion/failure. A hard runner kill
+still relies on destruction of the ephemeral GitHub runner.
+
+`talos_tools.py` centralizes the existing Talos CLI and deployment chart/tool
+pins, reusing the installer for local configuration generation and recovery.
+Cilium's kube-proxy/VXLAN/IPAM contract is now a blocking OpenTofu postcondition;
+structural deletion/bootstrap/target guards and multi-document disk checks
+remain in the adapter. Native `yamldecode` is unsuitable for Talos multi-document
+YAML, so that safety check is retained.
+
+The apply job deploys selected AWS/Proxmox prerequisites before the Talos action
+and fails closed if the unit graph puts anything after Talos. Existing apply
+and auto-merge gates still cover all acceptance stages. Networking/PVC tests
+and first-provision storage reboot retain their prior semantics; moving them
+to independently selected jobs/explicit maintenance is task 8.3. Backup command
+consolidation remains 8.4. No cluster identity, backend key or resource address
+changes in this migration. Rollback to main revision 0bf06a7 restores the prior
+wrapper/workflows without resetting state or recreating infrastructure.

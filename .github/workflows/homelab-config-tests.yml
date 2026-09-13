@@ -7,7 +7,9 @@ on:
       - 'live/talos/**'
       - 'config/environments/talos/**'
       - 'scripts/talos-*'
-      - 'scripts/tests/test_talos_ci.py'
+      - 'scripts/talos_tools.py'
+      - '.github/actions/talos-deploy/**'
+      - 'scripts/tests/test_talos*.py'
       - 'config/environments/proxmox/**'
       - 'scripts/homelab-*'
       - 'scripts/proxmox-*'
@@ -44,7 +46,7 @@ jobs:
           tofu fmt -check -recursive live/talos/homelab
           tofu -chdir=live/talos/homelab init -backend=false -lockfile=readonly
           tofu -chdir=live/talos/homelab validate
-          uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p test_talos_ci.py
+          uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p "test_talos*.py"
       - name: Validate backup role and missing-heartbeat controls
         run: |
           tofu -chdir=live/aws/staging/workloads/homelab-recovery init -backend=false -lockfile=readonly
