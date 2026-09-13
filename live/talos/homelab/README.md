@@ -4,8 +4,8 @@ This root adopts the existing control plane separately from the Proxmox VM
 root. It pins siderolabs/talos 0.11.0 and OpenTofu 1.11.5 in CI, retaining Talos
 v1.13.9/Kubernetes v1.36.3 and the existing cluster secrets and public patches.
 It does not create VMs, generate new cluster secrets or bootstrap the live
-cluster again. Worker configuration is declared but disabled in cluster.tfvars
-until its separately reviewed installation change.
+cluster again. Worker configuration is enabled in cluster.tfvars to install and
+join the existing shared-worker VM using the same cluster identity.
 
 ## Review and deployment
 
@@ -35,8 +35,13 @@ After adoption the provider tracks desired-config changes, not out-of-band drift
 The authenticated dry-run is a preflight, not automatic drift reconciliation.
 OS/Kubernetes upgrades remain explicit later work; the new machine/cluster
 resources are prerelease and are not enabled here. No unattended reboot recovery
-is claimed. The initial Talos soft-reboot stall remains a follow-up before worker
-installation or unattended upgrades.
+is claimed. Monitor the initial worker installation and verify authenticated
+Talos access and Kubernetes node registration after its reboot. The earlier
+control-plane soft-reboot stall remains unresolved; a successful provider apply
+alone is not installation acceptance. If it recurs, inspect the Proxmox console
+and establish that installation and disk sync completed before considering an
+operator-directed VM reset. Do not reset the stateful control plane or blindly
+retry bootstrap. Unattended upgrades remain deferred.
 
 ## Secrets and state
 
