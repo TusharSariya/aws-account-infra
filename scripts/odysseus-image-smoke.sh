@@ -26,7 +26,7 @@ docker run -d --name odysseus-smoke --network "$network" --user 1000:1000 \
   -e ODYSSEUS_DATA_DIR=/workspace/data -e CHROMADB_HOST=chromadb \
   -e FASTEMBED_CACHE_PATH=/workspace/cache/fastembed "$image" >/dev/null
 ready=false
-for attempt in $(seq 1 90); do
+for _ in $(seq 1 90); do
   if curl --fail --silent http://127.0.0.1:17000/api/health >/dev/null; then ready=true; break; fi
   [[ $(docker inspect -f '{{.State.Running}}' odysseus-smoke) == true ]] || break
   sleep 2
