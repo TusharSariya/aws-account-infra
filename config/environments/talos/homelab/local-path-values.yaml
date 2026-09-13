@@ -1,0 +1,47 @@
+fullnameOverride: local-path-provisioner
+image:
+  tag: v0.0.37@sha256:e757967a5ec338f6a9b371c5a9688bedaa8c3578ea3dd4db329ea0084be0a86f
+helperImage:
+  tag: 1.37.0@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0
+storageClass:
+  create: false
+  provisionerName: rancher.io/local-path
+nodePathMap:
+  - node: DEFAULT_PATH_FOR_NON_LISTED_NODES
+    paths: []
+  - node: talos-worker-01
+    paths: [/var/mnt/local-path-provisioner]
+nodeSelector:
+  kubernetes.io/hostname: talos-worker-01
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65534
+  runAsGroup: 65534
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: [ALL]
+  seccompProfile:
+    type: RuntimeDefault
+resources:
+  requests: {cpu: 50m, memory: 64Mi}
+  limits: {cpu: 200m, memory: 128Mi}
+helperPod:
+  resources:
+    requests: {cpu: 10m, memory: 16Mi}
+    limits: {cpu: 100m, memory: 64Mi}
+configmap:
+  setup: |-
+    #!/bin/sh
+    set -eu
+    case "$VOL_DIR" in /var/mnt/local-path-provisioner/pvc-*) ;; *) exit 1 ;; esac
+    # Refuse fallback onto an OS-disk directory when the data mount is absent.
+    awk '$4 == "/" && $5 == "/var/mnt/local-path-provisioner" {for (i=7;i<=NF;i++) if ($i=="-" && $(i+1)=="xfs" && $(i+2)=="/dev/sdb1") ok=1} END {exit !ok}' /proc/self/mountinfo
+    mkdir -m 0777 -p "$VOL_DIR"
+  teardown: |-
+    #!/bin/sh
+    set -eu
+    case "$VOL_DIR" in /var/mnt/local-path-provisioner/pvc-*) ;; *) exit 1 ;; esac
+    awk '$4 == "/" && $5 == "/var/mnt/local-path-provisioner" {for (i=7;i<=NF;i++) if ($i=="-" && $(i+1)=="xfs" && $(i+2)=="/dev/sdb1") ok=1} END {exit !ok}' /proc/self/mountinfo
+    rm -rf -- "$VOL_DIR"

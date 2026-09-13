@@ -160,3 +160,17 @@ Only verified upload/readback publishes the success metric. A CloudWatch
 30-hour missing-heartbeat alarm uses the existing security-alert SNS route and
 runs independently of GitHub, the laptop and Kubernetes. This detects missed
 schedules as well as backup failures. No isolated etcd restore is implied.
+
+
+### Worker PVC provisioning and requested-capacity budgets
+
+Task 6.3 uses local-path-provisioner 0.0.37 through Helm/OpenTofu, with data paths
+restricted to the verified worker mount. Explicit Retain and Delete classes wait
+for a consumer and constrain placement to the worker. Initial namespace request
+budgets are 800 GiB for models, 100 GiB for services and 100 GiB for other durable
+data. ResourceQuota and PVC LimitRange enforce admission budgets, not hard write
+quotas: local-path does not enforce volume capacity. Released retained volumes
+and claims in other namespaces need separate accounting. Actual disk/thin-pool
+monitoring remains task 6.5. Reclaim policy is explicit and Retain does not replace
+application-consistent backups. See docs/plans/homelab-worker-storage.md for
+operator use, restore/rebinding boundaries and repeatable acceptance.

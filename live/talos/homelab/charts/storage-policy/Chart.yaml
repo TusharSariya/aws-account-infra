@@ -1,0 +1,5 @@
+apiVersion: v2
+name: homelab-storage-policy
+description: Worker storage classes and requested-capacity budgets
+type: application
+version: 0.1.0

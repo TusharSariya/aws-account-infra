@@ -67,6 +67,31 @@ class PlanGuardTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'destructive'):
             ci.guard_plan(self.plan)
 
+    def test_local_path_requires_worker_data_disk(self):
+        values = ci.yaml.safe_load((ci.INPUTS / 'local-path-values.yaml').read_text())
+        release = resource('helm_release.local_path', ['create'], name='local-path-provisioner',
+                           namespace='local-path-storage', version='0.0.37',
+                           chart='./.terraform/local-path-provisioner', values=[ci.yaml.safe_dump(values)])
+        self.plan['resource_changes'].append(release)
+        ci.guard_plan(self.plan)
+        values['nodePathMap'][0]['paths'] = ['/var/lib/local-path']
+        release['change']['after']['values'] = [ci.yaml.safe_dump(values)]
+        with self.assertRaisesRegex(ValueError, 'worker data mount'):
+            ci.guard_plan(self.plan)
+
+    def test_storage_release_deletion_or_retargeting_is_rejected(self):
+        policy = resource('helm_release.storage_policy', ['create'], name='homelab-storage-policy',
+                          namespace='kube-system', version='0.1.0', chart='./charts/storage-policy')
+        self.plan['resource_changes'].append(policy)
+        ci.guard_plan(self.plan)
+        policy['change']['actions'] = ['delete']
+        with self.assertRaises(ValueError):
+            ci.guard_plan(self.plan)
+        policy['change']['actions'] = ['update']
+        policy['change']['after']['namespace'] = 'default'
+        with self.assertRaises(ValueError):
+            ci.guard_plan(self.plan)
+
     def test_missing_bootstrap_record_is_rejected(self):
         with self.assertRaisesRegex(ValueError, 'Missing bootstrap'):
             ci.guard_plan({'resource_changes': [self.cp]})

@@ -1,0 +1,4 @@
+budgets:
+  homelab-models: 800Gi
+  homelab-services: 100Gi
+  homelab-data: 100Gi
