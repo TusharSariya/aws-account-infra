@@ -57,9 +57,9 @@ class GuardTests(unittest.TestCase):
                         apps.check_secrets(json.dumps({'value': value}).encode(), p)
 
     def test_private_https_bypasses_os_dns_without_disabling_tls(self):
-        with patch.object(apps, 'run', side_effect=[b'100.101.182.9\n', b'401']) as run:
+        with patch.object(apps, 'run', side_effect=[json.dumps({'Peer': {'peer': {'DNSName': 'pve.tail2f646b.ts.net.', 'TailscaleIPs': ['100.101.182.9']}}}).encode(), b'401']) as run:
             apps.tailnet_https('pve.tail2f646b.ts.net', '/api2/json/version', ['-w', '%{http_code}'])
-        self.assertEqual(run.call_args_list[0].args[0], ['tailscale', 'ip', '-4', 'pve.tail2f646b.ts.net'])
+        self.assertEqual(run.call_args_list[0].args[0], ['tailscale', 'status', '--json'])
         curl = run.call_args_list[1].args[0]
         self.assertIn('--resolve', curl)
         self.assertIn('pve.tail2f646b.ts.net:443:100.101.182.9', curl)
@@ -67,9 +67,20 @@ class GuardTests(unittest.TestCase):
         self.assertIn('https://pve.tail2f646b.ts.net/api2/json/version', curl)
 
     def test_private_resolution_rejects_public_or_multiple_addresses(self):
-        for value in [b'1.1.1.1', b'100.101.182.9\n100.101.182.10', b'']:
-            with patch.object(apps, 'run', return_value=value), self.assertRaises(apps.AppError):
+        for addresses in [['1.1.1.1'], ['100.101.182.9', '100.101.182.10']]:
+            status = {'Peer': {'peer': {'DNSName': 'pve.tail2f646b.ts.net.', 'TailscaleIPs': addresses}}}
+            with patch.object(apps, 'run', return_value=json.dumps(status).encode()), self.assertRaises(apps.AppError):
                 apps.tailnet_ip('pve.tail2f646b.ts.net')
+
+    def test_private_resolution_waits_for_new_peer_and_matches_exact_dns_name(self):
+        unrelated = {'Peer': {'other': {'DNSName': 'other.tail2f646b.ts.net.', 'TailscaleIPs': ['100.100.100.1']}}}
+        ready = {'Peer': {'new': {'DNSName': 'pihole-admin.tail2f646b.ts.net.', 'TailscaleIPs': ['100.81.38.51', 'fd7a:115c:a1e0::1']}}}
+        with patch.object(apps, 'run', side_effect=[json.dumps(unrelated).encode(), json.dumps(ready).encode()]), \
+             patch('time.sleep') as sleep:
+            self.assertEqual(apps.tailnet_ip('pihole-admin.tail2f646b.ts.net'), '100.81.38.51')
+            sleep.assert_called_once()
+        with patch.object(apps, 'run', return_value=b'{"Peer": {}}'), patch('time.sleep'), self.assertRaises(apps.AppError):
+            apps.tailnet_ip('pihole-admin.tail2f646b.ts.net')
 
     def test_clusterip_endpoint_checks_use_proxy_readiness_and_tailnet_map(self):
         def command(argv):

@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import time
 import sys
 import urllib.request
 
@@ -51,14 +52,19 @@ def credentials():
 def tailnet_ip(hostname):
     if hostname not in ('pve.tail2f646b.ts.net', 'pihole-admin.tail2f646b.ts.net', 'pihole-dns.tail2f646b.ts.net'):
         raise AppError('Unexpected private HTTPS hostname')
-    value = run(['tailscale', 'ip', '-4', hostname]).decode().strip()
-    try:
-        address = ipaddress.IPv4Address(value)
-    except ipaddress.AddressValueError:
-        raise AppError('Expected exactly one Tailscale IPv4 address') from None
-    if address not in ipaddress.IPv4Network('100.64.0.0/10'):
-        raise AppError('Private HTTPS endpoint must use a Tailscale address')
-    return str(address)
+    for attempt in range(12):
+        status = json.loads(run(['tailscale', 'status', '--json']))
+        peers = list((status.get('Peer') or {}).values()) + [status.get('Self') or {}]
+        matches = [peer for peer in peers if peer.get('DNSName', '').rstrip('.').lower() == hostname]
+        addresses = [ipaddress.ip_address(value) for peer in matches for value in peer.get('TailscaleIPs', [])]
+        ipv4 = [address for address in addresses if address.version == 4]
+        if ipv4:
+            if len(ipv4) != 1 or ipv4[0] not in ipaddress.IPv4Network('100.64.0.0/10'):
+                raise AppError('Expected exactly one private Tailscale IPv4 address for ' + hostname)
+            return str(ipv4[0])
+        if attempt < 11:
+            time.sleep(5)
+    raise AppError('Tailscale peer not visible after waiting: ' + hostname)
 
 
 def tailnet_https(hostname, path, options):
