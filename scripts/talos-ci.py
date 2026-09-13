@@ -16,6 +16,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import time
 import urllib.request
 import yaml
 
@@ -86,6 +87,60 @@ def download_verified(url, destination, expected):
     destination.write_bytes(data)
 
 
+DATA_ID = '/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi1'
+VOLUME = 'u-local-path-provisioner'
+MOUNT = '/var/mnt/local-path-provisioner'
+SELECTOR = ("!system_disk && disk.dev_path == '/dev/sdb' && disk.size == 1200u * GiB && "
+            "'/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi1' in disk.symlinks")
+
+
+def guard_storage_config(configs):
+    expected = {'apiVersion': 'v1alpha1', 'kind': 'UserVolumeConfig',
+                'name': 'local-path-provisioner', 'volumeType': 'partition',
+                'provisioning': {'diskSelector': {'match': SELECTOR},
+                                 'minSize': '1199GiB', 'grow': False},
+                'filesystem': {'type': 'xfs'}}
+    for name, config in configs.items():
+        docs = list(yaml.safe_load_all(config))
+        volumes = [d for d in docs if d.get('kind') == 'UserVolumeConfig']
+        if volumes != ([expected] if name == 'talos-worker-01' else []):
+            raise ValueError('User volume must target only the verified worker data disk')
+
+
+def guard_storage_disks(disks, volumes):
+    disks = {d['metadata']['id']: d['spec'] for d in disks}
+    if disks.get('sda', {}).get('size') != 100 * 1024**3:
+        raise ValueError('Worker OS disk identity/size mismatch')
+    data = disks.get('sdb', {})
+    if (data.get('size') != 1200 * 1024**3 or data.get('dev_path') != '/dev/sdb'
+            or data.get('readonly') is not False or data.get('cdrom') is not False
+            or DATA_ID not in data.get('symlinks', [])
+            or sum(DATA_ID in d.get('symlinks', []) for d in disks.values()) != 1):
+        raise ValueError('Worker data disk identity/size mismatch')
+    specs = [v['spec'] for v in volumes]
+    # Talos discovers an existing user volume by label. Reject misplaced duplicates too.
+    labeled = [v for v in specs if v.get('partition_label') == VOLUME]
+    data_volumes = [v for v in specs if v.get('dev_path') == '/dev/sdb'
+                    or v.get('parent_dev_path') == '/dev/sdb']
+    if len(data_volumes) == 1 and data_volumes[0].get('name') == '' and not labeled:
+        return 'blank'
+    partitions = [v for v in data_volumes if v.get('type') == 'partition']
+    if (len(data_volumes) != 2 or len(partitions) != 1 or len(labeled) != 1
+            or partitions[0] != labeled[0] or partitions[0].get('dev_path') != '/dev/sdb1'
+            or partitions[0].get('name') != 'xfs'
+            or partitions[0].get('size', 0) < 1199 * 1024**3):
+        raise ValueError('Data disk contains unexpected existing content; refusing provisioning')
+    return 'existing'
+
+
+def check_storage_mount(volumes, mounts):
+    volume = next((v['spec'] for v in volumes if v['metadata']['id'] == VOLUME), {})
+    mount = next((m['spec'] for m in mounts if m['metadata']['id'] == VOLUME), {})
+    return (volume.get('phase') == 'ready' and volume.get('location') == '/dev/sdb1'
+            and mount.get('source') == '/dev/sdb1' and mount.get('target') == MOUNT
+            and mount.get('filesystem') == 'xfs')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=['plan', 'apply'])
@@ -126,6 +181,7 @@ def main():
             docs = list(yaml.safe_load_all(config))
             if docs[0]['machine']['install']['disk'] != '/dev/sda':
                 raise ValueError('Unexpected install disk')
+        guard_storage_config(configs)
         client = yaml.safe_load((output / 'talosconfig').read_text())['contexts']['homelab']
         env['TF_VAR_client_configuration'] = json.dumps({
             'ca_certificate': client['ca'], 'client_certificate': client['crt'], 'client_key': client['key']})
@@ -147,7 +203,14 @@ def main():
         # Keep its output private; it can contain secrets.
         dry_run = run(tc + ['apply-config', '--dry-run', '--mode=no-reboot',
                             '--file', output / 'talos-cp-01.machineconfig.yaml'])
-        tofu = ['tofu', '-chdir=' + str(TF)]
+        worker_tc = [cli, '--talosconfig', output / 'talosconfig', '-n', '10.42.0.222']
+        def worker_resources(kind):
+            return list(yaml.safe_load_all(run(worker_tc + ['get', kind, '-o', 'yaml'])))
+        storage_before = guard_storage_disks(worker_resources('disks'), worker_resources('discoveredvolumes'))
+        print('PASS: worker OS/data disk separation; data disk is ' + storage_before)
+        run(worker_tc + ['apply-config', '--dry-run', '--mode=auto',
+                         '--file', output / 'talos-worker-01.machineconfig.yaml'])
+        tofu = ['tofu' , '-chdir=' + str(TF)]
         run(tofu + ['init', '-input=false', '-lockfile=readonly'])
         chart = TF / '.terraform/cilium-1.20.1.tgz'
         download_verified('https://helm.cilium.io/cilium-1.20.1.tgz', chart,
@@ -177,6 +240,27 @@ def main():
                          *kube_credentials, *(base64.b64decode(v).decode() for v in kube_credentials)]
             if any(value and (value in state or json.dumps(value)[1:-1] in state) for value in forbidden):
                 raise ValueError('Unexpected sensitive input persisted in state; inspect privately')
+            for attempt in range(60):
+                if check_storage_mount(worker_resources('volumestatus'), worker_resources('mountstatus')):
+                    break
+                time.sleep(5)
+            else:
+                raise ValueError('Worker data volume did not become mounted and ready')
+            if guard_storage_disks(worker_resources('disks'), worker_resources('discoveredvolumes')) != 'existing':
+                raise ValueError('Expected provisioned data volume')
+            if storage_before == 'blank':
+                def partition_identities():
+                    return {v['spec']['dev_path']: (v['spec'].get('uuid'), v['spec'].get('partition_uuid'))
+                            for v in worker_resources('discoveredvolumes')
+                            if v['spec'].get('parent_dev_path') in ('/dev/sda', '/dev/sdb')}
+                before_reboot = partition_identities()
+                print('Verifying first-provisioned storage across a worker firmware reboot', flush=True)
+                run(worker_tc + ['reboot', '--mode=powercycle', '--wait', '--timeout=8m'])
+                if (before_reboot != partition_identities()
+                        or not check_storage_mount(worker_resources('volumestatus'), worker_resources('mountstatus'))):
+                    raise ValueError('Worker storage identities/mount changed across reboot')
+                print('PASS: OS/data partition identities and data mount persist across worker reboot', flush=True)
+            print('PASS: worker XFS data volume mounted at ' + MOUNT, flush=True)
             run(tc + ['etcd', 'members'])
             print('PASS: Talos CI apply and state secret-exclusion check', flush=True)
             kubectl = private / 'kubectl'

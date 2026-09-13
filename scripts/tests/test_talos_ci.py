@@ -72,5 +72,56 @@ class PlanGuardTests(unittest.TestCase):
             ci.guard_plan({'resource_changes': [self.cp]})
 
 
+class StorageGuardTests(unittest.TestCase):
+    def setUp(self):
+        self.disks = [
+            {'metadata': {'id': 'sda'}, 'spec': {'size': 100 * 1024**3}},
+            {'metadata': {'id': 'sdb'}, 'spec': {'size': 1200 * 1024**3,
+             'dev_path': '/dev/sdb', 'readonly': False, 'cdrom': False, 'symlinks': [ci.DATA_ID]}}]
+        self.volumes = [{'spec': {'dev_path': '/dev/sdb', 'type': 'disk', 'name': ''}}]
+
+    def test_blank_verified_data_disk_is_allowed(self):
+        self.assertEqual(ci.guard_storage_disks(self.disks, self.volumes), 'blank')
+
+    def test_os_disk_wrong_size_or_device_identity_rejected(self):
+        for field, value in [('size', 100 * 1024**3), ('dev_path', '/dev/sda'),
+                             ('symlinks', []), ('readonly', True)]:
+            with self.subTest(field=field):
+                import copy
+                disks = copy.deepcopy(self.disks)
+                disks[1]['spec'][field] = value
+                with self.assertRaises(ValueError):
+                    ci.guard_storage_disks(disks, self.volumes)
+
+    def test_existing_unknown_filesystem_or_partition_rejected(self):
+        self.volumes[0]['spec']['name'] = 'ext4'
+        with self.assertRaisesRegex(ValueError, 'unexpected existing content'):
+            ci.guard_storage_disks(self.disks, self.volumes)
+
+    def test_existing_expected_partition_is_reused_but_wrong_label_location_rejected(self):
+        self.volumes[0]['spec']['name'] = 'gpt'
+        partition = {'spec': {'dev_path': '/dev/sdb1', 'parent_dev_path': '/dev/sdb',
+                             'type': 'partition', 'partition_label': ci.VOLUME,
+                             'name': 'xfs', 'size': 1199 * 1024**3}}
+        self.volumes.append(partition)
+        self.assertEqual(ci.guard_storage_disks(self.disks, self.volumes), 'existing')
+        partition['spec']['dev_path'] = '/dev/sda4'
+        with self.assertRaises(ValueError):
+            ci.guard_storage_disks(self.disks, self.volumes)
+
+    def test_checked_in_config_and_unsafe_selector(self):
+        config = (ci.ROOT / 'config/environments/proxmox/homelab/talos/patches/talos-worker-01.yaml').read_text()
+        ci.guard_storage_config({'talos-worker-01': config, 'talos-cp-01': 'machine: {}'})
+        with self.assertRaises(ValueError):
+            ci.guard_storage_config({'talos-worker-01': config.replace(ci.SELECTOR, '!system_disk')})
+
+    def test_mount_must_be_actual_data_filesystem(self):
+        volume = [{'metadata': {'id': ci.VOLUME}, 'spec': {'phase': 'ready', 'location': '/dev/sdb1'}}]
+        mount = [{'metadata': {'id': ci.VOLUME}, 'spec': {'source': '/dev/sdb1', 'target': ci.MOUNT, 'filesystem': 'xfs'}}]
+        self.assertTrue(ci.check_storage_mount(volume, mount))
+        mount[0]['spec']['source'] = '/dev/sda4'
+        self.assertFalse(ci.check_storage_mount(volume, mount))
+
+
 if __name__ == '__main__':
     unittest.main()
