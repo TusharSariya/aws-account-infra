@@ -994,6 +994,7 @@ values in this file.
 - CI status: An obsolete plan run remained in progress with an empty-step job and held the PR concurrency queue. Force-cancellation was requested for 34731347735; no live apply was cancelled. Adoption remains pending until the current plan and guarded apply pass.
 
 
+
 ### LOG-0072 - Talos CI adoption verified
 
 - Timestamp: 2026-09-13T01:58:18.418219+00:00
@@ -1014,3 +1015,12 @@ values in this file.
 - Runtime evidence: Authenticated talosctl get machinestatus reported worker stage running after normal installation reboot. kubectl get nodes reported both nodes with Talos v1.13.9 and Kubernetes v1.36.3. Worker capacity is 38 CPUs and 177122012 KiB RAM (about 168.92 GiB guest-visible from 172 GiB configured); no memory, disk or PID pressure. Shared label workload.security/shared=true is present. The only worker taint is node.kubernetes.io/not-ready:NoSchedule; no sandbox taint is present. get extensions verified gvisor 20260810.0, qemu-guest-agent 11.0.2 and schematic 8e8827b5b91420728f8415f3dc200fbf23b425ec07bf27cdc92a676367ee9edf. qm agent 102 ping succeeded. Both disks remain visible at their expected sizes.
 - Result/limitations: Task 5.2 complete. Both nodes are NotReady specifically because CNI is not initialized; Cilium installation and networking acceptance are task 5.4. The data disk has not been provisioned for workload storage. This worker reboot required no manual reset, but it does not establish that the earlier control-plane soft-reboot failure is resolved.
 - Recovery: Rebuild the same VM and pinned Talos configuration using the independent original cluster secrets and documented state recovery procedure. Never rerun bootstrap against this live cluster or disable worker_enabled as a rollback: prevent_destroy blocks resource deletion. Diagnose a failed installation before any operator-directed reset; no automatic resets are implemented. Earlier full-DR gaps remain open.
+
+### LOG-0074 - Prepare Cilium deployment and network acceptance through CI
+
+- Timestamp: 2026-09-13T02:37:27.846228+00:00
+- Operator/target/task: Codex following explicit operator instruction to implement Cilium; homelab Kubernetes API 10.42.0.224:6443; task 5.4.
+- Action: Added Helm provider 3.3.0 and Cilium 1.20.1 release to the existing Talos OpenTofu root/state. Chart archive and CI kubectl are SHA-256 verified. Public values select Kubernetes IPAM, VXLAN, kubeProxyReplacement=false, Talos-managed BPF/cgroup mounts, permitted capabilities and one operator replica. Existing authenticated Talos access fetches a temporary kubeconfig, without new credentials or roles. Added post-apply acceptance that creates and removes a restricted temporary namespace, testing DNS, direct pod and Service traffic within/across both nodes.
+- Verification: Local authenticated plan adds only helm_release.cilium; bootstrap and both machine configurations are no-op. Provider validation, seven plan/state guard tests, Helm render and workflow syntax passed. Rendered manifests contain no Secret resources and omit SYS_MODULE. Existing pod CIDRs are 10.244.0.0/24 and 10.244.1.0/24. Live installation and networking acceptance remain pending.
+- Risk/recovery: Cilium changes pod networking on both nodes; VM, host, Talos maintenance and Tailscale management configuration are unchanged. Existing private pre-adoption etcd snapshot and independent original cluster-secret archive remain recovery inputs; full DR is not claimed. Preserve failed-install evidence and correct through a reviewed CI plan. Automatic Helm uninstall is disabled; deletion/replacement is rejected. No task completion is recorded until live checks pass. Hubble is not enabled in this foundation step; sandbox policy enforcement remains task 5.5.
+
