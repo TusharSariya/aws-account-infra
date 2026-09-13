@@ -3,6 +3,10 @@ on:
   pull_request:
     paths:
       - 'live/proxmox/**'
+      - 'live/talos/**'
+      - 'config/environments/talos/**'
+      - 'scripts/talos-*'
+      - 'scripts/tests/test_talos_ci.py'
       - 'config/environments/proxmox/**'
       - 'scripts/homelab-*'
       - 'scripts/proxmox-*'
@@ -32,3 +36,10 @@ jobs:
           tofu -chdir=live/proxmox/homelab init -backend=false -lockfile=readonly
           tofu -chdir=live/proxmox/homelab validate
           tofu -chdir=live/proxmox/homelab test -var-file=../../../config/environments/proxmox/homelab/vms.tfvars
+      - uses: astral-sh/setup-uv@v6
+      - name: Validate Talos definitions and migration guards
+        run: |
+          tofu fmt -check -recursive live/talos/homelab
+          tofu -chdir=live/talos/homelab init -backend=false -lockfile=readonly
+          tofu -chdir=live/talos/homelab validate
+          uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p test_talos_ci.py

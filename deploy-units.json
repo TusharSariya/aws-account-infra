@@ -10,7 +10,11 @@
       "region": "us-east-1",
       "dependencies": [],
       "ci": true,
-      "watch": ["live/aws/staging/account/", "modules/aws/", "config/environments/aws/staging/account.tfvars"]
+      "watch": [
+        "live/aws/staging/account/",
+        "modules/aws/",
+        "config/environments/aws/staging/account.tfvars"
+      ]
     },
     {
       "id": "aws-staging-rag",
@@ -19,9 +23,15 @@
       "path": "live/aws/staging/workloads/rag",
       "var_file": "config/environments/aws/staging/rag.tfvars",
       "region": "us-east-1",
-      "dependencies": ["aws-staging-account"],
+      "dependencies": [
+        "aws-staging-account"
+      ],
       "ci": true,
-      "watch": ["live/aws/staging/workloads/rag/", "modules/aws/", "config/environments/aws/staging/rag.tfvars"]
+      "watch": [
+        "live/aws/staging/workloads/rag/",
+        "modules/aws/",
+        "config/environments/aws/staging/rag.tfvars"
+      ]
     },
     {
       "id": "aws-staging-court-booker",
@@ -30,7 +40,9 @@
       "path": "live/aws/staging/workloads/court-booker",
       "var_file": "config/environments/aws/staging/court-booker.tfvars",
       "region": "us-east-1",
-      "dependencies": ["aws-staging-account"],
+      "dependencies": [
+        "aws-staging-account"
+      ],
       "ci": true,
       "watch": [
         "live/aws/staging/workloads/court-booker/",
@@ -46,7 +58,10 @@
       "path": "live/aws/staging/workloads/lambda/python/court-booker",
       "var_file": "config/environments/aws/staging/court-booker-api.tfvars",
       "region": "us-east-1",
-      "dependencies": ["aws-staging-account", "aws-staging-court-booker"],
+      "dependencies": [
+        "aws-staging-account",
+        "aws-staging-court-booker"
+      ],
       "ci": true,
       "watch": [
         "live/aws/staging/workloads/lambda/python/court-booker/",
@@ -85,6 +100,24 @@
         "live/proxmox/homelab/",
         "config/environments/proxmox/homelab/",
         "scripts/proxmox-ci-check.py"
+      ]
+    },
+    {
+      "id": "talos-homelab",
+      "cloud": "talos",
+      "environment": "homelab",
+      "path": "live/talos/homelab",
+      "var_file": "config/environments/talos/homelab/cluster.tfvars",
+      "dependencies": [
+        "proxmox-homelab"
+      ],
+      "ci": true,
+      "watch": [
+        "live/talos/homelab/",
+        "config/environments/talos/homelab/",
+        "config/environments/proxmox/homelab/talos/",
+        "scripts/talos-ci.py",
+        "scripts/homelab-talos-config.py"
       ]
     }
   ]

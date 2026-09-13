@@ -1,5 +1,9 @@
 # Initial control-plane installation and bootstrap
 
+The control plane is now managed by the [Talos OpenTofu root](../../talos/homelab/README.md).
+Routine configuration changes use its GitHub CI path. The CLI sequence below
+records the initial installation and is not the current deployment procedure.
+
 Prerequisites: reviewed machine configuration and independently retained Talos
 secrets; running maintenance VM 100 with MAC 02:42:00:00:01:00 at 10.42.0.220;
 verified blank OS disk /dev/sda of 100 GiB; pinned Talos v1.13.9 CLI; accepted
