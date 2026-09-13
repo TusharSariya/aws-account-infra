@@ -1,3 +1,5 @@
 
 # Public SHA-256 identity fingerprint, not an API key; exact historical finding only.
 cf79de1b584c56a6e6ed96e23804f38e7ec04adf:config/environments/talos/homelab/identity.json:generic-api-key:2
+# Same public fingerprint after PR #54 squash merge.
+1ea90c2857b62376e09576d0e9ff8fe3ed600557:config/environments/talos/homelab/identity.json:generic-api-key:2
