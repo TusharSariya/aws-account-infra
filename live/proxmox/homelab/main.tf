@@ -85,8 +85,8 @@ resource "proxmox_virtual_environment_vm" "guest" {
     prevent_destroy = true
 
     precondition {
-      condition     = var.host_readiness_confirmed
-      error_message = "Creation is gated: finish networking, recovery prerequisites, state recovery setup first."
+      condition     = var.vm_creation_approved
+      error_message = "VM creation requires explicit approval after reviewing the live plan and outstanding readiness checks."
     }
     precondition {
       condition     = local.total_vcpus <= 40 && local.total_memory_gib <= 176 && local.total_guest_disks_gib <= 1400

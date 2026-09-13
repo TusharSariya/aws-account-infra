@@ -4,8 +4,8 @@ variable "node_name" {
   default     = "pve"
 }
 
-variable "host_readiness_confirmed" {
-  description = "Set only after task 2.5, recovery prerequisites, state recovery setup are complete."
+variable "vm_creation_approved" {
+  description = "Explicit approval for VM creation. Speculative preview may assume approval; it does not establish readiness."
   type        = bool
   default     = false
 }

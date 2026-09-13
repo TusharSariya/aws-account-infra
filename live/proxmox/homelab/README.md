@@ -1,6 +1,6 @@
 # Proxmox homelab VM definitions
 
-Implements OpenSpec task 3.1: declared VM hardware and identity, with locally tested plans. No VM creation or live API plan has been performed.
+Implements OpenSpec task 3.1: declared VM hardware and identity, with locally tested plans. A live authenticated speculative plan has passed; no VM has been created. See [access and state setup](ACCESS.md).
 
 The deploy unit is `proxmox-homelab`, with inputs in `config/environments/proxmox/homelab/vms.tfvars`. It is excluded from cloud CI. Existing AWS deploy units and state keys are unchanged.
 
@@ -36,15 +36,15 @@ The IP fields document external DHCP reservations; the provider does not configu
 
 ## Before live provisioning
 
-The default `host_readiness_confirmed = false` precondition deliberately blocks live provisioning. The offline positive test bypasses this flag only under its mock provider. Do not set it for a real plan until:
+The default `vm_creation_approved = false` precondition deliberately blocks unapproved provisioning. The preview-only helper can assume approval to show a speculative plan without applying. The offline positive test bypasses this flag only under its mock provider. Do not set it for a real plan until:
 
-- Network task 2.5 and recovery foundations 2.7/2.8 are satisfied.
+- Network and recovery input checks have been reviewed. The operator deferred the clean-machine restore test; this remains untested rather than completed.
 - CPU/NUMA tuning is deferred and is no longer a creation prerequisite. No dedicated core or locality guarantee is implemented.
 - Talos configuration and static checks in 3.3/3.4 are ready.
 - Proxmox API permissions, independently recoverable credentials, trusted HTTPS connectivity through the laptop network and a recoverable state backend are configured. Environment variables `PROXMOX_VE_ENDPOINT` and `PROXMOX_VE_API_TOKEN` are supported by the provider; do not put credentials into tracked tfvars. TLS verification remains enabled.
 - A current live storage/identity/ISO check and reviewed plan resolve all VM and disk targets.
 
-No remote backend has been configured yet. Without an explicit backend, OpenTofu defaults to local state; `init -backend=false` is for validation only, not a durable recovery design. Configure and verify independent encrypted state recovery before the first real apply. Do not reuse AWS account/workload state keys. Preserve the reviewed configuration revision, lockfile, artifacts and state outside the failed homelab.
+The S3 backend now uses `proxmox/homelab/terraform.tfstate` in the existing independent state bucket, with the existing DynamoDB lock table. Live initialization and a speculative plan passed. The first apply will persist VM state; a state restore rehearsal remains untested. `init -backend=false` remains for offline validation only. See ACCESS.md for credentials and recovery.
 
 ## Sources
 

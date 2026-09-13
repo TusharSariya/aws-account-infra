@@ -24,7 +24,7 @@
 
 ## 3. Reproducible Guest and Talos Configuration
 
-Prerequisite: close the recovery-foundation gaps in 2.7 and 2.8 before guest creation. Task IDs remain stable; completed task evidence is preserved.
+Prerequisite: review the recovery-foundation gaps in 2.7 and 2.8 before guest creation. The operator deferred the clean-machine restore test; retain it as untested and do not mark the recovery tasks complete. Other network/state prerequisites remain. Task IDs remain stable; completed task evidence is preserved.
 
 - [x] 3.1 Add repository-managed desired-state definitions for the two VMs using 2/38 vCPUs, 4/172 GiB RAM, 100-GiB OS disks and a 1,200-GiB worker data disk, preserving OVMF, Q35, VirtIO SCSI, fixed memory, bridge and no hotplug/discard; verify the rendered plan matches the design table
 - [x] 3.3 Generate Talos machine configuration from non-secret patches with Talos v1.13.9, Kubernetes v1.36.3, CNI `none`, the stable API endpoint, correct install disks, and installer references matching each ISO schematic; verify generated secret-bearing files are excluded from Git

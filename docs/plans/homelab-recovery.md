@@ -8,7 +8,7 @@ rehearsal. No Talos VM has been created. OpenSpec tasks 2.7 and 2.8 remain open.
 
 | Input | Independent location | Verification |
 | --- | --- | --- |
-| Public configuration, scripts, implementation log | This repository, at the reviewed merge revision of this PR | Review and merge pending; record the resulting commit with the backup receipt |
+| Public configuration, scripts, implementation log | This repository, at the reviewed merge revision of this PR | PR #48 merged as 221f143d6d550e27875dbcdc5320e2f87ee14288; preserve the revision with the receipt |
 | Original Talos secrets, two generated machine configs and talosconfig | Encrypted S3 bootstrap archive identified by the saved receipt | Same-Mac download, decryption and byte comparison passed |
 | Sanitized Proxmox empty-host baseline | Inside the same encrypted archive | Archive inspection and checksum verified; not a full Proxmox backup |
 | Encryption passphrase | Operator's independently accessible password manager | Independent account recovery and fresh-environment decryption still need verification |
@@ -105,9 +105,9 @@ helpers as separate `bash script.sh` processes, not with `source`.
    expiry recovery and local fallback are still task 2.11.
 5. **Guests and cluster:** validate the
    [Proxmox definitions](../../live/proxmox/homelab/README.md) and restored Talos
-   identity. Before live provisioning, configure independent state recovery,
-   trusted API access and credentials, finish readiness checks, and review the
-   actual plan. The default readiness flag remains false and cloud CI does not
+   identity. The [API and state setup](../../live/proxmox/homelab/ACCESS.md) now supplies
+   a scoped identity and separate S3 backend key. Finish remaining readiness
+   checks and review a fresh plan before live provisioning. The default readiness flag remains false and cloud CI does not
    deploy Proxmox. Rebuild the control plane, then shared worker, then CNI and
    sandbox controls using the OpenSpec sequence.
 6. **Persistent state:** once deployed, recover etcd and application-consistent
@@ -116,10 +116,11 @@ helpers as separate `bash script.sh` processes, not with `source`.
 
 ## Acceptance still required
 
-- Review and merge the public inputs, then retain the merge commit independently.
+- Public inputs merged in PR #48; retain its merge commit independently.
 - Finish clean-machine laptop bootstrap and repeatable reconciliation, including
   SSH setup without pre-existing aliases (task 2.7).
-- Prove independent administrator and passphrase recovery, preserve installer
+- The operator deferred the clean-machine restore test. Independent administrator
+  and passphrase recovery remain untested; preserve installer
   inputs, and agree measurable recovery-time/data-loss objectives (task 2.8).
 - Complete address availability and guest/GPU networking checks (task 2.5).
 - Verify Tailscale re-enrollment, expiry recovery and local fallback (task 2.11).

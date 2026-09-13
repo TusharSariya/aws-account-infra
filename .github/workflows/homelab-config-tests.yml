@@ -6,6 +6,7 @@ on:
       - 'config/environments/proxmox/**'
       - 'scripts/homelab-*'
       - 'scripts/proxmox-*'
+      - 'scripts/tests/test_proxmox_access.py'
       - '.github/workflows/homelab-config-tests.yml'
 permissions:
   contents: read
@@ -20,7 +21,8 @@ jobs:
       - name: Check shell and Python syntax
         run: |
           for script in scripts/homelab-*.sh scripts/proxmox-*.sh; do bash -n "$script"; done
-          python3 -m py_compile scripts/homelab-*.py
+          python3 -m py_compile scripts/homelab-*.py scripts/proxmox-*.py
+          python3 -m unittest discover -s scripts/tests -p "test_proxmox_access.py"
       - name: Validate Proxmox definitions without a backend or credentials
         run: |
           tofu fmt -check -recursive live/proxmox/homelab
