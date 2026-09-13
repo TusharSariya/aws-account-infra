@@ -49,6 +49,24 @@ class PlanGuardTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'persisted'):
                     ci.assert_public_state({'resources': [{'attributes': {key: 'test-only-value'}}]})
 
+    def test_cilium_plan_preserves_network_contract(self):
+        values = {'kubeProxyReplacement': False, 'routingMode': 'tunnel',
+                  'tunnelProtocol': 'vxlan', 'ipam': {'mode': 'kubernetes'}}
+        cilium = resource('helm_release.cilium', ['create'], name='cilium', namespace='kube-system',
+                          version='1.20.1', chart='./.terraform/cilium-1.20.1.tgz',
+                          values=[ci.yaml.safe_dump(values)])
+        self.plan['resource_changes'].append(cilium)
+        self.assertEqual(ci.guard_plan(self.plan)[-1]['actions'], ['create'])
+        for field, value in [('kubeProxyReplacement', True), ('routingMode', 'native')]:
+            with self.subTest(field=field):
+                wrong = dict(values, **{field: value})
+                cilium['change']['after']['values'] = [ci.yaml.safe_dump(wrong)]
+                with self.assertRaisesRegex(ValueError, 'retain kube-proxy'):
+                    ci.guard_plan(self.plan)
+        cilium['change']['actions'] = ['delete', 'create']
+        with self.assertRaisesRegex(ValueError, 'destructive'):
+            ci.guard_plan(self.plan)
+
     def test_missing_bootstrap_record_is_rejected(self):
         with self.assertRaisesRegex(ValueError, 'Missing bootstrap'):
             ci.guard_plan({'resource_changes': [self.cp]})
