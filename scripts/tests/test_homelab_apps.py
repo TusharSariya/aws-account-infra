@@ -71,6 +71,22 @@ class GuardTests(unittest.TestCase):
             with patch.object(apps, 'run', return_value=value), self.assertRaises(apps.AppError):
                 apps.tailnet_ip('pve.tail2f646b.ts.net')
 
+    def test_clusterip_endpoint_checks_use_proxy_readiness_and_tailnet_map(self):
+        def command(argv):
+            if argv[0] == 'dig':
+                return b'0.0.0.0' if 'doubleclick.net' in argv else b'93.184.215.14'
+            if 'get' in argv:
+                return b'{}'  # ClusterIP services have no loadBalancer.ingress.
+            return b''
+        with patch.object(apps, 'run', side_effect=command) as run, \
+             patch.object(apps, 'tailnet_ip', return_value='100.101.182.10') as resolve, \
+             patch.object(apps, 'tailnet_https', side_effect=[b'OK', b'401']):
+            apps.endpoints('kubectl')
+        resolve.assert_called_once_with('pihole-dns.tail2f646b.ts.net')
+        waits = [call.args[0] for call in run.call_args_list if 'wait' in call.args[0]]
+        dns_wait = next(argv for argv in waits if 'service/pihole-dns' in argv)
+        self.assertIn('--for=condition=TailscaleProxyReady=true', dns_wait)
+
     def test_child_environment_excludes_credentials(self):
         with patch.dict(apps.os.environ, dict.fromkeys(apps.SECRET_NAMES, 'fixture')), patch.object(apps.subprocess, 'run') as run:
             run.return_value.returncode = 0
@@ -116,6 +132,8 @@ class ChartTests(unittest.TestCase):
         self.assertEqual(pvc['metadata']['annotations']['helm.sh/resource-policy'], 'keep')
         ingress = by_kind['Ingress'][0]
         self.assertEqual(ingress['spec']['ingressClassName'], 'tailscale')
+        for rule in ingress['spec']['rules']:
+            self.assertIn(rule.get('host', ''), ['', ingress['spec']['tls'][0]['hosts'][0]])
         self.assertNotIn('tailscale.com/funnel', ingress['metadata'].get('annotations', {}))
 
     def test_operator_uses_external_secret_and_pinned_images(self):

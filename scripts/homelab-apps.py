@@ -49,7 +49,7 @@ def credentials():
 
 
 def tailnet_ip(hostname):
-    if hostname not in ('pve.tail2f646b.ts.net', 'pihole-admin.tail2f646b.ts.net'):
+    if hostname not in ('pve.tail2f646b.ts.net', 'pihole-admin.tail2f646b.ts.net', 'pihole-dns.tail2f646b.ts.net'):
         raise AppError('Unexpected private HTTPS hostname')
     value = run(['tailscale', 'ip', '-4', hostname]).decode().strip()
     try:
@@ -135,16 +135,12 @@ def execute(operation, private):
 def endpoints(kubectl):
     run([kubectl, '-n', 'homelab-services', 'rollout', 'status', 'deployment/pihole', '--timeout=600s'])
     run([kubectl, '-n', 'tailscale', 'rollout', 'status', 'deployment/operator', '--timeout=600s'])
-    for resource in ['service/pihole-dns', 'ingress/pihole']:
-        run([kubectl, '-n', 'homelab-services', 'wait', resource,
-             '--for=jsonpath={.status.loadBalancer.ingress}', '--timeout=600s'])
-    service = json.loads(run([kubectl, '-n', 'homelab-services', 'get', 'service', 'pihole-dns', '-o', 'json']))
-    ingress = json.loads(run([kubectl, '-n', 'homelab-services', 'get', 'ingress', 'pihole', '-o', 'json']))
-    addresses = service.get('status', {}).get('loadBalancer', {}).get('ingress', [])
-    ips = [item['ip'] for item in addresses if item.get('ip', '').startswith('100.')]
-    if not ips or not ingress.get('status', {}).get('loadBalancer', {}).get('ingress'):
-        raise AppError('Tailscale DNS/HTTPS endpoints are not ready; do not cut over clients')
-    ip = ips[0]
+    # Annotated ClusterIP Services expose a proxy condition, not LoadBalancer status.
+    run([kubectl, '-n', 'homelab-services', 'wait', 'service/pihole-dns',
+         '--for=condition=TailscaleProxyReady=true', '--timeout=600s'])
+    run([kubectl, '-n', 'homelab-services', 'wait', 'ingress/pihole',
+         '--for=jsonpath={.status.loadBalancer.ingress}', '--timeout=600s'])
+    ip = tailnet_ip('pihole-dns.tail2f646b.ts.net')
     for transport in ['+notcp', '+tcp']:
         allowed = run(['dig', '@' + ip, 'example.com', 'A', '+short', '+time=5', '+tries=2', transport]).decode()
         if not allowed.strip() or '0.0.0.0' in allowed:

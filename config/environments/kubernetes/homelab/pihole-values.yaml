@@ -51,6 +51,7 @@ ingress:
   ingressClassName: tailscale
   path: /
   pathType: Prefix
-  hosts: [pihole-admin.tail2f646b.ts.net]
+  # The operator derives the hostname from tls.hosts; leave HTTP host matching empty.
+  hosts: ['']
   tls:
     - hosts: [pihole-admin]
