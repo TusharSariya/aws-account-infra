@@ -18,6 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       units: ${{ steps.units.outputs.units }}
+      suite: ${{ steps.units.outputs.suite }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -26,13 +27,17 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.sha }}
-        run: echo "units=$(python3 scripts/deploy-units.py changed "$BASE_SHA" "$HEAD_SHA")" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "units=$(python3 scripts/deploy-units.py changed "$BASE_SHA" "$HEAD_SHA")" >> "$GITHUB_OUTPUT"
+          echo "suite=$(python3 scripts/deploy-units.py acceptance "$BASE_SHA" "$HEAD_SHA")" >> "$GITHUB_OUTPUT"
 
   apply:
     needs: detect
     if: needs.detect.outputs.units != '[]' && contains(github.event.pull_request.labels.*.name, 'apply') && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     environment: prod
+    outputs:
+      needs_worker_reboot: ${{ steps.talos.outputs.needs-worker-reboot }}
     steps:
       - uses: actions/checkout@v4
       - uses: aws-actions/configure-aws-credentials@v4
@@ -103,31 +108,50 @@ jobs:
           done < /tmp/deploy-units.tsv
 
       - name: Deploy Talos through visible guarded stages
+        id: talos
         if: contains(needs.detect.outputs.units, 'talos-homelab')
         uses: ./.github/actions/talos-deploy
         with:
           mode: apply
           secrets-b64: ${{ secrets.TALOS_SECRETS_B64 }}
 
-  apply-gate:
+  worker-maintenance:
     needs: [detect, apply]
+    if: needs.apply.result == 'success' && contains(needs.detect.outputs.units, 'talos-homelab') && contains(github.event.pull_request.labels.*.name, 'worker-reboot')
+    uses: ./.github/workflows/homelab-worker-maintenance.yml
+    with:
+      confirm: talos-worker-01
+    secrets: inherit
+
+  acceptance:
+    needs: [detect, apply, worker-maintenance]
+    if: >-
+      always() && needs.detect.result == 'success' && needs.detect.outputs.suite != 'none' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      (needs.apply.result == 'success' ||
+       (needs.apply.result == 'skipped' && (!contains(github.event.pull_request.labels.*.name, 'apply') || needs.detect.outputs.units == '[]'))) &&
+      (needs.worker-maintenance.result == 'success' || needs.worker-maintenance.result == 'skipped')
+    uses: ./.github/workflows/homelab-acceptance.yml
+    with:
+      suite: ${{ needs.detect.outputs.suite }}
+    secrets: inherit
+
+  apply-gate:
+    needs: [detect, apply, worker-maintenance, acceptance]
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - name: gate
-        run: |
-          [[ "${{ needs.detect.result }}" == "success" ]] || exit 1
-          if [[ "${{ needs.detect.outputs.units }}" == "[]" ]]; then exit 0; fi
-          # No apply label: skip is intentional. Each unit has its own var file,
-          # so a booker pin no longer marks the account stack as changed.
-          if [[ "${{ needs.apply.result }}" == "skipped" ]]; then exit 0; fi
-          [[ "${{ needs.apply.result }}" == "success" ]] || {
-            echo "::error::Apply was requested (apply label) but failed."; exit 1;
-          }
+      - uses: actions/checkout@v4
+      - name: Require requested deployment and all selected acceptance
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+          APPLY_REQUESTED: ${{ contains(github.event.pull_request.labels.*.name, 'apply') }}
+          REBOOT_REQUESTED: ${{ contains(github.event.pull_request.labels.*.name, 'worker-reboot') }}
+        run: python3 scripts/deploy-units.py acceptance-gate
 
   enable-auto-merge:
-    needs: apply
-    if: needs.apply.result == 'success'
+    needs: [apply, apply-gate, acceptance, worker-maintenance]
+    if: always() && needs.apply.result == 'success' && needs.apply-gate.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write

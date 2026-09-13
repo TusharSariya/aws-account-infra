@@ -8,7 +8,11 @@ on:
       - 'config/environments/talos/**'
       - 'scripts/talos-*'
       - 'scripts/talos_tools.py'
-      - '.github/actions/talos-deploy/**'
+      - '.github/actions/talos-*/**'
+      - '.github/workflows/homelab-acceptance.yml'
+      - '.github/workflows/homelab-worker-maintenance.yml'
+      - 'scripts/deploy-units.py'
+      - 'scripts/tests/test_deploy_units.py'
       - 'scripts/tests/test_talos*.py'
       - 'config/environments/proxmox/**'
       - 'scripts/homelab-*'
@@ -34,6 +38,7 @@ jobs:
           for script in scripts/homelab-*.sh scripts/proxmox-*.sh; do bash -n "$script"; done
           python3 -m py_compile scripts/homelab-*.py scripts/proxmox-*.py
           python3 -m unittest discover -s scripts/tests -p "test_proxmox_access.py"
+          python3 -m unittest discover -s scripts/tests -p "test_deploy_units.py"
       - name: Validate Proxmox definitions without a backend or credentials
         run: |
           tofu fmt -check -recursive live/proxmox/homelab

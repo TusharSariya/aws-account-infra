@@ -78,13 +78,14 @@ def prepare_local_path_chart():
                 target.write_bytes(archive.extractfile(member).read())
 
 
-def setup(acceptance=False):
+def setup(acceptance=False, charts=True):
     binary = cli()
-    (TF / '.terraform').mkdir(parents=True, exist_ok=True)
-    download_verified('https://helm.cilium.io/cilium-1.20.1.tgz',
-                      TF / '.terraform/cilium-1.20.1.tgz',
-                      '06210eef7c23d15f7699c79e2fe3a1ec9c389024c5c5c006ea04022d322449a2')
-    prepare_local_path_chart()
+    if charts:
+        (TF / '.terraform').mkdir(parents=True, exist_ok=True)
+        download_verified('https://helm.cilium.io/cilium-1.20.1.tgz',
+                          TF / '.terraform/cilium-1.20.1.tgz',
+                          '06210eef7c23d15f7699c79e2fe3a1ec9c389024c5c5c006ea04022d322449a2')
+        prepare_local_path_chart()
     if acceptance:
         if platform.system() != 'Linux' or platform.machine() != 'x86_64':
             raise ValueError('CI acceptance requires Linux amd64')

@@ -144,3 +144,26 @@ The homelab SHALL capture and validate an etcd snapshot daily through a versione
 - **THEN** the operator downloads the exact object version and verifies local decryption with the private recovery key; ciphertext readback alone is not claimed as a restore test, and independent key custody remains explicit until confirmed
 
 Retention is scoped to the daily etcd backup set. Existing independent bootstrap/host archives and routine/monthly backup sets keep their existing rules; this change does not purge unrelated recovery material.
+
+### Requirement: Deployment and selected acceptance must pass before merge
+The required merge gate SHALL require a successful CI apply for every selected
+infrastructure deployment and successful completion of all selected acceptance
+jobs. An absent apply label SHALL NOT count as a successful infrastructure
+apply. Test-only changes SHALL trigger their affected acceptance suite without
+requiring an infrastructure apply.
+
+#### Scenario: Infrastructure PR has no apply label
+- **WHEN** deploy-unit detection selects an infrastructure root but apply is skipped
+- **THEN** the required apply-gate fails with an explicit pending-apply diagnostic and automatic merge is not enabled
+
+#### Scenario: Selected acceptance fails or is skipped
+- **WHEN** an affected network/PVC acceptance job fails, is cancelled or unexpectedly skips
+- **THEN** the required merge gate fails even if apply succeeded or the PR changed only tests
+
+#### Scenario: Routine deployment completes
+- **WHEN** Talos configuration is applied routinely
+- **THEN** both nodes use no_reboot mode, readiness checks are read-only and no hidden persistence reboot occurs
+
+#### Scenario: Worker persistence rehearsal is requested
+- **WHEN** the operator explicitly labels a deployment for worker reboot or confirms a main-branch maintenance dispatch
+- **THEN** a separate job checks the existing worker data disk, reboots only that worker, compares OS/data partition identities and verifies readiness without forced reset; first-provision acceptance requires this evidence

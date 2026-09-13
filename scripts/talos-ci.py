@@ -45,8 +45,9 @@ def guard_plan(plan):
         after = item['change'].get('after') or {}
         if after.get('on_destroy', {}).get('reset', False):
             raise StageError('Node reset must remain disabled')
-        if address.endswith('.control_plane') and after.get('apply_mode') != 'no_reboot':
-            raise StageError('Control-plane apply must not reboot')
+        if address in {'talos_machine_configuration_apply.control_plane',
+                       'talos_machine_configuration_apply.worker[0]'} and after.get('apply_mode') != 'no_reboot':
+            raise StageError('Routine Talos apply must not reboot')
         if address == 'helm_release.cilium':
             if after.get('name') != 'cilium' or after.get('namespace') != 'kube-system':
                 raise StageError('Unexpected Cilium release target')
@@ -212,7 +213,7 @@ class Session:
     def worker_resources(self, kind):
         return list(yaml.safe_load_all(self.run(self.worker_tc + ['get', kind, '-o', 'yaml'])))
 
-    def preflight(self):
+    def connect(self):
         status = yaml.safe_load(self.run(self.tc + ['get', 'machinestatus', '-o', 'yaml']))
         if status['spec']['stage'] != 'running':
             raise StageError('Installed control plane must be running before adoption/update')
@@ -221,12 +222,14 @@ class Session:
         kube = yaml.safe_load((self.private / 'kubeconfig').read_text())
         if kube['clusters'][0]['cluster']['server'] != 'https://10.42.0.224:6443':
             raise StageError('Unexpected Kubernetes API target')
+    def preflight(self):
+        self.connect()
         dry_run = self.run(self.tc + ['apply-config', '--dry-run', '--mode=no-reboot',
                            '--file', self.output / 'talos-cp-01.machineconfig.yaml'])
         (self.private / 'dry-run.txt').write_text(dry_run)
         storage = guard_storage_disks(self.worker_resources('disks'), self.worker_resources('discoveredvolumes'))
         (self.private / 'storage-before.txt').write_text(storage)
-        self.run(self.worker_tc + ['apply-config', '--dry-run', '--mode=auto',
+        self.run(self.worker_tc + ['apply-config', '--dry-run', '--mode=no-reboot',
                                   '--file', self.output / 'talos-worker-01.machineconfig.yaml'])
         print('PASS: authenticated Talos preflight; worker data disk is ' + storage)
 
@@ -276,7 +279,7 @@ class Session:
         print('PASS: state secret-exclusion check')
 
     def storage(self):
-        # First-provision reboot semantics stay unchanged until explicit task 8.3 migration.
+        # Routine readiness never reboots. First provisioning requests a separate gate.
         for attempt in range(60):
             if check_storage_mount(self.worker_resources('volumestatus'), self.worker_resources('mountstatus')):
                 break
@@ -285,31 +288,49 @@ class Session:
             raise StageError('Worker data volume did not become mounted and ready')
         if guard_storage_disks(self.worker_resources('disks'), self.worker_resources('discoveredvolumes')) != 'existing':
             raise StageError('Expected provisioned data volume')
-        if (self.private / 'storage-before.txt').read_text() == 'blank':
-            def identities():
-                return {v['spec']['dev_path']: (v['spec'].get('uuid'), v['spec'].get('partition_uuid'))
-                        for v in self.worker_resources('discoveredvolumes')
-                        if v['spec'].get('parent_dev_path') in ('/dev/sda', '/dev/sdb')}
-            before = identities()
-            self.run(self.worker_tc + ['reboot', '--mode=powercycle', '--wait', '--timeout=8m'])
-            if (before != identities() or not check_storage_mount(
-                    self.worker_resources('volumestatus'), self.worker_resources('mountstatus'))):
-                raise StageError('Worker storage identities/mount changed across reboot')
+        before = self.private / 'storage-before.txt'
+        first = before.exists() and before.read_text() == 'blank'
+        if os.environ.get('GITHUB_OUTPUT'):
+            with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+                output.write('needs_worker_reboot=' + str(first).lower() + '\n')
         self.run(self.tc + ['etcd', 'members'])
         print('PASS: worker data mount and etcd readiness')
+
+
+    def readiness(self):
+        self.storage()
+        print(self.run(['bash', ROOT / 'scripts/homelab-readiness.sh']))
+
+    def worker_reboot(self):
+        if os.environ.get('HOMELAB_WORKER_REBOOT_APPROVED') != 'true':
+            raise StageError('Worker reboot requires explicit maintenance approval')
+        self.storage()
+        def identities():
+            return {v['spec']['dev_path']: (v['spec'].get('uuid'), v['spec'].get('partition_uuid'))
+                    for v in self.worker_resources('discoveredvolumes')
+                    if v['spec'].get('parent_dev_path') in ('/dev/sda', '/dev/sdb')}
+        before = identities()
+        if not before or not any(path.startswith('/dev/sdb') for path in before):
+            raise StageError('Expected provisioned worker partition identities')
+        self.run(self.worker_tc + ['reboot', '--mode=powercycle', '--wait', '--timeout=8m'])
+        self.readiness()
+        if before != identities():
+            raise StageError('Worker partition identities changed across reboot')
+        print('PASS: explicit worker reboot preserves OS/data partition identities and mount')
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('stage', choices=['setup', 'prepare', 'preflight', 'exec', 'guard',
-                                         'state', 'storage', 'network', 'pvc'])
+                                         'state', 'storage', 'readiness', 'connect', 'worker-reboot', 'network', 'pvc'])
     parser.add_argument('--private', type=Path)
     parser.add_argument('--secrets-file', type=Path)
     parser.add_argument('--acceptance', action='store_true')
+    parser.add_argument('--checks-only', action='store_true')
     args, command = parser.parse_known_args()
     os.umask(0o077)
     if args.stage == 'setup':
-        setup(args.acceptance)
+        setup(args.acceptance, charts=not args.checks_only)
         print('PASS: checksum-verified deployment tools and charts')
         return
     if not args.private:
@@ -326,7 +347,7 @@ def main():
     elif args.stage == 'pvc':
         print(session.run([sys.executable, ROOT / 'scripts/homelab-storage-validate.py']))
     else:
-        getattr(session, args.stage)()
+        getattr(session, args.stage.replace('-', '_'))()
 
 
 if __name__ == '__main__':

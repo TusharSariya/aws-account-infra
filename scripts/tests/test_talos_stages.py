@@ -60,5 +60,36 @@ class StageTests(unittest.TestCase):
                 run.assert_not_called()
 
 
+class RebootBoundaryTests(unittest.TestCase):
+    def test_maintenance_requires_explicit_approval_before_any_command(self):
+        session = ci.Session.__new__(ci.Session)
+        with patch.dict(os.environ, {}, clear=True), patch.object(session, 'run') as run:
+            with self.assertRaisesRegex(ValueError, 'explicit maintenance approval'):
+                session.worker_reboot()
+            run.assert_not_called()
+
+    def test_routine_storage_signals_first_provision_without_reboot(self):
+        with tempfile.TemporaryDirectory() as directory:
+            session = ci.Session.__new__(ci.Session)
+            session.private = Path(directory)
+            session.tc = ['talosctl', '-n', 'control-plane-test-only']
+            (session.private / 'storage-before.txt').write_text('blank')
+            output = session.private / 'github-output'
+            with patch.dict(os.environ, {'GITHUB_OUTPUT': str(output)}), \
+                 patch.object(session, 'worker_resources', return_value=[]), \
+                 patch.object(ci, 'check_storage_mount', return_value=True), \
+                 patch.object(ci, 'guard_storage_disks', return_value='existing'), \
+                 patch.object(session, 'run') as run:
+                session.storage()
+                self.assertTrue(all('reboot' not in call.args[0] for call in run.call_args_list))
+                self.assertIn('needs_worker_reboot=true', output.read_text())
+
+    def test_worker_auto_reboot_mode_is_rejected(self):
+        plan = {'resource_changes': [{'address': 'talos_machine_configuration_apply.worker[0]',
+                'change': {'actions': ['update'], 'after': {'apply_mode': 'auto'}}}]}
+        with self.assertRaisesRegex(ValueError, 'must not reboot'):
+            ci.guard_plan(plan)
+
+
 if __name__ == '__main__':
     unittest.main()
