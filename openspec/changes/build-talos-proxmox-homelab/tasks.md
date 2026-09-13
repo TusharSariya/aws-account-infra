@@ -75,6 +75,8 @@ Operator-approved planning revision: implement 8.1-8.5 before continuing new fea
 - [ ] 8.4 Consolidate snapshot preparation and verified encrypted upload behind one focused backup command; preserve schedule, format/restore compatibility, exact-version readback, receipts, OIDC permissions, heartbeat/alarm, independent key custody and S3 retention semantics
 - [ ] 8.5 Prove migration parity with an authenticated no-change plan, negative safety/secret tests, targeted integration acceptance and a real encrypted backup download/decryption/integrity round trip; update all callers/recovery instructions, remove redundant wrappers and record rollback to a known working revision
 
+Task 8.2 implementation is in PR #61. Offline checks and authenticated local/CI no-change plans pass (LOG-0085); live apply acceptance and merge remain pending.
+
 ## 9. Browser-based Kubernetes Dashboard
 
 Schedule after automation simplification (8.2-8.5); product selection remains open and this planning task does not authorize a live deployment.
