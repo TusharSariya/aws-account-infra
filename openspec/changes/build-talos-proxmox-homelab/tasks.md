@@ -38,7 +38,7 @@ Prerequisite: review the recovery-foundation gaps in 2.7 and 2.8 before guest cr
 
 ## 5. Talos Cluster Foundation
 
-- [ ] 5.1 Apply the control-plane machine configuration to the verified target and disk, bootstrap etcd exactly once, and verify Talos health plus API access at the stable endpoint
+- [x] 5.1 Apply the control-plane machine configuration to the verified target and disk, bootstrap etcd exactly once, and verify Talos health plus API access at the stable endpoint
 - [ ] 5.2 Apply the shared-worker configuration and verify the node joins with its shared label, expected resources, QEMU Guest Agent and gVisor, without a sandbox NoSchedule taint
 - [ ] 5.4 Install pinned Cilium v1.20.1 in VXLAN mode with kube-proxy retained, and verify node readiness, CoreDNS, pod networking, service routing, and `kubeProxyReplacement=false`
 - [ ] 5.5 Install the gVisor RuntimeClass and sandbox admission/network/resource controls on the shared worker; verify trusted services can coexist and sandbox pods without the required runtime or safe settings are rejected
@@ -69,3 +69,5 @@ Operator-approved two-VM revision, 2026-09-12: 4.2 (NAS VM), 4.4 (sandbox VM) an
 ## Optional improvements (not deployment gates)
 
 - Tailscale account/port-scoped grants and removal of Funnel permission: deferred by operator. Candidate policy is `config/environments/proxmox/homelab/tailscale/policy.json`, not applied. Before future adoption, validate it in Tailscale, test permitted and denied identities and preserve a rollback copy. Revisit when membership or device trust changes.
+
+- Talos soft-reboot reliability: the initial control-plane installation reboot stalled in virtnet_poll after disk sync; a one-time pre-bootstrap Proxmox reset recovered it (LOG-0069). Investigate before relying on unattended reboots; no durable workaround is claimed.
