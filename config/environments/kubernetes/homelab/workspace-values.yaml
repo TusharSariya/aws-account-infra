@@ -1,7 +1,7 @@
 replicas: 1
 ingressEnabled: true
 # Replace BUILD_REQUIRED with the reviewed private GHCR digest emitted by odysseus-image.
-image: ghcr.io/tusharsariyaorg/homelab-odysseus@sha256:fd18b7fa8cb32c0c55971c31b367d141462312c0853f74b7f40b6c97572860bf
+image: ghcr.io/tusharsariyaorg/homelab-odysseus@sha256:6feb3dd257b13d746a1e88e8e624b083d71f0cc1e2420a810c7ef65f6126862a
 hostname: odysseus
 node: talos-worker-01
 components:

@@ -20,4 +20,7 @@
 - PR #65 is draft. First image build failed in optional upstream CUDA wheel dependencies; the CPU build omits that unsupported feature.
 - No service apply, model download, browser acceptance or live recovery has been performed for this change.
 
-- CPU image build [34789472431](https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/34789472431) passed; private package digest `sha256:fd18b7fa8cb32c0c55971c31b367d141462312c0853f74b7f40b6c97572860bf` is pinned.
+- CPU image build [34789472431](https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/34789472431) passed; private package digest `sha256:fd18b7fa8cb32c0c55971c31b367d141462312c0853f74b7f40b6c97572860bf` was the initial successful build.
+
+- Packaged startup/authentication passed in [34789879143](https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/34789879143); its digest `sha256:6feb3dd257b13d746a1e88e8e624b083d71f0cc1e2420a810c7ef65f6126862a` is now pinned.
+- Application plan in [34789879109](https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/34789879109) creates only the two new releases; Pi-hole and operator are no-op. Actual worker model execution and restore are still outstanding.

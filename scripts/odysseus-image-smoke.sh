@@ -17,7 +17,7 @@ docker network create "$network" >/dev/null
 docker run -d --name chromadb --network "$network" --user 1000:1000 \
   --read-only --tmpfs /data:uid=1000,gid=1000 --tmpfs /tmp:uid=1000,gid=1000 \
   -e CHROMA_PERSIST_PATH=/data \
-  chromadb/chroma:1.5.5@sha256:0771874eaffc80fb4a66ba4de41a8fadf0447240b08d92353450e26ee43c9355 >/dev/null
+  chromadb/chroma:1.5.5@sha256:0771874eaffc80fb4a66ba4de41a8fadf0447240b08d92353450e26ee43c9355 run --path /data --host 0.0.0.0 --port 8000 >/dev/null
 docker run -d --name odysseus-smoke --network "$network" --user 1000:1000 \
   --cap-drop ALL --security-opt no-new-privileges --memory 4g \
   --tmpfs /workspace:uid=1000,gid=1000 --tmpfs /tmp:uid=1000,gid=1000 \

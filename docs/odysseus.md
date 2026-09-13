@@ -195,6 +195,9 @@ Ensure free worker disk capacity first. The helper commands below require Helm,
 Python with PyYAML (via uv), kubectl and age. Use the saved repository revision.
 
 ```bash
+bash -s -- "$CAPTURE_DIR" <<'RESTORE'
+set -euo pipefail
+CAPTURE_DIR=$1
 kubectl create namespace odysseus-restore
 kubectl apply -f config/environments/kubernetes/homelab/recovery/isolation.yaml
 helm template odysseus charts/homelab-odysseus -n odysseus-restore \
@@ -229,14 +232,17 @@ kubectl -n odysseus-restore delete pod odysseus-backup --wait=true
 kubectl -n odysseus-restore scale deployment/chromadb deployment/odysseus --replicas=1
 kubectl -n odysseus-restore rollout status deployment/chromadb --timeout=600s
 kubectl -n odysseus-restore rollout status deployment/odysseus --timeout=600s
+# Permit login cookies only on this isolated, localhost HTTP inspection path.
+kubectl -n odysseus-restore set env deployment/odysseus \
+  SECURE_COOKIES=false ALLOWED_ORIGINS=http://localhost:7000
+kubectl -n odysseus-restore rollout status deployment/odysseus --timeout=600s
 kubectl -n odysseus-restore port-forward service/odysseus 7000:7000
+RESTORE
 ```
 
-The production configuration requires Secure cookies. For local HTTP-only restore
-inspection, temporarily set `SECURE_COOKIES=false` and
-`ALLOWED_ORIGINS=http://localhost:7000` **only on the isolated Deployment** using
-`kubectl -n odysseus-restore set env deployment/odysseus ...`; leave authentication
-enabled and localhost bypass disabled. Verify saved login, conversations, settings,
+The production configuration retains Secure cookies. The localhost HTTP-only
+inspection override above affects only the isolated Deployment; authentication
+remains enabled and localhost bypass remains disabled. Verify saved login, conversations, settings,
 uploads and vector collections against a prepared canary. New model inference and
 web search are intentionally unavailable in the isolated namespace. Record results,
 elapsed recovery time, and any missing data in the OpenSpec tasks. Keep the original
