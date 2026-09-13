@@ -14,6 +14,13 @@ module "recovery" {
       abort_incomplete_multipart_upload_days = 7
     },
     {
+      id                            = "etcd-retain-latest-expire-superseded"
+      enabled                       = true
+      filter                        = { prefix = "etcd/" }
+      noncurrent_version_expiration = { days = 30 }
+      # Never expire current versions: preserve the last successful backup.
+    },
+    {
       id                            = "routine-90-days"
       enabled                       = true
       filter                        = { prefix = "routine/" }

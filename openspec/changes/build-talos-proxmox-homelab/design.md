@@ -139,3 +139,24 @@ Operator decision: retain the supplied default allow-all tailnet network policy 
 ### AWS recovery destination preparation
 
 Operator selected AWS for independent backups. `live/aws/staging/workloads/homelab-recovery` now defines a dedicated bucket and separate upload/restore IAM policies using the existing encrypted-bucket module, with independent backend state. PR #47 deployed the bucket through OpenTofu CI. LOG-0059 through LOG-0061 record live storage verification, canary testing and the actual encrypted bootstrap archive's same-Mac restore. Initial uploads use the existing administrator login; optional Roles Anywhere identity remains disabled. Task 2.8 remains open for independent recovery and the other acceptance criteria. See docs/plans/homelab-recovery.md for the current recovery entry point.
+
+### Daily etcd retention and independent execution
+
+Use a main-branch GitHub schedule at 06:17 UTC and manual dispatch. Reuse the
+existing prod Talos secret and Tailscale OIDC route; a dedicated AWS role grants
+only single-key upload/readback, recovery KMS access through S3 and a success
+metric. The runner has no age decryption key. Store its public recipient in Git,
+and keep the private identity on the administration machine plus independently
+recoverable custody. Test local decryption of the first exact S3 version.
+
+Write the same versioned etcd/latest.tar.gz.age key every run. Configure only
+noncurrent-version expiry at 30 days for etcd/, with no current expiration.
+This retains the last backup indefinitely even when schedules stop. Age counts
+from supersession, not original creation; S3 deletion is asynchronous and honors
+the existing 30-day governance Object Lock. Do not add delete permission to the
+backup runner or apply this policy to independent bootstrap/host archives.
+
+Only verified upload/readback publishes the success metric. A CloudWatch
+30-hour missing-heartbeat alarm uses the existing security-alert SNS route and
+runs independently of GitHub, the laptop and Kubernetes. This detects missed
+schedules as well as backup failures. No isolated etcd restore is implied.

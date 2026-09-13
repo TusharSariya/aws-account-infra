@@ -42,7 +42,10 @@ Prerequisite: review the recovery-foundation gaps in 2.7 and 2.8 before guest cr
 - [x] 5.2 Apply the shared-worker configuration and verify the node joins with its shared label, expected resources, QEMU Guest Agent and gVisor, without a sandbox NoSchedule taint
 - [x] 5.4 Install pinned Cilium v1.20.1 in VXLAN mode with kube-proxy retained, and verify node readiness, CoreDNS, pod networking, service routing, and `kubeProxyReplacement=false`
 - [ ] 5.5 Install the gVisor RuntimeClass and sandbox admission/network/resource controls on the shared worker; verify trusted services can coexist and sandbox pods without the required runtime or safe settings are rejected
-- [ ] 5.6 Capture an encrypted Talos etcd snapshot and reconstruction inputs in their approved off-host locations, then verify the snapshot metadata without committing kubeconfig, `talosconfig`, or machine secrets
+- [x] 5.6 Capture an encrypted Talos etcd snapshot and reconstruction inputs in their approved off-host locations, then verify the snapshot metadata without committing kubeconfig, `talosconfig`, or machine secrets
+
+- [x] 5.7 Implement and execute daily encrypted etcd backup through GitHub CI with dedicated OIDC permissions; verify exact-version upload/readback, local decryption, independently saved private recovery key and missing-backup monitoring
+- [x] 5.8 Deploy and verify S3 noncurrent-version expiration after 30 days for daily etcd backups with no current-version expiration; prove successive backups create versions of one key and the runner has no deletion permissions
 
 ## 6. Worker-local Storage and Backup Foundation
 
@@ -71,3 +74,5 @@ Operator-approved two-VM revision, 2026-09-12: 4.2 (NAS VM), 4.4 (sandbox VM) an
 - Tailscale account/port-scoped grants and removal of Funnel permission: deferred by operator. Candidate policy is `config/environments/proxmox/homelab/tailscale/policy.json`, not applied. Before future adoption, validate it in Tailscale, test permitted and denied identities and preserve a rollback copy. Revisit when membership or device trust changes.
 
 - Talos soft-reboot reliability: the initial control-plane installation reboot stalled in virtnet_poll after disk sync; a one-time pre-bootstrap Proxmox reset recovered it (LOG-0069). Investigate before relying on unattended reboots; no durable workaround is claimed.
+
+Operator deferral, 2026-09-13: Task 5.5 (gVisor RuntimeClass and sandbox admission/network/resource controls) is deferred at the operator's request. The installed gVisor extension alone does not enforce sandboxing; no untrusted-workload isolation is accepted. Task remains unchecked.
