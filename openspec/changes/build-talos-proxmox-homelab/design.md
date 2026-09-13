@@ -232,3 +232,6 @@ wrappers only after updating all workflow, local recovery and documentation
 callers. Record failures and corrections. Preserve a known working Git revision
 and version-matched recovery instructions for rollback; no state reset, resource
 recreation, disk formatting or secret rotation is part of this refactor.
+
+
+Task 8.1 audit is recorded in [homelab-automation-audit.md](../../../docs/plans/homelab-automation-audit.md). It maps active callers, justified helpers, native-tool candidates, backup compatibility and the staged migration. Native Talos generation remains conditional on pinned-provider/CLI equivalence; extracting routine orchestration can proceed while retaining the current generator.

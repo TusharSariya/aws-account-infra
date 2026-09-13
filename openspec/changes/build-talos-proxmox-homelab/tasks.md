@@ -67,9 +67,9 @@ Prerequisite: review the recovery-foundation gaps in 2.7 and 2.8 before guest cr
 
 ## 8. Automation Simplification (next, before new feature work)
 
-Operator-approved planning revision: implement 8.1-8.5 before continuing new feature work in 6.4-6.5. Keep existing backups and services operating throughout. These tasks are pending; no refactor is claimed complete.
+Operator-approved planning revision: implement 8.1-8.5 before continuing new feature work in 6.4-6.5. Keep existing backups and services operating throughout. Task 8.1 inventory is recorded in docs/plans/homelab-automation-audit.md; tasks 8.2-8.5 remain pending and no refactor is claimed complete.
 
-- [ ] 8.1 Inventory deployment, tool setup, validation, secret handling, integration-test and backup responsibilities and all CI/local recovery callers; record which native mechanism replaces each responsibility and justify each retained helper
+- [x] 8.1 Inventory deployment, tool setup, validation, secret handling, integration-test and backup responsibilities and all CI/local recovery callers; record which native mechanism replaces each responsibility and justify each retained helper
 - [ ] 8.2 Move routine orchestration into named GitHub Actions steps, consolidate pinned tool setup and move suitable constraints into blocking OpenTofu validation; preserve focused live/plan guards, original Talos identity, ephemeral/write-only secrets and sanitized diagnostics
 - [ ] 8.3 Separate targeted PVC/network integration suites into visible affected-change and manually dispatched jobs with acceptance gating; retain routine readiness checks and make reboot/recovery rehearsals explicit operations rather than hidden apply behavior
 - [ ] 8.4 Consolidate snapshot preparation and verified encrypted upload behind one focused backup command; preserve schedule, format/restore compatibility, exact-version readback, receipts, OIDC permissions, heartbeat/alarm, independent key custody and S3 retention semantics

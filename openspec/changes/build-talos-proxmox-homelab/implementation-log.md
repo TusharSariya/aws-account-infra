@@ -1105,3 +1105,13 @@ values in this file.
 - Verification: CI also passed node/Cilium/CoreDNS readiness, internal/external DNS and all four same/cross-node pod/Service paths. Fifteen guard tests, chart lint/render, strict OpenSpec validation, full-history secret scan and repository CI checks passed. Subsequent authenticated plan returned no-op for all six Talos/Helm resources.
 - Result/limitations: Task 6.3 complete. Requested-capacity quotas do not enforce bytes written; other namespaces and released retained volumes are outside these live-claim budgets. No hard disk limit, physical HA, application data backup or capacity-monitoring completion is claimed. Task 6.4 is next. The dedicated system provisioner namespace permits required hostPath helper operations; deferred sandbox controls remain unchanged.
 - Recovery: The committed Helm charts/values reconstruct classes, namespaces, budgets and provisioner. Etcd preserves Kubernetes claim/PV metadata, while independent application-file/database backups must restore actual data. Retain preserves directories but is not a backup. Rebinding or disposal of non-test retained volumes requires explicit identification and the documented recovery procedure.
+
+
+### LOG-0083 - Automation responsibility and caller audit complete
+
+- Timestamp: 2026-09-13T04:13:10.852818+00:00
+- Operator/target/task: Codex with two explicitly requested read-only sub-agent reviews; repository automation; task 8.1.
+- Action: Reviewed deployment/configuration, backups/recovery and workflow/local callers. Added docs/plans/homelab-automation-audit.md with disposition inventory, caller migration checklist, pinned native-tool compatibility constraints, backup formats, gate/trigger findings and the task 8.2-8.5 sequence.
+- Findings: Routine orchestration and repeated setup can move to native steps; private-input, structural-plan and live-disk checks remain focused helpers. Provider 0.11.0 embeds Talos 1.13.0 while CLI is 1.13.9, so native generation needs private parity proof. Three existing backup layouts/two encryption methods need compatibility. Test-only path selection and apply/merge dependencies require explicit handling when suites move.
+- Verification/result: Cross-checked active workflows, imports, deploy-unit watches and operator instructions against source; primary versioned provider/OpenTofu docs support candidate boundaries. Task 8.1 complete; 28/45 tasks verified. No refactor, live plan/apply, backup upload, secret change or cluster operation performed during this audit.
+- Recovery/deviation: No runtime rollback required. Task 8.2 is next; keep current operational entry points until their replacements and all callers pass the documented migration checks. Existing implementation logs remain historical evidence.
