@@ -107,8 +107,8 @@ helpers as separate `bash script.sh` processes, not with `source`.
    [Proxmox definitions](../../live/proxmox/homelab/README.md) and restored Talos
    identity. The [API and state setup](../../live/proxmox/homelab/ACCESS.md) now supplies
    a scoped identity and separate S3 backend key. Finish remaining readiness
-   checks and review a fresh plan before live provisioning. The default readiness flag remains false and cloud CI does not
-   deploy Proxmox. Rebuild the control plane, then shared worker, then CNI and
+   checks and review a fresh plan before live provisioning. The default readiness flag remains false and GitHub CI can deploy Proxmox using the reviewed apply-label workflow;
+   see the CI setup guide for identity recovery. Rebuild the control plane, then shared worker, then CNI and
    sandbox controls using the OpenSpec sequence.
 6. **Persistent state:** once deployed, recover etcd and application-consistent
    worker backups using the later phase procedures. The current bootstrap

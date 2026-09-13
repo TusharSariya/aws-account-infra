@@ -2,7 +2,7 @@
 
 Implements OpenSpec task 3.1: declared VM hardware and identity, with locally tested plans. A live authenticated speculative plan has passed; no VM has been created. See [access and state setup](ACCESS.md).
 
-The deploy unit is `proxmox-homelab`, with inputs in `config/environments/proxmox/homelab/vms.tfvars`. It is excluded from cloud CI. Existing AWS deploy units and state keys are unchanged.
+The deploy unit is `proxmox-homelab`, with inputs in `config/environments/proxmox/homelab/vms.tfvars`. GitHub CI now plans this root through Tailscale and can apply it using the existing apply label; see [CI setup](CI.md). Existing AWS deploy units and state keys are unchanged.
 
 ## Local validation
 

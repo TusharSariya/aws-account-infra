@@ -8,6 +8,7 @@ on:
       - 'scripts/proxmox-*'
       - 'scripts/tests/test_proxmox_access.py'
       - '.github/workflows/homelab-config-tests.yml'
+      - '.github/workflows/tofu-*.yml'
 permissions:
   contents: read
 jobs:
@@ -18,6 +19,8 @@ jobs:
       - uses: opentofu/setup-opentofu@v1
         with:
           tofu_version: 1.11.5
+      - name: Validate workflow syntax
+        run: docker run --rm -v "$GITHUB_WORKSPACE:/repo" -w /repo rhysd/actionlint:1.7.7
       - name: Check shell and Python syntax
         run: |
           for script in scripts/homelab-*.sh scripts/proxmox-*.sh; do bash -n "$script"; done

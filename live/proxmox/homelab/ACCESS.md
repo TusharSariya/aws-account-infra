@@ -29,14 +29,17 @@ privilege-separated `provider` token. Both the user and token receive only:
 
 | Scope | Permissions |
 | --- | --- |
-| `/` | `Sys.Audit` for API discovery |
+| `/` | `Sys.Audit` for API discovery and `Sys.Modify` for VM startup order |
 | `/vms/100`, `/vms/102` | Allocate, audit, configure CPU/memory/disks/CDROM/network/hardware/options, power operations and guest-agent audit |
 | `/storage/local-lvm` | Audit and allocate disk space |
 | `/storage/local` | Audit existing ISO storage |
 | `/sdn/zones/localnetwork/vmbr0` | Use the existing bridge |
 
-The token does not receive Administrator, host modification, user/ACL management,
-or VM allocation outside these IDs. VM allocation permissions also permit
+Proxmox requires `Sys.Modify` at `/` for the configured VM startup order. This
+is a host-wide configuration privilege, not a permission limited to startup order.
+Only the apply identity receives it; the independent plan identity stays read-only.
+The token does not receive Administrator, user/ACL management, or VM allocation
+outside these IDs. VM allocation permissions also permit
 removing these two guests: review plans and preserve state/backups. No claim of
 proven create/update compatibility is made before the first approved apply.
 
@@ -51,6 +54,27 @@ an existing identity.
 The token currently has no explicit expiry. Revoke/reissue after credential loss
 or suspected exposure using the recovery procedure below. It is independent of
 the Tailscale node key, which has its own expiry policy.
+
+## Upgrade an existing apply identity for startup order
+
+For identities created before this permission was included, run these commands
+once as root on `pve`, after inspecting existing roles and ACLs. On a fresh host,
+the bootstrap above already installs this role. Do not modify `HomelabTofuAudit`:
+the separate read-only plan identity uses it.
+
+```bash
+pveum role add HomelabTofuHost --privs 'Sys.Audit Sys.Modify'
+pveum acl modify / --users homelab-tofu@pve --roles HomelabTofuHost --propagate 1
+pveum acl modify / --tokens 'homelab-tofu@pve!provider' --roles HomelabTofuHost --propagate 1
+pveum acl delete / --users homelab-tofu@pve --roles HomelabTofuAudit
+pveum acl delete / --tokens 'homelab-tofu@pve!provider' --roles HomelabTofuAudit
+```
+
+Existing tokens pick up the permissions without rotation or GitHub secret changes.
+The CI preflight checks `Sys.Modify` at `/` before apply and rejects host write
+permissions on the plan identity. To undo the upgrade, restore the audit ACLs
+before deleting the host-role ACLs; Terraform startup-order operations will then
+fail until the privilege is restored.
 
 ## Verify and preview
 
@@ -79,12 +103,10 @@ a fresh reviewed plan and the outstanding network/state checks. The operator
 has deferred the clean-machine restore test; it remains recorded as untested.
 
 The new S3 backend requires AWS authentication for live initialization and plans.
-Offline CI continues using `init -backend=false` plus mocked tests without
-credentials. This root remains `ci: false` in the deployment manifest. Enabling
-actual CI deployment requires a reviewed tailnet machine identity, access grants,
-Proxmox token secret delivery and Proxmox-aware workflow arguments; simply
-flipping the manifest flag is insufficient (the AWS plan currently passes
-`aws_profile`). No token has been uploaded to GitHub by this setup.
+Offline validation continues using `init -backend=false` plus mocked tests.
+The deployment manifest now enables this root for live CI. See
+[GitHub CI setup](CI.md) for the separate read-only plan identity, environment
+secrets, Tailscale OIDC trust and the apply-label workflow.
 
 ## Credential loss, rotation and state recovery
 

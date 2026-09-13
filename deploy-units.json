@@ -80,10 +80,11 @@
       "path": "live/proxmox/homelab",
       "var_file": "config/environments/proxmox/homelab/vms.tfvars",
       "dependencies": [],
-      "ci": false,
+      "ci": true,
       "watch": [
         "live/proxmox/homelab/",
-        "config/environments/proxmox/homelab/"
+        "config/environments/proxmox/homelab/",
+        "scripts/proxmox-ci-check.py"
       ]
     }
   ]

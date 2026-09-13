@@ -896,3 +896,28 @@ values in this file.
 - Deviation: The former host_readiness_confirmed flag is now vm_creation_approved to avoid representing deferred recovery as completed. Default false blocks unapproved creation; preview helper assumes later approval only for an unsaved speculative plan and offers no apply action. Clean-machine restore remains untested. Actual provisioning permissions are not proven until an approved create. Proxmox CI deployment remains disabled; no GitHub token secret or tailnet CI enrollment configured.
 - Supersedes: Prior pending API/HTTPS/backend setup in the Proxmox README; no claim that VM creation or full DR acceptance is complete.
 - Rollback/recovery: Revoke the dedicated token through trusted root access if lost; reissue from the committed bootstrap without depending on old token recovery. Keep public roles/ACLs for recreation. ACCESS.md records scopes, state key and recovery order. No VM/disks allocated and no AWS bucket policy changed. Review the PR before relying on its revision.
+
+
+### LOG-0064 - GitHub Proxmox CI enrollment and workflow prepared
+
+- Timestamp: 2026-09-13T00:33:16+00:00
+- Operator: Tushar Sariya (Tailscale setup and supplied OIDC identifiers), Codex (GitHub configuration and implementation)
+- Target: GitHub repository TusharSariyaOrg/aws-account-infra, prod environment; pve API
+- Tasks: 3.1 CI integration; 4.1 preparation only
+- Action/commands: Added supplied TS_OIDC_CLIENT_ID and TS_OIDC_AUDIENCE as GitHub repository variables. Ran proxmox-provider-bootstrap.py --read-only to create an independent reader identity and proxmox-ci-secrets.py to transmit private API tokens directly into prod environment secrets. Extended existing plan/apply workflows to enroll ephemeral tagged runners and enabled the Proxmox deploy unit.
+- Result/evidence: Private plan-credentials.json created outside Git with mode 0600; homelab-tofu-plan@pve!provider has audit privileges only. Local authenticated HTTPS/storage and plan/apply permission preflights both passed. GitHub lists PROXMOX_PLAN_API_TOKEN and PROXMOX_APPLY_API_TOKEN in prod. Six offline credential/permission tests, Python compilation, actionlint and strict OpenSpec validation passed. Live GitHub enrollment and plan remain to be verified in the resulting PR. No VM creation triggered.
+- Deviation: The operator performs Tailscale admin changes; Codex inspected forms without saving them. OIDC subject must match repo:TusharSariyaOrg/aws-account-infra:environment:prod. Existing allow-all tailnet policy covers runner traffic; no restrictive policy was applied. prod has no required reviewers, so apply-label gating and trusted repository workflow authors are the current boundary. No permanent Tailscale secret added.
+- Supersedes: Proxmox deployment-CI-disabled status in LOG-0063 once this workflow is reviewed and merged; local setup evidence remains valid.
+- Rollback/recovery: Remove the apply label to prevent new deployment triggers, disable the unit through a PR if retiring CI, revoke the dedicated Tailscale trust or Proxmox tokens if compromised. Reissue tokens and update environment secrets with the committed helpers; CI.md records trust fields and recovery. S3 state keys and existing AWS deployment identities remain unchanged.
+
+
+### LOG-0065 - Correct apply permission for VM startup order
+
+- Timestamp: 2026-09-13
+- Operator: Codex, following explicit authorization to fix the failed CI apply
+- Target: pve apply identity and PR #50
+- Tasks: 4.1/4.3 provisioning preparation; maintenance boots remain pending
+- Cause/evidence: GitHub apply run 34728654173 failed both VM creates with permission check (/, Sys.Modify). Installed PVE API2/Qemu.pm explicitly checks this global privilege when a startup option is provided. The plan and previous preflight did not exercise this check; qm list remained empty.
+- Action: Added HomelabTofuHost (Sys.Audit Sys.Modify) at / to the apply user and privilege-separated token, replacing their audit-only root ACL. The independent plan identity retains HomelabTofuAudit. Bootstrap and ACCESS.md now reproduce this configuration and document the host-wide permission. Existing secrets require no rotation.
+- Verification: Two regression tests failed before the preflight fix; all eight access tests pass afterward. Live trusted-HTTPS preflights pass for both identities. CI now checks the root permission before applying and rejects host write access for the plan identity. Initial ACL cleanup used an unsupported delete option; corrected against installed CLI help to pveum acl delete and completed successfully. CI retry and VM creation remain pending at this revision.
+- Rollback/recovery: Restore audit-only ACLs before removing HomelabTofuHost ACLs to revoke host modification. Startup-order operations would fail again. No administrator role or user/ACL-management permission was granted.

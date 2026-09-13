@@ -30,7 +30,7 @@ jobs:
 
   apply:
     needs: detect
-    if: needs.detect.outputs.units != '[]' && contains(github.event.pull_request.labels.*.name, 'apply')
+    if: needs.detect.outputs.units != '[]' && contains(github.event.pull_request.labels.*.name, 'apply') && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     environment: prod
     steps:
@@ -42,25 +42,47 @@ jobs:
       - uses: opentofu/setup-opentofu@v1
         with:
           tofu_version: 1.11.5
+      - name: Connect to Proxmox tailnet
+        if: contains(needs.detect.outputs.units, 'proxmox-homelab')
+        uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4
+        with:
+          oauth-client-id: ${{ vars.TS_OIDC_CLIENT_ID }}
+          audience: ${{ vars.TS_OIDC_AUDIENCE }}
+          tags: tag:github-ci
+          version: 1.102.4
+          hostname: gh-proxmox-apply-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Verify Proxmox apply identity
+        if: contains(needs.detect.outputs.units, 'proxmox-homelab')
+        env:
+          PROXMOX_VE_ENDPOINT: https://pve.tail2f646b.ts.net/
+          PROXMOX_VE_API_TOKEN: ${{ secrets.PROXMOX_APPLY_API_TOKEN }}
+        run: python3 scripts/proxmox-ci-check.py apply
       - name: Apply deploy units in dependency order
         env:
           UNITS_JSON: ${{ needs.detect.outputs.units }}
+          PROXMOX_VE_ENDPOINT: https://pve.tail2f646b.ts.net/
+          PROXMOX_VE_API_TOKEN: ${{ secrets.PROXMOX_APPLY_API_TOKEN }}
         run: |
           python3 - <<'PY' > /tmp/deploy-units.tsv
           import json
           import os
 
           for unit in json.loads(os.environ["UNITS_JSON"]):
-              if unit["cloud"] != "aws":
+              if unit["cloud"] not in {"aws", "proxmox"}:
                   raise SystemExit(f"CI apply is not configured for cloud {unit['cloud']!r}")
-              print(f"{unit['id']}\t{unit['path']}\t{unit['var_file']}")
+              print(f"{unit['id']}\t{unit['path']}\t{unit['var_file']}\t{unit['cloud']}")
           PY
 
-          while IFS=$'\t' read -r id path var_file; do
+          while IFS=$'\t' read -r id path var_file cloud; do
             echo "::group::Apply $id"
             tofu -chdir="$path" init -input=false
-            tofu -chdir="$path" apply -input=false -auto-approve \
-              -var-file="$GITHUB_WORKSPACE/$var_file" -var "aws_profile="
+            case "$cloud" in
+              aws) extra=(-var "aws_profile=") ;;
+              proxmox) extra=(-var "vm_creation_approved=true") ;;
+              *) echo "Unsupported deployment cloud: $cloud" >&2; exit 1 ;;
+            esac
+            tofu -chdir="$path" apply -input=false -auto-approve -lock-timeout=60s \
+              -var-file="$GITHUB_WORKSPACE/$var_file" "${extra[@]}"
             echo "::endgroup::"
           done < /tmp/deploy-units.tsv
 
