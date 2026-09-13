@@ -1,0 +1,36 @@
+name: homelab-etcd-backup
+on:
+  schedule:
+    - cron: '17 6 * * *' # Daily, 06:17 UTC; avoid the busy start of the hour.
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: homelab-etcd-backup
+  cancel-in-progress: false
+jobs:
+  backup:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: prod
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::992382747916:role/homelab-etcd-backup
+          aws-region: us-east-1
+      - uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4
+        with:
+          oauth-client-id: ${{ vars.TS_OIDC_CLIENT_ID }}
+          audience: ${{ vars.TS_OIDC_AUDIENCE }}
+          tags: tag:github-ci
+          version: 1.102.4
+          hostname: gh-etcd-backup-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Accept homelab route
+        run: sudo tailscale set --accept-routes=true
+      - name: Capture, encrypt, upload and verify
+        env:
+          TALOS_SECRETS_B64: ${{ secrets.TALOS_SECRETS_B64 }}
+        run: python3 scripts/homelab-etcd-backup-ci.py

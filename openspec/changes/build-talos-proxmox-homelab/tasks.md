@@ -44,6 +44,9 @@ Prerequisite: review the recovery-foundation gaps in 2.7 and 2.8 before guest cr
 - [ ] 5.5 Install the gVisor RuntimeClass and sandbox admission/network/resource controls on the shared worker; verify trusted services can coexist and sandbox pods without the required runtime or safe settings are rejected
 - [ ] 5.6 Capture an encrypted Talos etcd snapshot and reconstruction inputs in their approved off-host locations, then verify the snapshot metadata without committing kubeconfig, `talosconfig`, or machine secrets
 
+- [ ] 5.7 Implement and execute daily encrypted etcd backup through GitHub CI with dedicated OIDC permissions; verify exact-version upload/readback, local decryption, independently saved private recovery key and missing-backup monitoring
+- [ ] 5.8 Deploy and verify S3 noncurrent-version expiration after 30 days for daily etcd backups with no current-version expiration; prove successive backups create versions of one key and the runner has no deletion permissions
+
 ## 6. Worker-local Storage and Backup Foundation
 
 - [ ] 6.1 Prepare the Talos user-volume configuration selecting the verified worker data disk, mount at /var/mnt/local-path-provisioner and local-path provisioning; validate the config and ensure the OS disk cannot be selected
@@ -69,3 +72,6 @@ Operator-approved two-VM revision, 2026-09-12: 4.2 (NAS VM), 4.4 (sandbox VM) an
 ## Optional improvements (not deployment gates)
 
 - Tailscale account/port-scoped grants and removal of Funnel permission: deferred by operator. Candidate policy is `config/environments/proxmox/homelab/tailscale/policy.json`, not applied. Before future adoption, validate it in Tailscale, test permitted and denied identities and preserve a rollback copy. Revisit when membership or device trust changes.
+
+
+Operator deferral, 2026-09-13: Task 5.5 (gVisor RuntimeClass and sandbox admission/network/resource controls) is deferred at the operator's request. The installed gVisor extension alone does not enforce sandboxing; no untrusted-workload isolation is accepted. Task remains unchecked.

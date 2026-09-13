@@ -34,3 +34,5 @@ None.
 - New external artifacts: two Talos v1.13.9 Image Factory schematics and ISOs, their matching installer image references, and immutable installer digests.
 - Operational risk: the host has one physical failure domain and an aging disk array; important state must remain recoverable off-host.
 - No live infrastructure mutation is authorized by this proposal alone. Execution begins only through the OpenSpec apply workflow and operator-approved manual steps.
+
+The 2026-09-13 backup revision adds daily GitHub-operated etcd snapshots, public-key encryption, dedicated AWS OIDC upload/readback permissions, independent missing-backup monitoring and 30-day noncurrent-version retention while keeping the latest daily backup indefinitely.

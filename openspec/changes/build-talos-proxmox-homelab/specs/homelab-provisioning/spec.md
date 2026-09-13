@@ -119,3 +119,28 @@ The initial build MAY retain the operator-approved default allow-all tailnet pol
 #### Scenario: Restrictive policy is deferred
 - **WHEN** the operator chooses to retain the default policy
 - **THEN** the proposed restrictive policy remains unapplied, subnet access can be accepted under the documented membership trust boundary, and remaining deployment/recovery requirements are unchanged
+
+### Requirement: Daily encrypted etcd backups retain the latest recovery point
+The homelab SHALL capture and validate an etcd snapshot daily through a versioned GitHub Actions workflow, with manual dispatch available. The workflow SHALL use the existing private Tailscale management path and Talos identity, encrypt to an age public recipient, and upload through a dedicated GitHub OIDC AWS role. The private age identity SHALL remain outside Git and CI and SHALL be saved independently for recovery. No long-lived AWS key or interactive passphrase SHALL be required for scheduled runs.
+
+#### Scenario: Daily backup succeeds
+- **WHEN** a scheduled or manually dispatched main-branch backup runs
+- **THEN** it verifies the snapshot metadata and embedded integrity checksum, packages original Talos identity and reconstruction inputs, encrypts locally, uploads a new version of etcd/latest.tar.gz.age, downloads that exact version and compares ciphertext before emitting a success heartbeat
+
+#### Scenario: Old backup versions expire
+- **WHEN** an etcd backup version has been noncurrent for more than 30 days
+- **THEN** S3 Lifecycle makes it eligible for permanent deletion, subject to asynchronous processing and Object Lock; no current-version expiration applies to the etcd prefix
+
+#### Scenario: Backups stop
+- **WHEN** no new backup is produced for more than 30 days
+- **THEN** the latest current backup remains available indefinitely and an independent CloudWatch missing-heartbeat alarm detects the absence of success after approximately 30 hours
+
+#### Scenario: Backup credentials are limited
+- **WHEN** the backup runner assumes its AWS role
+- **THEN** its S3 permissions are scoped to upload/readback of the one backup key, it cannot delete objects or versions or bypass retention, and KMS/metric permissions are scoped to the recovery key and metric namespace
+
+#### Scenario: Recovery encryption is verified
+- **WHEN** the first automated backup is accepted
+- **THEN** the operator downloads the exact object version and verifies local decryption with the private recovery key; ciphertext readback alone is not claimed as a restore test, and independent key custody remains explicit until confirmed
+
+Retention is scoped to the daily etcd backup set. Existing independent bootstrap/host archives and routine/monthly backup sets keep their existing rules; this change does not purge unrelated recovery material.
