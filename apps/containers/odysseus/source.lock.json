@@ -1,0 +1,9 @@
+{
+  "repository": "https://github.com/odysseus-dev/odysseus",
+  "commit": "934d23c0be29c9721385f34565c0ae2cbd60da04",
+  "archive_url": "https://codeload.github.com/odysseus-dev/odysseus/tar.gz/934d23c0be29c9721385f34565c0ae2cbd60da04",
+  "archive_sha256": "65b74c853a54b0ef3019ac8bc5390bb1f3c55d15906200991ee679b568e5185e",
+  "python_image": "python:3.14-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6",
+  "ollama_image": "ollama/ollama@sha256:684d8674b4315fa18f4f0e973a118ec2652ed96f67563277839985175858e0ba",
+  "image_repository": "ghcr.io/tusharsariyaorg/homelab-odysseus"
+}
