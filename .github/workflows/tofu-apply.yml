@@ -46,6 +46,10 @@ jobs:
           TS_OPERATOR_CLIENT_ID: ${{ secrets.TS_OPERATOR_CLIENT_ID }}
           TS_OPERATOR_CLIENT_SECRET: ${{ secrets.TS_OPERATOR_CLIENT_SECRET }}
           PIHOLE_ADMIN_PASSWORD: ${{ secrets.PIHOLE_ADMIN_PASSWORD }}
+          GHCR_READ_USER: ${{ secrets.GHCR_READ_USER }}
+          GHCR_READ_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
+          ODYSSEUS_ADMIN_PASSWORD: ${{ secrets.ODYSSEUS_ADMIN_PASSWORD }}
+          SEARXNG_SECRET: ${{ secrets.SEARXNG_SECRET }}
         run: python3 scripts/homelab-apps.py credentials
       - uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -137,6 +141,10 @@ jobs:
           operator-client-id: ${{ secrets.TS_OPERATOR_CLIENT_ID }}
           operator-client-secret: ${{ secrets.TS_OPERATOR_CLIENT_SECRET }}
           pihole-password: ${{ secrets.PIHOLE_ADMIN_PASSWORD }}
+          ghcr-user: ${{ secrets.GHCR_READ_USER }}
+          ghcr-token: ${{ secrets.GHCR_READ_TOKEN }}
+          odysseus-password: ${{ secrets.ODYSSEUS_ADMIN_PASSWORD }}
+          searxng-secret: ${{ secrets.SEARXNG_SECRET }}
 
   worker-maintenance:
     needs: [detect, apply]

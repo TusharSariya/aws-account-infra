@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: odysseus-backup
+  namespace: homelab-models
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  nodeSelector:
+    kubernetes.io/hostname: talos-worker-01
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+    seccompProfile: {type: RuntimeDefault}
+  containers:
+    - name: snapshot
+      image: python:3.14-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6
+      command: [sleep, '3600']
+      securityContext:
+        readOnlyRootFilesystem: true
+        allowPrivilegeEscalation: false
+        capabilities: {drop: [ALL]}
+      resources:
+        requests: {cpu: 100m, memory: 128Mi}
+        limits: {cpu: '1', memory: 512Mi}
+      volumeMounts:
+        - {name: workspace, mountPath: /snapshot/workspace, readOnly: true}
+        - {name: chromadb, mountPath: /snapshot/chromadb, readOnly: true}
+        - {name: temporary, mountPath: /tmp}
+  volumes:
+    - name: workspace
+      persistentVolumeClaim: {claimName: odysseus-data, readOnly: true}
+    - name: chromadb
+      persistentVolumeClaim: {claimName: chromadb-data, readOnly: true}
+    - {name: temporary, emptyDir: {}}

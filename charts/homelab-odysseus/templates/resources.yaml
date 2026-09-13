@@ -1,0 +1,183 @@
+{{- range $name, $component := .Values.components }}
+{{- if $component.storage }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $name }}-data
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: worker-local-retain
+  resources:
+    requests:
+      storage: {{ $component.storage }}
+---
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+spec:
+  replicas: {{ $.Values.replicas }}
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app: {{ $name }}}
+  template:
+    metadata:
+      annotations:
+        homelab/chart-revision: {{ $.Values.chartRevision | default "local-render" | quote }}
+      labels: {app: {{ $name }}}
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/hostname: {{ $.Values.node }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile: {type: RuntimeDefault}
+      {{- if eq $name "odysseus" }}
+      imagePullSecrets: [{name: ghcr-read}]
+      {{- end }}
+      {{- if eq $name "searxng" }}
+      initContainers:
+        - name: configure
+          image: {{ $.Values.initImage | quote }}
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+          command: [python, -c]
+          args:
+            - |
+              import json, os, pathlib
+              settings = pathlib.Path('/template/settings.yml').read_text()
+              pathlib.Path('/config/settings.yml').write_text(settings.replace('__SECRET__', json.dumps(os.environ['SEARXNG_SECRET'])))
+          env:
+            - name: SEARXNG_SECRET
+              valueFrom:
+                secretKeyRef: {name: odysseus-bootstrap, key: searxng-secret}
+          resources:
+            requests: {cpu: 100m, memory: 64Mi}
+            limits: {cpu: '1', memory: 256Mi}
+          volumeMounts:
+            - {name: search-config, mountPath: /config}
+            - {name: search-template, mountPath: /template, readOnly: true}
+      {{- end }}
+      containers:
+        - name: {{ $name }}
+          image: {{ (ternary $.Values.image $component.image (eq $name "odysseus")) | quote }}
+          securityContext:
+            # Odysseus Cookbook installs tools in /app; bounded by non-root UID and pod limits.
+            # trivy:ignore:AVD-KSV-0014
+            readOnlyRootFilesystem: {{ ne $name "odysseus" }}
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+          ports: [{name: http, containerPort: {{ $component.port }}}]
+          resources:
+            {{- toYaml $component.resources | nindent 12 }}
+          {{- if eq $name "odysseus" }}
+          env:
+            - {name: OLLAMA_HOST, value: 'http://ollama:11434'}
+            - {name: OLLAMA_BASE_URL, value: 'http://ollama:11434/v1'}
+            - {name: LLM_HOST, value: ollama}
+            - {name: RESEARCH_LLM_ENDPOINT, value: 'http://ollama:11434/v1/chat/completions'}
+            - {name: SEARXNG_INSTANCE, value: 'http://searxng:8080'}
+            - {name: CHROMADB_HOST, value: chromadb}
+            - {name: CHROMADB_PORT, value: '8000'}
+            - {name: ODYSSEUS_DATA_DIR, value: /workspace/data}
+            - {name: DATABASE_URL, value: 'sqlite:////workspace/data/app.db'}
+            - {name: AUTH_ENABLED, value: 'true'}
+            - {name: LOCALHOST_BYPASS, value: 'false'}
+            - {name: SECURE_COOKIES, value: 'true'}
+            - {name: ALLOWED_ORIGINS, value: 'https://odysseus.tail2f646b.ts.net'}
+            - {name: OAUTH_REDIRECT_BASE_URL, value: 'https://odysseus.tail2f646b.ts.net'}
+            - {name: FASTEMBED_CACHE_PATH, value: /workspace/cache/fastembed}
+            - {name: ODYSSEUS_ADMIN_USER, value: admin}
+            - name: ODYSSEUS_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: odysseus-bootstrap, key: admin-password}
+          {{- else if eq $name "chromadb" }}
+          env:
+            - {name: CHROMA_PERSIST_PATH, value: /data}
+            - {name: ANONYMIZED_TELEMETRY, value: 'false'}
+          {{- else }}
+          command: [/usr/local/searxng/.venv/bin/granian]
+          args: [--interface, wsgi, --host, '0.0.0.0', --port, '8080', 'searx.webapp:app']
+          env:
+            - {name: SEARXNG_SETTINGS_PATH, value: /etc/searxng/settings.yml}
+            - {name: SEARXNG_BASE_URL, value: 'http://searxng:8080/'}
+          {{- end }}
+          startupProbe:
+            tcpSocket: {port: http}
+            periodSeconds: 5
+            failureThreshold: 120
+          readinessProbe:
+            tcpSocket: {port: http}
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket: {port: http}
+            periodSeconds: 30
+          volumeMounts:
+            {{- if $component.storage }}
+            - {name: data, mountPath: {{ $component.mount }}}
+            {{- else }}
+            - {name: search-config, mountPath: /etc/searxng, readOnly: true}
+            - {name: search-cache, mountPath: /var/cache/searxng}
+            {{- end }}
+            - {name: temporary, mountPath: /tmp}
+      volumes:
+        - {name: temporary, emptyDir: {}}
+        {{- if $component.storage }}
+        - name: data
+          persistentVolumeClaim: {claimName: {{ $name }}-data}
+        {{- else }}
+        - {name: search-config, emptyDir: {}}
+        - {name: search-cache, emptyDir: {}}
+        - name: search-template
+          configMap: {name: searxng-settings}
+        {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: {{ $name }}}
+spec:
+  type: ClusterIP
+  selector: {app: {{ $name }}}
+  ports: [{name: http, port: {{ $component.port }}, targetPort: http}]
+---
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: searxng-settings}
+data:
+  settings.yml: |
+    use_default_settings: true
+    server:
+      secret_key: __SECRET__
+      limiter: false
+      image_proxy: false
+    search:
+      formats: [html, json]
+---
+{{- if .Values.ingressEnabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata: {name: odysseus}
+spec:
+  ingressClassName: tailscale
+  tls:
+    - hosts: [{{ .Values.hostname | quote }}]
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: odysseus
+                port: {name: http}
+
+{{- end }}

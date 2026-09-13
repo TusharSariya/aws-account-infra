@@ -21,7 +21,7 @@ class GuardTests(unittest.TestCase):
 
     def test_safe_plan_and_forbidden_resource_actions(self):
         for actions in [['create'], ['update'], ['no-op']]:
-            self.assertEqual(len(apps.guard_plan(self.plan(actions))), 2)
+            self.assertEqual(len(apps.guard_plan(self.plan(actions))), 4)
         for actions in [['delete'], ['delete', 'create'], ['forget']]:
             with self.assertRaises(apps.AppError):
                 apps.guard_plan(self.plan(actions))
@@ -39,7 +39,7 @@ class GuardTests(unittest.TestCase):
             run.assert_not_called()
 
     def test_changed_saved_plan_cannot_apply(self):
-        with tempfile.TemporaryDirectory() as d, patch.dict(apps.os.environ, {'GITHUB_ACTIONS': 'true'}), patch.object(apps, 'run') as run:
+        with tempfile.TemporaryDirectory() as d, patch.dict(apps.os.environ, {'GITHUB_ACTIONS': 'true'}), patch.object(apps, 'run') as run, patch.object(apps, 'guard_images'), patch.object(apps, 'credentials'):
             p = Path(d)
             (p / 'apps.tfplan').write_bytes(b'changed')
             (p / 'apps-plan.sha256').write_text('previous')
@@ -91,7 +91,7 @@ class GuardTests(unittest.TestCase):
             return b''
         with patch.object(apps, 'run', side_effect=command) as run, \
              patch.object(apps, 'tailnet_ip', return_value='100.101.182.10') as resolve, \
-             patch.object(apps, 'tailnet_https', side_effect=[b'OK', b'401']):
+             patch.object(apps, 'tailnet_https', side_effect=[b'OK', b'401', b'{"version":"test"}', b'OK', b'401']):
             apps.endpoints('kubectl')
         resolve.assert_called_once_with('pihole-dns.tail2f646b.ts.net')
         waits = [call.args[0] for call in run.call_args_list if 'wait' in call.args[0]]
@@ -105,6 +105,32 @@ class GuardTests(unittest.TestCase):
             apps.run(['command'])
             for name in apps.SECRET_NAMES:
                 self.assertNotIn(name, run.call_args.kwargs['env'])
+
+    def test_image_guard_rejects_mutable_tags_before_planning(self):
+        with tempfile.TemporaryDirectory() as d, patch.object(apps, 'CONFIG', Path(d)), patch.object(apps, 'run') as run:
+            config = Path(d)
+            (config / 'ollama-values.yaml').write_text('image: ollama/ollama:latest')
+            (config / 'workspace-values.yaml').write_text('image: test\ninitImage: test\ncomponents: {}')
+            with self.assertRaises(apps.AppError):
+                apps.execute('plan', config)
+            run.assert_not_called()
+
+    def test_new_credentials_are_external_and_registry_secret_has_correct_type(self):
+        values = dict.fromkeys(apps.SECRET_NAMES, 'a-fixture-only-value-that-is-long-enough')
+        with patch.dict(apps.os.environ, {**values, 'GITHUB_ACTIONS': 'true'}), patch.object(apps, 'run') as run:
+            apps.bootstrap('kubectl')
+        manifests = [json.loads(call.args[1]) for call in run.call_args_list if len(call.args) == 2]
+        registry = next(m for m in manifests if m['metadata']['name'] == 'ghcr-read')
+        self.assertEqual(registry['type'], 'kubernetes.io/dockerconfigjson')
+        config = json.loads(base64.b64decode(registry['data']['.dockerconfigjson']))
+        self.assertEqual(base64.b64decode(config['auths']['ghcr.io']['auth']).decode(), values['GHCR_READ_USER'] + ':' + values['GHCR_READ_TOKEN'])
+        self.assertFalse(any('stringData' in m for m in manifests))
+        for missing in ['GHCR_READ_TOKEN', 'ODYSSEUS_ADMIN_PASSWORD', 'SEARXNG_SECRET']:
+            with patch.dict(apps.os.environ, {**values, 'GITHUB_ACTIONS': 'true', missing: ''}), patch.object(apps, 'run') as run:
+                with self.assertRaises(apps.AppError):
+                    apps.bootstrap('kubectl')
+                run.assert_not_called()
+
 
 
 class ChartTests(unittest.TestCase):
@@ -154,6 +180,55 @@ class ChartTests(unittest.TestCase):
         pod = dep['spec']['template']['spec']
         self.assertTrue(any(v.get('secret', {}).get('secretName') == 'operator-oauth' for v in pod['volumes']))
         self.assertIn('@sha256:', pod['containers'][0]['image'])
+
+    def test_workspace_isolation_persistence_and_sequential_cpu_budget(self):
+        docs = []
+        for name, values in [('ollama', 'ollama'), ('odysseus', 'workspace')]:
+            rendered = subprocess.check_output(['helm', 'template', name, str(ROOT / 'charts' / ('homelab-' + name)),
+                '-n', 'homelab-models', '-f', str(apps.CONFIG / (values + '-values.yaml'))], text=True)
+            docs.extend(d for d in yaml.safe_load_all(rendered) if d)
+        self.assertFalse(any(d['kind'] in ['Secret', 'ClusterRole', 'ClusterRoleBinding'] for d in docs))
+        claims = [d for d in docs if d['kind'] == 'PersistentVolumeClaim']
+        self.assertEqual({d['metadata']['name'] for d in claims}, {'ollama-models', 'odysseus-data', 'chromadb-data'})
+        self.assertEqual(sum(int(d['spec']['resources']['requests']['storage'][:-2]) for d in claims), 330)
+        for claim in claims:
+            self.assertEqual(claim['metadata']['annotations']['helm.sh/resource-policy'], 'keep')
+            self.assertEqual(claim['spec']['storageClassName'], 'worker-local-retain')
+        pods = {}
+        for d in docs:
+            if d['kind'] == 'Service':
+                self.assertEqual(d['spec']['type'], 'ClusterIP')
+            if d['kind'] != 'Deployment':
+                continue
+            self.assertEqual(d['spec']['strategy']['type'], 'Recreate')
+            pod = d['spec']['template']['spec']
+            pods[d['metadata']['name']] = pod
+            self.assertFalse(pod['automountServiceAccountToken'])
+            self.assertEqual(pod['nodeSelector']['kubernetes.io/hostname'], 'talos-worker-01')
+            self.assertTrue(pod['securityContext']['runAsNonRoot'])
+            self.assertFalse(pod.get('hostNetwork', False))
+            self.assertFalse(any('hostPath' in v for v in pod['volumes']))
+            for c in pod['containers'] + pod.get('initContainers', []):
+                self.assertFalse(c['securityContext']['allowPrivilegeEscalation'])
+                self.assertEqual(c['securityContext']['capabilities']['drop'], ['ALL'])
+        ollama = pods['ollama']['containers'][0]
+        env = {v['name']: v.get('value') for v in ollama['env']}
+        self.assertEqual(env['OLLAMA_MAX_LOADED_MODELS'], '1')
+        self.assertEqual(env['OLLAMA_NUM_PARALLEL'], '1')
+        self.assertEqual(env['OLLAMA_NO_CLOUD'], 'true')
+        self.assertEqual(ollama['resources']['limits']['memory'], '64Gi')
+        self.assertTrue(ollama['securityContext']['readOnlyRootFilesystem'])
+        self.assertEqual(pods['odysseus']['imagePullSecrets'], [{'name': 'ghcr-read'}])
+        env = {v['name']: v for v in pods['odysseus']['containers'][0]['env']}
+        self.assertEqual(env['LOCALHOST_BYPASS']['value'], 'false')
+        self.assertEqual(env['AUTH_ENABLED']['value'], 'true')
+        self.assertIn('secretKeyRef', env['ODYSSEUS_ADMIN_PASSWORD']['valueFrom'])
+        ingresses = [d for d in docs if d['kind'] == 'Ingress']
+        self.assertEqual({d['metadata']['name'] for d in ingresses}, {'ollama', 'odysseus'})
+        for d in ingresses:
+            self.assertEqual(d['spec']['ingressClassName'], 'tailscale')
+            self.assertNotIn('tailscale.com/funnel', d['metadata'].get('annotations', {}))
+            self.assertTrue(all('host' not in r for r in d['spec']['rules']))
 
 
 if __name__ == '__main__':

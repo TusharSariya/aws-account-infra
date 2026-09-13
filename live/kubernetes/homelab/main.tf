@@ -34,3 +34,35 @@ resource "helm_release" "pihole" {
   max_history = 5
   depends_on  = [helm_release.tailscale_operator]
 }
+
+resource "helm_release" "ollama" {
+  name      = "ollama"
+  namespace = "homelab-models"
+  chart     = "${path.module}/../../../charts/homelab-ollama"
+  values = [file("${local.config}/ollama-values.yaml"), yamlencode({
+    chartRevision = sha256(join("", [for file in sort(tolist(fileset("${path.module}/../../../charts/homelab-ollama", "**"))) : filesha256("${path.module}/../../../charts/homelab-ollama/${file}")]))
+  })]
+  wait        = true
+  timeout     = 900
+  max_history = 5
+  depends_on  = [helm_release.tailscale_operator]
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "helm_release" "odysseus" {
+  name      = "odysseus"
+  namespace = "homelab-models"
+  chart     = "${path.module}/../../../charts/homelab-odysseus"
+  values = [file("${local.config}/workspace-values.yaml"), yamlencode({
+    chartRevision = sha256(join("", [for file in sort(tolist(fileset("${path.module}/../../../charts/homelab-odysseus", "**"))) : filesha256("${path.module}/../../../charts/homelab-odysseus/${file}")]))
+  })]
+  wait        = true
+  timeout     = 900
+  max_history = 5
+  depends_on  = [helm_release.tailscale_operator]
+  lifecycle {
+    prevent_destroy = true
+  }
+}

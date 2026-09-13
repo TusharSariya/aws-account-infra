@@ -1,0 +1,29 @@
+replicas: 1
+ingressEnabled: true
+# Replace BUILD_REQUIRED with the reviewed private GHCR digest emitted by odysseus-image.
+image: ghcr.io/tusharsariyaorg/homelab-odysseus:BUILD_REQUIRED
+hostname: odysseus
+node: talos-worker-01
+components:
+  odysseus:
+    port: 7000
+    storage: 20Gi
+    mount: /workspace
+    resources:
+      requests: {cpu: '1', memory: 2Gi}
+      limits: {cpu: '4', memory: 8Gi}
+  chromadb:
+    image: chromadb/chroma:1.5.5@sha256:0771874eaffc80fb4a66ba4de41a8fadf0447240b08d92353450e26ee43c9355
+    port: 8000
+    storage: 10Gi
+    mount: /data
+    resources:
+      requests: {cpu: '500m', memory: 1Gi}
+      limits: {cpu: '2', memory: 4Gi}
+  searxng:
+    image: searxng/searxng:2026.5.31-7159b8aed@sha256:35b089054ac9b4257976107e71673d9e30ac17c9b50bbf8b4783f2f6d1d1981f
+    port: 8080
+    resources:
+      requests: {cpu: '250m', memory: 256Mi}
+      limits: {cpu: '1', memory: 1Gi}
+initImage: python:3.14-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6
