@@ -51,7 +51,7 @@ Prerequisite: review the recovery-foundation gaps in 2.7 and 2.8 before guest cr
 
 - [x] 6.1 Prepare the Talos user-volume configuration selecting the verified worker data disk, mount at /var/mnt/local-path-provisioner and local-path provisioning; validate the config and ensure the OS disk cannot be selected
 - [x] 6.2 Apply the worker data-volume configuration only after verifying /dev/sdb identity and size; verify the filesystem mount and persistence across a worker reboot without modifying the OS disk
-- [ ] 6.3 Define worker-local storage classes, retention and application capacity limits for model files, Celery services and durable data; verify representative PVC binding and read/write persistence
+- [x] 6.3 Define worker-local storage classes, retention and application capacity limits for model files, Celery services and durable data; verify representative PVC binding and read/write persistence
 - [ ] 6.4 Configure independent encrypted backups and application-consistent export procedures for accepted worker data; verify backup access does not depend on this cluster and a test backup succeeds
 - [ ] 6.5 Add worker disk/filesystem and Proxmox thin-pool capacity monitoring at 70/80/90 percent plus host memory-pressure monitoring; verify alert behavior without filling storage
 

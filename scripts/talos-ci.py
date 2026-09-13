@@ -9,6 +9,8 @@ No secret-bearing diagnostics, plan JSON or state are printed or uploaded.
 import argparse
 import base64
 import hashlib
+import io
+import tarfile
 import importlib.util
 import json
 import os
@@ -35,7 +37,8 @@ def load_generator():
 def guard_plan(plan):
     allowed = {'talos_machine_configuration_apply.control_plane',
                'talos_machine_bootstrap.cluster',
-               'talos_machine_configuration_apply.worker[0]', 'helm_release.cilium'}
+               'talos_machine_configuration_apply.worker[0]', 'helm_release.cilium',
+               'helm_release.storage_policy', 'helm_release.local_path'}
     summary = []
     for item in plan.get('resource_changes', []):
         address = item['address']
@@ -60,6 +63,20 @@ def guard_plan(plan):
                     or values.get('tunnelProtocol') != 'vxlan'
                     or values.get('ipam', {}).get('mode') != 'kubernetes'):
                 raise ValueError('Cilium must retain kube-proxy, VXLAN and Kubernetes IPAM')
+        if address == 'helm_release.local_path':
+            if (after.get('name'), after.get('namespace'), after.get('version'), after.get('chart')) != (
+                    'local-path-provisioner', 'local-path-storage', '0.0.37', './.terraform/local-path-provisioner'):
+                raise ValueError('Unexpected local-path release target/version')
+            values = yaml.safe_load(after.get('values', ['{}'])[0])
+            if (values.get('nodePathMap') != [
+                    {'node': 'DEFAULT_PATH_FOR_NON_LISTED_NODES', 'paths': []},
+                    {'node': 'talos-worker-01', 'paths': ['/var/mnt/local-path-provisioner']}]
+                    or values.get('storageClass', {}).get('create') is not False):
+                raise ValueError('Storage must use only the worker data mount and explicit storage classes')
+        if address == 'helm_release.storage_policy':
+            if (after.get('name'), after.get('namespace'), after.get('version'), after.get('chart')) != (
+                    'homelab-storage-policy', 'kube-system', '0.1.0', './charts/storage-policy'):
+                raise ValueError('Unexpected storage policy release target')
         summary.append({'resource': address, 'actions': actions,
                         'import': bool(item['change'].get('importing'))})
     if not any(s['resource'] == 'talos_machine_bootstrap.cluster' for s in summary):
@@ -85,6 +102,24 @@ def download_verified(url, destination, expected):
     if hashlib.sha256(data).hexdigest() != expected:
         raise ValueError('Downloaded artifact checksum mismatch')
     destination.write_bytes(data)
+
+
+def prepare_local_path_chart():
+    data = urllib.request.urlopen(
+        'https://codeload.github.com/rancher/local-path-provisioner/tar.gz/refs/tags/v0.0.37', timeout=60).read()
+    if hashlib.sha256(data).hexdigest() != '3602edf85bb1513d463073917adc930752177d034e1f944fb8f7610c779a34f6':
+        raise ValueError('Local-path source checksum mismatch')
+    prefix = 'local-path-provisioner-0.0.37/deploy/chart/local-path-provisioner/'
+    destination = TF / '.terraform/local-path-provisioner'
+    with tarfile.open(fileobj=io.BytesIO(data), mode='r:gz') as archive:
+        for member in archive.getmembers():
+            if member.isfile() and member.name.startswith(prefix):
+                relative = Path(member.name[len(prefix):])
+                if relative.is_absolute() or '..' in relative.parts:
+                    raise ValueError('Unsafe chart archive path')
+                target = destination / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(archive.extractfile(member).read())
 
 
 DATA_ID = '/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi1'
@@ -215,6 +250,7 @@ def main():
         chart = TF / '.terraform/cilium-1.20.1.tgz'
         download_verified('https://helm.cilium.io/cilium-1.20.1.tgz', chart,
                           '06210eef7c23d15f7699c79e2fe3a1ec9c389024c5c5c006ea04022d322449a2')
+        prepare_local_path_chart()
         run(tofu + ['validate'])
         plan_file = private / 'tfplan'
         run(tofu + ['plan', '-input=false', '-lock-timeout=60s',
@@ -269,6 +305,9 @@ def main():
             kubectl.chmod(0o700)
             env['KUBECTL'] = str(kubectl)
             print(run(['bash', ROOT / 'scripts/homelab-cilium-validate.sh']))
+            env['TALOSCTL'] = str(cli)
+            env['TALOSCONFIG'] = str(output / 'talosconfig')
+            print(run([sys.executable, ROOT / 'scripts/homelab-storage-validate.py']))
         else:
             print('PASS: authenticated Talos preflight and guarded plan; no configuration applied')
 

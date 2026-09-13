@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: local-path-storage
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/enforce-version: v1.36
+  annotations:
+    helm.sh/resource-policy: keep
+---
+{{ range $name, $budget := .Values.budgets }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $name }}
+  annotations:
+    helm.sh/resource-policy: keep
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: storage-budget
+  namespace: {{ $name }}
+spec:
+  hard:
+    requests.storage: {{ $budget }}
+    persistentvolumeclaims: "10"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: storage-claim-size
+  namespace: {{ $name }}
+spec:
+  limits:
+    - type: PersistentVolumeClaim
+      min:
+        storage: 1Gi
+      max:
+        storage: {{ $budget }}
+---
+{{ end }}
+{{ range $suffix, $policy := dict "retain" "Retain" "delete" "Delete" }}
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: worker-local-{{ $suffix }}
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+    defaultVolumeType: hostPath
+provisioner: rancher.io/local-path
+reclaimPolicy: {{ $policy }}
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: false
+allowedTopologies:
+  - matchLabelExpressions:
+      - key: kubernetes.io/hostname
+        values: [talos-worker-01]
+---
+{{ end }}

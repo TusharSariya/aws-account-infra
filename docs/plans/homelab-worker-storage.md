@@ -54,3 +54,71 @@ worker data as independently recoverable.
 
 References: [Talos user volumes](https://docs.siderolabs.com/talos/v1.13/configure-your-talos-cluster/storage-and-disk-management/disk-management/user),
 [disk selectors](https://docs.siderolabs.com/talos/v1.13/configure-your-talos-cluster/storage-and-disk-management/disk-management/common).
+
+
+## Kubernetes claims (task 6.3)
+
+OpenTofu manages two Helm releases: a local policy chart for namespaces, classes
+and request budgets, and the checksum-verified upstream local-path-provisioner
+0.0.37 chart. Controller and helper images are pinned by digest. The provisioner
+and its hostPath helper pods use the dedicated local-path-storage namespace;
+that namespace allows the hostPath operation. Ordinary applications receive PVCs
+and do not require privileged access or Talos credentials.
+
+Both classes use WaitForFirstConsumer and worker hostname topology. There is no
+default class and no automatic PVC expansion. Choose worker-local-retain for
+models and durable application files. Deleting its PVC leaves the PV Released
+and files in place for deliberate recovery/rebinding or cleanup. Choose
+worker-local-delete only for disposable scratch data: deleting the claim
+removes the underlying directory. Retain is not an off-host backup.
+
+| Namespace | Total requested storage | Maximum per PVC | Maximum claims |
+| --- | --- | --- | --- |
+| homelab-models | 800 GiB | 800 GiB | 10 |
+| homelab-services | 100 GiB | 100 GiB | 10 |
+| homelab-data | 100 GiB | 100 GiB | 10 |
+
+Minimum claim size is 1 GiB. These are initial admission budgets, not preallocated
+partitions or filesystem write quotas. Local-path ignores requested volume sizes
+when applications write data; it does not provide a hard byte limit. Other
+namespaces are not covered by these quotas. Released Retain volumes also consume
+space after their claims stop counting toward quota. Actual usage monitoring and
+retained-volume accounting remain necessary; task 6.5 provides monitoring.
+Change these budgets through the policy chart in a PR, keeping total requested
+capacity below the filesystem size with headroom. Important model files, broker
+state and databases still require application-aware backups under task 6.4.
+
+Example claim (application repository):
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: model-files
+  namespace: homelab-models
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: worker-local-retain
+  resources:
+    requests:
+      storage: 100Gi
+```
+
+Pending is expected until a consuming pod is scheduled. Mount this claim in the
+pod via persistentVolumeClaim. The volume is tied to talos-worker-01; losing that
+worker does not move data to another node. Recreate a pod against the same PVC
+to preserve files. For a Released Retain volume, inspect the original claim and
+path, back up its files, and explicitly prebind a replacement claim to that PV;
+never clear claimRef on an unrelated or still-bound volume.
+
+CI runs scripts/homelab-storage-validate.py after each apply. It verifies the
+live class/namespace budgets, uses disposable restricted test pods to write and
+reread a random proof across recreation, checks worker/data-path affinity,
+confirms Retain keeps files after PVC deletion, and checks Delete removes the
+PV. Its cleanup changes reclaim policy only on volumes matched to newly-created
+test claim UIDs. It never changes application PV reclaim policies. The local-path
+setup/teardown scripts reject the wrong path or a missing data filesystem mount
+so a failed mount cannot silently put new volumes on the OS disk.
+
+Source: [upstream 0.0.37](https://github.com/rancher/local-path-provisioner/tree/v0.0.37),
+[Kubernetes storage quotas](https://kubernetes.io/docs/concepts/policy/resource-quotas/#storage-resource-quota).
