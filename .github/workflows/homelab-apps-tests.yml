@@ -1,0 +1,35 @@
+name: homelab-apps-tests
+on:
+  pull_request:
+    paths:
+      - 'live/kubernetes/**'
+      - 'config/environments/kubernetes/**'
+      - 'scripts/homelab-apps.py'
+      - 'scripts/tests/test_homelab_apps.py'
+      - 'scripts/tests/test_deploy_units.py'
+      - 'scripts/deploy-units.py'
+      - 'deploy-units.json'
+      - '.github/actions/kubernetes-deploy/**'
+      - '.github/workflows/homelab-apps-tests.yml'
+      - '.github/workflows/tofu-*.yml'
+permissions:
+  contents: read
+jobs:
+  application-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.19.0
+      - uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: 1.11.5
+      - name: Verify charts and application contracts
+        run: |
+          python3 scripts/homelab-apps.py setup
+          uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p test_homelab_apps.py
+          python3 -m unittest discover -s scripts/tests -p test_deploy_units.py
+          tofu -chdir=live/kubernetes/homelab init -backend=false -input=false -lockfile=readonly
+          tofu -chdir=live/kubernetes/homelab validate

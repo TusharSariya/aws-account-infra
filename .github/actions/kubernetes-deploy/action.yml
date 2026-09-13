@@ -1,0 +1,92 @@
+name: Kubernetes applications
+description: Verified application charts, private authentication and exact-plan deployment
+inputs:
+  mode:
+    description: plan or apply
+    required: true
+  secrets-b64:
+    description: Existing Talos identity
+    required: true
+  operator-client-id:
+    description: Dedicated operator OAuth client ID
+    default: ''
+  operator-client-secret:
+    description: Dedicated operator OAuth client secret
+    default: ''
+  pihole-password:
+    description: Pi-hole admin password
+    default: ''
+runs:
+  using: composite
+  steps:
+    - name: Allocate private application workspace
+      id: private
+      shell: bash
+      env:
+        MODE: ${{ inputs.mode }}
+      run: |
+        [[ "$MODE" == plan || "$MODE" == apply ]]
+        umask 077
+        echo "path=$(mktemp -d "$RUNNER_TEMP/homelab-apps.XXXXXXXX")" >> "$GITHUB_OUTPUT"
+    - name: Verify tools and application charts
+      shell: bash
+      run: |
+        uv run scripts/talos-ci.py setup --acceptance --checks-only
+        python3 scripts/homelab-apps.py setup
+    - name: Prepare existing cluster identity
+      shell: bash
+      env:
+        PRIVATE: ${{ steps.private.outputs.path }}
+        TALOS_SECRETS_B64: ${{ inputs.secrets-b64 }}
+      run: uv run scripts/talos-ci.py prepare --private "$PRIVATE"
+    - name: Authenticate without changing the cluster
+      shell: bash
+      env:
+        PRIVATE: ${{ steps.private.outputs.path }}
+      run: uv run scripts/talos-ci.py connect --private "$PRIVATE"
+    - name: Initialize and validate application state
+      shell: bash
+      run: |
+        tofu -chdir=live/kubernetes/homelab fmt -check
+        tofu -chdir=live/kubernetes/homelab init -input=false -lockfile=readonly
+        tofu -chdir=live/kubernetes/homelab validate
+    - name: Plan and guard application changes
+      shell: bash
+      env:
+        PRIVATE: ${{ steps.private.outputs.path }}
+        TS_OPERATOR_CLIENT_ID: ${{ inputs.operator-client-id }}
+        TS_OPERATOR_CLIENT_SECRET: ${{ inputs.operator-client-secret }}
+        PIHOLE_ADMIN_PASSWORD: ${{ inputs.pihole-password }}
+      run: |
+        set -o pipefail
+        uv run --with PyYAML==6.0.3 python scripts/homelab-apps.py plan --private "$PRIVATE" | tee applications-plan.txt
+    - name: Reconcile protected credential Secrets
+      if: inputs.mode == 'apply'
+      shell: bash
+      env:
+        PRIVATE: ${{ steps.private.outputs.path }}
+        TS_OPERATOR_CLIENT_ID: ${{ inputs.operator-client-id }}
+        TS_OPERATOR_CLIENT_SECRET: ${{ inputs.operator-client-secret }}
+        PIHOLE_ADMIN_PASSWORD: ${{ inputs.pihole-password }}
+      run: uv run --with PyYAML==6.0.3 python scripts/homelab-apps.py bootstrap --private "$PRIVATE"
+    - name: Apply exact saved plan and inspect state for credentials
+      if: inputs.mode == 'apply'
+      shell: bash
+      env:
+        PRIVATE: ${{ steps.private.outputs.path }}
+        TS_OPERATOR_CLIENT_ID: ${{ inputs.operator-client-id }}
+        TS_OPERATOR_CLIENT_SECRET: ${{ inputs.operator-client-secret }}
+        PIHOLE_ADMIN_PASSWORD: ${{ inputs.pihole-password }}
+      run: uv run --with PyYAML==6.0.3 python scripts/homelab-apps.py apply --private "$PRIVATE"
+    - name: Verify private DNS and HTTPS endpoints
+      if: inputs.mode == 'apply'
+      shell: bash
+      env:
+        PRIVATE: ${{ steps.private.outputs.path }}
+      run: uv run --with PyYAML==6.0.3 python scripts/homelab-apps.py endpoints --private "$PRIVATE"
+    - name: Remove private application workspace
+      if: always() && steps.private.outputs.path != ''
+      shell: bash
+      env:
+        PRIVATE: ${{ steps.private.outputs.path }}
+      run: rm -rf -- "$PRIVATE"

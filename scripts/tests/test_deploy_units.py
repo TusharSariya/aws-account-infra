@@ -32,12 +32,28 @@ class SelectionTests(unittest.TestCase):
             self.assertEqual(units.acceptance_suite([path], selected), 'none')
 
 
+class ApplicationSelectionTests(unittest.TestCase):
+    def test_application_edit_selects_only_application_root(self):
+        for path in ['live/kubernetes/homelab/main.tf', 'config/environments/kubernetes/homelab/pihole-values.yaml', '.github/actions/kubernetes-deploy/action.yml']:
+            self.assertEqual([u['id'] for u in units.select_units([path], units.ordered(units.load_units()))], ['kubernetes-homelab'])
+
+    def test_order_places_applications_after_foundation(self):
+        ordered = [u['id'] for u in units.ordered(units.load_units())]
+        self.assertLess(ordered.index('talos-homelab'), ordered.index('kubernetes-homelab'))
+
+
 class GateTests(unittest.TestCase):
     def setUp(self):
         self.needs = {'detect': {'result': 'success', 'outputs': {
             'units': '[{"id":"talos-homelab"}]', 'suite': 'all'}},
             'apply': {'result': 'success', 'outputs': {'needs_worker_reboot': 'false'}},
             'acceptance': {'result': 'success'}, 'worker-maintenance': {'result': 'skipped'}}
+
+    def test_application_apply_cannot_be_skipped(self):
+        self.needs['detect']['outputs'] = {'units': '[{"id":"kubernetes-homelab"}]', 'suite': 'none'}
+        self.needs['apply']['result'] = 'skipped'
+        with self.assertRaises(ValueError):
+            units.acceptance_gate(self.needs, True, False)
 
     def test_successful_apply_and_acceptance_pass(self):
         units.acceptance_gate(self.needs, True, False)

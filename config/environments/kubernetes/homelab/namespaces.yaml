@@ -1,0 +1,9 @@
+# Bootstrap boundary: CI applies namespaces before existing credential Secrets.
+# The existing storage-policy Helm release owns homelab-services.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tailscale
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/enforce-version: v1.36

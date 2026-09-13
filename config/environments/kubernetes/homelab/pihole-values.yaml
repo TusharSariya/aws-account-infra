@@ -1,0 +1,56 @@
+replicaCount: 1
+strategyType: Recreate
+image:
+  repository: pihole/pihole
+  tag: 2026.07.2@sha256:f7d1be836e3bc608b56d82fc9904f5a831cdfbc0dc9c6d58f94e4c985c70038b
+nodeSelector:
+  kubernetes.io/hostname: talos-worker-01
+resources:
+  requests: {cpu: 100m, memory: 128Mi}
+  limits: {cpu: '1', memory: 512Mi}
+persistentVolumeClaim:
+  enabled: true
+  storageClass: worker-local-retain
+  size: 2Gi
+  annotations:
+    helm.sh/resource-policy: keep
+adminPassword: ''
+admin:
+  enabled: true
+  existingSecret: pihole-admin
+  passwordKey: password
+DNS1: 1.1.1.1
+DNS2: 1.0.0.1
+podDnsConfig:
+  enabled: true
+  policy: None
+  nameservers: [1.1.1.1, 1.0.0.1]
+extraEnvVars:
+  TZ: America/St_Johns
+  FTLCONF_dns_listeningMode: all
+  FTLCONF_database_maxDBdays: '7'
+  FTLCONF_dhcp_active: 'false'
+  FTLCONF_webserver_domain: pihole-admin.tail2f646b.ts.net
+adlists:
+  - https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
+serviceDhcp:
+  enabled: false
+serviceDns:
+  type: ClusterIP
+  mixedService: true
+  annotations:
+    tailscale.com/expose: 'true'
+    tailscale.com/hostname: pihole-dns
+serviceWeb:
+  type: ClusterIP
+  https:
+    enabled: false
+virtualHost: pihole-admin.tail2f646b.ts.net
+ingress:
+  enabled: true
+  ingressClassName: tailscale
+  path: /
+  pathType: Prefix
+  hosts: [pihole-admin.tail2f646b.ts.net]
+  tls:
+    - hosts: [pihole-admin]

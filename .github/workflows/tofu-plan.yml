@@ -28,7 +28,7 @@ jobs:
           HEAD_SHA: ${{ github.sha }}
         run: |
           units=$(python3 scripts/deploy-units.py changed "$BASE_SHA" "$HEAD_SHA")
-          jq -e 'all(.[]; .cloud == "aws" or (.cloud == "proxmox" and .id == "proxmox-homelab") or (.cloud == "talos" and .id == "talos-homelab"))' <<< "$units" > /dev/null
+          jq -e 'all(.[]; .cloud == "aws" or (.cloud == "proxmox" and .id == "proxmox-homelab") or (.cloud == "talos" and .id == "talos-homelab") or (.cloud == "kubernetes" and .id == "kubernetes-homelab"))' <<< "$units" > /dev/null
           echo "units=$units" >> "$GITHUB_OUTPUT"
           echo "aws_units=$(jq -c '[.[] | select(.cloud == "aws")]' <<< "$units")" >> "$GITHUB_OUTPUT"
 
@@ -187,8 +187,52 @@ jobs:
               body: `### Talos plan\nCommit: ${{ github.event.pull_request.head.sha }}\n\n\`\`\`json\n${plan.slice(-20000)}\n\`\`\``
             });
 
+  applications-plan:
+    needs: detect
+    if: contains(needs.detect.outputs.units, 'kubernetes-homelab') && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: prod
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.TOFU_PLAN_ROLE_ARN }}
+          aws-region: us-east-1
+      - uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4
+        with:
+          oauth-client-id: ${{ vars.TS_OIDC_CLIENT_ID }}
+          audience: ${{ vars.TS_OIDC_AUDIENCE }}
+          tags: tag:github-ci
+          version: 1.102.4
+          hostname: gh-apps-plan-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Accept homelab subnet route
+        run: sudo tailscale set --accept-routes=true --accept-dns=false
+      - uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: 1.11.5
+          tofu_wrapper: false
+      - uses: astral-sh/setup-uv@v6
+      - name: Plan Kubernetes applications
+        uses: ./.github/actions/kubernetes-deploy
+        with:
+          mode: plan
+          secrets-b64: ${{ secrets.TALOS_SECRETS_B64 }}
+      - name: Comment sanitized application plan
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.existsSync('applications-plan.txt') ? fs.readFileSync('applications-plan.txt', 'utf8') : 'No plan produced; inspect CI status.';
+            await github.rest.issues.createComment({
+              owner: context.repo.owner, repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `### Application plan\nCommit: ${{ github.event.pull_request.head.sha }}\n\n\`\`\`json\n${plan.slice(-20000)}\n\`\`\``
+            });
+
   plan-gate:
-    needs: [detect, plan, proxmox-plan, talos-plan]
+    needs: [detect, plan, proxmox-plan, talos-plan, applications-plan]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -204,5 +248,10 @@ jobs:
           if [[ '${{ contains(needs.detect.outputs.units, 'talos-homelab') }}' == true ]]; then
             [[ "${{ needs.talos-plan.result }}" == success ]] || {
               echo '::error::Talos plan must succeed from a trusted repository branch.'; exit 1;
+            }
+          fi
+          if [[ '${{ contains(needs.detect.outputs.units, 'kubernetes-homelab') }}' == true ]]; then
+            [[ "${{ needs.applications-plan.result }}" == success ]] || {
+              echo '::error::Application plan must succeed from a trusted branch.'; exit 1;
             }
           fi
