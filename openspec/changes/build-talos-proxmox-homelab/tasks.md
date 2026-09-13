@@ -65,6 +65,16 @@ Prerequisite: review the recovery-foundation gaps in 2.7 and 2.8 before guest cr
 
 - [ ] 7.6 Rehearse full disaster recovery in isolation from a clean administration environment, assuming the laptop and Proxmox are both lost; recover access/networking, host/storage, guests, cluster and accepted durable data in dependency order, verify service behavior and replayability, and record achieved recovery time/data loss against objectives with all unresolved blockers explicit
 
+## 8. Automation Simplification (next, before new feature work)
+
+Operator-approved planning revision: implement 8.1-8.5 before continuing new feature work in 6.4-6.5. Keep existing backups and services operating throughout. These tasks are pending; no refactor is claimed complete.
+
+- [ ] 8.1 Inventory deployment, tool setup, validation, secret handling, integration-test and backup responsibilities and all CI/local recovery callers; record which native mechanism replaces each responsibility and justify each retained helper
+- [ ] 8.2 Move routine orchestration into named GitHub Actions steps, consolidate pinned tool setup and move suitable constraints into blocking OpenTofu validation; preserve focused live/plan guards, original Talos identity, ephemeral/write-only secrets and sanitized diagnostics
+- [ ] 8.3 Separate targeted PVC/network integration suites into visible affected-change and manually dispatched jobs with acceptance gating; retain routine readiness checks and make reboot/recovery rehearsals explicit operations rather than hidden apply behavior
+- [ ] 8.4 Consolidate snapshot preparation and verified encrypted upload behind one focused backup command; preserve schedule, format/restore compatibility, exact-version readback, receipts, OIDC permissions, heartbeat/alarm, independent key custody and S3 retention semantics
+- [ ] 8.5 Prove migration parity with an authenticated no-change plan, negative safety/secret tests, targeted integration acceptance and a real encrypted backup download/decryption/integrity round trip; update all callers/recovery instructions, remove redundant wrappers and record rollback to a known working revision
+
 ## Retired task IDs (not completed)
 
 Operator-approved two-VM revision, 2026-09-12: 4.2 (NAS VM), 4.4 (sandbox VM) and 5.3 (sandbox join) are removed from active scope. Task 3.2 (dedicated sibling/NUMA placement) remains deferred tuning, no longer an implementation gate. These tasks were not executed. IDs are not reused. Completed artifact acquisition, including the unused Debian ISO, remains historical evidence. Phase 6 now implements worker-local storage and independent backups; 7.4 tests that recovery.

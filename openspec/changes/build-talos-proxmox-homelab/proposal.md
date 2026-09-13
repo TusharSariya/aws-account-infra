@@ -36,3 +36,12 @@ None.
 - No live infrastructure mutation is authorized by this proposal alone. Execution begins only through the OpenSpec apply workflow and operator-approved manual steps.
 
 The 2026-09-13 backup revision adds daily GitHub-operated etcd snapshots, public-key encryption, dedicated AWS OIDC upload/readback permissions, independent missing-backup monitoring and 30-day noncurrent-version retention while keeping the latest daily backup indefinitely.
+
+
+The operator-approved automation simplification revision reduces custom Python
+orchestration before adding further platform features. Keep OpenTofu, Helm and
+GitHub Actions; use native blocking validation and visible workflow steps where
+they replace custom logic. Retain focused helpers for private Talos identity
+handling, live disk safety and verified encrypted backups. Separate deployment
+from integration tests and explicitly invoked recovery/reboot rehearsals. This
+revision plans a behavior-preserving refactor, not an infrastructure migration.

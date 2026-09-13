@@ -174,3 +174,61 @@ and claims in other namespaces need separate accounting. Actual disk/thin-pool
 monitoring remains task 6.5. Reclaim policy is explicit and Retain does not replace
 application-consistent backups. See docs/plans/homelab-worker-storage.md for
 operator use, restore/rebinding boundaries and repeatable acceptance.
+
+
+### Simplify automation before expanding the platform
+
+Operator decision: reduce the bespoke orchestration accumulated during initial
+provisioning. Tasks 8.1-8.5 are the next implementation sequence, before new
+feature work in 6.4-6.5. Existing scheduled backups and deployed services continue
+during the refactor. IDs and completed-task evidence remain unchanged.
+
+Keep OpenTofu providers responsible for Proxmox/Talos/AWS desired state and Helm
+responsible for Kubernetes resources. Make CI tool setup, plan, approval/apply,
+lightweight readiness checks and test invocation visible as named workflow steps.
+Use a composite action only for genuinely repeated setup; replacing Python with
+large inline Bash/YAML or adding a second deployment framework is not simplification.
+Consolidate artifact versions, checksums and download setup rather than repeating
+them across deployment and backup scripts.
+
+Move configuration constraints into variable validation and blocking OpenTofu
+preconditions/postconditions where those mechanisms have the required inputs.
+Warning-only check blocks do not replace deployment gates. Keep a small focused
+plan/live-state validator for checks native configuration cannot express, such
+as unexpected resource actions, repeat bootstrap, disk identity/content checks
+or credentials accidentally persisted to state. Document each retained helper's
+purpose and interface. Do not merely split the same orchestration across files.
+
+Preserve the existing Talos identity, independent recovery inputs and ephemeral/
+write-only secret handling. Provider-native configuration generation is a
+candidate only after confirming compatibility with the pinned toolchain and
+showing it does not regenerate identity or persist machine secrets. Otherwise,
+retain a small private-input adapter. Secret-free logs and usable sanitized
+failure context must coexist; do not publish raw generated configs or plan/state
+artifacts to improve diagnostics.
+
+Keep fast unit/configuration tests on relevant PRs. Run PVC lifecycle and network
+integration suites in separate visible jobs for affected changes and on explicit
+dispatch, preserving appropriate post-deployment acceptance gates. Basic readiness
+checks remain part of deployment. Reboots and destructive/disposable recovery
+rehearsals are explicit maintenance/test operations, not hidden consequences of
+an ordinary apply. Separating tests must not turn a failed acceptance into a
+successful release or remove coverage.
+
+Consolidate snapshot acquisition, validation, encryption, upload, exact-version
+readback and receipt generation behind one focused backup command. Preserve the
+daily schedule, public-key encryption and independent private-key custody,
+dedicated OIDC scope, success-only heartbeat, missing-backup alarm and latest-
+preserving S3 retention. An orchestration change must not silently change the
+existing backup format; preserve restore compatibility or document and verify
+support for both old and new formats. Standard talosctl, etcdutl, age and AWS CLI
+operations may still be used within this focused command.
+
+Migration acceptance requires an inventory of responsibilities and consumers,
+small reviewable PRs, an authenticated no-change plan against existing resources,
+negative tests for retained blocking guards, targeted integration acceptance and
+an encrypted backup download/decryption/integrity round trip. Retire obsolete
+wrappers only after updating all workflow, local recovery and documentation
+callers. Record failures and corrections. Preserve a known working Git revision
+and version-matched recovery instructions for rollback; no state reset, resource
+recreation, disk formatting or secret rotation is part of this refactor.

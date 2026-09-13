@@ -144,3 +144,37 @@ The homelab SHALL capture and validate an etcd snapshot daily through a versione
 - **THEN** the operator downloads the exact object version and verifies local decryption with the private recovery key; ciphertext readback alone is not claimed as a restore test, and independent key custody remains explicit until confirmed
 
 Retention is scoped to the daily etcd backup set. Existing independent bootstrap/host archives and routine/monthly backup sets keep their existing rules; this change does not purge unrelated recovery material.
+
+
+### Requirement: Automation uses native tooling with focused custom helpers
+The provisioning workflow SHALL retain OpenTofu, Helm and GitHub Actions as the
+existing deployment tools while reducing custom orchestration. It SHALL use
+native blocking configuration validation where supported and named CI steps for
+tool setup, planning, applying and verification. Remaining custom helpers SHALL
+have a documented focused purpose that is not adequately served by those tools.
+The refactor SHALL preserve deployed resource identity, backend keys, original
+Talos identity, private secret handling and recovery behavior.
+
+#### Scenario: Routine deployment is run after simplification
+- **WHEN** a relevant PR is planned and approved for apply
+- **THEN** visible CI steps execute the existing deployment path, retain blocking destructive-action and disk-safety checks, and verify readiness without an implicit reboot or recovery rehearsal
+
+#### Scenario: A safety check moves into OpenTofu
+- **WHEN** custom validation is replaced by native validation
+- **THEN** equivalent invalid inputs or unsafe actions still fail the operation; a warning-only check does not satisfy a blocking gate, and live checks without equivalent native support remain focused helpers
+
+#### Scenario: Integration coverage is separated from deployment orchestration
+- **WHEN** storage or networking changes require runtime acceptance
+- **THEN** the affected suites run in separate visible jobs with their failures gating acceptance; explicit dispatch remains available and disposable fixtures are safely cleaned up
+
+#### Scenario: Secret preparation is simplified
+- **WHEN** configuration generation or secret-loading code is replaced
+- **THEN** the pinned toolchain reuses the original cluster identity and preserves ephemeral/write-only handling without exposing private inputs in logs, artifacts or persisted state
+
+#### Scenario: Backup orchestration is consolidated
+- **WHEN** the focused backup command replaces existing wrappers
+- **THEN** the schedule, encryption, exact-version verification, receipt, least-privilege identity, success heartbeat, alarm and latest-preserving retention continue to work, and independently stored backups remain decryptable and compatible with documented restore procedures
+
+#### Scenario: Old automation is retired
+- **WHEN** redundant scripts are removed
+- **THEN** every CI and local recovery caller is updated, negative guard tests and targeted integration checks pass, an authenticated plan proposes no infrastructure changes, and a real encrypted backup round trip succeeds before the refactor is accepted
