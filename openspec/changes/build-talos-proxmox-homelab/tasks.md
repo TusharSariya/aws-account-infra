@@ -39,7 +39,7 @@ Prerequisite: review the recovery-foundation gaps in 2.7 and 2.8 before guest cr
 ## 5. Talos Cluster Foundation
 
 - [x] 5.1 Apply the control-plane machine configuration to the verified target and disk, bootstrap etcd exactly once, and verify Talos health plus API access at the stable endpoint
-- [ ] 5.2 Apply the shared-worker configuration and verify the node joins with its shared label, expected resources, QEMU Guest Agent and gVisor, without a sandbox NoSchedule taint
+- [x] 5.2 Apply the shared-worker configuration and verify the node joins with its shared label, expected resources, QEMU Guest Agent and gVisor, without a sandbox NoSchedule taint
 - [ ] 5.4 Install pinned Cilium v1.20.1 in VXLAN mode with kube-proxy retained, and verify node readiness, CoreDNS, pod networking, service routing, and `kubeProxyReplacement=false`
 - [ ] 5.5 Install the gVisor RuntimeClass and sandbox admission/network/resource controls on the shared worker; verify trusted services can coexist and sandbox pods without the required runtime or safe settings are rejected
 - [ ] 5.6 Capture an encrypted Talos etcd snapshot and reconstruction inputs in their approved off-host locations, then verify the snapshot metadata without committing kubeconfig, `talosconfig`, or machine secrets
