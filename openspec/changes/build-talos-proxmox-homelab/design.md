@@ -70,7 +70,7 @@ Alternatives considered: four VMs imposed storage and trust separation the opera
 
 Task 3.1 implements `live/proxmox/homelab` with `bpg/proxmox` 0.112.0 and a provider lockfile. Non-secret per-guest inputs live in `config/environments/proxmox/homelab/vms.tfvars`; deploy unit `proxmox-homelab` is excluded from cloud CI. Offline mocked-provider plans verify the hardware contract without a live API operation. The initial lifecycle defaults are stopped and no host autostart; phase 4 records the explicit boot/autostart transitions. Both Talos VMs enable the QEMU guest agent.
 
-Trusted API access, credentials and independent state recovery are prerequisites for a real plan/apply and remain unfinished. Default readiness gating blocks provisioning. The initial provider installation reported an expired publisher signing-key warning; preserve this as a recovery-bootstrap issue to resolve rather than disabling verification. See the root README and LOG-0040 for validation scope and limitations.
+Trusted API access and a separate S3 backend key are now configured; a live speculative plan passed. State restore and remaining readiness checks remain open. The default approval flag blocks provisioning, while the preview-only helper assumes future approval without applying. The operator deferred the clean-machine restore test; this is not a claim of recovery completion. The initial provider installation reported an expired publisher signing-key warning; preserve this as a recovery-bootstrap issue to resolve rather than disabling verification. See the root README and LOG-0040 for validation scope and limitations.
 
 ### Host-level Tailscale administration
 

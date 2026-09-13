@@ -9,7 +9,7 @@ run "readiness_gate" {
 run "approved_vm_plan" {
   command = plan
   variables {
-    host_readiness_confirmed = true
+    vm_creation_approved = true
   }
 
   assert {
