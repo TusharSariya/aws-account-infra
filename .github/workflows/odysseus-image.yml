@@ -4,12 +4,14 @@ on:
     paths:
       - 'apps/containers/odysseus/**'
       - 'scripts/odysseus-image-context.py'
+      - 'scripts/odysseus-image-smoke.sh'
       - '.github/workflows/odysseus-image.yml'
   push:
     branches: [main]
     paths:
       - 'apps/containers/odysseus/**'
       - 'scripts/odysseus-image-context.py'
+      - 'scripts/odysseus-image-smoke.sh'
       - '.github/workflows/odysseus-image.yml'
   workflow_dispatch:
 permissions:
@@ -71,3 +73,7 @@ jobs:
           [[ "$visibility" == private ]]
           echo "Image: ghcr.io/tusharsariyaorg/homelab-odysseus@$IMAGE_DIGEST" >> "$GITHUB_STEP_SUMMARY"
           echo 'Commit this digest to workspace-values.yaml before requesting apply.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Verify packaged service startup and authentication
+        env:
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+        run: bash scripts/odysseus-image-smoke.sh "ghcr.io/tusharsariyaorg/homelab-odysseus@$IMAGE_DIGEST"

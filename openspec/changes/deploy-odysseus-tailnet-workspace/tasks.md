@@ -1,6 +1,6 @@
 ## 1. Specification and packaging
 - [x] 1.1 Capture approved service contract and deferred Pi-hole tests; pass strict OpenSpec validation.
-- [ ] 1.2 Add pinned source/image build and private GHCR publishing; verify checksum, linux/amd64 build and image digest.
+- [x] 1.2 Add pinned source/image build and private GHCR publishing; verify checksum, linux/amd64 build and image digest.
 ## 2. Deployment implementation
 - [x] 2.1 Add retained-volume Helm deployments and private ingress; pass rendered resource/credential/isolation tests.
 - [x] 2.2 Integrate guarded OpenTofu CI and protected inputs; verify plan rejection of missing credentials, unpinned images and destructive changes.
@@ -19,3 +19,5 @@
 - OpenTofu backend-free validation, shell syntax/ShellCheck and actionlint passed.
 - PR #65 is draft. First image build failed in optional upstream CUDA wheel dependencies; the CPU build omits that unsupported feature.
 - No service apply, model download, browser acceptance or live recovery has been performed for this change.
+
+- CPU image build [34789472431](https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/34789472431) passed; private package digest `sha256:fd18b7fa8cb32c0c55971c31b367d141462312c0853f74b7f40b6c97572860bf` is pinned.

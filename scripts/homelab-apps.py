@@ -190,7 +190,7 @@ def endpoints(kubectl):
     if not version.get('version'):
         raise AppError('Ollama version endpoint did not return a version')
     tailnet_https('odysseus.tail2f646b.ts.net', '/api/health', ['--fail'])
-    auth = tailnet_https('odysseus.tail2f646b.ts.net', '/api/conversations',
+    auth = tailnet_https('odysseus.tail2f646b.ts.net', '/api/conversations/topics',
                          ['-o', '/dev/null', '-w', '%{http_code}']).decode()
     if auth != '401':
         raise AppError('Workspace did not reject unauthenticated API access')
