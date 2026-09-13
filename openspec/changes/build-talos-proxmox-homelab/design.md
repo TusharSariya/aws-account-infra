@@ -235,3 +235,26 @@ recreation, disk formatting or secret rotation is part of this refactor.
 
 
 Task 8.1 audit is recorded in [homelab-automation-audit.md](../../../docs/plans/homelab-automation-audit.md). It maps active callers, justified helpers, native-tool candidates, backup compatibility and the staged migration. Native Talos generation remains conditional on pinned-provider/CLI equivalence; extracting routine orchestration can proceed while retaining the current generator.
+
+### Private browser dashboard for Kubernetes
+
+Task 9.1 selects a maintained browser-based Kubernetes dashboard after automation
+simplification. Evaluate compatibility, authentication/RBAC support, resource
+cost and Helm deployment before selecting a product; coordinate the choice with
+architecture issue #38. This UI covers Kubernetes resources, not Talos OS
+configuration. Keep talosctl dashboard and Proxmox consoles as documented access
+paths and do not make the browser dashboard a recovery prerequisite.
+
+Deploy pinned chart/configuration through the existing reviewed OpenTofu/Helm
+GitHub CI workflow. Provide tailnet-only HTTPS, authenticate users and use
+read-only Kubernetes RBAC by default; do not deliver an embedded/shared
+cluster-admin token or expose Kubernetes Secrets to ordinary viewers. Tailscale
+network membership alone does not grant Kubernetes permissions. Select and
+document the private exposure mechanism during implementation without assuming
+a Tailscale Kubernetes operator or ingress controller is already installed.
+
+Acceptance verifies both nodes and representative pod, deployment, log and PVC
+views, denied unauthenticated/unauthorized access and blocked writes for the
+read-only role. Record the URL, login process, resource requests/limits and
+rebuild/removal procedure. Credentials remain outside Git, logs and artifacts.
+This is a pending feature task; no dashboard has been deployed by this revision.

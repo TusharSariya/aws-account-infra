@@ -45,3 +45,9 @@ they replace custom logic. Retain focused helpers for private Talos identity
 handling, live disk safety and verified encrypted backups. Separate deployment
 from integration tests and explicitly invoked recovery/reboot rehearsals. This
 revision plans a behavior-preserving refactor, not an infrastructure migration.
+
+The operator-requested browser dashboard revision adds a Kubernetes resource UI
+for nodes, pods, deployments, logs and PVCs, delivered through the existing
+Helm/OpenTofu CI path after automation simplification. Selection remains open;
+authenticated private Tailscale access and read-only permissions are the default.
+This complements the existing talosctl terminal dashboard and Proxmox console.

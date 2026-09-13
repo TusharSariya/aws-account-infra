@@ -75,6 +75,12 @@ Operator-approved planning revision: implement 8.1-8.5 before continuing new fea
 - [ ] 8.4 Consolidate snapshot preparation and verified encrypted upload behind one focused backup command; preserve schedule, format/restore compatibility, exact-version readback, receipts, OIDC permissions, heartbeat/alarm, independent key custody and S3 retention semantics
 - [ ] 8.5 Prove migration parity with an authenticated no-change plan, negative safety/secret tests, targeted integration acceptance and a real encrypted backup download/decryption/integrity round trip; update all callers/recovery instructions, remove redundant wrappers and record rollback to a known working revision
 
+## 9. Browser-based Kubernetes Dashboard
+
+Schedule after automation simplification (8.2-8.5); product selection remains open and this planning task does not authorize a live deployment.
+
+- [ ] 9.1 Select and deploy a maintained browser-based Kubernetes dashboard through reviewed Helm/OpenTofu GitHub CI; provide authenticated tailnet-only HTTPS access with read-only Kubernetes permissions by default, verify nodes/pods/deployments/logs/PVC views and denied unauthorized access, and document the URL, login, pinned configuration, resource budget and reproducible rebuild/removal procedure without exposing credentials
+
 ## Retired task IDs (not completed)
 
 Operator-approved two-VM revision, 2026-09-12: 4.2 (NAS VM), 4.4 (sandbox VM) and 5.3 (sandbox join) are removed from active scope. Task 3.2 (dedicated sibling/NUMA placement) remains deferred tuning, no longer an implementation gate. These tasks were not executed. IDs are not reused. Completed artifact acquisition, including the unused Debian ISO, remains historical evidence. Phase 6 now implements worker-local storage and independent backups; 7.4 tests that recovery.

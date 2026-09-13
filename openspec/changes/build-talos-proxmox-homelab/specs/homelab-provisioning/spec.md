@@ -178,3 +178,22 @@ Talos identity, private secret handling and recovery behavior.
 #### Scenario: Old automation is retired
 - **WHEN** redundant scripts are removed
 - **THEN** every CI and local recovery caller is updated, negative guard tests and targeted integration checks pass, an authenticated plan proposes no infrastructure changes, and a real encrypted backup round trip succeeds before the refactor is accepted
+
+### Requirement: Browser dashboard provides private Kubernetes visibility
+The platform SHALL provide a maintained browser-based dashboard for Kubernetes
+nodes, pods, deployments, logs and PVCs through reviewed, pinned Helm/OpenTofu
+GitHub CI configuration. Access SHALL use authenticated tailnet-only HTTPS and
+read-only Kubernetes permissions by default. The dashboard SHALL NOT be a
+prerequisite for Talos administration or disaster recovery.
+
+#### Scenario: Authorized operator inspects the cluster
+- **WHEN** an authenticated operator opens the documented private URL
+- **THEN** the dashboard shows both nodes and representative pod, deployment, log and PVC information within the operator's Kubernetes permissions
+
+#### Scenario: Dashboard access is restricted
+- **WHEN** an unauthenticated or unauthorized client attempts access, or a read-only viewer attempts a write or Secret read
+- **THEN** access to the protected operation is denied and no shared cluster-admin credential is exposed to the browser
+
+#### Scenario: Dashboard is rebuilt
+- **WHEN** the selected dashboard is reconstructed from the reviewed repository configuration and independently recoverable authentication inputs
+- **THEN** the pinned deployment, resource budget and private access can be reproduced from documented instructions without making the dashboard necessary to recover the cluster
