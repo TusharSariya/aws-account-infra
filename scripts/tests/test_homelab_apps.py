@@ -56,6 +56,21 @@ class GuardTests(unittest.TestCase):
                     with self.assertRaises(apps.AppError):
                         apps.check_secrets(json.dumps({'value': value}).encode(), p)
 
+    def test_private_https_bypasses_os_dns_without_disabling_tls(self):
+        with patch.object(apps, 'run', side_effect=[b'100.101.182.9\n', b'401']) as run:
+            apps.tailnet_https('pve.tail2f646b.ts.net', '/api2/json/version', ['-w', '%{http_code}'])
+        self.assertEqual(run.call_args_list[0].args[0], ['tailscale', 'ip', '-4', 'pve.tail2f646b.ts.net'])
+        curl = run.call_args_list[1].args[0]
+        self.assertIn('--resolve', curl)
+        self.assertIn('pve.tail2f646b.ts.net:443:100.101.182.9', curl)
+        self.assertNotIn('--insecure', curl)
+        self.assertIn('https://pve.tail2f646b.ts.net/api2/json/version', curl)
+
+    def test_private_resolution_rejects_public_or_multiple_addresses(self):
+        for value in [b'1.1.1.1', b'100.101.182.9\n100.101.182.10', b'']:
+            with patch.object(apps, 'run', return_value=value), self.assertRaises(apps.AppError):
+                apps.tailnet_ip('pve.tail2f646b.ts.net')
+
     def test_child_environment_excludes_credentials(self):
         with patch.dict(apps.os.environ, dict.fromkeys(apps.SECRET_NAMES, 'fixture')), patch.object(apps.subprocess, 'run') as run:
             run.return_value.returncode = 0

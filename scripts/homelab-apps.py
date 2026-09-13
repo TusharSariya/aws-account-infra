@@ -3,6 +3,7 @@
 import argparse
 import base64
 import hashlib
+import ipaddress
 import json
 import os
 from pathlib import Path
@@ -38,14 +39,39 @@ def setup():
         (TF / '.terraform' / name).write_bytes(data)
 
 
-def bootstrap(kubectl):
-    if os.environ.get('GITHUB_ACTIONS') != 'true':
-        raise AppError('Credential reconciliation only runs in approved CI apply')
+def credentials():
     values = {name: os.environ.get(name, '') for name in SECRET_NAMES[:3]}
     if any(not value for value in values.values()):
         raise AppError('Set TS_OPERATOR_CLIENT_ID, TS_OPERATOR_CLIENT_SECRET and PIHOLE_ADMIN_PASSWORD in prod before apply')
     if len(values['PIHOLE_ADMIN_PASSWORD']) < 20:
         raise AppError('Pi-hole password must contain at least 20 characters')
+    return values
+
+
+def tailnet_ip(hostname):
+    if hostname not in ('pve.tail2f646b.ts.net', 'pihole-admin.tail2f646b.ts.net'):
+        raise AppError('Unexpected private HTTPS hostname')
+    value = run(['tailscale', 'ip', '-4', hostname]).decode().strip()
+    try:
+        address = ipaddress.IPv4Address(value)
+    except ipaddress.AddressValueError:
+        raise AppError('Expected exactly one Tailscale IPv4 address') from None
+    if address not in ipaddress.IPv4Network('100.64.0.0/10'):
+        raise AppError('Private HTTPS endpoint must use a Tailscale address')
+    return str(address)
+
+
+def tailnet_https(hostname, path, options):
+    address = tailnet_ip(hostname)
+    # Explicit address, original hostname/SNI and certificate verification intact.
+    return run(['curl', '--silent', '--show-error', '--max-time', '30',
+                '--resolve', hostname + ':443:' + address, *options, 'https://' + hostname + path])
+
+
+def bootstrap(kubectl):
+    if os.environ.get('GITHUB_ACTIONS') != 'true':
+        raise AppError('Credential reconciliation only runs in approved CI apply')
+    values = credentials()
     # Do not change an independently managed namespace or create a parallel cluster.
     run([kubectl, 'get', 'namespace', 'homelab-services'])
     run([kubectl, 'apply', '--server-side', '--field-manager=homelab-app-credentials', '-f', CONFIG / 'namespaces.yaml'])
@@ -127,9 +153,9 @@ def endpoints(kubectl):
         if blocked.strip() != '0.0.0.0':
             raise AppError('Standard blocklist DNS query did not return the configured block response')
     url = 'https://pihole-admin.tail2f646b.ts.net'
-    run(['curl', '--fail', '--silent', '--show-error', '--max-time', '30', url + '/admin/'])
-    status = run(['curl', '--silent', '--show-error', '--max-time', '30', '-o', '/dev/null',
-                  '-w', '%{http_code}', url + '/api/domains']).decode()
+    tailnet_https('pihole-admin.tail2f646b.ts.net', '/admin/', ['--fail'])
+    status = tailnet_https('pihole-admin.tail2f646b.ts.net', '/api/domains',
+                           ['-o', '/dev/null', '-w', '%{http_code}']).decode()
     if status != '401':
         raise AppError('Pi-hole administration did not reject unauthenticated API access')
     print(json.dumps({'dns_ip': ip, 'admin_url': url + '/admin/', 'status': 'DNS UDP/TCP and trusted HTTPS passed; client cutover remains explicit'}, indent=2))
@@ -137,12 +163,18 @@ def endpoints(kubectl):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('operation', choices=['setup', 'bootstrap', 'plan', 'apply', 'endpoints'])
+    parser.add_argument('operation', choices=['setup', 'credentials', 'resolve', 'bootstrap', 'plan', 'apply', 'endpoints'])
     parser.add_argument('--private', type=Path)
+    parser.add_argument('--hostname')
     args = parser.parse_args()
     os.umask(0o077)
     try:
-        if args.operation == 'setup':
+        if args.operation == 'credentials':
+            credentials()
+            print('PASS: application credential inputs present')
+        elif args.operation == 'resolve':
+            print(tailnet_ip(args.hostname))
+        elif args.operation == 'setup':
             setup()
         else:
             private = args.private.resolve()

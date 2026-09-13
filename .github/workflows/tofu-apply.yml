@@ -40,6 +40,13 @@ jobs:
       needs_worker_reboot: ${{ steps.talos.outputs.needs-worker-reboot }}
     steps:
       - uses: actions/checkout@v4
+      - name: Check application credentials before any deployment
+        if: contains(needs.detect.outputs.units, 'kubernetes-homelab')
+        env:
+          TS_OPERATOR_CLIENT_ID: ${{ secrets.TS_OPERATOR_CLIENT_ID }}
+          TS_OPERATOR_CLIENT_SECRET: ${{ secrets.TS_OPERATOR_CLIENT_SECRET }}
+          PIHOLE_ADMIN_PASSWORD: ${{ secrets.PIHOLE_ADMIN_PASSWORD }}
+        run: python3 scripts/homelab-apps.py credentials
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.TOFU_APPLY_ROLE_ARN }}
@@ -59,7 +66,13 @@ jobs:
           hostname: gh-proxmox-apply-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Accept homelab subnet route
         if: contains(needs.detect.outputs.units, 'talos-homelab') || contains(needs.detect.outputs.units, 'kubernetes-homelab')
-        run: sudo tailscale set --accept-routes=true --accept-dns=false
+        run: |
+          # Resolve from the tailnet map, not the OS resolver which we opt out below.
+          if [[ '${{ contains(needs.detect.outputs.units, 'proxmox-homelab') }}' == true ]]; then
+            pve_ip=$(python3 scripts/homelab-apps.py resolve --hostname pve.tail2f646b.ts.net)
+            printf '%s pve.tail2f646b.ts.net\n' "$pve_ip" | sudo tee -a /etc/hosts > /dev/null
+          fi
+          sudo tailscale set --accept-routes=true --accept-dns=false
       - uses: astral-sh/setup-uv@v6
         if: contains(needs.detect.outputs.units, 'talos-homelab') || contains(needs.detect.outputs.units, 'kubernetes-homelab')
       - name: Verify Proxmox apply identity
