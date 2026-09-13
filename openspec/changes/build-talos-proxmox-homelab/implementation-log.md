@@ -944,3 +944,16 @@ values in this file.
 - Correction: Installed HomelabTofuPlanVM with VM.Audit, VM.GuestAgent.Audit and VM.Config.Disk on /vms/100 and /vms/102 for both user and privilege-separated token, replacing HomelabTofuReadVM ACLs. This adds real disk-configuration capability; prior strictly read-only descriptions are superseded. No VM allocation, power, host modification or datastore allocation was added. CI.md records the exact upgrade and rollback. Bootstrap now calls the mode --plan; --read-only is a compatibility alias.
 - Verification: Nine offline access tests and both live token-scope preflights pass. Live plan retry remains required before apply. No machine configurations or secrets were printed.
 - Rollback/recovery: Restore the old audit-only role ACLs before deleting the new plan-role ACLs. This restores strict read-only privileges but causes provider disk refresh to fail. No token rotation or host API patch was performed.
+
+
+### LOG-0068 - Both maintenance boots verified
+
+- Timestamp: 2026-09-13T01:13:06.012309+00:00
+- Operator: Codex, following operator authorization for CI-managed boot and verification
+- Target: pve VM 100 talos-cp-01 at 10.42.0.220 and VM 102 talos-worker-01 at 10.42.0.222
+- Tasks: 4.1, 4.3 and 4.5 complete
+- Action/evidence: PR #51 plan run 34729734996 showed only started=false -> true on both resources, 0 add/2 change/0 destroy. Added apply label after inspecting the successful Proxmox plan. Apply run 34729789671 succeeded and PR #51 merged. No local VM mutation was used.
+- Verification: qm list reports both running. Direct maintenance API get machinestatus reports stage maintenance and ready=true on both nodes. Links show ens18 up with MACs 02:42:00:00:01:00 and 02:42:00:00:01:02; addresses match the reserved /24 IPs. Both expose /dev/sda as their 100-GiB OS disk; worker /dev/sdb is 1288490188800 bytes (1,200 GiB). QEMU Guest Agent 11.0.2 is present and qm agent ping succeeds on both; only worker has gVisor 20260810.0. Startup configuration orders are 1 then 2; host auto-start remains disabled. Sanitized qm configuration and Talos outputs are preserved in evidence/2026-09-13-maintenance-boot.txt.
+- Result: Guest identities, rendered hardware, maintenance APIs, disk separation and extension separation verified. Talos machine configuration, installation and etcd bootstrap have not been performed. Earlier recovery gaps remain untested.
+- Deviation: LOG-0067 records the necessary plan-token disk permission and supersedes strict read-only claims. Configured startup priority does not serialize Terraform's simultaneous explicit start operations; no claim of an observed ordered host reboot is made.
+- Rollback/recovery: Before installation, deploy started=false through CI to stop guests. Rebuild using the committed two-VM definitions, pinned ISOs and laptop DHCP reservations; rerun the documented maintenance checks. Preserve disks and do not treat this boot evidence as full DR acceptance.
