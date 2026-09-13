@@ -133,7 +133,7 @@ helpers as separate `bash script.sh` processes, not with `source`.
 After the cluster and Cilium are installed, run from a Mac checkout:
 
 ```bash
-bash scripts/homelab-backup-manual.sh --etcd
+python3 scripts/homelab-backup.py backup --mode etcd
 ```
 
 Requires Python 3, aws, age and the existing private Talos identity/config under
@@ -151,12 +151,11 @@ encrypts the archive, uploads to bootstrap/etcd/ in the existing recovery bucket
 downloads that exact S3 object version, prompts again to decrypt, and compares
 all archive bytes. It does not restore into or change the live cluster. Save the
 receipt and metadata independently with the earlier bootstrap receipt.
-bootstrap/ is the existing retained foundation prefix; future scheduled backups
-should use the approved routine/monthly retention paths.
+bootstrap/ is the existing retained foundation prefix; scheduled etcd backups use the separately managed etcd/ prefix below.
 
 The output directory under ~/Backups/homelab-recovery is private. Temporary tar
-files are removed on exit; the plaintext snapshot/config bundle is removed after
-a successful round trip. Failed runs may retain that private bundle for diagnosis.
+files are removed on exit; the plaintext snapshot/config bundle is removed on success or failure.
+Only encrypted files and sanitized receipts are retained.
 This verifies backup transport and decryption, not an isolated etcd restore or
 full disaster recovery. Application volume data and Terraform state contents are
 not included; their independent backup/recovery paths remain necessary.
@@ -164,7 +163,7 @@ not included; their independent backup/recovery paths remain necessary.
 For preparation without encryption or upload:
 
 ```bash
-python3 scripts/homelab-etcd-snapshot.py --output "$HOME/Backups/new-etcd-bundle"
+python3 scripts/homelab-backup.py capture --output "$HOME/Backups/new-etcd-bundle"
 ```
 
 Use a new directory outside Git. Treat the entire bundle as sensitive. Snapshot
@@ -219,3 +218,33 @@ age -d -i "$HOME/.config/aws-account-infra/recovery/etcd-age-key.txt" \
 Use a private directory outside Git. Inspect member names before extraction and
 verify snapshot-metadata.json and the embedded snapshot hash. Never restore over
 a live cluster merely to test a backup. Restore drills remain separate tasks.
+
+## Unified recovery command
+
+`scripts/homelab-backup.py` owns capture, packaging, encryption, exact-version
+upload/readback and independent verification. `backup --mode daily` is the CI
+entry point; `backup --mode bootstrap` retains the original dated host/identity
+backup; `backup --mode etcd` creates an interactive foundation snapshot. Older
+script names remain compatibility wrappers while callers migrate.
+
+To check a previously uploaded daily backup, save its JSON receipt from the
+successful workflow log (omit the trailing PASS line from older runs), then run:
+
+```bash
+python3 scripts/homelab-backup.py verify \
+  --receipt /path/to/receipt.json \
+  --identity "$HOME/.config/aws-account-infra/recovery/etcd-age-key.txt"
+```
+
+For an older passphrase backup, use its `receipt.txt` and omit `--identity`;
+age prompts locally. The verifier reads the recorded S3 version using the admin
+profile, checks any recorded ciphertext digest, decrypts privately, and recognizes
+the existing daily `homelab/`, foundation `./`, and bootstrap home-relative layouts.
+Snapshot verification checks the original identity fingerprint, embedded checksum,
+metadata digest and etcdutl status. This does not perform a cluster restore.
+
+Manual backups retain both a JSON receipt and the compatible text receipt. The
+schedule, age recipient, IAM permissions, heartbeat and S3 retention are unchanged.
+Rollback consists of reverting this refactor commit; existing backup objects and
+receipts need no conversion. Removal of compatibility wrappers and the complete
+operational parity rehearsal remain task 8.5.
