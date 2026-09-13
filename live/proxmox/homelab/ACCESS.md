@@ -79,12 +79,10 @@ a fresh reviewed plan and the outstanding network/state checks. The operator
 has deferred the clean-machine restore test; it remains recorded as untested.
 
 The new S3 backend requires AWS authentication for live initialization and plans.
-Offline CI continues using `init -backend=false` plus mocked tests without
-credentials. This root remains `ci: false` in the deployment manifest. Enabling
-actual CI deployment requires a reviewed tailnet machine identity, access grants,
-Proxmox token secret delivery and Proxmox-aware workflow arguments; simply
-flipping the manifest flag is insufficient (the AWS plan currently passes
-`aws_profile`). No token has been uploaded to GitHub by this setup.
+Offline validation continues using `init -backend=false` plus mocked tests.
+The deployment manifest now enables this root for live CI. See
+[GitHub CI setup](CI.md) for the separate read-only plan identity, environment
+secrets, Tailscale OIDC trust and the apply-label workflow.
 
 ## Credential loss, rotation and state recovery
 
