@@ -1,2 +1,2 @@
-# Adopt the installed control plane first. Worker installation is a later PR.
-worker_enabled = false
+# Install and join the shared worker using the existing cluster identity.
+worker_enabled = true
