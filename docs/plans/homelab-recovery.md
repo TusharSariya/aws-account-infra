@@ -126,3 +126,46 @@ helpers as separate `bash script.sh` processes, not with `source`.
 - Verify Tailscale re-enrollment, expiry recovery and local fallback (task 2.11).
 - Exercise recovery in isolation and record achieved results; do not mark these
   complete merely because files are in Git or S3.
+
+
+## Foundation etcd backup
+
+After the cluster and Cilium are installed, run from a Mac checkout:
+
+```bash
+bash scripts/homelab-backup-manual.sh --etcd
+```
+
+Requires Python 3, aws, age and the existing private Talos identity/config under
+~/.config/aws-account-infra/talos/homelab. The helper supports macOS arm64 and
+Linux amd64 and verifies pinned Talos CLI and etcdutl 3.6.12 downloads.
+
+The script captures a fresh consistent etcd snapshot, checks its embedded SHA-256
+and reads metadata with etcdutl. It packages the original Talos secret bundle,
+regenerated machine configs, public Cilium/Talos reconstruction inputs and a
+metadata file identifying the Git revision and Terraform state keys. It uses the
+existing admin AWS profile and checks account 992382747916 before proceeding.
+
+Enter your independently saved age passphrase locally when prompted. The script
+encrypts the archive, uploads to bootstrap/etcd/ in the existing recovery bucket,
+downloads that exact S3 object version, prompts again to decrypt, and compares
+all archive bytes. It does not restore into or change the live cluster. Save the
+receipt and metadata independently with the earlier bootstrap receipt.
+bootstrap/ is the existing retained foundation prefix; future scheduled backups
+should use the approved routine/monthly retention paths.
+
+The output directory under ~/Backups/homelab-recovery is private. Temporary tar
+files are removed on exit; the plaintext snapshot/config bundle is removed after
+a successful round trip. Failed runs may retain that private bundle for diagnosis.
+This verifies backup transport and decryption, not an isolated etcd restore or
+full disaster recovery. Application volume data and Terraform state contents are
+not included; their independent backup/recovery paths remain necessary.
+
+For preparation without encryption or upload:
+
+```bash
+python3 scripts/homelab-etcd-snapshot.py --output "$HOME/Backups/new-etcd-bundle"
+```
+
+Use a new directory outside Git. Treat the entire bundle as sensitive. Snapshot
+metadata contains only identifiers, counts, revisions and digests.
