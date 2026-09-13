@@ -40,6 +40,13 @@ jobs:
       needs_worker_reboot: ${{ steps.talos.outputs.needs-worker-reboot }}
     steps:
       - uses: actions/checkout@v4
+      - name: Check application credentials before any deployment
+        if: contains(needs.detect.outputs.units, 'kubernetes-homelab')
+        env:
+          TS_OPERATOR_CLIENT_ID: ${{ secrets.TS_OPERATOR_CLIENT_ID }}
+          TS_OPERATOR_CLIENT_SECRET: ${{ secrets.TS_OPERATOR_CLIENT_SECRET }}
+          PIHOLE_ADMIN_PASSWORD: ${{ secrets.PIHOLE_ADMIN_PASSWORD }}
+        run: python3 scripts/homelab-apps.py credentials
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.TOFU_APPLY_ROLE_ARN }}
@@ -49,7 +56,7 @@ jobs:
           tofu_version: 1.11.5
           tofu_wrapper: false
       - name: Connect to Proxmox tailnet
-        if: contains(needs.detect.outputs.units, 'proxmox-homelab') || contains(needs.detect.outputs.units, 'talos-homelab')
+        if: contains(needs.detect.outputs.units, 'proxmox-homelab') || contains(needs.detect.outputs.units, 'talos-homelab') || contains(needs.detect.outputs.units, 'kubernetes-homelab')
         uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4
         with:
           oauth-client-id: ${{ vars.TS_OIDC_CLIENT_ID }}
@@ -58,10 +65,16 @@ jobs:
           version: 1.102.4
           hostname: gh-proxmox-apply-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Accept homelab subnet route
-        if: contains(needs.detect.outputs.units, 'talos-homelab')
-        run: sudo tailscale set --accept-routes=true
+        if: contains(needs.detect.outputs.units, 'talos-homelab') || contains(needs.detect.outputs.units, 'kubernetes-homelab')
+        run: |
+          # Resolve from the tailnet map, not the OS resolver which we opt out below.
+          if [[ '${{ contains(needs.detect.outputs.units, 'proxmox-homelab') }}' == true ]]; then
+            pve_ip=$(python3 scripts/homelab-apps.py resolve --hostname pve.tail2f646b.ts.net)
+            printf '%s pve.tail2f646b.ts.net\n' "$pve_ip" | sudo tee -a /etc/hosts > /dev/null
+          fi
+          sudo tailscale set --accept-routes=true --accept-dns=false
       - uses: astral-sh/setup-uv@v6
-        if: contains(needs.detect.outputs.units, 'talos-homelab')
+        if: contains(needs.detect.outputs.units, 'talos-homelab') || contains(needs.detect.outputs.units, 'kubernetes-homelab')
       - name: Verify Proxmox apply identity
         if: contains(needs.detect.outputs.units, 'proxmox-homelab')
         env:
@@ -79,20 +92,20 @@ jobs:
           import os
 
           units = json.loads(os.environ["UNITS_JSON"])
-          # Talos runs as visible stages after this loop; fail if the dependency
-          # graph ever places another selected unit after it.
-          talos = [i for i, unit in enumerate(units) if unit["cloud"] == "talos"]
-          if talos and (talos != [len(units) - 1] or units[-1]["id"] != "talos-homelab"):
-              raise SystemExit("Talos must be the last selected deployment unit")
+          # Foundation then applications execute as visible stages after the loop.
+          tail = [u['id'] for u in units if u['cloud'] in ('talos', 'kubernetes')]
+          expected = [name for name in ('talos-homelab', 'kubernetes-homelab') if name in tail]
+          if tail != expected or (tail and [u['id'] for u in units[-len(tail):]] != tail):
+              raise SystemExit('Unsupported foundation/application dependency order')
           for unit in units:
-              if unit["cloud"] not in {"aws", "proxmox", "talos"}:
+              if unit["cloud"] not in {"aws", "proxmox", "talos", "kubernetes"}:
                   raise SystemExit(f"CI apply is not configured for cloud {unit['cloud']!r}")
               print(f"{unit['id']}\t{unit['path']}\t{unit['var_file']}\t{unit['cloud']}")
           PY
 
           while IFS=$'\t' read -r id path var_file cloud; do
             echo "::group::Apply $id"
-            if [[ "$cloud" == talos ]]; then
+            if [[ "$cloud" == talos || "$cloud" == kubernetes ]]; then
               echo "::endgroup::"
               continue
             fi
@@ -114,6 +127,16 @@ jobs:
         with:
           mode: apply
           secrets-b64: ${{ secrets.TALOS_SECRETS_B64 }}
+
+      - name: Deploy Kubernetes applications
+        if: contains(needs.detect.outputs.units, 'kubernetes-homelab')
+        uses: ./.github/actions/kubernetes-deploy
+        with:
+          mode: apply
+          secrets-b64: ${{ secrets.TALOS_SECRETS_B64 }}
+          operator-client-id: ${{ secrets.TS_OPERATOR_CLIENT_ID }}
+          operator-client-secret: ${{ secrets.TS_OPERATOR_CLIENT_SECRET }}
+          pihole-password: ${{ secrets.PIHOLE_ADMIN_PASSWORD }}
 
   worker-maintenance:
     needs: [detect, apply]

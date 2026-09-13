@@ -121,6 +121,23 @@
         ".github/actions/talos-deploy/",
         "scripts/homelab-talos-config.py"
       ]
+    },
+    {
+      "id": "kubernetes-homelab",
+      "cloud": "kubernetes",
+      "environment": "homelab",
+      "path": "live/kubernetes/homelab",
+      "var_file": "config/environments/kubernetes/homelab/apps.tfvars",
+      "dependencies": [
+        "talos-homelab"
+      ],
+      "ci": true,
+      "watch": [
+        "live/kubernetes/homelab/",
+        "config/environments/kubernetes/homelab/",
+        "scripts/homelab-apps.py",
+        ".github/actions/kubernetes-deploy/"
+      ]
     }
   ]
 }

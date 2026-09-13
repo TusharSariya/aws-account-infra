@@ -1,0 +1,10 @@
+{
+  "pihole-2.38.0.tgz": {
+    "url": "https://github.com/MoJo2600/pihole-kubernetes/releases/download/pihole-2.38.0/pihole-2.38.0.tgz",
+    "sha256": "f538b09e54095ecfc57a39b59fea5fdd38f3b999700f4521f0e7f25bc3217346"
+  },
+  "tailscale-operator-1.102.3.tgz": {
+    "url": "https://pkgs.tailscale.com/helmcharts/tailscale-operator-1.102.3-1787221603-c2440014df04fdf1b67b53daa4290d7b878584cf4702f9b1b50f51ba64499a6a.tgz",
+    "sha256": "c2440014df04fdf1b67b53daa4290d7b878584cf4702f9b1b50f51ba64499a6a"
+  }
+}
