@@ -54,6 +54,19 @@ def guard_plan(plan):
     return summary
 
 
+def assert_public_state(value):
+    if isinstance(value, dict):
+        for key, child in value.items():
+            if key in {'client_key', 'client_certificate', 'machine_configuration',
+                       'machine_configuration_input', 'client_configuration_wo',
+                       'machine_configuration_input_wo'} and child not in (None, '', {}):
+                raise ValueError('Sensitive Talos attribute persisted in state; inspect privately')
+            assert_public_state(child)
+    elif isinstance(value, list):
+        for child in value:
+            assert_public_state(child)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=['plan', 'apply'])
@@ -128,6 +141,7 @@ def main():
             run(tofu + ['apply', '-input=false', '-lock-timeout=60s', plan_file])
             # Write-only credentials/configuration must not appear in persisted state.
             state = run(tofu + ['state', 'pull'])
+            assert_public_state(json.loads(state))
             forbidden = [client['key'], client['crt'], secrets, *configs.values()]
             if any(value and (value in state or json.dumps(value)[1:-1] in state) for value in forbidden):
                 raise ValueError('Unexpected sensitive input persisted in state; inspect privately')

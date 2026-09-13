@@ -42,6 +42,13 @@ class PlanGuardTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'must not reboot'):
             ci.guard_plan(self.plan)
 
+    def test_state_rejects_credentials_and_rendered_config(self):
+        ci.assert_public_state({'resources': [{'attributes': {'machine_configuration': None}}]})
+        for key in ['client_key', 'machine_configuration', 'machine_configuration_input_wo']:
+            with self.subTest(key=key):
+                with self.assertRaisesRegex(ValueError, 'persisted'):
+                    ci.assert_public_state({'resources': [{'attributes': {key: 'test-only-value'}}]})
+
     def test_missing_bootstrap_record_is_rejected(self):
         with self.assertRaisesRegex(ValueError, 'Missing bootstrap'):
             ci.guard_plan({'resource_changes': [self.cp]})
