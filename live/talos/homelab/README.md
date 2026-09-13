@@ -103,3 +103,55 @@ ownership requires a deliberate review.
 
 Sources: pinned provider [configuration implementation](https://github.com/siderolabs/terraform-provider-talos/blob/v0.11.0/pkg/talos/talos_machine_configuration_apply_resource.go),
 [bootstrap import/update implementation](https://github.com/siderolabs/terraform-provider-talos/blob/v0.11.0/pkg/talos/talos_machine_bootstrap_resource.go).
+
+## Cilium foundation
+
+The same root owns `helm_release.cilium` with Helm provider 3.3.0 and Cilium
+chart 1.20.1. CI downloads the chart from https://helm.cilium.io, verifies its
+committed SHA-256, and supplies the local archive to the provider. Chart image
+digests remain pinned by upstream defaults. Public Helm values live in
+config/environments/talos/homelab/cilium-values.yaml.
+
+Use Kubernetes IPAM with the existing 10.244.0.0/16 pod range, VXLAN tunneling,
+kubeProxyReplacement=false and kube-proxy retained. Talos provides bpffs and
+cgroup v2 mounts; Cilium does not remount them or request SYS_MODULE. Agents
+reach the API through each node's KubePrism on localhost:7445. The operator
+uses one replica on this single-host cluster. Hubble is disabled for this
+foundation step; its observability services and certificates can be added
+separately. No sandbox isolation is claimed until task 5.5 installs policies.
+
+The wrapper retrieves a temporary admin kubeconfig through the authenticated
+Talos API. Its path is an ephemeral provider input; client credentials are
+checked against state after apply and are never printed or uploaded. The API
+at 10.42.0.224:6443 must be reachable through the existing Tailscale subnet
+route. No additional GitHub secret or IAM role is needed.
+
+After apply, CI runs scripts/homelab-cilium-validate.sh using checksum-pinned
+kubectl 1.36.3. It checks both nodes, Cilium/Envoy/operator, CoreDNS, kube-proxy
+and the live networking mode, then creates two restricted, temporary test pods
+(one per node), Services, and tests same-node/cross-node pod IP traffic,
+Service routing and internal/external DNS. A narrowly scoped toleration allows
+the temporary control-plane test pod; application scheduling stays disabled.
+The generated test namespace is deleted on exit. If the runner is killed,
+inspect and delete only leftover homelab-network-check-* namespaces.
+
+Repeat acceptance from the Mac with the private kubeconfig:
+
+```bash
+KUBECONFIG="$HOME/.config/aws-account-infra/talos/homelab/two-vm-20260912/kubeconfig" \
+  bash scripts/homelab-cilium-validate.sh
+```
+
+A failed acceptance check fails apply CI and blocks automatic merge. Inspect
+Cilium pod status/events before retrying. Helm atomic uninstall and automatic
+cleanup are disabled so failure cannot silently remove the CNI; prevent_destroy
+and the plan guard reject deletion/replacement. Correct values through a new
+reviewed plan. If state was lost, recover the same backend or import the existing
+release as kube-system/cilium before applying; do not install a second owner.
+For a rebuilt cluster, restore the original identity and documented Talos state
+before deploying this chart. Full DR and safe networking rollback rehearsals
+remain outstanding; no automatic destructive rollback is implemented.
+
+Sources: [Talos Cilium guide](https://docs.siderolabs.com/kubernetes-guides/cni/deploying-cilium),
+[Cilium Kubernetes compatibility](https://docs.cilium.io/en/v1.20/network/kubernetes/requirements/),
+[Helm provider release schema](https://github.com/hashicorp/terraform-provider-helm/blob/v3.3.0/docs/resources/release.md).

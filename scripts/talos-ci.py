@@ -16,6 +16,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import urllib.request
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -33,7 +34,7 @@ def load_generator():
 def guard_plan(plan):
     allowed = {'talos_machine_configuration_apply.control_plane',
                'talos_machine_bootstrap.cluster',
-               'talos_machine_configuration_apply.worker[0]'}
+               'talos_machine_configuration_apply.worker[0]', 'helm_release.cilium'}
     summary = []
     for item in plan.get('resource_changes', []):
         address = item['address']
@@ -47,6 +48,17 @@ def guard_plan(plan):
             raise ValueError('Node reset must remain disabled')
         if address.endswith('.control_plane') and after.get('apply_mode') != 'no_reboot':
             raise ValueError('Control-plane apply must not reboot')
+        if address == 'helm_release.cilium':
+            if after.get('name') != 'cilium' or after.get('namespace') != 'kube-system':
+                raise ValueError('Unexpected Cilium release target')
+            if after.get('version') != '1.20.1' or after.get('chart') != './.terraform/cilium-1.20.1.tgz':
+                raise ValueError('Cilium must use the pinned verified chart')
+            values = yaml.safe_load(after.get('values', ['{}'])[0])
+            if (values.get('kubeProxyReplacement') is not False
+                    or values.get('routingMode') != 'tunnel'
+                    or values.get('tunnelProtocol') != 'vxlan'
+                    or values.get('ipam', {}).get('mode') != 'kubernetes'):
+                raise ValueError('Cilium must retain kube-proxy, VXLAN and Kubernetes IPAM')
         summary.append({'resource': address, 'actions': actions,
                         'import': bool(item['change'].get('importing'))})
     if not any(s['resource'] == 'talos_machine_bootstrap.cluster' for s in summary):
@@ -65,6 +77,13 @@ def assert_public_state(value):
     elif isinstance(value, list):
         for child in value:
             assert_public_state(child)
+
+
+def download_verified(url, destination, expected):
+    data = urllib.request.urlopen(url, timeout=60).read()
+    if hashlib.sha256(data).hexdigest() != expected:
+        raise ValueError('Downloaded artifact checksum mismatch')
+    destination.write_bytes(data)
 
 
 def main():
@@ -117,12 +136,22 @@ def main():
         if status['spec']['stage'] != 'running':
             raise ValueError('Installed control plane must be running before adoption/update')
         run(tc + ['etcd', 'members'])
+        kubeconfig = private / 'kubeconfig'
+        run(tc + ['kubeconfig', kubeconfig, '--merge=false'])
+        kube = yaml.safe_load(kubeconfig.read_text())
+        if kube['clusters'][0]['cluster']['server'] != 'https://10.42.0.224:6443':
+            raise ValueError('Unexpected Kubernetes API target')
+        env['TF_VAR_kubeconfig_path'] = str(kubeconfig)
+        env['KUBECONFIG'] = str(kubeconfig)
         # Authenticated dry-run exposes live config differences without applying them.
         # Keep its output private; it can contain secrets.
         dry_run = run(tc + ['apply-config', '--dry-run', '--mode=no-reboot',
                             '--file', output / 'talos-cp-01.machineconfig.yaml'])
         tofu = ['tofu', '-chdir=' + str(TF)]
         run(tofu + ['init', '-input=false', '-lockfile=readonly'])
+        chart = TF / '.terraform/cilium-1.20.1.tgz'
+        download_verified('https://helm.cilium.io/cilium-1.20.1.tgz', chart,
+                          '06210eef7c23d15f7699c79e2fe3a1ec9c389024c5c5c006ea04022d322449a2')
         run(tofu + ['validate'])
         plan_file = private / 'tfplan'
         run(tofu + ['plan', '-input=false', '-lock-timeout=60s',
@@ -142,11 +171,20 @@ def main():
             # Write-only credentials/configuration must not appear in persisted state.
             state = run(tofu + ['state', 'pull'])
             assert_public_state(json.loads(state))
-            forbidden = [client['key'], client['crt'], secrets, *configs.values()]
+            kube_user = kube['users'][0]['user']
+            kube_credentials = [kube_user['client-key-data'], kube_user['client-certificate-data']]
+            forbidden = [client['key'], client['crt'], secrets, *configs.values(),
+                         *kube_credentials, *(base64.b64decode(v).decode() for v in kube_credentials)]
             if any(value and (value in state or json.dumps(value)[1:-1] in state) for value in forbidden):
                 raise ValueError('Unexpected sensitive input persisted in state; inspect privately')
             run(tc + ['etcd', 'members'])
-            print('PASS: Talos CI apply and state secret-exclusion check')
+            print('PASS: Talos CI apply and state secret-exclusion check', flush=True)
+            kubectl = private / 'kubectl'
+            download_verified('https://dl.k8s.io/release/v1.36.3/bin/linux/amd64/kubectl', kubectl,
+                              'ebbd080e7c2e275093b55915722043257eb24004363e20acb3c4d71919f88336')
+            kubectl.chmod(0o700)
+            env['KUBECTL'] = str(kubectl)
+            print(run(['bash', ROOT / 'scripts/homelab-cilium-validate.sh']))
         else:
             print('PASS: authenticated Talos preflight and guarded plan; no configuration applied')
 
