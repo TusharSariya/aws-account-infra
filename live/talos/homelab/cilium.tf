@@ -5,6 +5,10 @@ variable "kubeconfig_path" {
   ephemeral   = true
 }
 
+locals {
+  cilium_values = file("${path.module}/../../../config/environments/talos/homelab/cilium-values.yaml")
+}
+
 provider "helm" {
   kubernetes = {
     config_path = var.kubeconfig_path
@@ -17,7 +21,7 @@ resource "helm_release" "cilium" {
   namespace = "kube-system"
   chart     = "${path.module}/.terraform/cilium-1.20.1.tgz"
   version   = "1.20.1"
-  values    = [file("${path.module}/../../../config/environments/talos/homelab/cilium-values.yaml")]
+  values    = [local.cilium_values]
 
   wait    = true
   timeout = 600
@@ -27,5 +31,17 @@ resource "helm_release" "cilium" {
   max_history     = 5
 
   depends_on = [talos_machine_configuration_apply.worker, talos_machine_bootstrap.cluster]
-  lifecycle { prevent_destroy = true }
+  lifecycle {
+    prevent_destroy = true
+    postcondition {
+      condition = try(
+        yamldecode(self.values[0]).kubeProxyReplacement == false &&
+        yamldecode(self.values[0]).routingMode == "tunnel" &&
+        yamldecode(self.values[0]).tunnelProtocol == "vxlan" &&
+        yamldecode(self.values[0]).ipam.mode == "kubernetes",
+        false
+      )
+      error_message = "Cilium must retain kube-proxy, VXLAN and Kubernetes IPAM."
+    }
+  }
 }

@@ -169,12 +169,11 @@ jobs:
           tofu_version: 1.11.5
           tofu_wrapper: false
       - uses: astral-sh/setup-uv@v6
-      - name: Guarded Talos plan
-        env:
-          TALOS_SECRETS_B64: ${{ secrets.TALOS_SECRETS_B64 }}
-        run: |
-          set -o pipefail
-          uv run scripts/talos-ci.py plan | tee talos-plan.txt
+      - name: Plan Talos through visible guarded stages
+        uses: ./.github/actions/talos-deploy
+        with:
+          mode: plan
+          secrets-b64: ${{ secrets.TALOS_SECRETS_B64 }}
       - name: Comment sanitized Talos plan
         if: always()
         uses: actions/github-script@v7

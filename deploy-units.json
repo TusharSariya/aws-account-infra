@@ -117,6 +117,8 @@
         "config/environments/talos/homelab/",
         "config/environments/proxmox/homelab/talos/",
         "scripts/talos-ci.py",
+        "scripts/talos_tools.py",
+        ".github/actions/talos-deploy/",
         "scripts/homelab-talos-config.py"
       ]
     }

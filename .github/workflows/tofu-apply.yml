@@ -63,9 +63,8 @@ jobs:
           PROXMOX_VE_ENDPOINT: https://pve.tail2f646b.ts.net/
           PROXMOX_VE_API_TOKEN: ${{ secrets.PROXMOX_APPLY_API_TOKEN }}
         run: python3 scripts/proxmox-ci-check.py apply
-      - name: Apply deploy units in dependency order
+      - name: Apply AWS and Proxmox prerequisites in dependency order
         env:
-          TALOS_SECRETS_B64: ${{ secrets.TALOS_SECRETS_B64 }}
           UNITS_JSON: ${{ needs.detect.outputs.units }}
           PROXMOX_VE_ENDPOINT: https://pve.tail2f646b.ts.net/
           PROXMOX_VE_API_TOKEN: ${{ secrets.PROXMOX_APPLY_API_TOKEN }}
@@ -74,7 +73,13 @@ jobs:
           import json
           import os
 
-          for unit in json.loads(os.environ["UNITS_JSON"]):
+          units = json.loads(os.environ["UNITS_JSON"])
+          # Talos runs as visible stages after this loop; fail if the dependency
+          # graph ever places another selected unit after it.
+          talos = [i for i, unit in enumerate(units) if unit["cloud"] == "talos"]
+          if talos and (talos != [len(units) - 1] or units[-1]["id"] != "talos-homelab"):
+              raise SystemExit("Talos must be the last selected deployment unit")
+          for unit in units:
               if unit["cloud"] not in {"aws", "proxmox", "talos"}:
                   raise SystemExit(f"CI apply is not configured for cloud {unit['cloud']!r}")
               print(f"{unit['id']}\t{unit['path']}\t{unit['var_file']}\t{unit['cloud']}")
@@ -83,7 +88,6 @@ jobs:
           while IFS=$'\t' read -r id path var_file cloud; do
             echo "::group::Apply $id"
             if [[ "$cloud" == talos ]]; then
-              uv run scripts/talos-ci.py apply
               echo "::endgroup::"
               continue
             fi
@@ -97,6 +101,13 @@ jobs:
               -var-file="$GITHUB_WORKSPACE/$var_file" "${extra[@]}"
             echo "::endgroup::"
           done < /tmp/deploy-units.tsv
+
+      - name: Deploy Talos through visible guarded stages
+        if: contains(needs.detect.outputs.units, 'talos-homelab')
+        uses: ./.github/actions/talos-deploy
+        with:
+          mode: apply
+          secrets-b64: ${{ secrets.TALOS_SECRETS_B64 }}
 
   apply-gate:
     needs: [detect, apply]

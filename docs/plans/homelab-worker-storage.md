@@ -14,7 +14,7 @@ quota or application-data backup is provided by this filesystem alone.
 
 ## Apply and acceptance
 
-1. Change the worker patch through a reviewed PR. CI runs scripts/talos-ci.py:
+1. Change the worker patch through a reviewed PR. CI runs the shared `.github/actions/talos-deploy` stages, using `scripts/talos-ci.py` for private inputs and live guards:
    strict Talos validation, exact configuration guard, authenticated disk inventory
    and dry-run, then the existing guarded OpenTofu plan.
 2. Before applying, require a blank data disk or the one expected existing XFS
