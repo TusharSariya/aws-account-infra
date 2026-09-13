@@ -2,6 +2,7 @@
 COPY --from=ollama-client /bin/ollama /usr/local/bin/ollama
 USER root
 RUN groupadd -g 1000 odysseus && useradd -u 1000 -g 1000 -M -d /app odysseus \
+    && rm -f /app/.env && ln -s /workspace/config.env /app/.env \
     && rm -rf /app/data /app/logs /app/.cache /app/.local /app/.ssh \
     && ln -s /workspace/data /app/data && ln -s /workspace/logs /app/logs \
     && ln -s /workspace/cache /app/.cache && ln -s /workspace/local /app/.local \

@@ -28,6 +28,17 @@ def prepare(destination):
     dockerfile = (source / 'Dockerfile').read_text()
     if dockerfile.count('FROM python:3.14-slim') != 2:
         raise ValueError('Upstream Dockerfile changed; review base image pinning')
+    # The CPU workspace does not ship the optional Real-ESRGAN GPU wheel builder.
+    # Its isolated build dependencies otherwise install several GB of CUDA/torch.
+    dockerfile = 'FROM python:3.14-slim' + dockerfile.split('FROM python:3.14-slim', 2)[2]
+    start = dockerfile.index('# Pre-install the patched basicsr/')
+    end = dockerfile.index('# Copy app code', start)
+    dockerfile = dockerfile[:start] + dockerfile[end:]
+    # Host Docker management is deliberately absent from this Kubernetes service.
+    start = dockerfile.index('# Docker CLI (client only')
+    end = dockerfile.index('WORKDIR /app', start)
+    dockerfile = dockerfile[:start] + dockerfile[end:]
+    dockerfile = dockerfile.replace('ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]', '')
     dockerfile = dockerfile.replace('FROM python:3.14-slim', 'FROM ' + lock['python_image'])
     dockerfile = 'FROM ' + lock['ollama_image'] + ' AS ollama-client\n' + dockerfile
     dockerfile += (PACKAGE / 'Dockerfile.append').read_text()
