@@ -169,3 +169,53 @@ python3 scripts/homelab-etcd-snapshot.py --output "$HOME/Backups/new-etcd-bundle
 
 Use a new directory outside Git. Treat the entire bundle as sensitive. Snapshot
 metadata contains only identifiers, counts, revisions and digests.
+
+
+## Daily unattended etcd backups
+
+The main-branch `homelab-etcd-backup` workflow runs daily at **06:17 UTC**, or
+manually from Actions. The Mac may be off; Proxmox, the gateway laptop and the
+Talos control plane must be reachable. GitHub schedules are best effort.
+
+The workflow validates a snapshot, encrypts to the public key in
+config/environments/talos/homelab/backup-recipient.txt and writes a new S3 version
+of **etcd/latest.tar.gz.age**. The dedicated homelab-etcd-backup role has no delete
+or retention-bypass permissions. It reads back the exact version and compares
+ciphertext before publishing a success heartbeat. Raw archives and credentials
+are temporary private files, never Actions artifacts. The existing prod Talos CA
+secret remains admin-capable; this is not a read-only Talos security identity.
+
+The age private identity is initially stored at
+~/.config/aws-account-infra/recovery/etcd-age-key.txt (0600). Save that file in an
+independent recovery location before relying on automated backup recovery. Never
+put it in Git, GitHub secrets or the same backup it decrypts. The original
+passphrase-encrypted bootstrap backup remains separately recoverable with its
+original password. Key rotation requires retaining old identities until their
+backup versions expire and testing the replacement before publishing its public
+recipient.
+
+Terraform manages the `etcd/` lifecycle rule: old versions expire **30 days after
+becoming noncurrent**; the latest current version **never expires**. Deletion is
+asynchronous and honors Object Lock. A failed schedule cannot age out the last
+backup. Existing bootstrap, routine and monthly prefixes retain their previous
+rules. Do not configure a current expiration for etcd/ or manually delete the
+latest object (which would create a delete marker).
+
+CloudWatch `homelab-etcd-backup-stale` watches approximately 30 hours of missing
+success heartbeats and routes ALARM/OK changes to the existing account security
+alerts topic. Multi-day alarms evaluate hourly. Initial alarm state may be
+ALARM until the first verified backup. Confirm the topic's email subscription
+and periodically rehearse decryption; automated readback does not prove private
+key custody or a full cluster restore.
+
+To recover, use your independent AWS admin login to download the exact VersionId
+from the successful workflow receipt, then decrypt locally using:
+
+```bash
+age -d -i "$HOME/.config/aws-account-infra/recovery/etcd-age-key.txt" \
+  -o restored.tar.gz downloaded.tar.gz.age
+```
+
+Use a private directory outside Git. Inspect member names before extraction and
+verify snapshot-metadata.json and the embedded snapshot hash. Never restore over
+a live cluster merely to test a backup. Restore drills remain separate tasks.

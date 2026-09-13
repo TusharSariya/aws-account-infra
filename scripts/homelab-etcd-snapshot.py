@@ -34,14 +34,16 @@ def run(command):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', required=True, type=Path)
+    parser.add_argument('--state-dir', type=Path, default=Path.home() / '.config/aws-account-infra/talos/homelab')
+    parser.add_argument('--talosconfig', type=Path)
     args = parser.parse_args()
     os.umask(0o077)
     output = args.output.expanduser().resolve()
     if output == ROOT or ROOT in output.parents or output.exists():
         raise ValueError('Use a new private output directory outside Git')
-    source = Path.home() / '.config/aws-account-infra/talos/homelab'
+    source = args.state_dir.expanduser().resolve()
     secrets = source / 'talos-secrets.yaml'
-    talosconfig = source / 'two-vm-20260912/talosconfig'
+    talosconfig = args.talosconfig or source / 'two-vm-20260912/talosconfig'
     for path in (secrets, talosconfig):
         if path.is_symlink() or path.stat().st_uid != os.getuid() or path.stat().st_mode & 0o077:
             raise ValueError('Recovery inputs must be privately owned, mode 0600')

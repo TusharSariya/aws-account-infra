@@ -5,6 +5,27 @@ resource "aws_sns_topic" "security_alerts" {
 
 data "aws_iam_policy_document" "security_alerts" {
   statement {
+    sid    = "AllowHomelabBackupAlarm"
+    effect = "Allow"
+    principals {
+      type        = "Service"
+      identifiers = ["cloudwatch.amazonaws.com"]
+    }
+    actions   = ["sns:Publish"]
+    resources = [aws_sns_topic.security_alerts.arn]
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = ["arn:aws:cloudwatch:${var.region}:${var.aws_account_id}:alarm:homelab-etcd-backup-stale"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceAccount"
+      values   = [var.aws_account_id]
+    }
+  }
+
+  statement {
     sid    = "AllowEventBridge"
     effect = "Allow"
     principals {
