@@ -1,0 +1,48 @@
+name: homelab-worker-maintenance
+on:
+  workflow_call:
+    inputs:
+      confirm:
+        type: string
+        required: true
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type talos-worker-01 to authorize a worker reboot and persistence test
+        type: string
+        required: true
+permissions:
+  contents: read
+  id-token: write
+# Manual maintenance waits for active applies. Reusable calls inherit their
+# caller's apply serialization and must not compete with that same lock.
+concurrency:
+  group: ${{ github.event_name == 'workflow_dispatch' && 'tofu-apply' || format('worker-maintenance-{0}', github.run_id) }}
+  cancel-in-progress: false
+jobs:
+  worker-reboot:
+    if: github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: prod
+    steps:
+      - name: Require explicit worker target
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: test "$CONFIRM" = talos-worker-01
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4
+        with:
+          oauth-client-id: ${{ vars.TS_OIDC_CLIENT_ID }}
+          audience: ${{ vars.TS_OIDC_AUDIENCE }}
+          tags: tag:github-ci
+          version: 1.102.4
+          hostname: gh-worker-maintenance-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Accept homelab subnet route
+        run: sudo tailscale set --accept-routes=true
+      - uses: ./.github/actions/talos-check
+        with:
+          operation: worker-reboot
+          reboot-approved: 'true'
+          secrets-b64: ${{ secrets.TALOS_SECRETS_B64 }}

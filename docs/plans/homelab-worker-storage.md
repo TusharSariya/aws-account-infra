@@ -22,12 +22,13 @@ quota or application-data backup is provided by this filesystem alone.
    user-volume label fail closed. Do not wipe or bypass this check to proceed.
 3. Use the existing apply-label CI workflow. Talos performs allocation, formatting
    and mounting through its machine-configuration resource. No local config apply.
-4. CI checks ready VolumeStatus and MountStatus on /dev/sdb1. Only when preflight
-   found a blank data disk, it performs a worker-only firmware reboot with
-   talosctl reboot --mode=powercycle --wait --timeout=8m. It compares OS/data
-   partition and filesystem UUIDs, checks the remount and runs Cilium network
-   acceptance. Later applies against existing storage do not automatically reboot.
-   A failed reboot is not followed by a reset or forced retry.
+4. Routine CI verifies the ready XFS volume and mount without rebooting. A first
+   provisioning reports a required persistence rehearsal to the merge gate.
+   Request the separate worker-maintenance job with both apply and worker-reboot
+   labels, or use the explicit main-branch maintenance dispatch for later checks.
+   It compares OS/data partition identities across a worker-only firmware reboot
+   and verifies readiness. Network and PVC acceptance are separately visible
+   jobs. A failed rehearsal is not followed by a reset or forced retry.
 
 Read-only inspection, with the restored private TALOSCONFIG environment set:
 

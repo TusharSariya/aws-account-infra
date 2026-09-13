@@ -6,13 +6,7 @@ set -euo pipefail
 KUBECTL="${KUBECTL:-kubectl}"
 k() { "$KUBECTL" --request-timeout=30s "$@"; }
 
-k wait --for=condition=Ready node/talos-cp-01 node/talos-worker-01 --timeout=300s
-for ds in cilium cilium-envoy kube-proxy; do
-  k -n kube-system rollout status "daemonset/$ds" --timeout=300s
-done
-for deploy in cilium-operator coredns; do
-  k -n kube-system rollout status "deployment/$deploy" --timeout=300s
-done
+bash "$(dirname "$0")/homelab-readiness.sh"
 [[ "$(k -n kube-system get cm cilium-config -o jsonpath='{.data.kube-proxy-replacement}')" == false ]]
 [[ "$(k -n kube-system get cm cilium-config -o jsonpath='{.data.routing-mode}')" == tunnel ]]
 [[ "$(k -n kube-system get cm cilium-config -o jsonpath='{.data.tunnel-protocol}')" == vxlan ]]

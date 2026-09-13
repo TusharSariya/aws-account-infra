@@ -53,7 +53,7 @@ resource "talos_machine_configuration_apply" "worker" {
   endpoint                       = "10.42.0.222"
   client_configuration_wo        = var.client_configuration
   machine_configuration_input_wo = var.machine_configurations["talos-worker-01"]
-  apply_mode                     = "auto"
+  apply_mode                     = "no_reboot"
   on_destroy                     = { reset = false, graceful = true, reboot = false }
   depends_on                     = [talos_machine_configuration_apply.control_plane, talos_machine_bootstrap.cluster]
   lifecycle { prevent_destroy = true }

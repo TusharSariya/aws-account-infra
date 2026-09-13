@@ -174,3 +174,19 @@ and claims in other namespaces need separate accounting. Actual disk/thin-pool
 monitoring remains task 6.5. Reclaim policy is explicit and Retain does not replace
 application-consistent backups. See docs/plans/homelab-worker-storage.md for
 operator use, restore/rebinding boundaries and repeatable acceptance.
+
+### Independently gated acceptance and explicit maintenance
+
+Task 8.3 makes network/PVC tests separate affected-change jobs and main-branch
+manual dispatches. Test-script-only edits select acceptance without forcing a
+Terraform apply. Infrastructure changes require successful CI apply plus all
+selected acceptance before merge; an absent apply label is pending authorization,
+not a successful deployment. The existing required apply-gate enforces this.
+
+Routine Talos updates use no_reboot on both nodes and only read-only readiness.
+Worker persistence testing is a separately requested maintenance job, either
+an explicit worker-reboot label alongside apply or a confirmed main-branch
+manual dispatch. First disk provisioning requires its separate persistence
+result before acceptance. Do not evade missing first-provision evidence by
+rerunning apply against an already formatted disk. Full control-plane/etcd/DR
+rehearsals remain explicit separate tasks; no such restore is added here.

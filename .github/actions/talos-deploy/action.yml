@@ -7,6 +7,10 @@ inputs:
   secrets-b64:
     description: Original cluster identity from the prod environment
     required: true
+outputs:
+  needs-worker-reboot:
+    description: First provisioning requires an explicitly requested persistence rehearsal
+    value: ${{ steps.readiness.outputs.needs_worker_reboot }}
 runs:
   using: composite
   steps:
@@ -82,24 +86,13 @@ runs:
       env:
         PRIVATE: ${{ steps.private.outputs.path }}
       run: uv run scripts/talos-ci.py state --private "$PRIVATE"
-    - name: Verify storage readiness and first-provision persistence
+    - name: Verify routine node, storage and platform readiness
+      id: readiness
       if: inputs.mode == 'apply'
       shell: bash
       env:
         PRIVATE: ${{ steps.private.outputs.path }}
-      run: uv run scripts/talos-ci.py storage --private "$PRIVATE"
-    - name: Verify Cilium networking acceptance
-      if: inputs.mode == 'apply'
-      shell: bash
-      env:
-        PRIVATE: ${{ steps.private.outputs.path }}
-      run: uv run scripts/talos-ci.py network --private "$PRIVATE"
-    - name: Verify worker PVC acceptance
-      if: inputs.mode == 'apply'
-      shell: bash
-      env:
-        PRIVATE: ${{ steps.private.outputs.path }}
-      run: uv run scripts/talos-ci.py pvc --private "$PRIVATE"
+      run: uv run scripts/talos-ci.py readiness --private "$PRIVATE"
     - name: Remove private configurations, plans and credentials
       if: always() && steps.private.outputs.path != ''
       shell: bash

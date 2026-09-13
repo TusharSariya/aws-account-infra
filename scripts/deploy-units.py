@@ -3,6 +3,7 @@
 
 import argparse
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -41,15 +42,68 @@ def ordered(units):
     return result
 
 
+def select_units(files, units):
+    global_change = any(
+        path in {"deploy-units.json", "scripts/deploy-units.py", "scripts/infra.sh"}
+        or path.startswith(".github/workflows/tofu-") for path in files)
+    return [unit for unit in units if unit["ci"] and
+            (global_change or any(path.startswith(prefix) for path in files for prefix in unit["watch"]))]
+
+
+def acceptance_suite(files, selected):
+    both = any(unit['cloud'] in ('talos', 'proxmox') for unit in selected) or any(
+        path.startswith(('.github/actions/talos-', '.github/workflows/homelab-acceptance',
+                         '.github/workflows/homelab-worker-maintenance'))
+        or path == 'scripts/homelab-readiness.sh' for path in files)
+    network = both or 'scripts/homelab-cilium-validate.sh' in files
+    pvc = both or 'scripts/homelab-storage-validate.py' in files
+    return 'all' if network and pvc else 'network' if network else 'pvc' if pvc else 'none'
+
+
+def acceptance_gate(needs, apply_requested, reboot_requested):
+    if needs['detect']['result'] != 'success':
+        raise ValueError('Deployment/acceptance selection failed')
+    outputs = needs['detect']['outputs']
+    units = json.loads(outputs['units'])
+    if units and not apply_requested:
+        raise ValueError('Infrastructure changes require the apply label and a successful CI apply before merge')
+    apply_expected = bool(units) and apply_requested
+    if apply_expected and needs['apply']['result'] != 'success':
+        raise ValueError('Requested apply must succeed')
+    if needs['apply']['result'] not in ('success', 'skipped'):
+        raise ValueError('Apply failed or was cancelled')
+    first = needs['apply'].get('outputs', {}).get('needs_worker_reboot') == 'true'
+    reboot_expected = first or (apply_expected and reboot_requested and
+                               any(u['id'] == 'talos-homelab' for u in units))
+    if reboot_expected and needs['worker-maintenance']['result'] != 'success':
+        raise ValueError('Explicit worker persistence rehearsal required; request worker-reboot with apply')
+    if needs['worker-maintenance']['result'] not in ('success', 'skipped'):
+        raise ValueError('Worker maintenance failed or was cancelled')
+    if outputs['suite'] != 'none' and needs['acceptance']['result'] != 'success':
+        raise ValueError('Selected acceptance must succeed, including test-only changes')
+    if needs['acceptance']['result'] not in ('success', 'skipped'):
+        raise ValueError('Acceptance failed or was cancelled')
+
+
 def main():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="command", required=True)
     get_parser = subparsers.add_parser("get")
     get_parser.add_argument("id")
-    changed_parser = subparsers.add_parser("changed")
-    changed_parser.add_argument("base")
-    changed_parser.add_argument("head")
+    for command in ('changed', 'acceptance'):
+        changed_parser = subparsers.add_parser(command)
+        changed_parser.add_argument('base')
+        changed_parser.add_argument('head')
+    subparsers.add_parser('acceptance-gate')
     args = parser.parse_args()
+    if args.command == 'acceptance-gate':
+        try:
+            acceptance_gate(json.loads(os.environ['NEEDS_JSON']),
+                            os.environ['APPLY_REQUESTED'] == 'true',
+                            os.environ['REBOOT_REQUESTED'] == 'true')
+        except ValueError as error:
+            raise SystemExit(str(error))
+        return
     units = ordered(load_units())
 
     if args.command == "get":
@@ -60,16 +114,11 @@ def main():
         return
 
     files = changed_files(args.base, args.head)
-    global_change = any(
-        path in {"deploy-units.json", "scripts/deploy-units.py", "scripts/infra.sh"}
-        or path.startswith(".github/workflows/tofu-")
-        for path in files
-    )
-    selected = [
-        unit for unit in units
-        if unit["ci"] and (global_change or any(path.startswith(prefix) for path in files for prefix in unit["watch"]))
-    ]
-    print(json.dumps(selected, separators=(",", ":")))
+    selected = select_units(files, units)
+    if args.command == 'acceptance':
+        print(acceptance_suite(files, selected))
+    else:
+        print(json.dumps(selected, separators=(",", ":")))
 
 
 if __name__ == "__main__":

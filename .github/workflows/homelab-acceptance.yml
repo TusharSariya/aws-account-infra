@@ -1,0 +1,43 @@
+name: homelab-acceptance
+on:
+  workflow_call:
+    inputs:
+      suite:
+        type: string
+        default: all
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: Acceptance suite against the current cluster (no deployment)
+        type: choice
+        options: [all, network, pvc]
+        default: all
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  acceptance:
+    if: github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: prod
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: ${{ fromJSON(inputs.suite == 'all' && '["network","pvc"]' || inputs.suite == 'network' && '["network"]' || inputs.suite == 'pvc' && '["pvc"]' || '["invalid"]') }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4
+        with:
+          oauth-client-id: ${{ vars.TS_OIDC_CLIENT_ID }}
+          audience: ${{ vars.TS_OIDC_AUDIENCE }}
+          tags: tag:github-ci
+          version: 1.102.4
+          hostname: gh-check-${{ matrix.suite }}-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Accept homelab subnet route
+        run: sudo tailscale set --accept-routes=true
+      - uses: ./.github/actions/talos-check
+        with:
+          operation: ${{ matrix.suite }}
+          secrets-b64: ${{ secrets.TALOS_SECRETS_B64 }}
