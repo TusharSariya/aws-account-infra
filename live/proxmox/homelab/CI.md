@@ -9,7 +9,7 @@ in the existing AWS backend at `proxmox/homelab/terraform.tfstate`.
 - A relevant same-repository PR triggers an authenticated Proxmox plan. AWS units
   retain their existing plan jobs. Both must pass the existing `plan-gate`.
 - The Proxmox plan job declares `environment: prod` to match the Tailscale OIDC
-  subject. It uses the AWS plan role for S3 state/locking and the read-only
+  subject. It uses the AWS plan role for S3 state/locking and the limited plan
   `homelab-tofu-plan@pve!provider` token for Proxmox. A permission preflight rejects
   VM or disk write privileges on the planned resources.
 - A maintainer reviews the posted plan, then adds the existing `apply` label.
@@ -63,10 +63,10 @@ activate the previously deferred restrictive policy or retag the Proxmox host.
 The runner reaches the existing private HTTPS Serve endpoint; no port is exposed
 publicly and no router port-forwarding is needed. The laptop and pve must be on.
 
-Provision the read-only API identity from a trusted administration checkout:
+Provision the limited plan API identity from a trusted administration checkout:
 
 ```bash
-python3 scripts/proxmox-provider-bootstrap.py --read-only --ssh-target server-10-42
+python3 scripts/proxmox-provider-bootstrap.py --plan --ssh-target server-10-42
 ```
 
 This creates `homelab-tofu-plan@pve` with privilege separation, system audit,
@@ -89,7 +89,7 @@ Recreate the Tailscale tag/trust through independent administrator access, then
 update the two repository variables. If pve is rebuilt or a token is lost,
 follow ACCESS.md to regain trusted root access and reissue API credentials.
 To revoke only the reader, run `pveum user token remove homelab-tofu-plan@pve provider`
-on pve, then recreate it using `--read-only` and update GitHub secrets. Keep tokens
+on pve, then recreate it using `--plan` and update GitHub secrets. Keep tokens
 outside Git; do not depend on recovering their old values to restore CI.
 
 Verify a same-repository PR can enroll an ephemeral runner, pass authenticated
@@ -99,3 +99,33 @@ restore rehearsal remains deferred and untested.
 
 Sources: [Tailscale GitHub Action](https://tailscale.com/docs/integrations/github/github-action),
 [workload federation](https://tailscale.com/docs/features/workload-identity-federation).
+
+## Existing-volume inspection permission
+
+PVE 9.2.11 requires `VM.Config.Disk` for GET requests inspecting VM disk
+volumes. The pinned provider makes those calls during refresh. Therefore the
+plan identity is **not strictly read-only**: it has disk-configuration access
+only on VMs 100 and 102, in addition to audit permissions. It has no
+VM.Allocate, VM.PowerMgmt, Sys.Modify or Datastore.AllocateSpace. Trusted
+repository workflow authors remain a security boundary. Do not use
+`-refresh=false` to hide drift or substitute the full apply token.
+
+Fresh setup uses `proxmox-provider-bootstrap.py --plan` (the old `--read-only`
+flag remains an alias). To upgrade the original identity once, run as root on
+pve after inspecting existing roles and ACLs:
+
+```bash
+pveum role add HomelabTofuPlanVM --privs 'VM.Audit VM.GuestAgent.Audit VM.Config.Disk'
+pveum acl modify /vms/100 --users homelab-tofu-plan@pve --roles HomelabTofuPlanVM --propagate 1
+pveum acl modify /vms/102 --users homelab-tofu-plan@pve --roles HomelabTofuPlanVM --propagate 1
+pveum acl modify /vms/100 --tokens 'homelab-tofu-plan@pve!provider' --roles HomelabTofuPlanVM --propagate 1
+pveum acl modify /vms/102 --tokens 'homelab-tofu-plan@pve!provider' --roles HomelabTofuPlanVM --propagate 1
+pveum acl delete /vms/100 --users homelab-tofu-plan@pve --roles HomelabTofuReadVM
+pveum acl delete /vms/102 --users homelab-tofu-plan@pve --roles HomelabTofuReadVM
+pveum acl delete /vms/100 --tokens 'homelab-tofu-plan@pve!provider' --roles HomelabTofuReadVM
+pveum acl delete /vms/102 --tokens 'homelab-tofu-plan@pve!provider' --roles HomelabTofuReadVM
+```
+
+To revoke this capability, restore the old audit-only ACLs before removing the
+new role's ACLs. Live refresh of existing disks will then fail. No token
+rotation is required for either ACL change.

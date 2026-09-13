@@ -116,7 +116,7 @@ jobs:
       - uses: opentofu/setup-opentofu@v1
         with:
           tofu_version: 1.11.5
-      - name: Verify authenticated HTTPS and read-only token
+      - name: Verify authenticated HTTPS and plan token scope
         run: python3 ../../../scripts/proxmox-ci-check.py plan
       - name: Initialize and validate
         run: |

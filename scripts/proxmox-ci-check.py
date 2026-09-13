@@ -19,7 +19,9 @@ def check_permissions(data, writable):
         rights = privileges(path)
         if 'VM.Audit' not in rights or ('VM.Allocate' in rights) != writable:
             raise ValueError('Unexpected VM permissions')
-        if not writable and rights - {'VM.Audit', 'VM.GuestAgent.Audit', 'Sys.Audit'}:
+        if not writable and 'VM.Config.Disk' not in rights:
+            raise ValueError('Plan token requires VM.Config.Disk to inspect existing volumes')
+        if not writable and rights - {'VM.Audit', 'VM.GuestAgent.Audit', 'VM.Config.Disk', 'Sys.Audit'}:
             raise ValueError('Plan token has unexpected VM permissions')
     if 'VM.Allocate' in privileges('/vms/101'):
         raise ValueError('Token can allocate an unrelated VM')

@@ -37,7 +37,8 @@ privilege-separated `provider` token. Both the user and token receive only:
 
 Proxmox requires `Sys.Modify` at `/` for the configured VM startup order. This
 is a host-wide configuration privilege, not a permission limited to startup order.
-Only the apply identity receives it; the independent plan identity stays read-only.
+Only the apply identity receives it; the independent plan identity has no host-write permission. Its required
+VM disk-configuration permission is documented in [CI.md](CI.md).
 The token does not receive Administrator, user/ACL management, or VM allocation
 outside these IDs. VM allocation permissions also permit
 removing these two guests: review plans and preserve state/backups. No claim of
@@ -60,7 +61,7 @@ the Tailscale node key, which has its own expiry policy.
 For identities created before this permission was included, run these commands
 once as root on `pve`, after inspecting existing roles and ACLs. On a fresh host,
 the bootstrap above already installs this role. Do not modify `HomelabTofuAudit`:
-the separate read-only plan identity uses it.
+the separate limited plan identity uses it.
 
 ```bash
 pveum role add HomelabTofuHost --privs 'Sys.Audit Sys.Modify'
@@ -105,7 +106,7 @@ has deferred the clean-machine restore test; it remains recorded as untested.
 The new S3 backend requires AWS authentication for live initialization and plans.
 Offline validation continues using `init -backend=false` plus mocked tests.
 The deployment manifest now enables this root for live CI. See
-[GitHub CI setup](CI.md) for the separate read-only plan identity, environment
+[GitHub CI setup](CI.md) for the separate limited plan identity, environment
 secrets, Tailscale OIDC trust and the apply-label workflow.
 
 ## Credential loss, rotation and state recovery

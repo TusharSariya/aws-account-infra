@@ -80,8 +80,8 @@ class CIPermissionTests(unittest.TestCase):
         self.check = module('proxmox-ci-check').check_permissions
         self.rights = {
             '/': {'Sys.Audit': 1},
-            '/vms/100': {'VM.Audit': 1, 'VM.GuestAgent.Audit': 1},
-            '/vms/102': {'VM.Audit': 1},
+            '/vms/100': {'VM.Audit': 1, 'VM.GuestAgent.Audit': 1, 'VM.Config.Disk': 1},
+            '/vms/102': {'VM.Audit': 1, 'VM.Config.Disk': 1},
             '/vms/101': {'Sys.Audit': 1},
             '/storage/local': {'Datastore.Audit': 1},
             '/storage/local-lvm': {'Datastore.Audit': 1},
@@ -100,10 +100,15 @@ class CIPermissionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.check(self.rights, False)
 
-    def test_read_only_plan_scope(self):
+    def test_limited_plan_scope(self):
         self.check(self.rights, False)
-        self.rights['/vms/100']['VM.Config.Disk'] = 1
+        self.rights['/vms/100']['VM.Config.CPU'] = 1
         with self.assertRaises(ValueError):
+            self.check(self.rights, False)
+
+    def test_plan_requires_existing_volume_inspection_permission(self):
+        del self.rights['/vms/102']['VM.Config.Disk']
+        with self.assertRaisesRegex(ValueError, 'VM.Config.Disk'):
             self.check(self.rights, False)
 
     def test_plan_rejects_disk_allocation(self):

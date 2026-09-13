@@ -933,3 +933,14 @@ values in this file.
 - Action: Set started=true in both guest inputs, retaining on_boot=false and the pinned attached ISOs. Updated the existing lifecycle assertion and documented maintenance API checks in live/proxmox/homelab/README.md. No machine configuration is applied by this change.
 - Verification: Require a live CI plan containing only two in-place start updates, then successful apply and read-only runtime checks. Tasks remain incomplete until evidence is recorded.
 - Rollback/recovery: Before Talos installation, set started=false through a reviewed CI change to stop the guests. Retain definitions and disks; no deletion or new disk allocation is intended. Existing independent-recovery gaps remain recorded, not waived by boot success.
+
+
+### LOG-0067 - Correct plan permission for existing volume inspection
+
+- Timestamp: 2026-09-13T01:07:09.585689+00:00
+- Operator: Codex, carrying out the authorized CI boot and verification
+- Target: PR #51 and homelab-tofu-plan@pve user/token, VMs 100/102 only
+- Failure/evidence: CI plan run 34729555107 failed volume GET calls with VM.Config.Disk denied. Installed PVE API2/Storage/Content.pm delegates to Storage::check_volume_access, whose images branch requires Datastore.Audit and VM.Config.Disk. The pinned provider offers no disk-inspection bypass; no start was attempted.
+- Correction: Installed HomelabTofuPlanVM with VM.Audit, VM.GuestAgent.Audit and VM.Config.Disk on /vms/100 and /vms/102 for both user and privilege-separated token, replacing HomelabTofuReadVM ACLs. This adds real disk-configuration capability; prior strictly read-only descriptions are superseded. No VM allocation, power, host modification or datastore allocation was added. CI.md records the exact upgrade and rollback. Bootstrap now calls the mode --plan; --read-only is a compatibility alias.
+- Verification: Nine offline access tests and both live token-scope preflights pass. Live plan retry remains required before apply. No machine configurations or secrets were printed.
+- Rollback/recovery: Restore the old audit-only role ACLs before deleting the new plan-role ACLs. This restores strict read-only privileges but causes provider disk refresh to fail. No token rotation or host API patch was performed.
