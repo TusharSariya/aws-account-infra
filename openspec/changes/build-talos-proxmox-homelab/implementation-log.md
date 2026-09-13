@@ -1018,3 +1018,13 @@ values in this file.
 - Action: Added worker-only UserVolumeConfig with exact stable scsi1 identity, /dev/sdb, 1200-GiB size and system-disk exclusion. CI checks the rendered contract and live disk contents before apply, verifies the XFS mount after apply, and on first provisioning reboots only the worker through firmware then compares OS/data filesystem and partition UUIDs and reruns network acceptance. Existing-volume applies do not perform that first-provision reboot.
 - Validation: Talos v1.13.9 strict generation passes. Thirteen guard tests pass, including wrong OS/data mapping, unknown existing content and incorrect mount rejection. Authenticated local plan shows only worker configuration update, with bootstrap/control plane/Cilium no-op. Live provisioning and reboot acceptance remain pending; no storage task marked complete yet.
 - Recovery: docs/plans/homelab-worker-storage.md records reconstruction and existing-volume reuse. No wipe/reset or destructive rollback is implemented. Preserve labeled data and original identity. This prepares the filesystem for local-path provisioning in task 6.3; application data protection remains 6.4. Daily etcd backups do not include worker files.
+
+
+### LOG-0081 - Prepare worker PVC provisioning and retention acceptance
+
+- Timestamp: 2026-09-13T03:52:48.489328+00:00
+- Operator/target/task: Codex, operator requested next storage step; homelab Kubernetes API 10.42.0.224:6443; task 6.3.
+- Action: Added two Helm resources in the existing Talos root: local namespace/class/request-budget policy and checksum-verified local-path-provisioner 0.0.37. Images pinned by digest. Worker-only data paths, missing-mount rejection, explicit Retain/Delete classes and 800/100/100-GiB namespace request budgets are versioned. Added disposable PVC persistence/reclaim/quota acceptance and guarded cleanup.
+- Validation: Authenticated plan adds only the two Helm releases; existing Talos/Cilium/bootstrap resources no-op. Local chart lint/render passed. Live application and acceptance pending; task remains unchecked.
+- Scope/limitations: Local-path has no hard per-volume write quota. Namespace requested-capacity budgets do not account for other namespaces or released retained volumes. No application data backup or capacity-monitoring completion is claimed. Sandbox runtime controls remain deferred.
+- Recovery: Preserve retained PV paths/claim metadata and independent application data backups. Change or recover releases through CI; no automatic uninstall or destructive rollback. Test cleanup is restricted to captured test claim UIDs and namespace.
