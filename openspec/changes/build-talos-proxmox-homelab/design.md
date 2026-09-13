@@ -179,8 +179,11 @@ operator use, restore/rebinding boundaries and repeatable acceptance.
 ### Simplify automation before expanding the platform
 
 Operator decision: reduce the bespoke orchestration accumulated during initial
-provisioning. Tasks 8.1-8.5 are the next implementation sequence, before new
-feature work in 6.4-6.5. Existing scheduled backups and deployed services continue
+provisioning. The original sequence put tasks 8.1-8.5 before new feature work.
+On 2026-09-13 the operator deferred task 8.5 validation and chose to resume
+6.4, then 6.5. Validation remains incomplete; retain compatibility wrappers
+until the deferred parity checks pass. PR #63 merge and the new daily workflow
+round trip remain pending, without blocking that feature sequence. Existing scheduled backups and deployed services continue
 during the refactor. IDs and completed-task evidence remain unchanged.
 
 Keep OpenTofu providers responsible for Proxmox/Talos/AWS desired state and Helm

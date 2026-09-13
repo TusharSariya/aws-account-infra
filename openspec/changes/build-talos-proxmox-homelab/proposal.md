@@ -45,6 +45,9 @@ they replace custom logic. Retain focused helpers for private Talos identity
 handling, live disk safety and verified encrypted backups. Separate deployment
 from integration tests and explicitly invoked recovery/reboot rehearsals. This
 revision plans a behavior-preserving refactor, not an infrastructure migration.
+On 2026-09-13 the operator skipped task 8.5 validation for now and resumed
+worker-data backups (6.4), then monitoring (6.5). This changes sequencing only;
+parity remains unverified and ordinary CI checks stay enabled.
 
 The operator-requested browser dashboard revision adds a Kubernetes resource UI
 for nodes, pods, deployments, logs and PVCs, delivered through the existing

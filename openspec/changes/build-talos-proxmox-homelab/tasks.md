@@ -65,21 +65,21 @@ Prerequisite: review the recovery-foundation gaps in 2.7 and 2.8 before guest cr
 
 - [ ] 7.6 Rehearse full disaster recovery in isolation from a clean administration environment, assuming the laptop and Proxmox are both lost; recover access/networking, host/storage, guests, cluster and accepted durable data in dependency order, verify service behavior and replayability, and record achieved recovery time/data loss against objectives with all unresolved blockers explicit
 
-## 8. Automation Simplification (next, before new feature work)
+## 8. Automation Simplification
 
-Operator-approved planning revision: implement 8.1-8.5 before continuing new feature work in 6.4-6.5. Keep existing backups and services operating throughout. Task 8.1 inventory is recorded in docs/plans/homelab-automation-audit.md; tasks 8.2-8.5 remain pending and no refactor is claimed complete.
+Operator-approved sequencing update, 2026-09-13: skip task 8.5 validation for now and resume feature work at 6.4, then 6.5. Keep existing backups and services operating. The deferral does not mark validation complete or disable ordinary CI checks. Task 8.1 inventory is recorded in docs/plans/homelab-automation-audit.md.
 
 - [x] 8.1 Inventory deployment, tool setup, validation, secret handling, integration-test and backup responsibilities and all CI/local recovery callers; record which native mechanism replaces each responsibility and justify each retained helper
 - [ ] 8.2 Move routine orchestration into named GitHub Actions steps, consolidate pinned tool setup and move suitable constraints into blocking OpenTofu validation; preserve focused live/plan guards, original Talos identity, ephemeral/write-only secrets and sanitized diagnostics
 - [ ] 8.3 Separate targeted PVC/network integration suites into visible affected-change and manually dispatched jobs with acceptance gating; retain routine readiness checks and make reboot/recovery rehearsals explicit operations rather than hidden apply behavior
 - [ ] 8.4 Consolidate snapshot preparation and verified encrypted upload behind one focused backup command; preserve schedule, format/restore compatibility, exact-version readback, receipts, OIDC permissions, heartbeat/alarm, independent key custody and S3 retention semantics
-- [ ] 8.5 Prove migration parity with an authenticated no-change plan, negative safety/secret tests, targeted integration acceptance and a real encrypted backup download/decryption/integrity round trip; update all callers/recovery instructions, remove redundant wrappers and record rollback to a known working revision
+- [ ] 8.5 **SKIPPED FOR NOW - operator deferred 2026-09-13; revisit later.** Prove migration parity with an authenticated no-change plan, negative safety/secret tests, targeted integration acceptance and a real encrypted backup download/decryption/integrity round trip; update all callers/recovery instructions, remove redundant wrappers and record rollback to a known working revision
 
-Task 8.2 implementation is in PR #61. Offline checks and authenticated local/CI no-change plans pass (LOG-0085); live apply acceptance and merge remain pending.
+Current implementation status: PRs #61 and #62 merged; #62 apply run 34772081865 passed readiness, state-secret and network/PVC checks without worker reboot. PR #63 contains task 8.4 and remains awaiting operator merge. Its local capture and existing-backup decryption checks passed, but execution of the new daily workflow after merge and the complete task 8.5 parity rehearsal are deferred. Keep compatibility wrappers until the deferred verification is completed. Next implementation task: 6.4, independent encrypted worker-data backups. The last observed scheduled backup run 34755610601 failed; this deferral is not evidence of a healthy replacement run.
 
 ## 9. Browser-based Kubernetes Dashboard
 
-Schedule after automation simplification (8.2-8.5); product selection remains open and this planning task does not authorize a live deployment.
+Schedule after the active worker backup/monitoring tasks; task 8.5 is deferred and is no longer a sequencing gate; product selection remains open and this planning task does not authorize a live deployment.
 
 - [ ] 9.1 Select and deploy a maintained browser-based Kubernetes dashboard through reviewed Helm/OpenTofu GitHub CI; provide authenticated tailnet-only HTTPS access with read-only Kubernetes permissions by default, verify nodes/pods/deployments/logs/PVC views and denied unauthorized access, and document the URL, login, pinned configuration, resource budget and reproducible rebuild/removal procedure without exposing credentials
 
