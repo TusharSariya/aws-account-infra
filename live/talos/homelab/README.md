@@ -41,7 +41,7 @@ installation or unattended upgrades.
 ## Secrets and state
 
 The existing private talos-secrets.yaml is encrypted as the GitHub `prod`
-environment secret TALOS_SECRETS_YAML. Run scripts/talos-ci-secrets.py from a
+environment secret TALOS_SECRETS_B64. Run scripts/talos-ci-secrets.py from a
 trusted administration checkout to populate/recover it without printing it.
 The source is ~/.config/aws-account-infra/talos/homelab/talos-secrets.yaml,
 mode 0600. Its fingerprint in identity.json prevents accidentally adopting a

@@ -171,7 +171,7 @@ jobs:
       - uses: astral-sh/setup-uv@v6
       - name: Guarded Talos plan
         env:
-          TALOS_SECRETS_YAML: ${{ secrets.TALOS_SECRETS_YAML }}
+          TALOS_SECRETS_B64: ${{ secrets.TALOS_SECRETS_B64 }}
         run: |
           set -o pipefail
           uv run scripts/talos-ci.py plan | tee talos-plan.txt

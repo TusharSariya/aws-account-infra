@@ -65,7 +65,7 @@ jobs:
         run: python3 scripts/proxmox-ci-check.py apply
       - name: Apply deploy units in dependency order
         env:
-          TALOS_SECRETS_YAML: ${{ secrets.TALOS_SECRETS_YAML }}
+          TALOS_SECRETS_B64: ${{ secrets.TALOS_SECRETS_B64 }}
           UNITS_JSON: ${{ needs.detect.outputs.units }}
           PROXMOX_VE_ENDPOINT: https://pve.tail2f646b.ts.net/
           PROXMOX_VE_API_TOKEN: ${{ secrets.PROXMOX_APPLY_API_TOKEN }}

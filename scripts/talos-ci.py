@@ -7,6 +7,7 @@
 No secret-bearing diagnostics, plan JSON or state are printed or uploaded.
 """
 import argparse
+import base64
 import hashlib
 import importlib.util
 import json
@@ -66,7 +67,7 @@ def main():
             raise ValueError('Cluster secrets must be privately owned with mode 0600')
         secrets = p.read_text()
     else:
-        secrets = os.environ.get('TALOS_SECRETS_YAML', '')
+        secrets = base64.b64decode(os.environ.get('TALOS_SECRETS_B64', ''), validate=True).decode()
     identity = json.loads((INPUTS / 'identity.json').read_text())
     if hashlib.sha256(secrets.encode()).hexdigest() != identity['secrets_sha256']:
         raise ValueError('Existing cluster secrets fingerprint does not match')
@@ -76,7 +77,7 @@ def main():
         (private / 'talos-secrets.yaml').write_text(secrets)
         env = {k: v for k, v in os.environ.items()
                if not k.startswith(('TF_CLI_ARGS', 'TF_LOG', 'TOFU_LOG', 'TF_VAR_'))
-               and k != 'TALOS_SECRETS_YAML'}
+               and k != 'TALOS_SECRETS_B64'}
         env.setdefault('AWS_PROFILE', 'admin') if not env.get('GITHUB_ACTIONS') else None
         def run(command):
             result = subprocess.run(list(map(str, command)), env=env, capture_output=True, text=True, timeout=900)
