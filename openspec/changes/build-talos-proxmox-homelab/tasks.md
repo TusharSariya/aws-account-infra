@@ -32,9 +32,9 @@ Prerequisite: review the recovery-foundation gaps in 2.7 and 2.8 before guest cr
 
 ## 4. VM Creation
 
-- [ ] 4.1 Resolve and log the exact `talos-cp-01` target, create its 2-vCPU, 4-GiB, 100-GiB VM, and verify its rendered Proxmox configuration and Talos maintenance-mode boot
-- [ ] 4.3 Resolve and log the exact talos-worker-01 target, create its 38-vCPU, 172-GiB VM with 100-GiB OS and 1,200-GiB data disks, and verify rendered Proxmox settings and Talos maintenance-mode boot
-- [ ] 4.5 Verify startup order is control plane then shared worker, QEMU Guest Agent matches the installed extensions, and record a sanitized qm config inventory
+- [x] 4.1 Resolve and log the exact `talos-cp-01` target, create its 2-vCPU, 4-GiB, 100-GiB VM, and verify its rendered Proxmox configuration and Talos maintenance-mode boot
+- [x] 4.3 Resolve and log the exact talos-worker-01 target, create its 38-vCPU, 172-GiB VM with 100-GiB OS and 1,200-GiB data disks, and verify rendered Proxmox settings and Talos maintenance-mode boot
+- [x] 4.5 Verify startup order is control plane then shared worker, QEMU Guest Agent matches the installed extensions, and record a sanitized qm config inventory
 
 ## 5. Talos Cluster Foundation
 
