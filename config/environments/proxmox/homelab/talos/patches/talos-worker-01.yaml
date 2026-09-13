@@ -17,3 +17,15 @@ apiVersion: v1alpha1
 kind: DHCPv4Config
 name: homelab
 clientIdentifier: mac
+---
+apiVersion: v1alpha1
+kind: UserVolumeConfig
+name: local-path-provisioner
+volumeType: partition
+provisioning:
+  diskSelector:
+    match: "!system_disk && disk.dev_path == '/dev/sdb' && disk.size == 1200u * GiB && '/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi1' in disk.symlinks"
+  minSize: 1199GiB
+  grow: false
+filesystem:
+  type: xfs
