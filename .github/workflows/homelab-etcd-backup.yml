@@ -33,4 +33,4 @@ jobs:
       - name: Capture, encrypt, upload and verify
         env:
           TALOS_SECRETS_B64: ${{ secrets.TALOS_SECRETS_B64 }}
-        run: python3 scripts/homelab-etcd-backup-ci.py
+        run: python3 scripts/homelab-backup.py backup --mode daily

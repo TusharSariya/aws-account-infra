@@ -8,11 +8,23 @@ on:
       - 'modules/aws/encrypted_s3_bucket/**'
       - 'config/environments/aws/staging/homelab-recovery/**'
       - 'scripts/tests/homelab-backup-certificates.sh'
+      - 'scripts/*backup*'
+      - 'scripts/homelab-etcd-snapshot.py'
+      - 'scripts/talos_tools.py'
+      - 'scripts/tests/test_homelab_backup.py'
+      - '.github/workflows/homelab-etcd-backup.yml'
 
 permissions:
   contents: read
 
 jobs:
+  backup-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check recovery compatibility and failure guards
+        run: python3 -m unittest discover -s scripts/tests -p test_homelab_backup.py
+
   identity:
     runs-on: ubuntu-latest
     steps:
