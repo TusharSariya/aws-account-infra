@@ -909,3 +909,15 @@ values in this file.
 - Deviation: The operator performs Tailscale admin changes; Codex inspected forms without saving them. OIDC subject must match repo:TusharSariyaOrg/aws-account-infra:environment:prod. Existing allow-all tailnet policy covers runner traffic; no restrictive policy was applied. prod has no required reviewers, so apply-label gating and trusted repository workflow authors are the current boundary. No permanent Tailscale secret added.
 - Supersedes: Proxmox deployment-CI-disabled status in LOG-0063 once this workflow is reviewed and merged; local setup evidence remains valid.
 - Rollback/recovery: Remove the apply label to prevent new deployment triggers, disable the unit through a PR if retiring CI, revoke the dedicated Tailscale trust or Proxmox tokens if compromised. Reissue tokens and update environment secrets with the committed helpers; CI.md records trust fields and recovery. S3 state keys and existing AWS deployment identities remain unchanged.
+
+
+### LOG-0065 - Correct apply permission for VM startup order
+
+- Timestamp: 2026-09-13
+- Operator: Codex, following explicit authorization to fix the failed CI apply
+- Target: pve apply identity and PR #50
+- Tasks: 4.1/4.3 provisioning preparation; maintenance boots remain pending
+- Cause/evidence: GitHub apply run 34728654173 failed both VM creates with permission check (/, Sys.Modify). Installed PVE API2/Qemu.pm explicitly checks this global privilege when a startup option is provided. The plan and previous preflight did not exercise this check; qm list remained empty.
+- Action: Added HomelabTofuHost (Sys.Audit Sys.Modify) at / to the apply user and privilege-separated token, replacing their audit-only root ACL. The independent plan identity retains HomelabTofuAudit. Bootstrap and ACCESS.md now reproduce this configuration and document the host-wide permission. Existing secrets require no rotation.
+- Verification: Two regression tests failed before the preflight fix; all eight access tests pass afterward. Live trusted-HTTPS preflights pass for both identities. CI now checks the root permission before applying and rejects host write access for the plan identity. Initial ACL cleanup used an unsupported delete option; corrected against installed CLI help to pveum acl delete and completed successfully. CI retry and VM creation remain pending at this revision.
+- Rollback/recovery: Restore audit-only ACLs before removing HomelabTofuHost ACLs to revoke host modification. Startup-order operations would fail again. No administrator role or user/ACL-management permission was granted.

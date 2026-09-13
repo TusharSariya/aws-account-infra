@@ -10,6 +10,11 @@ import urllib.request
 def check_permissions(data, writable):
     def privileges(path):
         return {key for key, value in data.get(path, {}).items() if value}
+    # PVE checks startup order against /, independently of VM.Config.Options.
+    if writable and 'Sys.Modify' not in privileges('/'):
+        raise ValueError('Apply token requires Sys.Modify at / for VM startup order')
+    if not writable and privileges('/') - {'Sys.Audit'}:
+        raise ValueError('Plan token has unexpected host permissions')
     for path in ('/vms/100', '/vms/102'):
         rights = privileges(path)
         if 'VM.Audit' not in rights or ('VM.Allocate' in rights) != writable:
@@ -35,7 +40,7 @@ def main():
     if endpoint != 'https://pve.tail2f646b.ts.net/' or not token:
         raise ValueError('Missing or unexpected CI connection configuration')
     permissions = {}
-    paths = ('/vms/100', '/vms/102', '/vms/101', '/storage/local', '/storage/local-lvm')
+    paths = ('/', '/vms/100', '/vms/102', '/vms/101', '/storage/local', '/storage/local-lvm')
     for route in ['version', 'nodes/pve/storage'] + ['access/permissions?path=' + p for p in paths]:
         request = urllib.request.Request(endpoint + 'api2/json/' + route,
                     headers={'Authorization': 'PVEAPIToken=' + token})

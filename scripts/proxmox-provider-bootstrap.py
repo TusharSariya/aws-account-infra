@@ -14,14 +14,14 @@ import sys
 USER = 'homelab-tofu@pve'
 TOKEN = 'provider'
 ROLES = {
-    'HomelabTofuAudit': 'Sys.Audit',
+    'HomelabTofuHost': 'Sys.Audit Sys.Modify',
     'HomelabTofuVM': 'VM.Allocate VM.Audit VM.Config.CDROM VM.Config.CPU VM.Config.Disk VM.Config.HWType VM.Config.Memory VM.Config.Network VM.Config.Options VM.PowerMgmt VM.GuestAgent.Audit',
     'HomelabTofuStorage': 'Datastore.Audit Datastore.AllocateSpace',
     'HomelabTofuISO': 'Datastore.Audit',
     'HomelabTofuNetwork': 'SDN.Use',
 }
 SCOPES = {
-    '/': 'HomelabTofuAudit',
+    '/': 'HomelabTofuHost',
     '/vms/100': 'HomelabTofuVM',
     '/vms/102': 'HomelabTofuVM',
     '/storage/local-lvm': 'HomelabTofuStorage',
