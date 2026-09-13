@@ -30,18 +30,18 @@ SCOPES = {
 }
 
 
-def select_read_only():
+def select_plan():
     global USER, ROLES, SCOPES
     USER = 'homelab-tofu-plan@pve'
     ROLES = {
         'HomelabTofuAudit': 'Sys.Audit',
-        'HomelabTofuReadVM': 'VM.Audit VM.GuestAgent.Audit',
+        'HomelabTofuPlanVM': 'VM.Audit VM.GuestAgent.Audit VM.Config.Disk',
         'HomelabTofuISO': 'Datastore.Audit',
     }
     SCOPES = {
         '/': 'HomelabTofuAudit',
-        '/vms/100': 'HomelabTofuReadVM',
-        '/vms/102': 'HomelabTofuReadVM',
+        '/vms/100': 'HomelabTofuPlanVM',
+        '/vms/102': 'HomelabTofuPlanVM',
         '/storage/local': 'HomelabTofuISO',
         '/storage/local-lvm': 'HomelabTofuISO',
     }
@@ -92,14 +92,15 @@ def remote():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ssh-target', default='server-10-42')
-    parser.add_argument('--read-only', action='store_true', help='Create the separate CI plan identity')
+    parser.add_argument('--plan', '--read-only', dest='plan', action='store_true',
+                        help='Create CI plan identity (includes VM.Config.Disk for volume inspection; not strictly read-only)')
     parser.add_argument('--output', type=Path,
                         default=None)
     args = parser.parse_args()
-    if args.read_only:
-        select_read_only()
+    if args.plan:
+        select_plan()
     if args.output is None:
-        args.output = Path.home() / '.config/aws-account-infra/proxmox' / ('plan-credentials.json' if args.read_only else 'credentials.json')
+        args.output = Path.home() / '.config/aws-account-infra/proxmox' / ('plan-credentials.json' if args.plan else 'credentials.json')
     if not re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.@-]*', args.ssh_target):
         raise RuntimeError('Unsupported SSH target')
     os.umask(0o077)
@@ -115,7 +116,7 @@ def main():
     with output.open('x', encoding='utf-8') as stream:
         result = subprocess.run(['ssh', '-T', '-o', 'BatchMode=yes', '-o',
                                  'StrictHostKeyChecking=yes', '-o', 'ConnectTimeout=10',
-                                 args.ssh_target, 'python3', '-', '--remote', *(['--read-only'] if args.read_only else [])],
+                                 args.ssh_target, 'python3', '-', '--remote', *(['--plan'] if args.plan else [])],
                                 input=Path(__file__).read_text(), text=True, capture_output=True)
         if result.returncode:
             raise RuntimeError('Remote bootstrap failed. Inspect user/roles/token metadata on pve; do not overwrite or automatically rotate. The reserved local file is empty.')
@@ -130,9 +131,9 @@ def main():
 
 if __name__ == '__main__':
     try:
-        if sys.argv[1:] in (['--remote'], ['--remote', '--read-only']):
-            if '--read-only' in sys.argv:
-                select_read_only()
+        if sys.argv[1:] in (['--remote'], ['--remote', '--plan'], ['--remote', '--read-only']):
+            if '--plan' in sys.argv or '--read-only' in sys.argv:
+                select_plan()
             remote()
         else:
             main()
