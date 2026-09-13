@@ -921,3 +921,15 @@ values in this file.
 - Action: Added HomelabTofuHost (Sys.Audit Sys.Modify) at / to the apply user and privilege-separated token, replacing their audit-only root ACL. The independent plan identity retains HomelabTofuAudit. Bootstrap and ACCESS.md now reproduce this configuration and document the host-wide permission. Existing secrets require no rotation.
 - Verification: Two regression tests failed before the preflight fix; all eight access tests pass afterward. Live trusted-HTTPS preflights pass for both identities. CI now checks the root permission before applying and rejects host write access for the plan identity. Initial ACL cleanup used an unsupported delete option; corrected against installed CLI help to pveum acl delete and completed successfully. CI retry and VM creation remain pending at this revision.
 - Rollback/recovery: Restore audit-only ACLs before removing HomelabTofuHost ACLs to revoke host modification. Startup-order operations would fail again. No administrator role or user/ACL-management permission was granted.
+
+
+### LOG-0066 - Prepare CI-managed maintenance boots
+
+- Timestamp: 2026-09-13T01:02:58.455874+00:00
+- Operator: Codex, following authorization to start and verify both guests through CI
+- Target: pve VM 100 talos-cp-01 (10.42.0.220, MAC 02:42:00:00:01:00), VM 102 talos-worker-01 (10.42.0.222, MAC 02:42:00:00:01:02)
+- Tasks: 4.1 and 4.3; runtime verification pending
+- Previous result: PR #50 merged at d629bfc. CI run 34729206740 created both stopped guests successfully (2 added, 0 changed, 0 destroyed); all five AWS applies were no-ops. Auto-merge initially failed with unstable status, then succeeded when only that failed job was retried.
+- Action: Set started=true in both guest inputs, retaining on_boot=false and the pinned attached ISOs. Updated the existing lifecycle assertion and documented maintenance API checks in live/proxmox/homelab/README.md. No machine configuration is applied by this change.
+- Verification: Require a live CI plan containing only two in-place start updates, then successful apply and read-only runtime checks. Tasks remain incomplete until evidence is recorded.
+- Rollback/recovery: Before Talos installation, set started=false through a reviewed CI change to stop the guests. Retain definitions and disks; no deletion or new disk allocation is intended. Existing independent-recovery gaps remain recorded, not waived by boot success.

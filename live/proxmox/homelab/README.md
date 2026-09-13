@@ -32,7 +32,9 @@ Both guests use OVMF, Q35, host CPU, VirtIO NICs on vmbr0, virtio-scsi-pci, raw 
 
 The IP fields document external DHCP reservations; the provider does not configure IPs inside a blank guest. Guest boot/lease verification remains separate. The disk boots before the ISO so an installed OS takes precedence; a blank disk falls through to its installer. ISO detachment is a later reviewed update.
 
-`started` and `on_boot` default to false for the initial empty guests. Set the desired values explicitly in each guest input during the corresponding reviewed boot/startup task. Do not apply false values to an already running platform expecting OpenTofu to ignore them. `prevent_destroy` blocks normal planned replacement/deletion while this resource definition remains in configuration; it does not substitute for backups.
+`started` and `on_boot` default to false for newly defined guests. The current
+homelab inputs explicitly set `started = true` for both approved maintenance
+boots, while `on_boot` remains false. Set the desired values explicitly in each guest input during the corresponding reviewed boot/startup task. Do not apply false values to an already running platform expecting OpenTofu to ignore them. `prevent_destroy` blocks normal planned replacement/deletion while this resource definition remains in configuration; it does not substitute for backups.
 
 ## Before live provisioning
 
@@ -51,3 +53,28 @@ The S3 backend now uses `proxmox/homelab/terraform.tfstate` in the existing inde
 - [Pinned provider VM schema and lifecycle behavior](https://github.com/bpg/terraform-provider-proxmox/blob/v0.112.0/docs/resources/virtual_environment_vm.md)
 - [Pinned provider authentication and TLS configuration](https://github.com/bpg/terraform-provider-proxmox/blob/v0.112.0/docs/index.md)
 - [OpenTofu test provider mocking](https://opentofu.org/docs/cli/commands/test/)
+
+## Verify the maintenance boot
+
+Deploy the reviewed `started = true` change through the GitHub `apply` label.
+Expect two in-place updates and no disk changes or replacements. Open each VM's
+Proxmox console and verify maintenance mode and its reserved IP: VM 100 at
+10.42.0.220, VM 102 at 10.42.0.222. The attached pinned ISOs boot from the blank
+OS disks' fallback path; machine configuration and installation are later steps.
+
+From an administration machine with the approved Tailscale subnet route and
+the pinned Talos v1.13.9 CLI, verify both nodes without installing anything:
+
+```bash
+talosctl -n 10.42.0.220 get links --insecure
+talosctl -n 10.42.0.220 get addresses --insecure
+talosctl -n 10.42.0.220 get disks --insecure
+talosctl -n 10.42.0.222 get links --insecure
+talosctl -n 10.42.0.222 get addresses --insecure
+talosctl -n 10.42.0.222 get disks --insecure
+```
+
+Match the NIC MACs to the versioned reservations. Expect a 100-GiB OS disk on
+each node and a separate 1,200-GiB worker disk. Confirm device names before any
+subsequent install/data-volume operation. For rollback before installation,
+review and deploy `started = false`; retain the VM definitions and disks.
