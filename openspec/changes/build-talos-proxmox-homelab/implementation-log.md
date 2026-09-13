@@ -957,3 +957,24 @@ values in this file.
 - Result: Guest identities, rendered hardware, maintenance APIs, disk separation and extension separation verified. Talos machine configuration, installation and etcd bootstrap have not been performed. Earlier recovery gaps remain untested.
 - Deviation: LOG-0067 records the necessary plan-token disk permission and supersedes strict read-only claims. Configured startup priority does not serialize Terraform's simultaneous explicit start operations; no claim of an observed ordered host reboot is made.
 - Rollback/recovery: Before installation, deploy started=false through CI to stop guests. Rebuild using the committed two-VM definitions, pinned ISOs and laptop DHCP reservations; rerun the documented maintenance checks. Preserve disks and do not treat this boot evidence as full DR acceptance.
+
+
+### LOG-0070 - Prepare Talos OpenTofu adoption and CI
+
+- Timestamp: 2026-09-13T01:43:50.429951+00:00
+- Operator: Codex, following explicit authorization to migrate Talos management to OpenTofu/CI
+- Target: existing control plane 10.42.0.220; separate talos/homelab state key
+- Action: Added pinned stable Talos provider 0.11.0 root, bootstrap import, no-reboot control-plane configuration adoption and disabled worker resource. Added guarded CI plan/apply through the existing GitHub Tailscale OIDC identity with subnet-route acceptance. Uploaded the existing Talos secret bundle directly to encrypted prod environment secret TALOS_SECRETS_YAML without printing it. No new CA/secrets or AWS resources were created.
+- Verification: Strict OpenTofu validation and local authenticated plan passed. Plan imports the existing bootstrap and updates its metadata; configuration adoption creates one state resource that sends the exact previously installed YAML. Pinned bootstrap Update implementation only writes Terraform state and does not invoke bootstrap. Initial guard rejected this safe imported update; corrected to allow no-op/update while rejecting create. Config resource's optional on_destroy fields produced a provider null-conversion error; explicitly specifying all three fields fixed validation. Five guard tests pass. Live CI adoption/state secret-exclusion verification remains pending.
+- Scope/limitations: Provider Read is a no-op; desired configuration changes are managed, but automatic live drift and OS/Kubernetes upgrades are not claimed. Initial adoption checks exact YAML fingerprint and live dry-run before no-reboot apply. Worker remains maintenance-only until a later reviewed installation. Both plan/apply have access to the existing CA bundle and are admin-capable; they are not read-only security identities. Write-only provider arguments and ephemeral variables are used to exclude secrets from state, with a post-apply check.
+- Recovery: Retain the existing encrypted independent secret archive, recover the same S3 state key, and reissue GitHub secret via the committed helper. prevent_destroy, reset=false and plan guards reject destructive actions and repeated bootstrap. This migration does not claim the previously deferred full DR rehearsal or soft-reboot failure is resolved.
+
+
+### LOG-0071 - CI identity transfer and pre-adoption recovery point
+
+- Timestamp: 2026-09-13T01:51:35.119496+00:00
+- Operator/target: Codex, Talos adoption PR #54, existing control plane
+- Correction: Initial GitHub plan run 34731302321 rejected the transferred raw YAML's byte fingerprint. Changed transport to base64 (TALOS_SECRETS_B64) to preserve exact bundle bytes through secret storage; helper verifies the original fingerprint before upload and CI verifies it after decoding. Removed superseded TALOS_SECRETS_YAML secret. Base64 is transport encoding; encryption is supplied by GitHub environment-secret storage.
+- Security validation: Full-history gitleaks flagged the public SHA-256 identity fingerprint as generic-api-key. Verified the value was a digest; .gitleaksignore excludes only the exact historical commit/file/rule/line finding. Full-history scan then passed. Six migration tests include recursive rejection of populated secret-bearing state attributes. No raw secret or plan output was uploaded.
+- Recovery point: Saved private etcd snapshot pre-tofu-adoption-20260913T014802Z.snapshot, 1269792 bytes, under ~/.config/aws-account-infra/talos/homelab/snapshots on the Mac. This is off-host but is not claimed as an encrypted off-site snapshot or completion of task 5.6. Recorded current kernel boot ID outside Git for post-adoption comparison.
+- CI status: An obsolete plan run remained in progress with an empty-step job and held the PR concurrency queue. Force-cancellation was requested for 34731347735; no live apply was cancelled. Adoption remains pending until the current plan and guarded apply pass.
