@@ -125,13 +125,20 @@ class Observation:
         if capacity.drain and result['desired'] == 'on':
             result.update(desired='off', revision=result['revision'] + 1, reason='storage pressure', force=False)
         unknown = []
+        verification = {}
         if pods_present and not unstarted:
             for source in sorted(SOURCES):
                 report = result['sources'].get(source, {})
                 stamp = report.get('at')
-                if (not instances.get(source) or report.get('instance') != instances[source]
-                        or report.get('known') is not True or type(stamp) not in (int, float)
-                        or not 0 <= measured_now - stamp <= HEARTBEAT_SECONDS):
+                age = measured_now - stamp if type(stamp) in (int, float) and math.isfinite(stamp) else None
+                identity = bool(instances.get(source)) and report.get('instance') == instances[source]
+                reason = ('identity unverified' if not identity else
+                          'work accounting unknown' if report.get('known') is not True else
+                          'heartbeat stale or invalid' if age is None or not 0 <= age <= HEARTBEAT_SECONDS else
+                          'verified')
+                verification[source] = {'identity_verified': identity, 'known': report.get('known') is True,
+                    'heartbeat_age_seconds': None if age is None else round(age, 3), 'reason': reason}
+                if reason != 'verified':
                     unknown.append(source + ': activity unverified')
         elif not pods_present:
             # The caller must observe all previous containers terminated before
@@ -163,4 +170,6 @@ class Observation:
         return result, replicas, {'desired': result['desired'], 'observed': observed,
             'revision': result['revision'], 'last_interruption': deepcopy(result.get('interruption')), 'storage_warning': capacity.warning, 'active_work': len(result['tickets']),
             'blocking_reasons': [*capacity.reasons, *unknown], 'reason': result['reason'],
+            'activity_verification': verification,
+            'idle_seconds': 0 if self.idle_since is None else round(max(0, now - self.idle_since), 3),
             'admission': result['desired'] == 'on' and ready and capacity.admission and not result['force'] and not unknown}

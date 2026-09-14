@@ -113,10 +113,10 @@ def main():
         while True:
             try:
                 runtime.tick()
-            except (Conflict, Unavailable, ValueError, KeyError, TypeError):
+            except (Conflict, Unavailable, ValueError, KeyError, TypeError) as error:
                 runtime.status = None
                 runtime.observer.idle_since = None
-                print('Lifecycle observation unavailable; admission closed', flush=True)
+                print('Lifecycle observation unavailable; admission closed; category=' + type(error).__name__, flush=True)
             time.sleep(2)
     threading.Thread(target=loop, daemon=True).start()
     server.serve_forever()

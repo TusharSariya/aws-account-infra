@@ -276,6 +276,8 @@ def recovery_idle(session):
         while time.monotonic() - start < 1780:
             state = session.status()
             if state['observed'] != 'On' or state['active_work'] or not state['admission']:
+                diagnostic = {key: state.get(key) for key in ('observed', 'active_work', 'admission', 'activity_verification', 'idle_seconds')}
+                print('Idle verification diagnostic: ' + json.dumps(diagnostic, sort_keys=True), flush=True)
                 raise apps.AppError('Continuous verified idle interval was interrupted')
             workspace_idle_probes(cookie)
             time.sleep(10)

@@ -116,3 +116,20 @@ class InterruptionTests(unittest.TestCase):
             pods_present=False, ready=False, instances={})
         self.assertEqual((replicas, status['observed'], status['active_work']), (0, 'Off', 0))
         self.assertEqual(status['last_interruption'], {'revision': revision, 'tickets': {'a' * 32: 'odysseus'}})
+
+    def test_status_distinguishes_identity_staleness_and_unknown_accounting(self):
+        state = command(initial(), 'start', str(uuid.uuid4()), 0, GOOD)[0]
+        for source in ('odysseus', 'ollama'):
+            state = heartbeat(state, source, source, [], True, 100)
+        observer = Observation()
+        _, _, status = observer.reconcile(state, now=116, capacity=GOOD, pods_present=True, ready=True,
+                                          instances={'odysseus': 'odysseus', 'ollama': 'ollama'})
+        self.assertEqual(status['activity_verification']['ollama']['reason'], 'heartbeat stale or invalid')
+        self.assertEqual(status['activity_verification']['ollama']['heartbeat_age_seconds'], 16)
+        self.assertEqual(status['idle_seconds'], 0)
+        state = heartbeat(state, 'ollama', 'ollama', [], False, 116)
+        _, _, status = observer.reconcile(state, now=116, capacity=GOOD, pods_present=True, ready=True,
+                                          instances={'ollama': 'ollama'})
+        self.assertEqual(status['activity_verification']['ollama']['reason'], 'work accounting unknown')
+        self.assertEqual(status['activity_verification']['odysseus']['reason'], 'identity unverified')
+        self.assertFalse(status['admission'])
