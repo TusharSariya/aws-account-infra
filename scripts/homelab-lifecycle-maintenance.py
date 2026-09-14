@@ -114,7 +114,27 @@ def models(session):
         'stream': False, 'options': {'num_predict': 16}})
     if result.get('done') is not True or result.get('eval_count', 0) <= 0:
         raise apps.AppError('Native private-socket inference did not complete')
-    print('PASS: authenticated native inference through the admission gateway', flush=True)
+    sockets = session.kube('-n', 'homelab-models', 'exec', 'deployment/ai-runtime', '-c', 'ollama', '--',
+        'sh', '-c', 'for file in /tmp/homelab-native/runner-*.sock; do test -S "$file" && printf "%s\\n" "$file"; done').decode().splitlines()
+    import re
+    ports = [int(re.fullmatch(r'/tmp/homelab-native/runner-([0-9]+)\.sock', path).group(1)) for path in sockets]
+    if not ports:
+        raise apps.AppError('No native Unix socket was observed after inference')
+    session.kube('-n', 'homelab-models', 'exec', 'deployment/ai-runtime', '-c', 'odysseus', '--',
+        'python', '-c', """import json,pathlib,socket,sys,urllib.request,urllib.error
+assert not pathlib.Path('/tmp/homelab-native').exists()
+for port in json.loads(sys.argv[1]):
+    with socket.socket() as connection:
+        connection.settimeout(2)
+        assert connection.connect_ex(('127.0.0.1', port)) != 0
+try:
+    urllib.request.urlopen('http://127.0.0.1:11434/api/tags', timeout=3)
+except urllib.error.HTTPError as error:
+    assert error.code == 401
+else:
+    raise AssertionError('unauthenticated same-Pod gateway access succeeded')
+""", json.dumps(ports))
+    print('PASS: authenticated native inference and rejected same-Pod socket/TCP/gateway bypass', flush=True)
     session.wait(lambda s: s['active_work'] == 0 and s['admission'], 'previous model work is fully retired')
     with ThreadPoolExecutor(max_workers=1) as pool:
         future = pool.submit(model, session, '/api/generate', {'model': 'smollm2:135m',
@@ -268,6 +288,7 @@ def main():
     session = Maintenance()
     try:
         session.off()
+        session.wait(lambda s: not s['blocking_reasons'], 'initial capacity hysteresis is healthy', timeout=420)
         jobs(session)
         pending(session)
         commands(session)

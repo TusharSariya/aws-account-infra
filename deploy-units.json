@@ -177,7 +177,8 @@
         "scripts/tests/test_odysseus_backup.py",
         "scripts/tests/test_homelab_apps.py",
         "scripts/homelab-lifecycle-maintenance.py",
-        ".github/workflows/homelab-lifecycle-maintenance.yml"
+        ".github/workflows/homelab-lifecycle-maintenance.yml",
+        "scripts/odysseus-document-acceptance.py"
       ]
     }
   ]
