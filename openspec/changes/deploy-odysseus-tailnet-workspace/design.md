@@ -7,7 +7,8 @@ The existing worker has 38 vCPU and 172 GiB RAM. Physical CPUs are Xeon E5-2695 
 
 ## Decisions
 - Two Helm releases in the existing Kubernetes root: ollama and odysseus (including ChromaDB/SearXNG). Single replicas/Recreate, worker placement, retained local PVCs.
-- Limits: Ollama requests 8 CPU/32Gi and limits 24 CPU/64Gi, 300Gi PVC; Odysseus 1 CPU/2Gi to 4 CPU/8Gi, 20Gi PVC; Chroma 0.5 CPU/1Gi to 2 CPU/4Gi, 10Gi PVC; search 0.25 CPU/256Mi to 1 CPU/1Gi.
+- Limits: Ollama requests 8 CPU/32Gi and limits 36 CPU/64Gi, 300Gi PVC; Odysseus 1 CPU/2Gi to 4 CPU/8Gi, 20Gi PVC; Chroma 0.5 CPU/1Gi to 2 CPU/4Gi, 10Gi PVC; search 0.25 CPU/256Mi to 1 CPU/1Gi.
+- CPU update: keep the worker at 38 vCPU and the workspace at its existing 4-CPU ceiling; only raise Ollama to 36 CPU (worker minus two). No VM resize/restart. This is nominal shared headroom, not CPU pinning or an exclusive reservation.
 - Ollama one loaded model/one parallel inference, 4096 context, 5m keepalive. Model downloads remain runtime actions. Odysseus receives the matching Ollama CLI with OLLAMA_HOST pointing at the internal Service; no runtime/host socket is mounted.
 - Build the upstream curated main revision in private GHCR, pin source archive checksum and deployed image digest. Package read credentials and workspace bootstrap password are protected prod inputs, reconciled as Kubernetes Secrets without Helm values containing secret data.
 - Private HTTPS hosts odysseus.tail2f646b.ts.net and ollama.tail2f646b.ts.net reuse the operator. Authentication remains enabled for Odysseus; Ollama API relies on tailnet access. Full API access includes model management. Keep search/vector database internal.

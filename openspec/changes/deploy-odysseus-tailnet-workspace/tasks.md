@@ -26,3 +26,7 @@
 - Application plan in [34789879109](https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/34789879109) creates only the two new releases; Pi-hole and operator are no-op. Actual worker model execution and restore are still outstanding.
 
 - First rollout was blocked by an invalid GHCR token; replacement token and pinned image access verified. The 900-second command wrapper interrupted Helm before it could persist state. The command budget now exceeds release deadlines and has a regression test; live rollout remains incomplete pending retry.
+
+## 4. CPU ceiling adjustment
+- [x] 4.1 Configure Ollama at 36 vCPU on the existing 38-vCPU worker, preserving VM/workspace settings and the 64 GiB memory limit.
+- [ ] 4.2 Review and apply the limit through CI, then verify the live container limit and service health. No VM resize or restart is part of this change.
