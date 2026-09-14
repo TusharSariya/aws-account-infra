@@ -1,0 +1,58 @@
+{{- range $name, $volume := .Values.volumes }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: homelab-ai-{{ $name }}
+  annotations:
+    helm.sh/resource-policy: keep
+    homelab/project-id: {{ $volume.project | quote }}
+spec:
+  capacity: {storage: {{ $volume.size }}}
+  accessModes: [ReadWriteOnce]
+  volumeMode: Filesystem
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ''
+  claimRef: {namespace: homelab-models, name: ai-{{ $name }}}
+  local: {path: /var/mnt/local-path-provisioner/{{ $volume.path }}}
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - {key: kubernetes.io/hostname, operator: In, values: [{{ $.Values.node }}]}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ai-{{ $name }}
+  namespace: homelab-models
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  accessModes: [ReadWriteOnce]
+  volumeMode: Filesystem
+  storageClassName: ''
+  volumeName: homelab-ai-{{ $name }}
+  resources:
+    requests: {storage: {{ $volume.size }}}
+---
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: ai-approved-template, namespace: homelab-models}
+data:
+  # This is data, not a Helm-owned runtime Deployment. Only the lifecycle
+  # controller may create the runtime and change its state or replica count.
+  deployment.yaml: |
+    {{- include "ai.deployment" . | nindent 4 }}
+  revision: {{ include "ai.deployment" . | sha256sum | quote }}
+---
+# No runtime traffic is admitted during the default-off packaging stage.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: ai-runtime-isolation, namespace: homelab-models}
+spec:
+  podSelector:
+    matchLabels: {app: ai-runtime}
+  policyTypes: [Ingress, Egress]
+  ingress: []
+  egress: []

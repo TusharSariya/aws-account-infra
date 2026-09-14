@@ -1,0 +1,102 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: ai-volume-reset, namespace: homelab-platform}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: {name: ai-volume-reset, namespace: homelab-platform}
+rules:
+  - apiGroups: ['']
+    resources: [configmaps]
+    resourceNames: [ai-volume-reset-v1]
+    verbs: [get, patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: {name: ai-volume-reset, namespace: homelab-platform}
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: ai-volume-reset}
+subjects: [{kind: ServiceAccount, name: ai-volume-reset, namespace: homelab-platform}]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: {name: ai-volume-reset-read-writers, namespace: homelab-models}
+rules:
+  - apiGroups: [apps]
+    resources: [deployments]
+    verbs: [list]
+  - apiGroups: ['']
+    resources: [pods]
+    verbs: [list]
+  - apiGroups: ['']
+    resources: [persistentvolumeclaims]
+    resourceNames: [ollama-models, odysseus-data, chromadb-data]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: {name: ai-volume-reset-read-writers, namespace: homelab-models}
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: ai-volume-reset-read-writers}
+subjects: [{kind: ServiceAccount, name: ai-volume-reset, namespace: homelab-platform}]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata: {name: ai-volume-reset-read-pv-identity}
+rules:
+  - apiGroups: ['']
+    resources: [persistentvolumes]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata: {name: ai-volume-reset-read-pv-identity}
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: ai-volume-reset-read-pv-identity}
+subjects: [{kind: ServiceAccount, name: ai-volume-reset, namespace: homelab-platform}]
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: ai-volume-reset-code, namespace: homelab-platform}
+data:
+  {{- toYaml (.Values.migrationCode | default dict) | nindent 2 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: ai-volume-reset-template, namespace: homelab-platform}
+data:
+  job.yaml: |
+    apiVersion: batch/v1
+    kind: Job
+    metadata: {name: ai-volume-reset-v1, namespace: homelab-platform}
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 600
+      template:
+        metadata:
+          labels: {app: ai-volume-reset}
+        spec:
+          restartPolicy: Never
+          serviceAccountName: ai-volume-reset
+          nodeSelector: {kubernetes.io/hostname: {{ .Values.node }}}
+          securityContext:
+            seccompProfile: {type: RuntimeDefault}
+          containers:
+            - name: reset
+              image: {{ .Values.images.configure | quote }}
+              command: [python, -B, /code/reset.py]
+              securityContext:
+                runAsUser: 0
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: [ALL]
+                  add: [SYS_ADMIN, DAC_OVERRIDE]
+              resources:
+                requests: {cpu: 100m, memory: 64Mi, ephemeral-storage: 16Mi}
+                limits: {cpu: 500m, memory: 128Mi, ephemeral-storage: 32Mi}
+              volumeMounts:
+                - {name: code, mountPath: /code, readOnly: true}
+                - {name: storage, mountPath: /var/mnt/local-path-provisioner}
+          volumes:
+            - name: code
+              configMap: {name: ai-volume-reset-code}
+            - name: storage
+              hostPath: {path: /var/mnt/local-path-provisioner, type: Directory}

@@ -21,7 +21,7 @@ class AppError(ValueError):
     """Only deliberately authored, secret-free diagnostics."""
 
 
-ADDRESSES = {'helm_release.tailscale_operator', 'helm_release.pihole', 'helm_release.ollama', 'helm_release.odysseus', 'helm_release.capacity'}
+ADDRESSES = {'helm_release.tailscale_operator', 'helm_release.pihole', 'helm_release.ollama', 'helm_release.odysseus', 'helm_release.capacity', 'helm_release.ai'}
 
 
 def run(command, data=None):
@@ -189,7 +189,8 @@ def guard_images():
     import yaml
     ollama = yaml.safe_load((CONFIG / 'ollama-values.yaml').read_text())
     workspace = yaml.safe_load((CONFIG / 'workspace-values.yaml').read_text())
-    images = [ollama['image'], workspace['image'], workspace['initImage']]
+    ai = yaml.safe_load((CONFIG / 'ai-values.yaml').read_text())
+    images = list(ai['images'].values()) + [ollama['image'], workspace['image'], workspace['initImage']]
     images.extend(c['image'] for c in workspace['components'].values() if 'image' in c)
     if any(not re.fullmatch(r'[^\s@]+@sha256:[a-f0-9]{64}', image) for image in images):
         raise AppError('Every workspace image must use a reviewed immutable SHA-256 digest')
@@ -232,6 +233,23 @@ def execute(operation, private):
         print('PASS: exact saved plan applied; application state excludes supplied credentials')
 
 
+def verify_ai_off(kubectl):
+    """Packaging-stage acceptance observes shutdown; it never scales a writer."""
+    legacy = ('ollama', 'odysseus', 'chromadb', 'searxng')
+    deployments = json.loads(run([kubectl, '-n', 'homelab-models', 'get', 'deployment', *legacy, '-o', 'json']))
+    if {item['metadata']['name'] for item in deployments['items']} != set(legacy) or any(
+            item['spec'].get('replicas', 1) != 0 for item in deployments['items']):
+        raise AppError('Legacy AI writers must remain explicitly off')
+    runtime = run([kubectl, '-n', 'homelab-models', 'get', 'deployment', 'ai-runtime', '--ignore-not-found', '-o', 'json'])
+    if runtime.strip():
+        runtime = json.loads(runtime)
+        if (runtime['spec'].get('replicas', 1) != 0 or
+                runtime['metadata'].get('annotations', {}).get('homelab/desired-state') != 'off'):
+            raise AppError('Runtime must remain off until lifecycle activation')
+    run([kubectl, '-n', 'homelab-models', 'wait', '--for=delete', 'pod',
+         '-l', 'app in (ollama,odysseus,chromadb,searxng,ai-runtime)', '--timeout=900s'])
+
+
 def endpoints(kubectl):
     run([kubectl, '-n', 'homelab-services', 'rollout', 'status', 'deployment/pihole', '--timeout=600s'])
     run([kubectl, '-n', 'tailscale', 'rollout', 'status', 'deployment/operator', '--timeout=600s'])
@@ -254,20 +272,8 @@ def endpoints(kubectl):
                            ['-o', '/dev/null', '-w', '%{http_code}']).decode()
     if status != '401':
         raise AppError('Pi-hole administration did not reject unauthenticated API access')
-    for deployment in ['ollama', 'odysseus', 'chromadb', 'searxng']:
-        run([kubectl, '-n', 'homelab-models', 'rollout', 'status', 'deployment/' + deployment, '--timeout=900s'])
-    for service in ['ollama', 'odysseus']:
-        run([kubectl, '-n', 'homelab-models', 'wait', 'ingress/' + service,
-             '--for=jsonpath={.status.loadBalancer.ingress}', '--timeout=600s'])
-    version = json.loads(tailnet_https('ollama.tail2f646b.ts.net', '/api/version', ['--fail']))
-    if not version.get('version'):
-        raise AppError('Ollama version endpoint did not return a version')
-    tailnet_https('odysseus.tail2f646b.ts.net', '/api/health', ['--fail'])
-    auth = tailnet_https('odysseus.tail2f646b.ts.net', '/api/conversations/topics',
-                         ['-o', '/dev/null', '-w', '%{http_code}']).decode()
-    if auth != '401':
-        raise AppError('Workspace did not reject unauthenticated API access')
-    print('PASS: private model API and authenticated workspace HTTPS; model/UI/restore acceptance remains separate')
+    verify_ai_off(kubectl)
+    print('PASS: AI intentionally off; no startup requested by CI')
     print(json.dumps({'dns_ip': ip, 'admin_url': url + '/admin/', 'status': 'DNS UDP/TCP and trusted HTTPS passed; client cutover remains explicit'}, indent=2))
 
 

@@ -1,0 +1,4 @@
+apiVersion: v2
+name: homelab-ai
+version: 0.1.0
+description: Retained quota volumes and approved default-off AI Pod template

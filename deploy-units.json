@@ -140,6 +140,7 @@
         "charts/homelab-ollama/",
         "charts/homelab-odysseus/",
         "charts/homelab-capacity/",
+        "charts/homelab-ai/",
         "apps/platform/storage/"
       ]
     }

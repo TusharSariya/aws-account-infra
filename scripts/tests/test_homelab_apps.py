@@ -103,13 +103,26 @@ class GuardTests(unittest.TestCase):
                 return b'{}'  # ClusterIP services have no loadBalancer.ingress.
             return b''
         with patch.object(apps, 'run', side_effect=command) as run, \
+             patch.object(apps, 'verify_ai_off') as off, \
              patch.object(apps, 'tailnet_ip', return_value='100.101.182.10') as resolve, \
              patch.object(apps, 'tailnet_https', side_effect=[b'OK', b'401', b'{"version":"test"}', b'OK', b'401']):
             apps.endpoints('kubectl')
+        off.assert_called_once_with('kubectl')
         resolve.assert_called_once_with('pihole-dns.tail2f646b.ts.net')
         waits = [call.args[0] for call in run.call_args_list if 'wait' in call.args[0]]
         dns_wait = next(argv for argv in waits if 'service/pihole-dns' in argv)
         self.assertIn('--for=condition=TailscaleProxyReady=true', dns_wait)
+
+    def test_off_acceptance_never_starts_or_changes_runtime(self):
+        legacy = {'items': [{'metadata': {'name': name}, 'spec': {'replicas': 0}}
+                            for name in ('ollama', 'odysseus', 'chromadb', 'searxng')]}
+        with patch.object(apps, 'run', side_effect=[json.dumps(legacy).encode(), b'', b'']) as run:
+            apps.verify_ai_off('kubectl')
+        for call in run.call_args_list:
+            self.assertFalse(set(call.args[0]) & {'scale', 'apply', 'patch', 'create', 'delete'})
+        runtime = {'metadata': {'annotations': {'homelab/desired-state': 'on'}}, 'spec': {'replicas': 1}}
+        with patch.object(apps, 'run', side_effect=[json.dumps(legacy).encode(), json.dumps(runtime).encode()]), self.assertRaises(apps.AppError):
+            apps.verify_ai_off('kubectl')
 
     def test_command_timeout_allows_helm_to_finish_and_release_state_lock(self):
         with patch.object(apps.subprocess, 'run') as run:
@@ -131,6 +144,7 @@ class GuardTests(unittest.TestCase):
             config = Path(d)
             (config / 'ollama-values.yaml').write_text('image: ollama/ollama:latest')
             (config / 'workspace-values.yaml').write_text('image: test\ninitImage: test\ncomponents: {}')
+            (config / 'ai-values.yaml').write_text('images: {ollama: test}')
             with self.assertRaises(apps.AppError):
                 apps.execute('plan', config)
             run.assert_not_called()
@@ -252,6 +266,7 @@ class ChartTests(unittest.TestCase):
                 self.assertEqual(d['spec']['type'], 'ClusterIP')
             if d['kind'] != 'Deployment':
                 continue
+            self.assertEqual(d['spec']['replicas'], 0)
             self.assertEqual(d['spec']['strategy']['type'], 'Recreate')
             pod = d['spec']['template']['spec']
             pods[d['metadata']['name']] = pod

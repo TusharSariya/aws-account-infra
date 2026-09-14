@@ -1,4 +1,4 @@
-replicas: 1
+replicas: 0
 ingressEnabled: true
 # Replace BUILD_REQUIRED with the reviewed private GHCR digest emitted by odysseus-image.
 image: ghcr.io/tusharsariyaorg/homelab-odysseus@sha256:6feb3dd257b13d746a1e88e8e624b083d71f0cc1e2420a810c7ef65f6126862a

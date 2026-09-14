@@ -336,7 +336,7 @@ class Session:
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('stage', choices=['setup', 'prepare', 'preflight', 'exec', 'guard',
-                                         'state', 'storage', 'readiness', 'connect', 'worker-reboot', 'network', 'pvc', 'capacity', 'capacity-credentials'])
+                                         'state', 'storage', 'readiness', 'connect', 'worker-reboot', 'network', 'pvc', 'capacity', 'capacity-credentials', 'ai-migrate'])
     parser.add_argument('--private', type=Path)
     parser.add_argument('--secrets-file', type=Path)
     parser.add_argument('--acceptance', action='store_true')
@@ -358,6 +358,8 @@ def main():
         session.execute(command[1:] if command[:1] == ['--'] else command)
     elif args.stage == 'network':
         print(session.run(['bash', ROOT / 'scripts/homelab-cilium-validate.sh']))
+    elif args.stage == 'ai-migrate':
+        print(session.run([sys.executable, ROOT / 'scripts/ai-migration.py']))
     elif args.stage == 'capacity-credentials':
         print(session.run([sys.executable, ROOT / 'scripts/homelab-capacity-credentials.py']))
     elif args.stage == 'capacity':

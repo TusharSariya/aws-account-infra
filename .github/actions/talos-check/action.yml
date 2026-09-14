@@ -10,6 +10,9 @@ inputs:
   capacity-credentials-b64:
     description: Independently issued capacity client credential bundle
     default: ''
+  reset-confirm:
+    description: Explicit single-use AI reset confirmation
+    default: ''
   secrets-b64:
     description: Existing Talos identity
     required: true
@@ -22,7 +25,7 @@ runs:
       env:
         OPERATION: ${{ inputs.operation }}
       run: |
-        [[ "$OPERATION" == network || "$OPERATION" == pvc || "$OPERATION" == capacity || "$OPERATION" == capacity-credentials || "$OPERATION" == worker-reboot ]]
+        [[ "$OPERATION" == network || "$OPERATION" == pvc || "$OPERATION" == capacity || "$OPERATION" == capacity-credentials || "$OPERATION" == ai-migrate || "$OPERATION" == worker-reboot ]]
         umask 077
         echo "path=$(mktemp -d "$RUNNER_TEMP/talos-check.XXXXXXXX")" >> "$GITHUB_OUTPUT"
     - name: Set up verified tools
@@ -45,6 +48,7 @@ runs:
         PRIVATE: ${{ steps.private.outputs.path }}
         OPERATION: ${{ inputs.operation }}
         CAPACITY_CLIENT_CREDENTIALS_B64: ${{ inputs.capacity-credentials-b64 }}
+        AI_RESET_CONFIRM: ${{ inputs.reset-confirm }}
         HOMELAB_WORKER_REBOOT_APPROVED: ${{ inputs.reboot-approved }}
       run: uv run scripts/talos-ci.py "$OPERATION" --private "$PRIVATE"
     - name: Remove private authentication inputs
