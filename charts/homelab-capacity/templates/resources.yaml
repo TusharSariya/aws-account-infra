@@ -84,11 +84,11 @@ spec:
               {{- if eq $mode "guest" }}
               add: [SYS_ADMIN, CHOWN, FOWNER, DAC_READ_SEARCH]
               {{- end }}
+          ports: [{name: health, containerPort: 8081}]
           readinessProbe:
-            exec:
-              command: [python, -B, /code/collector.py, ready]
+            httpGet: {path: /ready, port: health}
             periodSeconds: 10
-            timeoutSeconds: 5
+            timeoutSeconds: 3
           resources:
             requests: {cpu: 25m, memory: 32Mi, ephemeral-storage: 16Mi}
             limits: {cpu: 100m, memory: 64Mi, ephemeral-storage: 32Mi}
