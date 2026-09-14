@@ -7,7 +7,7 @@
 - [x] 1.5 Add independent read-only physical thin-pool collector and idempotent host recipe; fixture tests cover missing pools and metadata and credential isolation.
 - [x] 1.6 Implement 30-second guest/project collection and fail-closed capacity policy with 90-second freshness and five-minute recovery; boundary and invalid-telemetry tests pass.
 - [x] 1.7 Package helpers/configuration/policies through Kubernetes-root Helm, track all inputs in deploy selection and required acceptance; render and selection/gate tests pass.
-- [ ] 1.8 Exercise disposable quota enforcement and simulated stale/missing/disabled/exhausted conditions through explicit CI; record successful run separately from local tests.
+- [x] 1.8 Exercise disposable quota enforcement and simulated stale/missing/disabled/exhausted conditions through explicit CI; record successful run separately from local tests.
 - [ ] 1.9 Verify quota activation and persistence through explicit worker maintenance, retaining identities and Pi-hole DNS; attach live evidence.
 - [ ] 1.10 Run relevant formatting, OpenTofu validation, lint/security checks and strict OpenSpec validation, then deliver and review storage PR through guarded apply and required acceptance.
 

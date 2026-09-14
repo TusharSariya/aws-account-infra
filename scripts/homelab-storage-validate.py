@@ -17,6 +17,11 @@ def run(args, value=None, check=True):
     p = subprocess.run(args, input=json.dumps(value) if value else None,
                        text=True, capture_output=True, timeout=180)
     if check and p.returncode:
+        for marker in ('Forbidden', 'InternalError', 'Unauthorized', 'failed calling webhook',
+                       'connection refused', 'timeout', 'no endpoints available', 'AlreadyExists',
+                       'ServiceUnavailable', 'certificate', 'EOF'):
+            if marker.lower() in p.stderr.lower():
+                print('ACCEPTANCE_DIAGNOSTIC: error ' + marker.replace(' ', '-'), file=sys.stderr)
         raise RuntimeError('Storage acceptance command failed: ' + args[0])
     return p
 

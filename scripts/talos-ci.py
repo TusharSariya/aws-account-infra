@@ -160,7 +160,7 @@ def run_private(command, env):
         # Never forward command output, exception text, resource YAML or credentials.
         import re
         for line in result.stderr.splitlines():
-            if re.fullmatch(r'ACCEPTANCE_DIAGNOSTIC: (network|readiness|storage) line [0-9]{1,4}', line):
+            if re.fullmatch(r'ACCEPTANCE_DIAGNOSTIC: (?:(?:network|readiness|storage|capacity) line [0-9]{1,4}|error (?:Forbidden|InternalError|Unauthorized|failed-calling-webhook|connection-refused|timeout|no-endpoints-available|AlreadyExists|ServiceUnavailable|certificate|EOF))', line):
                 print(line, file=sys.stderr)
         raise StageError('Private command failed: ' + Path(str(command[0])).name
                          + '; exit ' + str(result.returncode) + '; output suppressed')
@@ -330,7 +330,7 @@ class Session:
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('stage', choices=['setup', 'prepare', 'preflight', 'exec', 'guard',
-                                         'state', 'storage', 'readiness', 'connect', 'worker-reboot', 'network', 'pvc'])
+                                         'state', 'storage', 'readiness', 'connect', 'worker-reboot', 'network', 'pvc', 'capacity'])
     parser.add_argument('--private', type=Path)
     parser.add_argument('--secrets-file', type=Path)
     parser.add_argument('--acceptance', action='store_true')
@@ -352,6 +352,8 @@ def main():
         session.execute(command[1:] if command[:1] == ['--'] else command)
     elif args.stage == 'network':
         print(session.run(['bash', ROOT / 'scripts/homelab-cilium-validate.sh']))
+    elif args.stage == 'capacity':
+        print(session.run([sys.executable, ROOT / 'scripts/homelab-capacity-validate.py']))
     elif args.stage == 'pvc':
         print(session.run([sys.executable, ROOT / 'scripts/homelab-storage-validate.py']))
     else:

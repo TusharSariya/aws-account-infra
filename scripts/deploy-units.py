@@ -51,8 +51,9 @@ def select_units(files, units):
 
 
 def acceptance_suite(files, selected):
-    both = any(unit['cloud'] in ('talos', 'proxmox') for unit in selected) or any(
+    both = any(unit['cloud'] in ('talos', 'proxmox', 'kubernetes') for unit in selected) or any(
         path.startswith(('.github/actions/talos-', '.github/workflows/homelab-acceptance',
+                         'scripts/homelab-capacity-',
                          '.github/workflows/homelab-worker-maintenance'))
         or path == 'scripts/homelab-readiness.sh' for path in files)
     network = both or 'scripts/homelab-cilium-validate.sh' in files
@@ -63,7 +64,8 @@ def acceptance_suite(files, selected):
 def storage_checks_required(files, selected):
     return any(unit['cloud'] in ('proxmox', 'talos', 'kubernetes') for unit in selected) or any(
         path.startswith(('apps/platform/storage/', 'charts/homelab-capacity/',
-                         'scripts/tests/storage/', 'config/environments/proxmox/homelab/capacity/',
+                         'scripts/tests/storage/', 'scripts/tests/test_capacity', 'scripts/homelab-capacity-',
+                         '.github/workflows/homelab-capacity-', 'config/environments/proxmox/homelab/capacity/',
                          'openspec/changes/add-homelab-workload-scheduling/'))
         or path in ('scripts/tests/test_capacity.py', 'scripts/tests/test_physical_capacity.py',
                     'scripts/tests/test_capacity_chart.py', 'scripts/tests/test_capacity_collectors.py', 'scripts/install-homelab-capacity.sh',

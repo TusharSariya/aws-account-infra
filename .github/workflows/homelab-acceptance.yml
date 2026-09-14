@@ -10,7 +10,7 @@ on:
       suite:
         description: Acceptance suite against the current cluster (no deployment)
         type: choice
-        options: [all, network, pvc]
+        options: [all, network, pvc, capacity]
         default: all
 permissions:
   contents: read
@@ -24,7 +24,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: ${{ fromJSON(inputs.suite == 'all' && '["network","pvc"]' || inputs.suite == 'network' && '["network"]' || inputs.suite == 'pvc' && '["pvc"]' || '["invalid"]') }}
+        suite: ${{ fromJSON(inputs.suite == 'all' && '["network","pvc","capacity"]' || inputs.suite == 'network' && '["network"]' || inputs.suite == 'pvc' && '["pvc"]' || inputs.suite == 'capacity' && '["capacity"]' || '["invalid"]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6

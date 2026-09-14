@@ -35,3 +35,6 @@ Read-only Proxmox inspection verified VM 102 scsi1 maps to the existing 1200 GiB
 - Standards review found no documented standards violation. Specification review identified missing live enrollment/host CI acceptance (still unchecked), missing collector readiness, TLS handshake blocking and unsupported DNS endpoints.
 - Added fresh-sample readiness after successful publication, rejected hostname URLs before opening credentials/network, and moved bounded TLS handshakes into request threads. A real TLS concurrency regression test passes alongside collector freshness checks.
 - Added narrowly allowlisted acceptance check/line diagnostics across the existing private-output boundary to locate the live failures without emitting command output or credentials.
+
+- Added reviewed-main-only protected host reconciliation using an independent SSH identity and certificate bundle, plus live capacity acceptance in the existing required acceptance workflow. No credentials have been enrolled and no host workflow has run.
+- Third isolated CI run 34807002496 passes. Its PVC failure is at disposable namespace creation, before any PVC or application data write. Plan run 34807002134 failed downloading OpenTofu release metadata; this is distinct from validation and the live acceptance failures.

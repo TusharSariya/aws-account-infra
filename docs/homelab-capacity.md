@@ -30,13 +30,13 @@ Provision a dedicated CA and client identity independently of Proxmox deploy tok
 
 The host installer expects a protected directory containing:
 
-- `config.json`: exactly `bind` (private Tailscale IPv4) and `pool` (observed `VG/LV` identity).
+- `config.json`: exactly `bind` (private LAN or Tailscale IPv4) and `pool` (observed `VG/LV` identity).
 - `server.crt` and `server.key`: the exporter certificate and private key.
 - `client-ca.crt`: only the dedicated collector client CA certificate.
 
-Run the recipe from a reviewed checkout through an explicitly authorized host setup path. It checks prerequisites, copies root-owned files with restricted permissions, installs the sampler/exporter systemd units and verifies service activity. Re-running it reconciles files and services without touching disks or data. The repository does not currently have a protected CI host-install SSH identity; provisioning and CI verification of that path remain outstanding. Never substitute a Proxmox deployment token as a collector credential.
+Run the recipe from a reviewed checkout through an explicitly authorized host setup path. It checks prerequisites, copies root-owned files with restricted permissions, installs the sampler/exporter systemd units and verifies service activity. Re-running it reconciles files and services without touching disks or data. The `homelab-capacity-host` workflow runs this recipe only from reviewed `main`, in protected `prod`, serialized with applies. Enroll a dedicated `CAPACITY_HOST_SSH_KEY`, pin its verified server host key in `CAPACITY_HOST_KNOWN_HOSTS`, and store `CAPACITY_HOST_CREDENTIALS_B64` as base64 JSON mapping the four filenames above to their contents. This administrative installation identity is separate from the read-only collector identity. The workflow verifies both live thin-pool measurements after installation. Credential enrollment and an actual successful run remain outstanding. Never substitute a Proxmox deployment token as a collector credential.
 
-The physical collector requires a separately reconciled Kubernetes Secret named `physical-capacity-client` in `homelab-platform`, with keys `ca.crt`, `tls.crt`, and `tls.key`. This Secret is mounted only by the physical collector. Its transport must be reachable from the Pod network; a private Tailscale address is not automatically routable from every Kubernetes Pod. Verify routing and mTLS from the collector path before activation. No routing assumption counts as acceptance evidence.
+The physical collector requires a separately reconciled Kubernetes Secret named `physical-capacity-client` in `homelab-platform`, with keys `ca.crt`, `tls.crt`, and `tls.key`. This Secret is mounted only by the physical collector. The pinned endpoint is the observed Proxmox LAN address `10.42.0.115:9443`, with mTLS and exact `/32` egress. Its transport must be reachable from the Pod network; a private Tailscale address is not automatically routable from every Kubernetes Pod. Verify routing and mTLS from the collector path before activation. No routing assumption counts as acceptance evidence.
 
 Pin the trusted worker XFS UUID from Talos discovery and the actual physical pool identity in `config/environments/kubernetes/homelab/capacity-values.yaml`. Configure the numeric IPv4 HTTPS endpoint (hostnames are rejected because collector egress deliberately excludes DNS) and its exact private IPv4 `/32` egress rule. The helper does not automatically trust an observed UUID. Set `enabled: true` only after these prerequisites have passed explicit CI acceptance.
 
@@ -60,7 +60,7 @@ Local checks are distinct from successful GitHub deployment and live behavior:
 - A separate adversarial check verifies a file owner inside a user namespace cannot move its file to project zero. The unprotected baseline escape was observed and is recorded above.
 - These local Linux tests are not evidence of a worker reboot, actual Pod user-namespace support, independent physical collector connectivity or a production deployment.
 
-The `storage-foundation` reusable CI workflow repeats isolated Linux checks. Selection in the required apply gate includes test-only edits; selected failures, cancellations, missing jobs and unexpected skips fail the gate. Production maintenance and collector enrollment acceptance remain explicitly outstanding. No reset or application migration is invoked by the workflow.
+The `storage-foundation` reusable CI workflow repeats isolated Linux checks. Selection in the required apply gate includes test-only edits; selected failures, cancellations, missing jobs and unexpected skips fail the gate. Routine `homelab-acceptance` also checks both fresh status objects when collectors are enabled; disabled configuration explicitly makes no live telemetry claim. Production maintenance and collector enrollment acceptance remain explicitly outstanding. No reset or application migration is invoked by the workflow.
 
 ## Data recovery
 

@@ -13,7 +13,8 @@ python3 - "$credential_dir/config.json" <<'PY'
 import ipaddress, json, re, sys
 config = json.load(open(sys.argv[1]))
 assert set(config) == {'bind', 'pool'}
-assert ipaddress.ip_address(config['bind']) in ipaddress.ip_network('100.64.0.0/10')
+assert any(ipaddress.ip_address(config['bind']) in ipaddress.ip_network(cidr)
+           for cidr in ('10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '100.64.0.0/10'))
 assert re.fullmatch(r'[A-Za-z0-9_+.-]+/[A-Za-z0-9_+.-]+', config['pool'])
 PY
 # Proxmox already supplies LVM and Python; no unpinned package installation.
@@ -33,3 +34,16 @@ systemctl enable --now homelab-capacity-sample.timer
 systemctl enable homelab-capacity-exporter.service
 systemctl restart homelab-capacity-exporter.service
 systemctl is-active --quiet homelab-capacity-sample.timer homelab-capacity-exporter.service
+
+# Verify the root timer produced actual, fresh data and metadata. Service state
+# alone does not establish a working device-mapper sample.
+python3 - <<'VERIFY'
+import json, math, time
+sample = json.load(open('/run/homelab-capacity/sample.json'))
+config = json.load(open('/etc/homelab-capacity/config.json'))
+assert set(sample) == {'pool.data', 'pool.metadata'}
+for value in sample.values():
+    assert value['identity'] == config['pool'] and value['healthy'] is True
+    assert 0 <= time.time() - value['measured_at'] <= 90
+    assert math.isfinite(value['used_percent']) and 0 <= value['used_percent'] <= 100
+VERIFY

@@ -54,8 +54,9 @@ def main():
     context.load_verify_locations('/etc/homelab-capacity/client-ca.crt')
     context.verify_mode = ssl.CERT_REQUIRED
     address = ipaddress.ip_address(config['bind'])
-    if address not in ipaddress.ip_network('100.64.0.0/10'):
-        raise ValueError('Exporter bind must be a private Tailscale IPv4 address')
+    if not any(address in ipaddress.ip_network(cidr) for cidr in
+               ('10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '100.64.0.0/10')):
+        raise ValueError('Exporter bind must be a private LAN or Tailscale IPv4 address')
     server = CapacityServer((str(address), 9443), Handler, context)
     server.serve_forever()
 
