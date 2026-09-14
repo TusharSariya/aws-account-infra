@@ -110,6 +110,72 @@ class RuntimeTests(unittest.TestCase):
         self.operate('start', 0)
         self.assertEqual(self.api.objects[RUNTIME]['metadata']['annotations']['homelab/approved-revision'], 'second')
 
+    def conflicting_status_write(self, mutate=None):
+        original = self.api.put
+        injected = False
+        def put(path, value):
+            nonlocal injected
+            if path == RUNTIME and not injected:
+                injected = True
+                self.api.serial += 1
+                current = self.api.objects[RUNTIME]
+                current['metadata']['resourceVersion'] = str(self.api.serial)
+                current['status'] = {'observedGeneration': 1}
+                current['metadata']['managedFields'] = [{'manager': 'kube-controller-manager'}]
+                if mutate:
+                    mutate(current)
+            return original(path, value)
+        return patch.object(self.api, 'put', side_effect=put)
+
+    def test_status_only_conflict_preserves_verified_idle_and_admission(self):
+        self.running_sources()
+        before = self.runtime.observer.idle_since
+        with self.conflicting_status_write():
+            self.runtime.tick()
+        self.assertEqual(self.runtime.observer.idle_since, before)
+        self.assertTrue(self.runtime.current_status()['admission'])
+
+    def test_status_only_conflict_commits_command_and_replicas_together(self):
+        with self.conflicting_status_write():
+            self.operate('start', 0)
+        saved = self.api.objects[RUNTIME]
+        self.assertEqual(saved['spec']['replicas'], 1)
+        self.assertEqual(json.loads(saved['metadata']['annotations'][STATE])['revision'], 1)
+
+    def test_conflict_retry_rejects_changed_runtime_intent_or_identity(self):
+        for field in ('spec', 'annotations', 'uid', 'generation', 'deletionTimestamp'):
+            with self.subTest(field=field):
+                self.setUp()
+                def mutate(current):
+                    if field == 'spec':
+                        current['spec']['replicas'] = 9
+                    elif field == 'annotations':
+                        current['metadata']['annotations'][STATE] = '{}'
+                    else:
+                        current['metadata'][field] = 'changed'
+                with self.conflicting_status_write(mutate), self.assertRaises(Conflict):
+                    self.operate('start', 0)
+
+    def test_status_conflict_retry_rechecks_leadership(self):
+        def expire(_current):
+            self.runtime.leader.valid_until = 0
+        with self.conflicting_status_write(expire), self.assertRaises(Unavailable):
+            self.operate('start', 0)
+        self.assertEqual(self.api.objects[RUNTIME]['spec']['replicas'], 0)
+
+    def test_status_conflict_retry_is_bounded(self):
+        original = self.api.put
+        attempts = []
+        def put(path, value):
+            if path == RUNTIME:
+                attempts.append(value)
+                self.api.serial += 1
+                self.api.objects[RUNTIME]['metadata']['resourceVersion'] = str(self.api.serial)
+            return original(path, value)
+        with patch.object(self.api, 'put', side_effect=put), self.assertRaises(Conflict):
+            self.operate('start', 0)
+        self.assertEqual(len(attempts), 2)
+
     def test_api_read_failure_is_not_evidence_of_pod_termination(self):
         self.operate('start', 0)
         previous = deepcopy(self.api.objects[RUNTIME])

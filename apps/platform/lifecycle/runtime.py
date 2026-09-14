@@ -111,8 +111,27 @@ class Runtime:
         value['metadata']['annotations']['homelab/command-revision'] = str(state['revision'])
         if replicas is not None:
             value['spec']['replicas'] = replicas
-        # Every mutation carries the version read before evaluating its command.
-        return self.api.put(RUNTIME, value)
+        # Deployment status reconciliation can race with an unchanged command.
+        # Retry once only when every field of the observed intent is identical.
+        try:
+            return self.api.put(RUNTIME, value)
+        except Conflict:
+            current = self.api.call('GET', RUNTIME)
+            def intent(resource):
+                result = deepcopy(resource)
+                result.pop('status', None)
+                for field in ('resourceVersion', 'managedFields'):
+                    result['metadata'].pop(field, None)
+                return result
+            if intent(current) != intent(obj):
+                raise
+            self.leader.fence(current, state)
+            value['metadata']['resourceVersion'] = current['metadata']['resourceVersion']
+            if 'managedFields' in current['metadata']:
+                value['metadata']['managedFields'] = current['metadata']['managedFields']
+            else:
+                value['metadata'].pop('managedFields', None)
+            return self.api.put(RUNTIME, value)
 
     def acquire(self):
         if not self.leader.renew():
