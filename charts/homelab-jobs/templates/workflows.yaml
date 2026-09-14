@@ -1,0 +1,107 @@
+{{- range $action := list "start" "stop" "force-stop" "status" }}
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata: {name: ai-{{ $action }}, namespace: homelab-jobs}
+spec:
+  entrypoint: operation
+  serviceAccountName: ai-operator-job
+  automountServiceAccountToken: true
+  # Pinned Argo stages its 159 MiB executor binary in this injected volume.
+  podSpecPatch: '{"volumes":[{"name":"var-run-argo","emptyDir":{"sizeLimit":"192Mi"}},{"name":"tmp-dir-argo","emptyDir":{"sizeLimit":"16Mi"}}]}'
+  activeDeadlineSeconds: 86400
+  ttlStrategy: {secondsAfterCompletion: 604800}
+  podGC: {strategy: OnPodCompletion}
+  arguments:
+    parameters:
+      - {name: command-id, value: ''}
+      - {name: revision, value: '-1'}
+  # Commands deliberately have no common mutex: Stop must supersede pending Start.
+  podMetadata:
+    labels: {homelab/lifecycle-operation: 'true'}
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 8737
+    runAsGroup: 8737
+    fsGroup: 8737
+    seccompProfile: {type: RuntimeDefault}
+  volumes:
+    - name: code
+      configMap: {name: homelab-job-code}
+    - name: credentials
+      secret: {secretName: ai-lifecycle-operator, defaultMode: 288}
+    - name: tmp
+      emptyDir: {sizeLimit: 16Mi}
+  templates:
+    - name: operation
+      container:
+        image: {{ $.Values.image | quote }}
+        command: [python, -B, /app/lifecycle.py]
+        env:
+          - {name: OPERATION, value: {{ $action | quote }}}
+          - {name: COMMAND_ID, value: '{{ "{{workflow.parameters.command-id}}" }}'}
+          - {name: COMMAND_REVISION, value: '{{ "{{workflow.parameters.revision}}" }}'}
+        resources:
+          requests: {cpu: 25m, memory: 32Mi, ephemeral-storage: 16Mi}
+          limits: {cpu: 100m, memory: 64Mi, ephemeral-storage: 32Mi}
+        securityContext:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities: {drop: [ALL]}
+        volumeMounts:
+          - {name: code, mountPath: /app, readOnly: true}
+          - {name: credentials, mountPath: /credentials, readOnly: true}
+          - {name: tmp, mountPath: /tmp}
+---
+{{- end }}
+{{- range $job := list "smoke" "independent-smoke" }}
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata: {name: {{ $job }}, namespace: homelab-jobs}
+spec:
+  entrypoint: run
+  serviceAccountName: homelab-job
+  automountServiceAccountToken: true
+  # Pinned Argo stages its 159 MiB executor binary in this injected volume.
+  podSpecPatch: '{"volumes":[{"name":"var-run-argo","emptyDir":{"sizeLimit":"192Mi"}},{"name":"tmp-dir-argo","emptyDir":{"sizeLimit":"16Mi"}}]}'
+  activeDeadlineSeconds: 300
+  ttlStrategy: {secondsAfterCompletion: 604800}
+  podGC: {strategy: OnPodCompletion}
+  synchronization:
+    mutexes: [{name: {{ $job }}}]
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 8737
+    runAsGroup: 8737
+    fsGroup: 8737
+    seccompProfile: {type: RuntimeDefault}
+  volumes:
+    - name: tmp
+      emptyDir: {sizeLimit: 16Mi}
+  templates:
+    - name: run
+      container:
+        image: {{ $.Values.image | quote }}
+        command: [python, -B, -c]
+        args: ['import time; print("reviewed smoke started", flush=True); time.sleep(90); print("reviewed smoke completed")']
+        resources:
+          requests: {cpu: 50m, memory: 32Mi, ephemeral-storage: 16Mi}
+          limits: {cpu: 100m, memory: 64Mi, ephemeral-storage: 32Mi}
+        securityContext:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities: {drop: [ALL]}
+        volumeMounts: [{name: tmp, mountPath: /tmp}]
+---
+{{- end }}
+apiVersion: argoproj.io/v1alpha1
+kind: CronWorkflow
+metadata: {name: scheduled-smoke, namespace: homelab-jobs}
+spec:
+  schedules: ['*/5 * * * *']
+  timezone: UTC
+  suspend: true
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 2
+  workflowSpec:
+    workflowTemplateRef: {name: smoke}
