@@ -51,6 +51,21 @@ def setup():
         (TF / '.terraform' / name).write_bytes(data)
 
 
+def schema_readiness(kubectl):
+    """Bounded read-only preflight before planning, with validation kept enabled."""
+    for attempt in range(3):
+        try:
+            schema = json.loads(run([kubectl, '--request-timeout=20s', 'get', '--raw=/openapi/v2']))
+            if schema.get('swagger') != '2.0' or not schema.get('definitions') or not schema.get('paths'):
+                raise AppError('Kubernetes schema response is incomplete')
+            print('PASS: authenticated Kubernetes schema discovery is readable')
+            return
+        except (AppError, json.JSONDecodeError):
+            if attempt == 2:
+                raise AppError('Kubernetes schema discovery unavailable after three bounded reads') from None
+            time.sleep(2)
+
+
 def credentials():
     values = {name: os.environ.get(name, '') for name in SECRET_NAMES[:-1]}
     if any(not value for value in values.values()):
@@ -258,7 +273,7 @@ def endpoints(kubectl):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('operation', choices=['setup', 'credentials', 'resolve', 'bootstrap', 'plan', 'apply', 'endpoints'])
+    parser.add_argument('operation', choices=['setup', 'credentials', 'resolve', 'schema', 'bootstrap', 'plan', 'apply', 'endpoints'])
     parser.add_argument('--private', type=Path)
     parser.add_argument('--hostname')
     args = parser.parse_args()
@@ -278,7 +293,9 @@ def main():
             os.environ['KUBECONFIG'] = str(private / 'kubeconfig')
             os.environ['TF_VAR_kubeconfig_path'] = str(private / 'kubeconfig')
             kubectl = Path.home() / '.cache/aws-account-infra/talos/kubectl-v1.36.3'
-            if args.operation == 'bootstrap':
+            if args.operation == 'schema':
+                schema_readiness(kubectl)
+            elif args.operation == 'bootstrap':
                 bootstrap(kubectl)
             elif args.operation == 'endpoints':
                 endpoints(kubectl)

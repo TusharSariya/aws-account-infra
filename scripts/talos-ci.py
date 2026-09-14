@@ -324,7 +324,13 @@ class Session:
         self.readiness()
         if before != identities():
             raise StageError('Worker partition identities changed across reboot')
-        print('PASS: explicit worker reboot preserves OS/data partition identities and mount')
+        mounts = [item.get('spec', {}) for item in self.worker_resources('mountstatus')
+                  if item.get('metadata', {}).get('id') == VOLUME]
+        if (len(mounts) != 1 or mounts[0].get('source') != '/dev/sdb1'
+                or mounts[0].get('target') != MOUNT or mounts[0].get('filesystem') != 'xfs'
+                or mounts[0].get('projectQuotaSupport') is not True):
+            raise StageError('Worker data mount must activate project quotas after maintenance')
+        print('PASS: explicit worker reboot preserves partition identities and activates XFS project quotas; write enforcement remains a separate check')
 
 
 def main():

@@ -60,7 +60,7 @@ Local checks are distinct from successful GitHub deployment and live behavior:
 - A separate adversarial check verifies a file owner inside a user namespace cannot move its file to project zero. The unprotected baseline escape was observed and is recorded above.
 - These local Linux tests are not evidence of a worker reboot, actual Pod user-namespace support, independent physical collector connectivity or a production deployment.
 
-The `storage-foundation` reusable CI workflow repeats isolated Linux checks. Selection in the required apply gate includes test-only edits; selected failures, cancellations, missing jobs and unexpected skips fail the gate. Routine `homelab-acceptance` also checks both fresh status objects when collectors are enabled; disabled configuration explicitly makes no live telemetry claim. Production maintenance and collector enrollment acceptance remain explicitly outstanding. No reset or application migration is invoked by the workflow.
+The `storage-foundation` reusable CI workflow repeats isolated Linux checks. Selection in the required apply gate includes test-only edits; selected failures, cancellations, missing jobs and unexpected skips fail the gate. Routine `homelab-acceptance` also checks both fresh status objects when collectors are enabled; disabled configuration explicitly makes no live telemetry claim. Run 34810327867 applied the disabled foundation release and completed explicit worker maintenance. Read-only Talos inspection afterward reports project quotas enabled on the unchanged data mount. Application-Pod write enforcement, configured-project persistence and collector enrollment acceptance remain outstanding. No reset or application migration is invoked by the workflow.
 
 ## Data recovery
 

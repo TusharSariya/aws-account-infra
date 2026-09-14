@@ -16,6 +16,19 @@ spec.loader.exec_module(apps)
 
 
 class GuardTests(unittest.TestCase):
+    def test_schema_preflight_recovers_transient_read_and_rejects_invalid_data(self):
+        valid = json.dumps({'swagger': '2.0', 'definitions': {'test': {}}, 'paths': {'/api': {}}}).encode()
+        with patch.object(apps, 'run', side_effect=[apps.AppError('timeout'), valid]) as run, \
+             patch.object(apps.time, 'sleep'):
+            apps.schema_readiness('kubectl')
+        self.assertEqual(run.call_count, 2)
+        for call in run.call_args_list:
+            self.assertEqual(call.args[0], ['kubectl', '--request-timeout=20s', 'get', '--raw=/openapi/v2'])
+        with patch.object(apps, 'run', return_value=b'{}') as run, patch.object(apps.time, 'sleep'):
+            with self.assertRaisesRegex(apps.AppError, 'three bounded reads'):
+                apps.schema_readiness('kubectl')
+        self.assertEqual(run.call_count, 3)
+
     def plan(self, action):
         return {'resource_changes': [{'address': a, 'change': {'actions': action}} for a in apps.ADDRESSES]}
 
