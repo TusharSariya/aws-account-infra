@@ -12,6 +12,24 @@ spec.loader.exec_module(maintenance)
 
 
 class MaintenanceTests(unittest.TestCase):
+    def test_short_idle_acceptance_detects_late_timer_reset(self):
+        session = Mock()
+        session.status.side_effect = [
+            {'idle_timeout_seconds': 60},
+            {'observed': 'On', 'reason': 'start', 'active_work': 0, 'admission': True, 'idle_seconds': 50},
+            {'observed': 'On', 'reason': 'start', 'active_work': 0, 'admission': True, 'idle_seconds': 0}]
+        with patch.object(maintenance.yaml, 'safe_load', return_value={'config': {'idleTimeoutSeconds': 60}}), \
+                patch.object(maintenance, 'workspace_login'), patch.object(maintenance, 'workspace_idle_probes'), \
+                patch.object(maintenance.time, 'sleep'), \
+                self.assertRaisesRegex(maintenance.apps.AppError, 'idle interval was interrupted'):
+            maintenance.recovery_idle(session)
+
+    def test_idle_acceptance_rejects_unexpected_deployed_timeout(self):
+        session = Mock()
+        session.status.return_value = {'idle_timeout_seconds': 1800}
+        with self.assertRaisesRegex(maintenance.apps.AppError, 'differs from reviewed configuration'):
+            maintenance.recovery_idle(session)
+
     def test_cancelled_storage_cleanup_rejects_replacement_namespace_before_mutation(self):
         session = Mock()
         session.kube.return_value = b'{"metadata":{"uid":"replacement"}}'

@@ -71,6 +71,33 @@ class StateTests(unittest.TestCase):
         state, replicas, _ = self.observe(recovered, state, 3600)
         self.assertEqual((replicas, recovered.idle_since), (1, 3600))
 
+    def test_configured_five_minute_idle_boundary_and_unknown_reset(self):
+        observer, state = Observation(300), self.start()
+        for now in range(300):
+            state, replicas, status = self.observe(observer, state, now)
+            self.assertEqual(replicas, 1)
+            self.assertEqual(status['idle_timeout_seconds'], 300)
+        state, replicas, status = self.observe(observer, state, 300)
+        self.assertEqual((state['reason'], replicas), ('verified idle', 0))
+        observer, state = Observation(300), self.start()
+        for now in range(300):
+            state, _, _ = self.observe(observer, state, now)
+        state, replicas, status = self.observe(observer, state, 300, known=False)
+        self.assertEqual(replicas, 1)
+        self.assertFalse(status['admission'])
+        for now in range(301, 601):
+            state, replicas, _ = self.observe(observer, state, now)
+            self.assertEqual(replicas, 1)
+        state, replicas, _ = self.observe(observer, state, 601)
+        self.assertEqual(replicas, 0)
+
+    def test_invalid_idle_configuration_fails_closed(self):
+        for value in (None, True, False, '300', 300.0, 0, 59, -1, 86401, float('nan')):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                Observation(value)
+        self.assertEqual(Observation().idle_timeout_seconds, 1800)
+        self.assertEqual(Observation(86400).idle_timeout_seconds, 86400)
+
     def test_stop_never_forces_unknown_work_and_force_waits_for_observed_termination(self):
         state, _ = command(self.start(), 'stop', str(uuid.uuid4()), 1, GOOD)
         state, replicas, status = self.observe(Observation(), state, 0, known=False)

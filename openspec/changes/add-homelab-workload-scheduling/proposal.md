@@ -5,7 +5,7 @@ AI services currently reserve resources continuously and use shared local-path s
 ## What Changes
 
 - Install pinned Argo Workflows through existing OpenTofu/Helm CI, exposing authenticated private Tailscale UI/API and reusable manual, API and scheduled jobs.
-- Add Start AI, Stop AI, Force Stop AI and Status operations with durable controller-owned state, graceful draining and shutdown after 30 minutes of verified inactivity.
+- Add Start AI, Stop AI, Force Stop AI and Status operations with durable controller-owned state, graceful draining and shutdown after a configurable interval of verified inactivity (30 minutes by default).
 - **BREAKING**: migrate the four AI services into one Pod, initially off, reserving 35.75 CPU and 77 GiB RAM; Ollama reserves 34 CPU and 64 GiB. Preserve VM CPU/RAM and independent Pi-hole operation.
 - Enforce shared-XFS project-quota AI storage boundaries, retained static volumes, bounded temporary storage and fail-closed guest/physical capacity checks. Reset only models, workspace and vector application data.
 - Reconcile deployment evidence, preserving unverified benchmarks, interaction and recovery tests.

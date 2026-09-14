@@ -26,7 +26,7 @@ class Runtime:
         self.probe = probe
         self.leader = Leadership(api, identity)
         self.lock = threading.RLock()
-        self.observer = Observation()
+        self.observer = Observation(self.config.get('idleTimeoutSeconds', 1800))
         self.capacity = self.new_capacity_gate()
         self.status = None
         self.status_at = 0
@@ -142,7 +142,7 @@ class Runtime:
             state['owner'] = self.identity
             # This CAS fences any older leader's pending runtime write.
             self.persist(obj, state)
-            self.observer = Observation()
+            self.observer = Observation(self.config.get('idleTimeoutSeconds', 1800))
             self.capacity = self.new_capacity_gate()
         return True
 

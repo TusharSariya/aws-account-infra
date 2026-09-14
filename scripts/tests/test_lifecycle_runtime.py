@@ -69,6 +69,15 @@ class RuntimeTests(unittest.TestCase):
     def operate(self, operation, revision, runtime=None):
         return (runtime or self.runtime).operate(operation, {'command_id': str(uuid.uuid4()), 'revision': revision})
 
+    def test_configured_timeout_survives_leadership_recovery(self):
+        second = Runtime(self.api, 'second-leader', {**self.runtime.config, 'idleTimeoutSeconds': 300})
+        second.samples = self.runtime.samples
+        second.observer.idle_since = 10
+        self.api.objects[LEASE_PATH]['spec']['renewTime'] = '2000-01-01T00:00:00Z'
+        second.tick()
+        self.assertIsNone(second.observer.idle_since)
+        self.assertEqual(second.current_status()['idle_timeout_seconds'], 300)
+
     def test_replicas_and_desired_command_commit_in_the_same_cas(self):
         self.operate('start', 0)
         deployment = self.api.objects[RUNTIME]

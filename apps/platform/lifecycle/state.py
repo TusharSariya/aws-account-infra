@@ -115,7 +115,10 @@ class Observation:
     Recreate this object on leadership acquisition; no persisted wall timestamp
     can establish inactivity through controller downtime.
     """
-    def __init__(self):
+    def __init__(self, idle_timeout_seconds=IDLE_SECONDS):
+        if type(idle_timeout_seconds) is not int or not 60 <= idle_timeout_seconds <= 86400:
+            raise ValueError("idleTimeoutSeconds must be an integer from 60 to 86400")
+        self.idle_timeout_seconds = idle_timeout_seconds
         self.idle_since = None
         self.last_tick = None
 
@@ -154,7 +157,7 @@ class Observation:
             self.idle_since = None
         if idle and self.idle_since is None:
             self.idle_since = now
-        if idle and now - self.idle_since >= IDLE_SECONDS:
+        if idle and now - self.idle_since >= self.idle_timeout_seconds:
             result.update(desired='off', revision=result['revision'] + 1, reason='verified idle', force=False)
             self.idle_since = None
         draining = bool(unknown or result['tickets'])
@@ -170,6 +173,6 @@ class Observation:
         return result, replicas, {'desired': result['desired'], 'observed': observed,
             'revision': result['revision'], 'last_interruption': deepcopy(result.get('interruption')), 'storage_warning': capacity.warning, 'active_work': len(result['tickets']),
             'blocking_reasons': [*capacity.reasons, *unknown], 'reason': result['reason'],
-            'activity_verification': verification,
+            'activity_verification': verification, 'idle_timeout_seconds': self.idle_timeout_seconds,
             'idle_seconds': 0 if self.idle_since is None else round(max(0, now - self.idle_since), 3),
             'admission': result['desired'] == 'on' and ready and capacity.admission and not result['force'] and not unknown}

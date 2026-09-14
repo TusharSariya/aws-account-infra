@@ -27,7 +27,7 @@
 - [x] 3.2 Implement authenticated Start, Stop, Force Stop and Status with admission closure, graceful drain and observed termination; pending-start cancellation and repeated/concurrent operation tests pass.
 - [x] 3.3 Instrument pinned Odysseus streams, documents, agents, schedules and subprocesses including cancellation/error paths; each activity-source integration test passes.
 - [x] 3.4 Implement authenticated Ollama admission gateway and prevent network and same-Pod bypass; direct inference/download and unauthorized/bypass tests pass.
-- [x] 3.5 Implement verified 30-minute idle interval, unknown-source handling and recovery reset; fake-clock tests cover all interval boundaries and excluded probes/connections.
+- [x] 3.5 Implement configurable verified idle interval (30-minute default), unknown-source handling and recovery reset; fake-clock tests cover all interval boundaries and excluded probes/connections.
 - [x] 3.6 Connect storage pressure to startup/work admission, alerting and graceful drain without force/delete; integration tests prove five-minute recovery leaves AI off.
 - [x] 3.7 Install pinned checksum-verified Argo chart, private Tailscale HTTPS client-token authentication and namespace RBAC; render and unauthorized-access tests pass.
 - [x] 3.8 Publish reviewed operation/job templates and suspended UTC smoke schedule with Forbid and shared per-job mutexes; test manual/API/scheduled execution, cancellation, overlap and independent concurrency.
@@ -37,7 +37,7 @@
 ## 4. Operational evidence
 
 - [x] 4.1 Document pinned reconstruction and separate credential issuance/recovery, with no credentials in plans/state/logs; review documented commands and credential scopes.
-- [ ] 4.2 Document application data backup/restore and run an isolated restore before claiming recovery; record exact artifact/run and verified data.
+- [x] 4.2 Document application data backup/restore and run an isolated restore before claiming recovery; record exact artifact/run and verified data.
 - [ ] 4.3 Record local checks, CI deployment, live behavior, benchmarks and recovery separately; unfinished scenarios remain unchecked and change stays unarchived.
 
 ## Local implementation record, 2026-09-14

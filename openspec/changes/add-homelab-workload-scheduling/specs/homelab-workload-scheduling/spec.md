@@ -39,10 +39,10 @@ The system SHALL provide Start AI, Stop AI, Force Stop AI and Status. Runtime st
 - **THEN** the recorded command order determines one consistent desired state without stale reconciliation undoing the newer command
 
 ### Requirement: Verified inactivity
-The system SHALL shut AI down after 30 continuous minutes of verified inactivity. Chat streams, inference, model downloads, document processing and background agents MUST count as work. Missing, stale or unknown activity MUST prevent automatic shutdown and completion of graceful draining.
+The system SHALL shut AI down after a configurable continuous interval of verified inactivity, defaulting to 30 minutes. Chat streams, inference, model downloads, document processing and background agents MUST count as work. Missing, stale or unknown activity MUST prevent automatic shutdown and completion of graceful draining.
 
 #### Scenario: Idle timeout
-- **WHEN** all activity sources continuously confirm no work for 30 minutes
+- **WHEN** all activity sources continuously confirm no work for the configured interval
 - **THEN** the service closes admission, rechecks activity and shuts down
 
 #### Scenario: Activity becomes unknown
@@ -108,3 +108,10 @@ The platform SHALL deliver storage, aggregate default-off packaging and lifecycl
 - **THEN** the repository runner verifies existing Ready prerequisites, retained Off state, pinned images and the complete non-destructive saved plan
 - **AND** it records source and plan hashes, local results and encrypted recovery artifacts independently from GitHub Actions
 - **AND** changed source or plan bytes prevent applying or reusing an earlier execution record, and the reset is never replayed
+
+### Requirement: Reviewed idle configuration
+The controller SHALL accept an integer idleTimeoutSeconds between 60 and 86400 from repository-managed Helm configuration, defaulting to 1800. Status SHALL report the effective timeout. Invalid values MUST prevent startup. Configuration changes and controller recovery MUST begin a fresh verified interval; they MUST NOT weaken activity verification or graceful Stop.
+
+#### Scenario: Convenient five-minute interval
+- **WHEN** the reviewed homelab configuration selects idleTimeoutSeconds 300
+- **THEN** 300 continuous seconds of verified inactivity request normal Stop, and acceptance verifies that configured interval

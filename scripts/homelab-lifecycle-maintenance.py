@@ -10,6 +10,7 @@ from pathlib import Path
 import time
 import tempfile
 import uuid
+import yaml
 
 from lifecycle_session import Maintenance, KUBECTL, ROOT, apps
 
@@ -269,14 +270,20 @@ def recovery_idle(session):
     session.wait(lambda s: not s['blocking_reasons'], 'storage recovery has five healthy minutes', timeout=420)
     session.command('start')
     session.wait(lambda s: s['admission'] and s['active_work'] == 0, 'verified idle interval begins')
+    idle_timeout = session.status().get('idle_timeout_seconds')
+    expected = yaml.safe_load((apps.CONFIG / 'lifecycle-values.yaml').read_text())['config'].get('idleTimeoutSeconds', 1800)
+    if type(idle_timeout) is not int or not 60 <= idle_timeout <= 86400 or idle_timeout != expected:
+        raise apps.AppError('Effective idle timeout differs from reviewed configuration')
     with tempfile.TemporaryDirectory(prefix='ai-idle-browser-') as private:
         cookie = Path(private) / 'session.cookies'
         workspace_login(session, cookie)
         start = time.monotonic()
         previous_idle = 0
-        while time.monotonic() - start < 1780:
+        while time.monotonic() - start < idle_timeout + 180:
             state = session.status()
             idle = state.get('idle_seconds')
+            if state['reason'] == 'verified idle' and state['observed'] in ('Stopping', 'Off'):
+                break
             if (state['observed'] != 'On' or state['active_work'] or not state['admission']
                     or not isinstance(idle, (int, float)) or idle < previous_idle):
                 diagnostic = {key: state.get(key) for key in ('observed', 'active_work', 'admission', 'activity_verification', 'idle_seconds')}
@@ -285,8 +292,10 @@ def recovery_idle(session):
             previous_idle = idle
             workspace_idle_probes(cookie)
             time.sleep(10)
+        else:
+            raise apps.AppError('Configured idle shutdown did not occur')
     session.wait(lambda s: s['observed'] == 'Off' and s['reason'] == 'verified idle',
-                 '30 continuous idle minutes with authenticated browser probes cause normal shutdown', timeout=180)
+                 f'{idle_timeout} continuous idle seconds with authenticated browser probes cause normal shutdown', timeout=180)
     dns()
 
 

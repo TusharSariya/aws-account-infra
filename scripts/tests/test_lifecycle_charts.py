@@ -33,6 +33,13 @@ class ChartTests(unittest.TestCase):
         self.assertFalse(any('persistentVolumeClaim' in v for v in restore['volumes']))
         self.assertEqual(next(v['emptyDir'] for v in restore['volumes'] if 'emptyDir' in v)['sizeLimit'], '4Gi')
 
+    def test_reviewed_idle_timeout_reaches_controller_configuration(self):
+        docs = render('lifecycle')
+        config = next(doc for doc in docs if doc['kind'] == 'ConfigMap' and doc['metadata']['name'] == 'ai-lifecycle-config')
+        self.assertEqual(json.loads(config['data']['config.json'])['idleTimeoutSeconds'], 300)
+        defaults = yaml.safe_load((ROOT / 'charts/homelab-lifecycle/values.yaml').read_text())
+        self.assertEqual(defaults['config']['idleTimeoutSeconds'], 1800)
+
     def test_controller_owns_only_runtime_and_has_no_secret_or_host_access(self):
         docs = render('lifecycle')
         deployment = next(doc for doc in docs if doc['kind'] == 'Deployment')
