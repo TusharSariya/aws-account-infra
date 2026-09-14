@@ -1,0 +1,54 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: homelab-jobs-default, namespace: homelab-jobs}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+  ingress: []
+  egress: []
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: argo-private-api, namespace: homelab-jobs}
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/component: server}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: tailscale}
+          podSelector:
+            matchLabels: {tailscale.com/parent-resource: argo}
+      ports: [{protocol: TCP, port: 2746}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: lifecycle-operation, namespace: homelab-jobs}
+spec:
+  podSelector:
+    matchLabels: {homelab/lifecycle-operation: 'true'}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: homelab-platform}
+          podSelector:
+            matchLabels: {app: ai-lifecycle}
+      ports: [{protocol: TCP, port: 8080}]
+    - to:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: kube-system}
+          podSelector:
+            matchLabels: {k8s-app: kube-dns}
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata: {name: homelab-jobs-apiserver, namespace: homelab-jobs}
+spec:
+  endpointSelector: {}
+  egress:
+    - toEntities: [kube-apiserver]
+      toPorts:
+        - ports: [{port: '6443', protocol: TCP}]

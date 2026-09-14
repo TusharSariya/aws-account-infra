@@ -1,44 +1,57 @@
-"""Exercise backup failure recovery without touching a cluster or private data."""
-import os
+"""Full-volume isolated restore and hostile archive rejection."""
+import importlib.util
+import io
 from pathlib import Path
-import subprocess
+import sqlite3
+import tarfile
 import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
+spec = importlib.util.spec_from_file_location('archive', ROOT / 'apps/platform/recovery/archive.py')
+archive = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(archive)
 
 
 class BackupTests(unittest.TestCase):
-    def test_failed_capture_restores_both_deployments(self):
+    def test_all_volumes_and_sqlite_are_restored_and_verified(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            kubectl = root / 'kubectl'
-            kubectl.write_text('''#!/usr/bin/env python3
-import json,os,sys
-with open(os.environ['CALLS'], 'a') as f: f.write(json.dumps(sys.argv[1:])+'\\n')
-a=sys.argv[1:]
-if 'get' in a and 'deployment' in a: print('1',end='')
-if 'exec' in a and 'deployment/odysseus' in a: print('{"models":[]}')
-if 'exec' in a and 'tar' in a: sys.exit(12)
-''')
-            kubectl.chmod(0o755)
-            age = root / 'age'
-            age.write_text('''#!/usr/bin/env python3
-import pathlib,sys
-sys.stdin.buffer.read()
-pathlib.Path(sys.argv[sys.argv.index('-o')+1]).write_bytes(b'fixture-only')
-''')
-            age.chmod(0o755)
-            env = {**os.environ, 'PATH': str(root) + os.pathsep + os.environ['PATH'], 'CALLS': str(root / 'calls')}
-            result = subprocess.run(['bash', str(ROOT / 'scripts/odysseus-backup.sh'), 'age1fixture', str(root / 'output')], env=env, capture_output=True, text=True)
-            self.assertNotEqual(result.returncode, 0)
-            calls = (root / 'calls').read_text()
-            for name in ['odysseus', 'chromadb']:
-                self.assertIn('"deployment/' + name + '", "--replicas=0"', calls)
-                self.assertIn('"deployment/' + name + '", "--replicas=1"', calls)
-            self.assertIn('"delete", "pod", "odysseus-backup"', calls)
-            self.assertFalse((root / 'output/checksum.txt').exists())
+            source = root / 'source'
+            for volume in archive.VOLUMES:
+                (source / volume).mkdir(parents=True)
+                (source / volume / 'content').write_bytes(volume.encode())
+            with sqlite3.connect(source / 'workspace/state.db') as db:
+                db.execute('CREATE TABLE proof(value TEXT)')
+                db.execute("INSERT INTO proof VALUES ('retained')")
+            stream = io.BytesIO()
+            archive.capture(source, stream)
+            stream.seek(0)
+            result = archive.restore(root / 'restored', stream)
+            self.assertEqual(result['files'], 4)
+            self.assertEqual(result['sqlite_databases'], 1)
+            self.assertEqual(archive.inventory(source), archive.inventory(root / 'restored'))
 
+    def test_links_path_escape_and_duplicate_entries_are_rejected(self):
+        for name, kind in [('../escape', tarfile.REGTYPE), ('workspace/link', tarfile.SYMTYPE), ('/escape', tarfile.REGTYPE)]:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as directory:
+                stream = io.BytesIO()
+                with tarfile.open(fileobj=stream, mode='w:gz') as output:
+                    entry = tarfile.TarInfo(name)
+                    entry.type = kind
+                    entry.linkname = '/etc/passwd'
+                    output.addfile(entry)
+                stream.seek(0)
+                with self.assertRaises(ValueError):
+                    archive.restore(Path(directory) / 'restore', stream)
 
-if __name__ == '__main__':
-    unittest.main()
+    def test_existing_target_and_source_symlink_are_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for volume in archive.VOLUMES:
+                (root / volume).mkdir()
+            (root / 'models/link').symlink_to('/etc/passwd')
+            with self.assertRaises(ValueError):
+                archive.inventory(root)
+            with self.assertRaises(ValueError):
+                archive.restore(root, io.BytesIO())

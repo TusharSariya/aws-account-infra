@@ -1,0 +1,66 @@
+{{- range $name := list "homelab-job" "ai-operator-job" "homelab-workflow-client" }}
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: {{ $name }}, namespace: homelab-jobs}
+automountServiceAccountToken: false
+---
+{{- end }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: {name: homelab-job-result, namespace: homelab-jobs}
+rules:
+  - apiGroups: [argoproj.io]
+    resources: [workflowtaskresults]
+    verbs: [create, patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: {name: homelab-job-result, namespace: homelab-jobs}
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: homelab-job-result}
+subjects:
+  - {kind: ServiceAccount, name: homelab-job, namespace: homelab-jobs}
+  - {kind: ServiceAccount, name: ai-operator-job, namespace: homelab-jobs}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: {name: homelab-workflow-client, namespace: homelab-jobs}
+rules:
+  - apiGroups: [argoproj.io]
+    resources: [workflows]
+    verbs: [create, get, list, watch, patch, update, delete]
+  - apiGroups: [argoproj.io]
+    resources: [workflowtemplates, cronworkflows]
+    verbs: [get, list, watch]
+  - apiGroups: ['']
+    resources: [pods, pods/log]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: {name: homelab-workflow-client, namespace: homelab-jobs}
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: homelab-workflow-client}
+subjects: [{kind: ServiceAccount, name: homelab-workflow-client, namespace: homelab-jobs}]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata: {name: argo, namespace: homelab-jobs}
+spec:
+  ingressClassName: tailscale
+  tls: [{hosts: [argo]}]
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: argo-workflows-server
+                port: {number: 2746}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: homelab-job-code, namespace: homelab-jobs}
+data:
+  {{- range $name, $content := .Values.code }}
+  {{ $name }}: {{ $content | quote }}
+  {{- end }}

@@ -44,9 +44,10 @@ data:
   # controller may create the runtime and change its state or replica count.
   deployment.yaml: |
     {{- include "ai.deployment" . | nindent 4 }}
+  deployment.json: {{ include "ai.deployment" . | fromYaml | toJson | quote }}
   revision: {{ include "ai.deployment" . | sha256sum | quote }}
 ---
-# No runtime traffic is admitted during the default-off packaging stage.
+# All access is denied unless explicitly admitted by the lifecycle network policy.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata: {name: ai-runtime-isolation, namespace: homelab-models}

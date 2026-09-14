@@ -1,0 +1,5 @@
+apiVersion: v2
+name: homelab-jobs
+version: 0.1.0
+type: application
+description: Reviewed namespace-scoped homelab workflows and lifecycle operations

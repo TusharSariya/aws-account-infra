@@ -58,10 +58,14 @@ spec:
         - name: ollama
           image: {{ .Values.images.ollama | quote }}
           args: [serve]
-          ports: [{name: model-raw, containerPort: 11435}]
+          ports: [{name: model, containerPort: 11434}]
           env:
+            - {name: HOMELAB_LIFECYCLE_URL, value: 'http://ai-lifecycle.homelab-platform.svc:8080'}
+            - name: POD_UID
+              valueFrom:
+                fieldRef: {fieldPath: metadata.uid}
             - {name: HOME, value: /models}
-            - {name: OLLAMA_HOST, value: '0.0.0.0:11435'}
+            - {name: OLLAMA_HOST, value: '0.0.0.0:11434'}
             - {name: OLLAMA_MODELS, value: /models/models}
             - {name: OLLAMA_MAX_LOADED_MODELS, value: '1'}
             - {name: OLLAMA_NUM_PARALLEL, value: '1'}
@@ -77,22 +81,27 @@ spec:
             allowPrivilegeEscalation: false
             capabilities: {drop: [ALL]}
           startupProbe:
-            httpGet: {path: /api/version, port: model-raw}
+            httpGet: {path: /healthz, port: model}
             periodSeconds: 5
             failureThreshold: 120
           readinessProbe:
-            httpGet: {path: /api/version, port: model-raw}
+            httpGet: {path: /healthz, port: model}
           volumeMounts:
             - {name: models, mountPath: /models}
+            - {name: ollama-credentials, mountPath: /credentials, readOnly: true}
             - {name: ollama-tmp, mountPath: /tmp}
         - name: odysseus
           image: {{ .Values.images.odysseus | quote }}
           ports: [{name: workspace, containerPort: 7000}]
           env:
-            - {name: OLLAMA_HOST, value: 'http://ai-model-gateway:11434'}
-            - {name: OLLAMA_BASE_URL, value: 'http://ai-model-gateway:11434/v1'}
-            - {name: LLM_HOST, value: ai-model-gateway}
-            - {name: RESEARCH_LLM_ENDPOINT, value: 'http://ai-model-gateway:11434/v1/chat/completions'}
+            - {name: HOMELAB_LIFECYCLE_URL, value: 'http://ai-lifecycle.homelab-platform.svc:8080'}
+            - name: POD_UID
+              valueFrom:
+                fieldRef: {fieldPath: metadata.uid}
+            - {name: OLLAMA_HOST, value: 'http://127.0.0.1:11434'}
+            - {name: OLLAMA_BASE_URL, value: 'http://127.0.0.1:11434/v1'}
+            - {name: LLM_HOST, value: 127.0.0.1}
+            - {name: RESEARCH_LLM_ENDPOINT, value: 'http://127.0.0.1:11434/v1/chat/completions'}
             - {name: SEARXNG_INSTANCE, value: 'http://127.0.0.1:8080'}
             - {name: CHROMADB_HOST, value: '127.0.0.1'}
             - {name: CHROMADB_PORT, value: '8000'}
@@ -125,6 +134,7 @@ spec:
             tcpSocket: {port: workspace}
           volumeMounts:
             - {name: workspace, mountPath: /workspace}
+            - {name: workspace-credentials, mountPath: /credentials, readOnly: true}
             - {name: workspace-tmp, mountPath: /tmp}
         - name: chroma
           image: {{ .Values.images.chroma | quote }}
@@ -175,6 +185,21 @@ spec:
             - {name: search-cache, mountPath: /var/cache/searxng}
             - {name: search-tmp, mountPath: /tmp}
       volumes:
+        - name: ollama-credentials
+          secret:
+            secretName: ai-runtime-credentials
+            defaultMode: 288
+            items:
+              - {key: ollama, path: lifecycle-token}
+              - {key: model-user, path: model-user-token}
+              - {key: model-workspace, path: model-workspace-token}
+        - name: workspace-credentials
+          secret:
+            secretName: ai-runtime-credentials
+            defaultMode: 288
+            items:
+              - {key: odysseus, path: lifecycle-token}
+              - {key: model-workspace, path: model-workspace-token}
         {{- range $name, $_ := .Values.volumes }}
         - name: {{ $name }}
           persistentVolumeClaim: {claimName: ai-{{ $name }}}

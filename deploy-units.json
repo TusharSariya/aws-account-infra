@@ -158,7 +158,26 @@
         "scripts/tests/test_lifecycle_",
         "scripts/tests/test_odysseus_activity.py",
         "scripts/tests/test_odysseus_processes.py",
-        "scripts/tests/test_odysseus_http.py"
+        "scripts/tests/test_odysseus_http.py",
+        "charts/homelab-lifecycle/",
+        "charts/homelab-jobs/",
+        "scripts/odysseus-image-smoke.sh",
+        "scripts/odysseus-smoke-controller.py",
+        "apps/platform/jobs/",
+        "scripts/issue-lifecycle-credentials.py",
+        "scripts/homelab-lifecycle-validate.py",
+        "scripts/odysseus-source-tests.py",
+        "scripts/verify-ai-images.py",
+        "scripts/ai-control.py",
+        "scripts/argo-client-token.py",
+        "apps/platform/recovery/",
+        "scripts/lifecycle_session.py",
+        "scripts/ai-data-backup.py",
+        "scripts/odysseus-backup.sh",
+        "scripts/tests/test_odysseus_backup.py",
+        "scripts/tests/test_homelab_apps.py",
+        "scripts/homelab-lifecycle-maintenance.py",
+        ".github/workflows/homelab-lifecycle-maintenance.yml"
       ]
     }
   ]

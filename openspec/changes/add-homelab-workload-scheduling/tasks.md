@@ -17,18 +17,18 @@
 - [x] 2.2 Add retained static local PVs and claims with fixed worker affinity and project directories; rendering verifies claim binding, retention and isolation.
 - [x] 2.3 Add one-time migration recording exact old PVC/PV UIDs and stopped writers, narrowly scoped plan allowances and replay rejection; adversarial migration tests pass.
 - [x] 2.4 Disable old writers and default migrated AI to zero without disturbing Pi-hole; CI health verifies intentional-off without starting AI.
-- [ ] 2.5 Perform authorized reset only through explicit reviewed CI migration; prove unrelated data survives and runtime remains off.
+- [x] 2.5 Perform authorized reset only through explicit reviewed CI migration; prove unrelated data survives and runtime remains off.
 - [ ] 2.6 Verify data persists across stop/start and full Pod stays Pending with insufficient resources while Pi-hole answers UDP/TCP DNS; record explicit acceptance evidence.
 - [x] 2.7 Run rendering, unit/integration, OpenTofu, lint/security and strict OpenSpec checks; deliver and review packaging PR after storage PR succeeds.
 
 ## 3. Lifecycle and scheduling PR
 
-- [ ] 3.1 Implement durable desired state/revision, optimistic concurrency and Lease leadership; race/recovery tests prove no stale command reversal.
-- [ ] 3.2 Implement authenticated Start, Stop, Force Stop and Status with admission closure, graceful drain and observed termination; pending-start cancellation and repeated/concurrent operation tests pass.
+- [x] 3.1 Implement durable desired state/revision, optimistic concurrency and Lease leadership; race/recovery tests prove no stale command reversal.
+- [x] 3.2 Implement authenticated Start, Stop, Force Stop and Status with admission closure, graceful drain and observed termination; pending-start cancellation and repeated/concurrent operation tests pass.
 - [ ] 3.3 Instrument pinned Odysseus streams, documents, agents, schedules and subprocesses including cancellation/error paths; each activity-source integration test passes.
 - [ ] 3.4 Implement authenticated Ollama admission gateway and prevent network and same-Pod bypass; direct inference/download and unauthorized/bypass tests pass.
-- [ ] 3.5 Implement verified 30-minute idle interval, unknown-source handling and recovery reset; fake-clock tests cover all interval boundaries and excluded probes/connections.
-- [ ] 3.6 Connect storage pressure to startup/work admission, alerting and graceful drain without force/delete; integration tests prove five-minute recovery leaves AI off.
+- [x] 3.5 Implement verified 30-minute idle interval, unknown-source handling and recovery reset; fake-clock tests cover all interval boundaries and excluded probes/connections.
+- [x] 3.6 Connect storage pressure to startup/work admission, alerting and graceful drain without force/delete; integration tests prove five-minute recovery leaves AI off.
 - [ ] 3.7 Install pinned checksum-verified Argo chart, private Tailscale HTTPS client-token authentication and namespace RBAC; render and unauthorized-access tests pass.
 - [ ] 3.8 Publish reviewed operation/job templates and suspended UTC smoke schedule with Forbid and shared per-job mutexes; test manual/API/scheduled execution, cancellation, overlap and independent concurrency.
 - [ ] 3.9 Extend manifest watch paths and required acceptance for all charts/code/images/config/tests; cancellations and unexpected skips demonstrably fail the gate.
@@ -36,7 +36,7 @@
 
 ## 4. Operational evidence
 
-- [ ] 4.1 Document pinned reconstruction and separate credential issuance/recovery, with no credentials in plans/state/logs; review documented commands and credential scopes.
+- [x] 4.1 Document pinned reconstruction and separate credential issuance/recovery, with no credentials in plans/state/logs; review documented commands and credential scopes.
 - [ ] 4.2 Document application data backup/restore and run an isolated restore before claiming recovery; record exact artifact/run and verified data.
 - [ ] 4.3 Record local checks, CI deployment, live behavior, benchmarks and recovery separately; unfinished scenarios remain unchecked and change stays unarchived.
 
@@ -47,3 +47,5 @@ Storage foundation code and isolated tests are present. Run 34810327867 successf
 ## Deployment and live maintenance update, 2026-09-14
 
 Packaging PR #68 merged as f4708346f3e3e170226cced36a1240eee341bcb0 after guarded apply 34819433687 and all required PVC/network/capacity acceptance succeeded. Both collectors are Ready and every legacy AI Deployment remains zero. Quota run 34820173760 passed pre-reboot application enforcement and completed worker maintenance, then failed downloading verified tools before post-reboot verification. Verification-only resume 34820541091 succeeded with the same durable fixture identity and observed changed boot. Reset 34820827996 completed exactly the three-volume migration and retained its immutable receipt. Independent unrelated-data verification and AI stop/start behavior remain unfinished, so task 2.5 and 2.6 remain unchecked. The earlier local implementation paragraph is historical, not the current live state.
+
+Independent read-only verification after reset found the original Pi-hole PVC UID `7738ef98-4f83-4e86-89ac-119b6676ad62` (created 2026-09-13T22:02:46Z) and 26,714 persistent query rows. The oldest timestamp, 1789337206.3400781, predates the reset completion timestamp 1789373078.6698902. This verifies surviving unrelated data without claiming a pre/post byte-for-byte comparison. Task 2.5 is complete; stop/start and isolated restore remain unchecked.

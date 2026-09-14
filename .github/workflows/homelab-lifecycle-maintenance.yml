@@ -1,0 +1,57 @@
+name: homelab-lifecycle-maintenance
+on:
+  workflow_call:
+    inputs:
+      confirm:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type verify-ai-lifecycle-and-restore to exercise Start/Stop/Force Stop, jobs, idle shutdown and encrypted isolated restore
+        required: true
+        type: string
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: ${{ github.event_name == 'workflow_dispatch' && 'tofu-apply' || format('lifecycle-maintenance-{0}', github.run_id) }}
+  cancel-in-progress: false
+jobs:
+  proof:
+    if: github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: prod
+    steps:
+      - name: Require explicit lifecycle maintenance selection
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: test "$CONFIRM" = verify-ai-lifecycle-and-restore
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4
+        with:
+          oauth-client-id: ${{ vars.TS_OIDC_CLIENT_ID }}
+          audience: ${{ vars.TS_OIDC_AUDIENCE }}
+          tags: tag:github-ci
+          version: 1.102.4
+          hostname: gh-lifecycle-proof-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Accept private subnet route
+        run: sudo tailscale set --accept-routes=true
+      - uses: ./.github/actions/talos-check
+        with:
+          operation: lifecycle-maintenance
+          lifecycle-confirm: ${{ inputs.confirm }}
+          lifecycle-credentials-b64: ${{ secrets.AI_LIFECYCLE_CREDENTIALS_B64 }}
+          secrets-b64: ${{ secrets.TALOS_SECRETS_B64 }}
+      - name: Retain encrypted application backup and isolated restore evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-data-recovery-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/ai-data-recovery/
+          retention-days: 90
+          if-no-files-found: error
+      - name: Remove encrypted local artifacts
+        if: always()
+        run: rm -rf -- "$RUNNER_TEMP/ai-data-recovery"

@@ -72,6 +72,14 @@ class GateTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             units.acceptance_gate(self.needs, True, False)
 
+    def test_requested_lifecycle_maintenance_cannot_skip_fail_or_cancel(self):
+        for result in ('skipped', 'failure', 'cancelled'):
+            self.needs['lifecycle-maintenance'] = {'result': result}
+            with self.subTest(result=result), self.assertRaises(ValueError):
+                units.acceptance_gate(self.needs, True, False, True)
+        self.needs['lifecycle-maintenance']['result'] = 'success'
+        units.acceptance_gate(self.needs, True, False, True)
+
     def test_successful_apply_and_acceptance_pass(self):
         units.acceptance_gate(self.needs, True, False)
 

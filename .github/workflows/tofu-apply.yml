@@ -9,6 +9,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
+  actions: read
   id-token: write
   contents: read
   pull-requests: read
@@ -54,6 +55,7 @@ jobs:
           GHCR_READ_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
           ODYSSEUS_ADMIN_PASSWORD: ${{ secrets.ODYSSEUS_ADMIN_PASSWORD }}
           SEARXNG_SECRET: ${{ secrets.SEARXNG_SECRET }}
+          AI_LIFECYCLE_CREDENTIALS_B64: ${{ secrets.AI_LIFECYCLE_CREDENTIALS_B64 }}
         run: python3 scripts/homelab-apps.py credentials
       - uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -149,6 +151,7 @@ jobs:
           ghcr-token: ${{ secrets.GHCR_READ_TOKEN }}
           odysseus-password: ${{ secrets.ODYSSEUS_ADMIN_PASSWORD }}
           searxng-secret: ${{ secrets.SEARXNG_SECRET }}
+          lifecycle-credentials-b64: ${{ secrets.AI_LIFECYCLE_CREDENTIALS_B64 }}
 
   worker-maintenance:
     needs: [detect, apply]
@@ -171,13 +174,21 @@ jobs:
       suite: ${{ needs.detect.outputs.suite }}
     secrets: inherit
 
+  lifecycle-maintenance:
+    needs: [detect, apply, acceptance]
+    if: needs.apply.result == 'success' && needs.acceptance.result == 'success' && contains(github.event.pull_request.labels.*.name, 'lifecycle-maintenance')
+    uses: ./.github/workflows/homelab-lifecycle-maintenance.yml
+    with:
+      confirm: verify-ai-lifecycle-and-restore
+    secrets: inherit
+
   storage-foundation:
     needs: detect
     if: needs.detect.outputs.storage == 'true'
     uses: ./.github/workflows/storage-foundation.yml
 
   apply-gate:
-    needs: [detect, apply, worker-maintenance, acceptance, storage-foundation]
+    needs: [detect, apply, worker-maintenance, acceptance, storage-foundation, lifecycle-maintenance]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -186,6 +197,7 @@ jobs:
         env:
           NEEDS_JSON: ${{ toJSON(needs) }}
           APPLY_REQUESTED: ${{ contains(github.event.pull_request.labels.*.name, 'apply') }}
+          LIFECYCLE_MAINTENANCE_REQUESTED: ${{ contains(github.event.pull_request.labels.*.name, 'lifecycle-maintenance') }}
           REBOOT_REQUESTED: ${{ contains(github.event.pull_request.labels.*.name, 'worker-reboot') }}
         run: python3 scripts/deploy-units.py acceptance-gate
 

@@ -10,7 +10,7 @@ on:
       suite:
         description: Acceptance suite against the current cluster (no deployment)
         type: choice
-        options: [all, network, pvc, capacity]
+        options: [all, network, pvc, capacity, lifecycle]
         default: all
 permissions:
   contents: read
@@ -24,7 +24,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: ${{ fromJSON(inputs.suite == 'all' && '["network","pvc","capacity"]' || inputs.suite == 'network' && '["network"]' || inputs.suite == 'pvc' && '["pvc"]' || inputs.suite == 'capacity' && '["capacity"]' || '["invalid"]') }}
+        suite: ${{ fromJSON(inputs.suite == 'all' && '["network","pvc","capacity","lifecycle"]' || inputs.suite == 'network' && '["network"]' || inputs.suite == 'pvc' && '["pvc"]' || inputs.suite == 'capacity' && '["capacity"]' || inputs.suite == 'lifecycle' && '["lifecycle"]' || '["invalid"]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -41,3 +41,4 @@ jobs:
         with:
           operation: ${{ matrix.suite }}
           secrets-b64: ${{ secrets.TALOS_SECRETS_B64 }}
+          lifecycle-credentials-b64: ${{ secrets.AI_LIFECYCLE_CREDENTIALS_B64 }}

@@ -1,0 +1,3 @@
+config:
+  filesystemUUID: '86f3ada1-17e4-4f74-9d73-a18c1774cc31'
+  physicalPool: 'pve/data'

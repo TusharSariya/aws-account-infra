@@ -336,7 +336,7 @@ class Session:
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('stage', choices=['setup', 'prepare', 'preflight', 'exec', 'guard',
-                                         'state', 'storage', 'readiness', 'connect', 'worker-reboot', 'network', 'pvc', 'capacity', 'capacity-credentials', 'ai-migrate', 'quota-prepare', 'quota-verify'])
+                                         'state', 'storage', 'readiness', 'connect', 'worker-reboot', 'network', 'pvc', 'capacity', 'lifecycle', 'lifecycle-maintenance', 'capacity-credentials', 'ai-migrate', 'quota-prepare', 'quota-verify'])
     parser.add_argument('--private', type=Path)
     parser.add_argument('--secrets-file', type=Path)
     parser.add_argument('--acceptance', action='store_true')
@@ -364,6 +364,15 @@ def main():
         print(session.run([sys.executable, ROOT / 'scripts/ai-migration.py']))
     elif args.stage == 'capacity-credentials':
         print(session.run([sys.executable, ROOT / 'scripts/homelab-capacity-credentials.py']))
+    elif args.stage == 'lifecycle-maintenance':
+        # Only this explicitly selected reviewed maintenance recipe gets the longer
+        # deadline. Its output consists of fixed proof labels, never private objects.
+        result = subprocess.run([sys.executable, ROOT / 'scripts/homelab-lifecycle-maintenance.py'],
+                                env=session.env, timeout=5100)
+        if result.returncode:
+            raise StageError('Lifecycle maintenance failed')
+    elif args.stage == 'lifecycle':
+        print(session.run([sys.executable, ROOT / 'scripts/homelab-lifecycle-validate.py']))
     elif args.stage == 'capacity':
         print(session.run([sys.executable, ROOT / 'scripts/homelab-capacity-validate.py']))
     elif args.stage == 'pvc':
