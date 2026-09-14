@@ -75,6 +75,9 @@ class ChartTests(unittest.TestCase):
         templates = {doc['metadata']['name']: doc['spec'] for doc in docs if doc['kind'] == 'WorkflowTemplate'}
         self.assertEqual(set(templates), {'ai-start', 'ai-stop', 'ai-force-stop', 'ai-status', 'smoke', 'independent-smoke'})
         for name, spec in templates.items():
+            injected = json.loads(spec['podSpecPatch'])['volumes']
+            self.assertEqual({v['name']: v['emptyDir']['sizeLimit'] for v in injected},
+                             {'var-run-argo': '192Mi', 'tmp-dir-argo': '16Mi'})
             operation = name.startswith('ai-')
             self.assertEqual(spec['serviceAccountName'], 'ai-operator-job' if operation else 'homelab-job')
             self.assertFalse(any('hostPath' in volume for volume in spec['volumes']))

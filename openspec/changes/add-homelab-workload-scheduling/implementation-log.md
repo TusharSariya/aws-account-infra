@@ -150,3 +150,5 @@ Run 34840895279 at bb657ac passed guarded apply and all routine selections, then
 ### Argo executor memory correction, 2026-09-14
 
 Run 34844399844 at 8e23c7c passed guarded apply and all routine acceptance, then failed the first smoke concurrency proof. Kubernetes events at 12:44:21Z recorded executor init OOMKilled, exit 137, after the token fix removed the previous authentication failure. Executor resources now reserve 100m CPU/256 MiB and limit 500m CPU/512 MiB, separately from unchanged AI reservations. No AI Start or application-data change occurred. The required gate rejected the failed proof; this is not successful scheduling evidence.
+
+Independent local inspection of pinned argoexec digest df528d33f76bf0598193e1a967d79d3c51e1e86501e128d1e4e9228b40666fab found /usr/bin/argoexec is 166,320,814 bytes. Its staged copy cannot fit the original 32 MiB ephemeral budget. Executor storage now reserves 192 MiB and limits 256 MiB; reviewed templates bound the pinned var-run-argo and tmp-dir-argo injected volumes to 192/16 MiB. These limits use Kubernetes ephemeral-storage eviction, not XFS project hard quotas. Rendered tests cover both volumes.

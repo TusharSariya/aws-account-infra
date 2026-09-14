@@ -63,11 +63,11 @@ executor:
     requests:
       cpu: 100m
       memory: 256Mi
-      ephemeral-storage: 16Mi
+      ephemeral-storage: 192Mi
     limits:
       cpu: 500m
       memory: 512Mi
-      ephemeral-storage: 32Mi
+      ephemeral-storage: 256Mi
   securityContext:
     runAsNonRoot: true
     runAsUser: 8737

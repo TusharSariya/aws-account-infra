@@ -6,6 +6,8 @@ spec:
   entrypoint: operation
   serviceAccountName: ai-operator-job
   automountServiceAccountToken: true
+  # Pinned Argo stages its 159 MiB executor binary in this injected volume.
+  podSpecPatch: '{"volumes":[{"name":"var-run-argo","emptyDir":{"sizeLimit":"192Mi"}},{"name":"tmp-dir-argo","emptyDir":{"sizeLimit":"16Mi"}}]}'
   activeDeadlineSeconds: 86400
   ttlStrategy: {secondsAfterCompletion: 604800}
   podGC: {strategy: OnPodCompletion}
@@ -59,6 +61,8 @@ spec:
   entrypoint: run
   serviceAccountName: homelab-job
   automountServiceAccountToken: true
+  # Pinned Argo stages its 159 MiB executor binary in this injected volume.
+  podSpecPatch: '{"volumes":[{"name":"var-run-argo","emptyDir":{"sizeLimit":"192Mi"}},{"name":"tmp-dir-argo","emptyDir":{"sizeLimit":"16Mi"}}]}'
   activeDeadlineSeconds: 300
   ttlStrategy: {secondsAfterCompletion: 604800}
   podGC: {strategy: OnPodCompletion}
