@@ -4,7 +4,26 @@ on:
     paths:
       - 'live/kubernetes/**'
       - 'charts/**'
-      - 'apps/containers/odysseus/**'
+      - 'apps/containers/**'
+      - 'apps/platform/lifecycle/**'
+      - 'apps/platform/jobs/**'
+      - 'apps/platform/recovery/**'
+      - 'scripts/ai-data-backup.py'
+      - 'scripts/lifecycle_session.py'
+      - 'scripts/homelab-lifecycle-maintenance.py'
+      - '.github/workflows/homelab-lifecycle-maintenance.yml'
+      - 'scripts/issue-lifecycle-credentials.py'
+      - 'scripts/verify-ai-images.py'
+      - 'scripts/ai-control.py'
+      - 'scripts/argo-client-token.py'
+      - 'scripts/odysseus-source-tests.py'
+      - 'scripts/odysseus-document-acceptance.py'
+      - 'scripts/odysseus-scheduler-acceptance.py'
+      - 'scripts/homelab-lifecycle-validate.py'
+      - 'scripts/ollama-image-*.py'
+      - 'scripts/ollama-image-*.sh'
+      - 'scripts/tests/test_lifecycle_*.py'
+      - 'scripts/tests/test_odysseus_*.py'
       - 'scripts/odysseus-image-context.py'
       - 'config/environments/kubernetes/**'
       - 'scripts/homelab-apps.py'
@@ -38,8 +57,14 @@ jobs:
       - name: Verify charts and application contracts
         run: |
           python3 scripts/homelab-apps.py setup
+          source=$(python3 scripts/odysseus-image-context.py "$RUNNER_TEMP/document-source")
+          python3 scripts/odysseus-document-acceptance.py "$source"
+          python3 scripts/odysseus-scheduler-acceptance.py "$source"
           uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p test_homelab_apps.py
           uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p "test_ai_*.py"
+          uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p "test_lifecycle_*.py"
+          uv run --with httpx==0.28.1 --with requests==2.34.2 python -m unittest discover -s scripts/tests -p "test_odysseus_*.py"
+          docker run --rm --user 1000:1000 --cap-drop ALL --security-opt no-new-privileges -v "$PWD:/repo:ro" -w /repo python:3.14-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6 python -m unittest discover -s scripts/tests -p test_odysseus_processes.py
           python3 -m unittest discover -s scripts/tests -p test_deploy_units.py
           python3 -m unittest discover -s scripts/tests -p test_odysseus_backup.py
           bash -n scripts/odysseus-backup.sh

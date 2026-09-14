@@ -4,6 +4,7 @@ import argparse
 import base64
 import hashlib
 import ipaddress
+import importlib.util
 import json
 import os
 import re
@@ -18,19 +19,22 @@ sys.path.insert(0, str(ROOT / 'apps/platform/storage'))
 from workload_state import is_terminated
 TF = ROOT / 'live/kubernetes/homelab'
 CONFIG = ROOT / 'config/environments/kubernetes/homelab'
-SECRET_NAMES = ('TS_OPERATOR_CLIENT_ID', 'TS_OPERATOR_CLIENT_SECRET', 'PIHOLE_ADMIN_PASSWORD', 'GHCR_READ_USER', 'GHCR_READ_TOKEN', 'ODYSSEUS_ADMIN_PASSWORD', 'SEARXNG_SECRET', 'TALOS_SECRETS_B64')
+SECRET_NAMES = ('TS_OPERATOR_CLIENT_ID', 'TS_OPERATOR_CLIENT_SECRET', 'PIHOLE_ADMIN_PASSWORD', 'GHCR_READ_USER', 'GHCR_READ_TOKEN', 'ODYSSEUS_ADMIN_PASSWORD', 'SEARXNG_SECRET', 'AI_LIFECYCLE_CREDENTIALS_B64', 'TALOS_SECRETS_B64')
 class AppError(ValueError):
     """Only deliberately authored, secret-free diagnostics."""
 
 
-ADDRESSES = {'helm_release.tailscale_operator', 'helm_release.pihole', 'helm_release.ollama', 'helm_release.odysseus', 'helm_release.capacity', 'helm_release.ai'}
+ADDRESSES = {'helm_release.tailscale_operator', 'helm_release.pihole', 'helm_release.ollama', 'helm_release.odysseus', 'helm_release.capacity', 'helm_release.ai', 'helm_release.lifecycle', 'helm_release.argo', 'helm_release.jobs'}
 
 
-def run(command, data=None):
-    env = {k: v for k, v in os.environ.items() if k not in SECRET_NAMES}
+def run(command, data=None, *, timeout=2400):
+    env = {k: v for k, v in os.environ.items() if k not in SECRET_NAMES and k not in ('GH_TOKEN', 'GITHUB_TOKEN')}
     # Allow the operator (600s), dependent releases (900s), and cleanup/state writes.
     # Killing tofu at the Helm deadline leaves pending releases and a stale lock.
-    result = subprocess.run(list(map(str, command)), input=data, capture_output=True, env=env, timeout=2400)
+    try:
+        result = subprocess.run(list(map(str, command)), input=data, capture_output=True, env=env, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        raise AppError("Private command timed out; diagnostics suppressed") from None
     if result.returncode:
         diagnostic = (result.stderr or b'').decode(errors='replace').lower()
         markers = {'openapi': 'schema-discovery', 'timeout': 'timeout', 'deadline exceeded': 'deadline',
@@ -78,14 +82,31 @@ def credentials():
         raise AppError('Odysseus password must be 20 to 72 UTF-8 bytes')
     if len(values['SEARXNG_SECRET']) < 32:
         raise AppError('SearxNG secret must contain at least 32 characters')
+    lifecycle_credentials()
     return values
 
 
-def tailnet_ip(hostname):
-    if hostname not in ('pve.tail2f646b.ts.net', 'pihole-admin.tail2f646b.ts.net', 'pihole-dns.tail2f646b.ts.net', 'odysseus.tail2f646b.ts.net', 'ollama.tail2f646b.ts.net'):
+def lifecycle_credentials():
+    try:
+        values = json.loads(base64.b64decode(os.environ.get("AI_LIFECYCLE_CREDENTIALS_B64", ""), validate=True))
+        if (set(values) != {"operator", "odysseus", "ollama", "model-user", "model-workspace"}
+                or any(not isinstance(value, str) or not re.fullmatch(r"[A-Za-z0-9_-]{43}", value) for value in values.values())
+                or len(set(values.values())) != 5):
+            raise ValueError()
+        return values
+    except (ValueError, TypeError):
+        raise AppError("Five independent 256-bit lifecycle credentials are required") from None
+
+
+def tailnet_ip(hostname, *, deadline=None):
+    if hostname not in ('pve.tail2f646b.ts.net', 'pihole-admin.tail2f646b.ts.net', 'pihole-dns.tail2f646b.ts.net', 'odysseus.tail2f646b.ts.net', 'ollama.tail2f646b.ts.net', 'ai-lifecycle.tail2f646b.ts.net', 'argo.tail2f646b.ts.net'):
         raise AppError('Unexpected private HTTPS hostname')
     for attempt in range(12):
-        status = json.loads(run(['tailscale', 'status', '--json']))
+        remaining = None if deadline is None else deadline - time.monotonic()
+        if remaining is not None and remaining <= 0:
+            raise AppError('Private peer discovery deadline exceeded')
+        options = {} if remaining is None else {'timeout': min(5, remaining)}
+        status = json.loads(run(['tailscale', 'status', '--json'], **options))
         peers = list((status.get('Peer') or {}).values()) + [status.get('Self') or {}]
         matches = [peer for peer in peers if peer.get('DNSName', '').rstrip('.').lower() == hostname]
         addresses = [ipaddress.ip_address(value) for peer in matches for value in peer.get('TailscaleIPs', [])]
@@ -95,15 +116,15 @@ def tailnet_ip(hostname):
                 raise AppError('Expected exactly one private Tailscale IPv4 address for ' + hostname)
             return str(ipv4[0])
         if attempt < 11:
-            time.sleep(5)
+            time.sleep(5 if deadline is None else max(0, min(5, deadline - time.monotonic())))
     raise AppError('Tailscale peer not visible after waiting: ' + hostname)
 
 
-def tailnet_https(hostname, path, options):
-    address = tailnet_ip(hostname)
+def tailnet_https(hostname, path, options, data=None, *, address=None, timeout=None):
+    address = address or tailnet_ip(hostname)
     # Explicit address, original hostname/SNI and certificate verification intact.
     return run(['curl', '--silent', '--show-error', '--max-time', '30',
-                '--resolve', hostname + ':443:' + address, *options, 'https://' + hostname + path])
+                '--resolve', hostname + ':443:' + address, *options, 'https://' + hostname + path], data, **({} if timeout is None else {'timeout': timeout}))
 
 
 def reconcile_credential_object(kubectl, manifest):
@@ -117,7 +138,10 @@ def reconcile_credential_object(kubectl, manifest):
     allowed = {('Secret', 'operator-oauth', 'tailscale'),
                ('Secret', 'pihole-admin', 'homelab-services'),
                ('Secret', 'odysseus-bootstrap', 'homelab-models'),
-               ('Secret', 'ghcr-read', 'homelab-models'), ('Namespace', 'tailscale', None)}
+               ('Secret', 'ghcr-read', 'homelab-models'), ('Namespace', 'tailscale', None),
+               ('Secret', 'ai-lifecycle-credentials', 'homelab-platform'),
+               ('Secret', 'ai-runtime-credentials', 'homelab-models'),
+               ('Secret', 'ai-lifecycle-operator', 'homelab-jobs')}
     if manifest.get('apiVersion') != 'v1' or (kind, name, namespace) not in allowed:
         raise AppError('Unexpected credential object')
     path = '/api/v1/' + ('namespaces/' + namespace + '/secrets' if kind == 'Secret' else 'namespaces')
@@ -149,7 +173,10 @@ def bootstrap(kubectl):
     import yaml
     for manifest in yaml.safe_load_all((CONFIG / 'namespaces.yaml').read_text()):
         reconcile_credential_object(kubectl, manifest)
+    lifecycle = lifecycle_credentials()
     for namespace, name, data in [
+        ('homelab-platform', 'ai-lifecycle-credentials', {key: lifecycle[key] for key in ('operator', 'odysseus', 'ollama')}),
+        ('homelab-models', 'ai-runtime-credentials', {key: lifecycle[key] for key in ('odysseus', 'ollama', 'model-user', 'model-workspace')}),
         ('tailscale', 'operator-oauth', {'client_id': values['TS_OPERATOR_CLIENT_ID'], 'client_secret': values['TS_OPERATOR_CLIENT_SECRET']}),
         ('homelab-services', 'pihole-admin', {'password': values['PIHOLE_ADMIN_PASSWORD']}),
         ('homelab-models', 'odysseus-bootstrap', {'admin-password': values['ODYSSEUS_ADMIN_PASSWORD'], 'searxng-secret': values['SEARXNG_SECRET']}),
@@ -200,7 +227,9 @@ def guard_plan(plan):
 
 
 def check_secrets(data, private):
-    forbidden = [os.environ.get(name, '') for name in SECRET_NAMES[:-1] if name != 'GHCR_READ_USER']
+    forbidden = [os.environ.get(name, '') for name in (*SECRET_NAMES[:-1], 'GH_TOKEN', 'GITHUB_TOKEN') if name != 'GHCR_READ_USER']
+    if os.environ.get("AI_LIFECYCLE_CREDENTIALS_B64"):
+        forbidden.extend(lifecycle_credentials().values())
     # Every credential in kubeconfig must stay out of provider state/plan.
     import yaml
     kube = yaml.safe_load((private / 'kubeconfig').read_text())
@@ -224,6 +253,13 @@ def guard_images():
         raise AppError('Every workspace image must use a reviewed immutable SHA-256 digest')
     if not workspace['image'].startswith('ghcr.io/tusharsariyaorg/homelab-odysseus@sha256:'):
         raise AppError('Workspace image must use the private homelab package')
+    spec = importlib.util.spec_from_file_location('verified_ai_images', ROOT / 'scripts/verify-ai-images.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    try:
+        module.verify(ai['images'], remote=os.environ.get('GITHUB_ACTIONS') == 'true')
+    except module.ImageError as error:
+        raise AppError(str(error)) from None
 
 
 def execute(operation, private):
@@ -257,6 +293,10 @@ def execute(operation, private):
             except Exception:
                 print('Capacity release state unavailable', file=sys.stderr)
             raise
+        lifecycle = lifecycle_credentials()
+        reconcile_credential_object(Path.home() / '.cache/aws-account-infra/talos/kubectl-v1.36.3', {
+            'apiVersion': 'v1', 'kind': 'Secret', 'metadata': {'name': 'ai-lifecycle-operator', 'namespace': 'homelab-jobs'},
+            'type': 'Opaque', 'data': {'operator': base64.b64encode(lifecycle['operator'].encode()).decode()}})
         check_secrets(run(command + ['state', 'pull']), private)
         print('PASS: exact saved plan applied; application state excludes supplied credentials')
 
@@ -284,6 +324,33 @@ def verify_ai_off(kubectl):
     raise AppError('AI still has active or unverified Pods after shutdown deadline')
 
 
+def verify_lifecycle(kubectl):
+    """Read the authenticated controller without issuing Start or changing intent."""
+    token = lifecycle_credentials()['operator']
+    host = 'ai-lifecycle.tail2f646b.ts.net'
+    run([kubectl, '-n', 'homelab-platform', 'rollout', 'status', 'deployment/ai-lifecycle', '--timeout=300s'])
+    run([kubectl, '-n', 'homelab-platform', 'wait', 'ingress/ai-lifecycle',
+         '--for=jsonpath={.status.loadBalancer.ingress}', '--timeout=300s'])
+    if tailnet_https(host, '/status', ['-o', '/dev/null', '-w', '%{http_code}']).decode() != '401':
+        raise AppError('Lifecycle API must reject unauthenticated access')
+    # Credentials travel through curl stdin, never command arguments or logs.
+    status = json.loads(tailnet_https(host, '/status', ['--fail', '--config', '-'],
+        ('header = "Authorization: Bearer ' + token + '"\n').encode()))
+    if (status.get('desired') not in ('on', 'off') or status.get('observed') not in
+            ('Off', 'On', 'Starting/Pending', 'Draining', 'Stopping') or type(status.get('revision')) is not int):
+        raise AppError('Lifecycle Status is not verified')
+    if status['observed'] == 'Off':
+        verify_ai_off(kubectl)
+        print('PASS: AI intentionally off; CI did not start it')
+    else:
+        legacy = json.loads(run([kubectl, '-n', 'homelab-models', 'get', 'deployment',
+            'ollama', 'odysseus', 'chromadb', 'searxng', '-o', 'json']))
+        if len(legacy['items']) != 4 or any(item['spec'].get('replicas', 1) != 0 for item in legacy['items']):
+            raise AppError('Legacy AI writers must remain off')
+        print('PASS: lifecycle owns runtime intent; observed ' + status['observed'])
+    return status
+
+
 def endpoints(kubectl):
     run([kubectl, '-n', 'homelab-services', 'rollout', 'status', 'deployment/pihole', '--timeout=600s'])
     run([kubectl, '-n', 'tailscale', 'rollout', 'status', 'deployment/operator', '--timeout=600s'])
@@ -306,8 +373,7 @@ def endpoints(kubectl):
                            ['-o', '/dev/null', '-w', '%{http_code}']).decode()
     if status != '401':
         raise AppError('Pi-hole administration did not reject unauthenticated API access')
-    verify_ai_off(kubectl)
-    print('PASS: AI intentionally off; no startup requested by CI')
+    verify_lifecycle(kubectl)
     print(json.dumps({'dns_ip': ip, 'admin_url': url + '/admin/', 'status': 'DNS UDP/TCP and trusted HTTPS passed; client cutover remains explicit'}, indent=2))
 
 

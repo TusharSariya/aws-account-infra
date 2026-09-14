@@ -5,20 +5,19 @@ Its implementation does not imply that live model, browser or recovery acceptanc
 
 ## Deployment and access
 
-Two native Helm releases in `live/kubernetes/homelab` deploy four containers on
-`talos-worker-01`: Ollama, Odysseus, ChromaDB and SearxNG. The existing Tailscale
+The Kubernetes OpenTofu root publishes one approved four-container Pod for
+`talos-worker-01`: Ollama, Odysseus, ChromaDB and SearxNG. The lifecycle controller
+owns its runtime Deployment, defaulting to Off. See [lifecycle operations](homelab-lifecycle.md). The existing Tailscale
 operator provides private HTTPS. There is no public ingress or Funnel.
 
 | Endpoint | Purpose | Access |
 | --- | --- | --- |
 | `https://odysseus.tail2f646b.ts.net` | Chat, agents, documents, research and Cookbook | Tailscale plus Odysseus login |
-| `https://ollama.tail2f646b.ts.net` | Native Ollama `/api` and OpenAI-compatible `/v1` | Tailscale policy; no application API key |
-| `http://ollama:11434` | Internal workspace model backend | Kubernetes service |
+| `https://ollama.tail2f646b.ts.net` | Native Ollama `/api` and OpenAI-compatible `/v1` | Tailscale plus independently issued model-user Bearer token |
+| `http://127.0.0.1:11434` | Same-Pod workspace model backend | Instrumented workspace credential |
 
-The current tailnet allow-all policy allows all tailnet members to reach the
-model API, including model deletion. Scoped Tailscale policy remains an optional
-improvement previously deferred by the operator. Do not turn on Funnel for these
-services. SearxNG and ChromaDB have no tailnet ingress.
+Model API access requires its application credential in addition to private Tailscale access.
+Do not turn on Funnel. SearxNG and ChromaDB have no tailnet ingress.
 
 From a Tailscale-connected computer, open the workspace and log in as `admin`.
 The bootstrap password only seeds an empty database. Change an existing password
@@ -38,14 +37,17 @@ Pi-hole DNS to use the workspace's MagicDNS hostname.
 3. `odysseus-image` verifies the pinned upstream archive and builds only that
    source plus the explicit container packaging. The private GHCR package is
    `ghcr.io/tusharsariyaorg/homelab-odysseus`; CI checks its visibility. Pin the
-   resulting `@sha256:...` reference in `workspace-values.yaml` before apply.
+   resulting immutable references and CI artifact receipts in `ai-values.yaml` and
+   `ai-image-releases.json` before apply. Build Ollama first, then use its digest
+   in the workspace CLI input. Issue the separate lifecycle bundle as documented
+   in [lifecycle credentials](homelab-lifecycle.md).
 4. Review `tofu-plan` in the PR. The existing `apply` label authorizes CI deployment
    and its existing auto-merge flow. Do not perform a separate local apply.
    Credential inputs are checked before any deployment. Secrets are reconciled
    directly into Kubernetes, never supplied as Helm values or Terraform resources.
-5. CI waits for workloads and private trusted HTTPS, checks unauthenticated
-   workspace API rejection, and preserves Pi-hole DNS checks. Complete the model
-   and browser acceptance below after deployment.
+5. Routine CI verifies intentional Off without starting AI and preserves Pi-hole
+   DNS checks. The explicitly selected lifecycle maintenance gate exercises
+   runtime behavior separately; browser and benchmark evidence remains distinct.
 
 [GitHub documents classic PAT `read:packages` authentication](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry).
 The token owner needs package read access and SSO authorization where required.
@@ -73,23 +75,22 @@ service, not a hardened multi-tenant execution platform.
 
 | Component | CPU request / limit | RAM request / limit | Retained storage |
 | --- | --- | --- | --- |
-| Ollama | 8 / 36 | 32 / 64 GiB | 300 GiB models |
-| Odysseus | 1 / 4 | 2 / 8 GiB | 20 GiB workspace |
-| ChromaDB | 0.5 / 2 | 1 / 4 GiB | 10 GiB vectors |
-| SearxNG | 0.25 / 1 | 256 MiB / 1 GiB | Reconstructed config |
+| Ollama | 34 / 34 | 64 / 64 GiB | 300 GiB models |
+| Odysseus | 1 / 1 | 8 / 8 GiB | 20 GiB workspace |
+| ChromaDB | 0.5 / 0.5 | 4 / 4 GiB | 10 GiB vectors |
+| SearxNG | 0.25 / 0.25 | 1 / 1 GiB | Reconstructed config |
 
-The worker remains at 38 vCPUs. Ollama's 36-vCPU ceiling leaves two vCPUs of
-nominal headroom; CPU limits are shared scheduling ceilings, not exclusive core
-reservations. No VM resize or restart is required for this limit change.
+The worker remains at 38 vCPUs. The aggregate Pod reserves 35.75 CPU and 77 GiB;
+platform requests are separate. Insufficient resources leave the entire AI Pod
+Pending. Pi-hole stays independent. Use Stop AI before a large unrelated workload.
+Ollama permits one loaded model and one parallel inference request, a queue of 16,
+default 4096-token context and five-minute model keep-alive. Runtime idle shutdown
+requires 30 continuous verified minutes, independently of model unloading.
 
-Ollama permits one loaded model and one parallel inference request, with a bounded
-queue of 16, default 4096-token context and five-minute idle keep-alive. This does
-not serialize unrelated weather services. Stop/unload the model before starting a
-large weather workload. Individual API requests can override context/keep-alive;
-the container memory limit remains the final boundary. Large contexts increase RAM.
-The 330 GiB claim total fits the namespace's existing 800 GiB PVC budget. Local-path
-claim sizes reserve Kubernetes quota but do not enforce filesystem usage quotas;
-watch worker disk usage and leave free space for other services and restoration.
+The existing shared XFS disk enforces project hard limits on the three retained
+volumes. Declared limits permit overcommit and do not preallocate space. Administrative
+PVC quotas and actual filesystem/thin-pool capacity checks are separate. Temporary
+storage is bounded through kubelet eviction controls; those are not synchronous hard quotas.
 
 The worker's Ivy Bridge Xeons have AVX but no AVX2. A successful image build on a
 GitHub runner does not prove local binary compatibility. Test inference and ONNX
@@ -100,21 +101,12 @@ size is not model runtime RAM, and no large-model throughput is promised.
 
 Model names, weights and user choices are managed through Ollama/UI APIs, not
 Terraform. Deployment does not download weights or start model benchmarks.
-Odysseus's Cookbook Ollama client points at the internal Ollama service; select
-Ollama as the provider. Use these equivalent native API calls from a connected
-computer (stop on any error):
-
-```bash
-MODEL_API=https://ollama.tail2f646b.ts.net
-curl --fail --show-error "$MODEL_API/api/version"
-curl --fail --show-error "$MODEL_API/api/tags"
-# Small first: inspect the JSON stream for an error and final success status.
-curl --fail --show-error --no-buffer "$MODEL_API/api/pull" \
-  -d '{"model":"qwen3:0.6b","stream":true}'
-curl --fail --show-error "$MODEL_API/api/chat" \
-  -d '{"model":"qwen3:0.6b","messages":[{"role":"user","content":"Reply with the word ready."}],"stream":false,"options":{"num_ctx":4096,"num_predict":32}}'
-curl --fail --show-error "$MODEL_API/api/ps"
-```
+Start AI explicitly through the authenticated lifecycle API. Odysseus's Cookbook
+client uses the same-Pod authenticated gateway. External model clients must send
+`Authorization: Bearer <model-user credential>` on every model API call; read the
+credential from a private file or stdin, not a shell argument or checked-in config.
+The explicit maintenance workflow downloads `smollm2:135m` for bounded CPU inference
+and lifecycle verification. It does not replace the outstanding model benchmarks.
 
 Check the JSON `done` field and response, not only curl's exit status: streaming
 APIs can return an error inside an HTTP 200 stream. In the workspace, confirm the
@@ -130,129 +122,28 @@ model digest, quantization, context, RSS/container memory, prompt and generation
 token counts/durations, and tokens per second. Verify model switching unloads the
 previous model with `/api/ps`. Do not download both in parallel.
 
-```bash
-# Unload before a weather run (use the currently loaded model name).
-curl --fail --show-error "$MODEL_API/api/generate" \
-  -d '{"model":"qwen3.8:27b","keep_alive":0}'
-# Export inventory outside Git after changing the catalog.
-curl --fail --show-error "$MODEL_API/api/tags" > "$HOME/odysseus-model-inventory.json"
-# Intentional deletion of only a model you no longer need:
-# curl --fail --show-error -X DELETE "$MODEL_API/api/delete" -d '{"model":"qwen3:0.6b"}'
-```
-
 Downloaded models survive pod replacement. To add or remove models, use Cookbook
 or these APIs; no deployment PR is needed. The inventory contains actual names,
 digests, sizes and metadata. Registry tags can move: after a restore, compare the
 new digest to the saved one before calling the model equivalent. Exact long-term
 recovery of weights requires archiving the model blobs separately if upstream
-stops serving that digest. Model blobs are excluded from the default workspace
-backup to avoid repeatedly transferring hundreds of GiB.
+stops serving that digest. The application backup now includes model blobs along with workspace and vector data.
+Its initial isolated restore bound is 2 GiB; larger datasets fail and require a
+reviewed capacity/bound increase before the same full-volume rehearsal can run.
 
 ## Backup and recovery
 
-Etcd backup preserves Kubernetes objects, **not these PVC contents**. Workspace
-backups include the SQLite databases, uploads, settings, application encryption
-key, tools' persistent home directories, and ChromaDB files. Treat the complete
-archive as sensitive. PVC retention protects accidental Helm removal; it is not
-off-host recovery, redundancy, or protection from losing the worker's disk.
+Etcd backup preserves Kubernetes objects, not PVC contents. Use the reviewed
+[application backup and isolated restore workflow](homelab-lifecycle.md#data-and-recovery-boundaries).
+It waits for observed Off, mounts all three application volumes read-only, encrypts
+the capture before it reaches runner disk, and restores into an empty isolated Pod
+with no production mounts or network access. It checks every restored file hash,
+permissions and SQLite integrity. An external Start or command revision change
+invalidates the capture. It leaves AI off; no helper scales legacy Deployments.
 
-Take a backup before an upgrade and after valuable workspace changes. Scheduled
-workspace backups are a follow-up; the existing daily etcd job does not capture
-this service. Stop active research/agent work and avoid CI apply during capture.
-The following helper deliberately pauses Odysseus and ChromaDB, waits for their
-pods to terminate, mounts both volumes read-only, streams directly through age,
-and restores their prior replica counts on success or failure. A forced kill or
-lost administration machine cannot run a shell trap; manually restore both
-Deployments to their recorded replica counts if interrupted that way.
-
-```bash
-# Export the existing trusted kubeconfig path in your own terminal first.
-# This derives a PUBLIC encryption recipient; never display the private key.
-RECOVERY_RECIPIENT=$(age-keygen -y "$HOME/.config/aws-account-infra/recovery/etcd-age-key.txt")
-CAPTURE_DIR="$HOME/Backups/odysseus-$(date -u +%Y%m%dT%H%M%SZ)"
-bash scripts/odysseus-backup.sh "$RECOVERY_RECIPIENT" "$CAPTURE_DIR"
-```
-
-Verify the helper exited successfully and both services recovered. Upload only
-`workspace.tar.gz.age` using the existing administrator recovery access and the
-[manual encrypted backup procedure](../live/aws/staging/workloads/homelab-recovery/MANUAL-BACKUP.md).
-Use a unique `bootstrap/odysseus/<timestamp>/workspace.tar.gz.age` object key in
-`homelab-recovery-992382747916-us-east-1`. This prefix is durable; it does **not**
-currently implement rolling 30-day cleanup. Never put the only workspace recovery
-copy under an expiring prefix. Automated retention that preserves the latest good
-workspace backup is deferred with its scheduler.
-
-Record the exact object version ID, encrypted SHA-256, capture time and Git/image
-revision in an independently saved receipt. Download the exact version, compare
-the encrypted checksum, and perform the isolated restore below. An upload alone
-is not restore validation. Do not delete an older known-good backup before the
-replacement has been restored successfully.
-
-## Isolated restore rehearsal
-
-Use a fresh namespace and fresh claims; never extract over live volumes. This
-rehearsal has no Tailscale ingress, no Ollama deployment, and a NetworkPolicy that
-permits only same-namespace communication and DNS. That blocks restored scheduled
-work/integrations from contacting production or Internet destinations. Access the
-UI only through local `kubectl port-forward` and do not enable restored schedules.
-Ensure free worker disk capacity first. The helper commands below require Helm,
-Python with PyYAML (via uv), kubectl and age. Use the saved repository revision.
-
-```bash
-bash -s -- "$CAPTURE_DIR" <<'RESTORE'
-set -euo pipefail
-CAPTURE_DIR=$1
-kubectl create namespace odysseus-restore
-kubectl apply -f config/environments/kubernetes/homelab/recovery/isolation.yaml
-helm template odysseus charts/homelab-odysseus -n odysseus-restore \
-  -f config/environments/kubernetes/homelab/workspace-values.yaml \
-  --set replicas=0 --set ingressEnabled=false | kubectl -n odysseus-restore apply -f -
-# Copy required Secrets directly between namespaces, without printing their data.
-for name in ghcr-read odysseus-bootstrap; do
-  kubectl -n homelab-models get secret "$name" -o json |
-    python3 -c 'import sys,json; d=json.load(sys.stdin); d["metadata"]={"name":d["metadata"]["name"],"namespace":"odysseus-restore"}; print(json.dumps(d))' |
-    kubectl -n odysseus-restore create -f -
-done
-# Reuse the bounded helper with writable mounts on the NEW namespace's claims.
-uv run --with PyYAML==6.0.3 python -c '
-import yaml,json
-p=yaml.safe_load(open("config/environments/kubernetes/homelab/recovery/snapshot-pod.yaml"))
-p["metadata"]["namespace"]="odysseus-restore"
-for v in p["spec"]["volumes"]:
-    if "persistentVolumeClaim" in v: v["persistentVolumeClaim"]["readOnly"]=False
-for v in p["spec"]["containers"][0]["volumeMounts"]: v.pop("readOnly",None)
-print(json.dumps(p))' | kubectl create -f -
-kubectl -n odysseus-restore wait --for=condition=Ready pod/odysseus-backup --timeout=300s
-# First list the decrypted archive and verify only expected relative paths.
-age -d -i "$HOME/.config/aws-account-infra/recovery/etcd-age-key.txt" \
-  "$CAPTURE_DIR/workspace.tar.gz.age" | tar -tzf -
-# Run with pipefail in a separate bash script so decryption failure stops recovery.
-set -o pipefail
-age -d -i "$HOME/.config/aws-account-infra/recovery/etcd-age-key.txt" \
-  "$CAPTURE_DIR/workspace.tar.gz.age" |
-  kubectl -n odysseus-restore exec -i odysseus-backup -- \
-    tar -xzf - -C /snapshot --no-same-owner workspace chromadb
-kubectl -n odysseus-restore delete pod odysseus-backup --wait=true
-kubectl -n odysseus-restore scale deployment/chromadb deployment/odysseus --replicas=1
-kubectl -n odysseus-restore rollout status deployment/chromadb --timeout=600s
-kubectl -n odysseus-restore rollout status deployment/odysseus --timeout=600s
-# Permit login cookies only on this isolated, localhost HTTP inspection path.
-kubectl -n odysseus-restore set env deployment/odysseus \
-  SECURE_COOKIES=false ALLOWED_ORIGINS=http://localhost:7000
-kubectl -n odysseus-restore rollout status deployment/odysseus --timeout=600s
-kubectl -n odysseus-restore port-forward service/odysseus 7000:7000
-RESTORE
-```
-
-The production configuration retains Secure cookies. The localhost HTTP-only
-inspection override above affects only the isolated Deployment; authentication
-remains enabled and localhost bypass remains disabled. Verify saved login, conversations, settings,
-uploads and vector collections against a prepared canary. New model inference and
-web search are intentionally unavailable in the isolated namespace. Record results,
-elapsed recovery time, and any missing data in the OpenSpec tasks. Keep the original
-encrypted backup. Explicitly remove the rehearsal namespace when finished; retained
-local PVs may need separately reviewed cleanup after confirming their claim namespace.
-
-A real recovery uses fresh production PVCs after infrastructure recovery, protected
-credentials restored/reissued, this data restore, then CI reconciliation. Re-pull
-models from the captured inventory and verify their digests and CPU smoke inference.
+The old manual replica-changing backup script and snapshot manifest are retired.
+The protected CI artifact expires after 90 days. Keep a verified encrypted copy in
+independent durable storage using the existing recovery procedure, and retain the
+private age identity separately. A successful isolated file/database restore does
+not prove browser behavior, model throughput, or complete host-loss recovery.
+Configuration rollback cannot recover data erased by the one-time authorized reset.

@@ -19,6 +19,12 @@ inputs:
   secrets-b64:
     description: Existing Talos identity
     required: true
+  lifecycle-confirm:
+    description: Explicit lifecycle and isolated restore maintenance selection
+    default: ''
+  lifecycle-credentials-b64:
+    description: Lifecycle acceptance credential bundle
+    default: ''
 runs:
   using: composite
   steps:
@@ -28,7 +34,7 @@ runs:
       env:
         OPERATION: ${{ inputs.operation }}
       run: |
-        [[ "$OPERATION" == network || "$OPERATION" == pvc || "$OPERATION" == capacity || "$OPERATION" == capacity-credentials || "$OPERATION" == ai-migrate || "$OPERATION" == worker-reboot || "$OPERATION" == quota-prepare || "$OPERATION" == quota-verify ]]
+        [[ "$OPERATION" == lifecycle-maintenance || "$OPERATION" == lifecycle || "$OPERATION" == network || "$OPERATION" == pvc || "$OPERATION" == capacity || "$OPERATION" == capacity-credentials || "$OPERATION" == ai-migrate || "$OPERATION" == worker-reboot || "$OPERATION" == quota-prepare || "$OPERATION" == quota-verify ]]
         umask 077
         echo "path=$(mktemp -d "$RUNNER_TEMP/talos-check.XXXXXXXX")" >> "$GITHUB_OUTPUT"
     - name: Set up verified tools
@@ -50,6 +56,9 @@ runs:
       env:
         PRIVATE: ${{ steps.private.outputs.path }}
         OPERATION: ${{ inputs.operation }}
+        AI_MAINTENANCE_CONFIRM: ${{ inputs.lifecycle-confirm }}
+        AI_BACKUP_OUTPUT: ${{ runner.temp }}/ai-data-recovery
+        AI_LIFECYCLE_CREDENTIALS_B64: ${{ inputs.lifecycle-credentials-b64 }}
         CAPACITY_CLIENT_CREDENTIALS_B64: ${{ inputs.capacity-credentials-b64 }}
         AI_RESET_CONFIRM: ${{ inputs.reset-confirm }}
         QUOTA_ACCEPTANCE_CONFIRM: ${{ inputs.quota-confirm }}
