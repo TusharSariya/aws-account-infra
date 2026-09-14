@@ -2,11 +2,13 @@
 """Explicit protected CI behavior rehearsal; no migration reset or host edits."""
 from concurrent.futures import ThreadPoolExecutor
 import importlib.util
+import base64
 import json
 import os
 import signal
 from pathlib import Path
 import time
+import tempfile
 import uuid
 
 from lifecycle_session import Maintenance, KUBECTL, ROOT, apps
@@ -169,6 +171,26 @@ def persistence(session):
     session.wait(lambda s: s['observed'] == 'Off', 'three-volume persistence proof complete')
 
 
+def workspace_login(session, cookie):
+    bootstrap = session.get('homelab-models', 'secret', 'odysseus-bootstrap')
+    password = base64.b64decode(bootstrap['data']['admin-password'], validate=True).decode()
+    response = apps.tailnet_https('odysseus.tail2f646b.ts.net', '/api/auth/login',
+        ['--fail-with-body', '--cookie-jar', str(cookie), '--header', 'Content-Type: application/json',
+         '--data-binary', '@-'], json.dumps({'username': 'admin', 'password': password}).encode())
+    if not json.loads(response).get('ok'):
+        raise apps.AppError('Workspace authentication failed')
+    cookie.chmod(0o600)
+
+
+def workspace_idle_probes(cookie):
+    # Match authenticated idle Cookbook reads and browser heartbeat, without user work.
+    for path in ('/api/cookbook/state', '/api/cookbook/gpus', '/api/health'):
+        apps.tailnet_https('odysseus.tail2f646b.ts.net', path,
+            ['--fail-with-body', '--cookie', str(cookie)])
+    apps.tailnet_https('odysseus.tail2f646b.ts.net', '/api/activity/heartbeat',
+        ['--fail-with-body', '--cookie', str(cookie), '--request', 'POST'])
+
+
 def recovery_idle(session):
     revision = session.off()
     session.kube('-n', 'homelab-platform', 'rollout', 'restart', 'deployment/ai-lifecycle')
@@ -179,15 +201,18 @@ def recovery_idle(session):
     session.wait(lambda s: not s['blocking_reasons'], 'storage recovery has five healthy minutes', timeout=420)
     session.command('start')
     session.wait(lambda s: s['admission'] and s['active_work'] == 0, 'verified idle interval begins')
-    start = time.monotonic()
-    while time.monotonic() - start < 1780:
-        state = session.status()
-        if state['observed'] != 'On' or state['active_work'] or not state['admission']:
-            raise apps.AppError('Continuous verified idle interval was interrupted')
-        # Health and idle status observations must not keep the service running.
-        time.sleep(10)
+    with tempfile.TemporaryDirectory(prefix='ai-idle-browser-') as private:
+        cookie = Path(private) / 'session.cookies'
+        workspace_login(session, cookie)
+        start = time.monotonic()
+        while time.monotonic() - start < 1780:
+            state = session.status()
+            if state['observed'] != 'On' or state['active_work'] or not state['admission']:
+                raise apps.AppError('Continuous verified idle interval was interrupted')
+            workspace_idle_probes(cookie)
+            time.sleep(10)
     session.wait(lambda s: s['observed'] == 'Off' and s['reason'] == 'verified idle',
-                 '30 continuous idle minutes cause normal shutdown', timeout=180)
+                 '30 continuous idle minutes with authenticated browser probes cause normal shutdown', timeout=180)
     dns()
 
 
