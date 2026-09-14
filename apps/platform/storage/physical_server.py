@@ -6,6 +6,24 @@ from pathlib import Path
 import ssl
 
 
+class CapacityServer(ThreadingHTTPServer):
+    """Accept TCP promptly; authenticate with a deadline inside each worker."""
+    daemon_threads = True
+
+    def __init__(self, address, handler, context):
+        self.context = context
+        super().__init__(address, handler)
+
+    def process_request_thread(self, request, client_address):
+        try:
+            request.settimeout(5)
+            request = self.context.wrap_socket(request, server_side=True, do_handshake_on_connect=False)
+            request.do_handshake()
+            super().process_request_thread(request, client_address)
+        except (OSError, ssl.SSLError):
+            request.close()
+
+
 def main():
     config = json.loads(Path('/etc/homelab-capacity/config.json').read_text())
 
@@ -38,8 +56,7 @@ def main():
     address = ipaddress.ip_address(config['bind'])
     if address not in ipaddress.ip_network('100.64.0.0/10'):
         raise ValueError('Exporter bind must be a private Tailscale IPv4 address')
-    server = ThreadingHTTPServer((str(address), 9443), Handler)
-    server.socket = context.wrap_socket(server.socket, server_side=True)
+    server = CapacityServer((str(address), 9443), Handler, context)
     server.serve_forever()
 
 

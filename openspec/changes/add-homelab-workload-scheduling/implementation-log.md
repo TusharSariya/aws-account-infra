@@ -28,3 +28,10 @@ Storage review/CI rollout must precede AI packaging and lifecycle/Argo rollout. 
 [Run 34806235563](https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/34806235563) failed the isolated namespace test because the Ubuntu runner rejected unprivileged uid_map creation, before the quota-bypass assertion ran. The test now creates the user namespace as a host administrator, matching a container runtime, then tests the stronger namespace-root file owner. It also tests rejection of clearing directory project inheritance. No runner hardening is disabled.
 
 Read-only Proxmox inspection verified VM 102 scsi1 maps to the existing 1200 GiB `vm-102-disk-2`, whose only partition is named `u-local-path-provisioner` at sector 2048 (512-byte sectors). A read-only filesystem probe at that offset returned XFS UUID `86f3ada1-17e4-4f74-9d73-a18c1774cc31`; that expected UUID and observed `pve/data` pool are now pinned. The helper must still independently match the mounted guest filesystem before creating directories. Collector transport credentials and live activation remain pending.
+
+### Review follow-up
+
+- Run 34806516380 passed isolated quota acceptance; plan run 34806516203 and repository checks passed. Live network/PVC acceptance failed again and the apply gate stayed closed. No deployment was attempted.
+- Standards review found no documented standards violation. Specification review identified missing live enrollment/host CI acceptance (still unchecked), missing collector readiness, TLS handshake blocking and unsupported DNS endpoints.
+- Added fresh-sample readiness after successful publication, rejected hostname URLs before opening credentials/network, and moved bounded TLS handshakes into request threads. A real TLS concurrency regression test passes alongside collector freshness checks.
+- Added narrowly allowlisted acceptance check/line diagnostics across the existing private-output boundary to locate the live failures without emitting command output or credentials.

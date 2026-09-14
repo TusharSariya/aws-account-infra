@@ -26,7 +26,7 @@ The collector must observe both live thin-pool data and metadata percentages. Pr
 
 The repository-managed recipe is `scripts/install-homelab-capacity.sh`. It installs a root-only, fixed-command sampler timer and a separate unprivileged HTTPS exporter. The exporter has no capabilities, cannot execute the sampler or write its snapshot, and serves only GET `/capacity`. The timer samples every 30 seconds. Failures replace the snapshot with unhealthy evidence. The exporter preserves the original sample timestamp, so a failed timer cannot create fresh healthy evidence.
 
-Provision a dedicated CA and client identity independently of Proxmox deploy tokens, the Talos identity and application credentials. Keep its CA signing key offline. The host server certificate must include its configured private IP/hostname in SAN and serverAuth usage. Issue the collector certificate with clientAuth usage and a bounded validity period. Keep private keys out of Git, OpenTofu values/state, plans, logs and images. Use a dedicated client CA so unrelated service certificates cannot authenticate.
+Provision a dedicated CA and client identity independently of Proxmox deploy tokens, the Talos identity and application credentials. Keep its CA signing key offline. The host server certificate must include its configured numeric private IPv4 address in SAN and serverAuth usage. Issue the collector certificate with clientAuth usage and a bounded validity period. Keep private keys out of Git, OpenTofu values/state, plans, logs and images. Use a dedicated client CA so unrelated service certificates cannot authenticate.
 
 The host installer expects a protected directory containing:
 
@@ -38,7 +38,7 @@ Run the recipe from a reviewed checkout through an explicitly authorized host se
 
 The physical collector requires a separately reconciled Kubernetes Secret named `physical-capacity-client` in `homelab-platform`, with keys `ca.crt`, `tls.crt`, and `tls.key`. This Secret is mounted only by the physical collector. Its transport must be reachable from the Pod network; a private Tailscale address is not automatically routable from every Kubernetes Pod. Verify routing and mTLS from the collector path before activation. No routing assumption counts as acceptance evidence.
 
-Pin the trusted worker XFS UUID from Talos discovery and the actual physical pool identity in `config/environments/kubernetes/homelab/capacity-values.yaml`. Configure the HTTPS endpoint and its exact private IPv4 `/32` egress rule. The helper does not automatically trust an observed UUID. Set `enabled: true` only after these prerequisites have passed explicit CI acceptance.
+Pin the trusted worker XFS UUID from Talos discovery and the actual physical pool identity in `config/environments/kubernetes/homelab/capacity-values.yaml`. Configure the numeric IPv4 HTTPS endpoint (hostnames are rejected because collector egress deliberately excludes DNS) and its exact private IPv4 `/32` egress rule. The helper does not automatically trust an observed UUID. Set `enabled: true` only after these prerequisites have passed explicit CI acceptance.
 
 Rotate the dedicated client identity by reconciling the Secret and restarting only the physical collector. For CA rotation, temporarily trust both dedicated CAs, replace the leaf certificates and then remove the old CA. Loss of credentials must produce missing/unhealthy evidence and blocked AI admission, never an authentication bypass.
 

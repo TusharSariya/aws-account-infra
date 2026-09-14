@@ -23,6 +23,19 @@ class CollectorTests(unittest.TestCase):
         create.assert_not_called()
         close.assert_called_once_with(10)
 
+    def test_readiness_rejects_stale_and_missing_measurements(self):
+        config = {'physicalPool': 'pve/data'}
+        sample = {name: {'identity': 'pve/data', 'healthy': True, 'measured_at': 100,
+                         'used_percent': 95} for name in ('pool.data', 'pool.metadata')}
+        self.assertTrue(collector.healthy_sample('physical', config, sample, 100))
+        self.assertFalse(collector.healthy_sample('physical', config, sample, 191))
+        self.assertFalse(collector.healthy_sample('physical', config, {}, 100))
+
+    def test_hostname_rejected_before_credentials_or_network(self):
+        with patch.object(collector.ssl, 'create_default_context') as context, self.assertRaises(ValueError):
+            collector.physical({'physicalURL': 'https://pve.example:9443/capacity'})
+        context.assert_not_called()
+
     @patch('collector.ssl.create_default_context')
     @patch('collector.urllib.request.build_opener')
     def test_physical_collector_preserves_source_timestamp(self, build, context):

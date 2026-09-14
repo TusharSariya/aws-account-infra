@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Repeatable networking acceptance. Requires KUBECONFIG; creates only an isolated
 # temporary namespace and removes it on exit. Does not install or change Cilium.
-set -euo pipefail
+set -Eeuo pipefail
+trap 'echo "ACCEPTANCE_DIAGNOSTIC: network line $LINENO" >&2' ERR
 : "${KUBECONFIG:?Set KUBECONFIG to the private homelab kubeconfig}"
 KUBECTL="${KUBECTL:-kubectl}"
 k() { "$KUBECTL" --request-timeout=30s "$@"; }

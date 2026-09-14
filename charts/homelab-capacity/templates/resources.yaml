@@ -67,6 +67,7 @@ spec:
       serviceAccountName: {{ $mode }}-capacity
       nodeSelector: {kubernetes.io/hostname: {{ $.Values.node }}}
       securityContext:
+        fsGroup: 1000
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: collector
@@ -83,10 +84,16 @@ spec:
               {{- if eq $mode "guest" }}
               add: [SYS_ADMIN, CHOWN, FOWNER, DAC_READ_SEARCH]
               {{- end }}
+          readinessProbe:
+            exec:
+              command: [python, -B, /code/collector.py, ready]
+            periodSeconds: 10
+            timeoutSeconds: 5
           resources:
             requests: {cpu: 25m, memory: 32Mi, ephemeral-storage: 16Mi}
             limits: {cpu: 100m, memory: 64Mi, ephemeral-storage: 32Mi}
           volumeMounts:
+            - {name: health, mountPath: /health}
             - {name: code, mountPath: /code, readOnly: true}
             - {name: config, mountPath: /config, readOnly: true}
             {{- if eq $mode "guest" }}
@@ -95,6 +102,8 @@ spec:
             - {name: credentials, mountPath: /physical-credentials, readOnly: true}
             {{- end }}
       volumes:
+        - name: health
+          emptyDir: {medium: Memory, sizeLimit: 1Mi}
         - name: code
           configMap: {name: capacity-code}
         - name: config

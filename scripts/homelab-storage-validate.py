@@ -5,6 +5,8 @@ import os
 import subprocess
 import time
 import uuid
+import traceback
+import sys
 
 K = os.environ.get('KUBECTL', 'kubectl')
 TC = os.environ.get('TALOSCTL', 'talosctl')
@@ -124,4 +126,10 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except Exception as error:
+        for frame in traceback.extract_tb(error.__traceback__):
+            if frame.filename == __file__:
+                print('ACCEPTANCE_DIAGNOSTIC: storage line ' + str(frame.lineno), file=sys.stderr)
+        sys.exit(1)

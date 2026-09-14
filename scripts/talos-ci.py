@@ -156,6 +156,12 @@ def run_private(command, env):
     result = subprocess.run(list(map(str, command)), env=env,
                             capture_output=True, text=True, timeout=900)
     if result.returncode:
+        # Only fixed check identifiers and line numbers cross the private boundary.
+        # Never forward command output, exception text, resource YAML or credentials.
+        import re
+        for line in result.stderr.splitlines():
+            if re.fullmatch(r'ACCEPTANCE_DIAGNOSTIC: (network|readiness|storage) line [0-9]{1,4}', line):
+                print(line, file=sys.stderr)
         raise StageError('Private command failed: ' + Path(str(command[0])).name
                          + '; exit ' + str(result.returncode) + '; output suppressed')
     return result.stdout

@@ -7,6 +7,9 @@ import time
 import urllib.request
 import uuid
 import fcntl
+import ipaddress
+import sys
+from capacity import CapacityGate
 
 from xfs import assign_empty_directory, get_quota, open_mount, open_project, set_limit
 
@@ -59,14 +62,17 @@ def guest(config):
 
 
 def physical(config):
+    from urllib.parse import urlsplit
+    parsed = urlsplit(config['physicalURL'])
+    address = ipaddress.IPv4Address(parsed.hostname)
+    if (str(address) != parsed.hostname or parsed.scheme != 'https' or parsed.username
+            or parsed.password or parsed.port != 9443 or parsed.path != '/capacity'
+            or parsed.query or parsed.fragment):
+        raise ValueError('Pinned numeric IPv4 HTTPS capacity URL required')
     # This dedicated CA and client key are mounted only in this collector.
     context = ssl.create_default_context(cafile='/physical-credentials/ca.crt')
     context.minimum_version = ssl.TLSVersion.TLSv1_3
     context.load_cert_chain('/physical-credentials/tls.crt', '/physical-credentials/tls.key')
-    from urllib.parse import urlsplit
-    parsed = urlsplit(config['physicalURL'])
-    if parsed.scheme != 'https' or parsed.username or parsed.password or parsed.path != '/capacity':
-        raise ValueError('Explicit authenticated HTTPS capacity URL required')
     # Redirects are prohibited: the client certificate must stay on this host.
     class NoRedirect(urllib.request.HTTPRedirectHandler):
         def redirect_request(self, *args, **kwargs):
@@ -95,9 +101,26 @@ def publish(mode, sample):
         response.read()
 
 
+def healthy_sample(mode, config, sample, now):
+    expected = ({**{name: str(project) for name, (_, project, _) in PROJECTS.items()},
+                 "filesystem.bytes": config["filesystemUUID"],
+                 "filesystem.inodes": config["filesystemUUID"]} if mode == "guest" else
+                {name: config["physicalPool"] for name in ("pool.data", "pool.metadata")})
+    # Readiness proves valid telemetry, even when it correctly reports pressure.
+    gate = CapacityGate(expected)
+    result = gate.evaluate(sample, wall_time=now, monotonic_time=0)
+    return all(reason.endswith(": critical capacity") or
+               reason == "awaiting five continuous healthy minutes below 80 percent"
+               for reason in result.reasons)
+
+
 def main():
     config = json.loads(Path('/config/config.json').read_text())
     mode = os.environ['COLLECTOR_MODE']
+    readiness = Path('/health/sample.json')
+    if sys.argv[1:] == ['ready']:
+        sample = json.loads(readiness.read_text())
+        sys.exit(0 if healthy_sample(mode, config, sample, time.time()) else 1)
     collect = {'guest': guest, 'physical': physical}[mode]
     while True:
         start = time.monotonic()
@@ -108,7 +131,9 @@ def main():
             print(mode + ' capacity unavailable: ' + type(error).__name__, flush=True)
         try:
             publish(mode, sample)
+            readiness.write_text(json.dumps(sample, allow_nan=False))
         except Exception as error:
+            readiness.unlink(missing_ok=True)
             print(mode + ' capacity publication failed: ' + type(error).__name__, flush=True)
         time.sleep(max(0, 30 - (time.monotonic() - start)))
 
