@@ -176,7 +176,7 @@ jobs:
 
   lifecycle-maintenance:
     needs: [detect, apply, acceptance]
-    if: always() && needs.detect.result == 'success' && needs.apply.result == 'success' && needs.acceptance.result == 'success' && contains(github.event.pull_request.labels.*.name, 'lifecycle-maintenance')
+    if: ${{ !cancelled() && needs.detect.result == 'success' && needs.apply.result == 'success' && needs.acceptance.result == 'success' && contains(github.event.pull_request.labels.*.name, 'lifecycle-maintenance') }}
     uses: ./.github/workflows/homelab-lifecycle-maintenance.yml
     with:
       confirm: verify-ai-lifecycle-and-restore

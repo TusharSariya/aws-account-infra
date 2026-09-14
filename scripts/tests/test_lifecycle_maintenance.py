@@ -28,6 +28,26 @@ class MaintenanceTests(unittest.TestCase):
                 self.assertEqual(json.loads(arguments[3])['password'], 'disposable-test-password')
                 self.assertEqual(cookie.stat().st_mode & 0o777, 0o600)
 
+    def test_graceful_stop_requires_observed_active_drain(self):
+        future, session = Mock(), Mock()
+        future.done.return_value = True
+        with self.assertRaisesRegex(maintenance.apps.AppError, 'still-running'):
+            maintenance.stop_running(session, future)
+        session.command.assert_not_called()
+        future.done.return_value = False
+        for state in ({'admission': False, 'observed': 'Off', 'active_work': 0},
+                      {'admission': False, 'observed': 'Stopping', 'active_work': 0},
+                      {'admission': False, 'observed': 'Draining', 'active_work': 0},
+                      {'admission': True, 'observed': 'Draining', 'active_work': 1}):
+            session.status.return_value = state
+            with self.assertRaisesRegex(maintenance.apps.AppError, 'observed active Draining'):
+                maintenance.stop_running(session, future)
+        session.status.return_value = {'admission': False, 'observed': 'Draining', 'active_work': 1}
+        maintenance.stop_running(session, future)
+        future.done.side_effect = [False, True]
+        with self.assertRaisesRegex(maintenance.apps.AppError, 'observed active Draining'):
+            maintenance.stop_running(session, future)
+
     def test_normal_completion_before_force_stop_is_not_interruption_proof(self):
         future = Mock()
         future.result.return_value = {'done': True, 'response': 'finished'}
@@ -49,7 +69,8 @@ class MaintenanceTests(unittest.TestCase):
         import yaml
         workflow = yaml.safe_load((ROOT / '.github/workflows/tofu-apply.yml').read_text())
         condition = workflow['jobs']['lifecycle-maintenance']['if']
-        self.assertIn('always()', condition)
+        self.assertIn('!cancelled()', condition)
+        self.assertNotIn('always()', condition)
         self.assertIn("needs.apply.result == 'success'", condition)
         self.assertIn("needs.acceptance.result == 'success'", condition)
         self.assertIn("'lifecycle-maintenance'", condition)

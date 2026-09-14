@@ -87,6 +87,15 @@ def force_running(session, future):
     return session.command('force-stop')
 
 
+def stop_running(session, future):
+    if future.done():
+        raise apps.AppError('Graceful Stop proof requires a still-running inference request')
+    session.command('stop')
+    state = session.status()
+    if (future.done() or state['admission'] or state['observed'] != 'Draining' or state['active_work'] <= 0):
+        raise apps.AppError('Graceful Stop proof requires observed active Draining work')
+
+
 def require_interrupted(future):
     try:
         result = future.result(timeout=60)
@@ -100,16 +109,33 @@ def models(session):
     rejected = apps.tailnet_https('ollama.tail2f646b.ts.net', '/api/tags', ['-o', '/dev/null', '-w', '%{http_code}']).decode()
     if rejected != '401':
         raise apps.AppError('Model API did not reject unauthenticated access')
+    # A cached pull may finish between status polls. Its durable completion
+    # ticket proves admission without deleting cached models to prolong the test.
+    def finished():
+        deployment = session.get('homelab-models', 'deployment', 'ai-runtime')
+        state = json.loads(deployment['metadata']['annotations']['homelab/lifecycle-state'])
+        return {ticket for ticket, value in state['finished'].items() if value['source'] == 'ollama'}
+    before = finished()
+    if model(session, '/api/pull', {'model': 'smollm2:135m', 'stream': False}).get('status') != 'success':
+        raise apps.AppError('Model pull did not finish')
+    session.wait(lambda _: bool(finished() - before), 'model pull admitted and retired (cache permitted)', timeout=30)
+    session.wait(lambda state: state['active_work'] == 0 and state['admission'], 'model preparation is fully retired')
     with ThreadPoolExecutor(max_workers=1) as pool:
-        pull = pool.submit(model, session, '/api/pull', {'model': 'smollm2:135m', 'stream': False})
-        session.wait(lambda s: s['active_work'] > 0, 'direct model download is tracked', timeout=60)
-        session.command('stop')
-        state = session.status()
-        if state['admission'] or state['observed'] not in ('Draining', 'Stopping', 'Off'):
-            raise apps.AppError('Stop did not close work admission')
-        if pull.result(timeout=600).get('status') != 'success':
-            raise apps.AppError('Previously admitted model download did not finish during drain')
-    session.wait(lambda s: s['observed'] == 'Off', 'normal Stop drains model download')
+        inference = pool.submit(model, session, '/api/generate', {'model': 'smollm2:135m',
+            'prompt': 'Explain each number in this list in detail: ' + ', '.join(map(str, range(4000))),
+            'stream': False, 'options': {'num_predict': 1024, 'num_ctx': 16384}})
+        session.wait(lambda state: state['active_work'] > 0, 'inference is active before graceful Stop', timeout=60)
+        stop_running(session, inference)
+        config = 'header = "Authorization: Bearer ' + session.tokens['model-user'] + '"\nheader = "Content-Type: application/json"\n'
+        rejected = apps.tailnet_https('ollama.tail2f646b.ts.net', '/api/generate',
+            ['--config', '-', '--data-binary', json.dumps({'model': 'smollm2:135m', 'prompt': 'New work'}),
+             '-o', '/dev/null', '-w', '%{http_code}'], config.encode()).decode()
+        if rejected != '503':
+            raise apps.AppError('Draining gateway did not reject new authenticated inference')
+        result = inference.result(timeout=600)
+        if result.get('done') is not True or result.get('eval_count', 0) <= 0:
+            raise apps.AppError('Previously admitted inference did not finish normally during drain')
+    session.wait(lambda state: state['observed'] == 'Off', 'normal Stop drains admitted inference to completion')
     session.command('start')
     session.wait(lambda s: s['admission'], 'AI restarted with healthy activity sources')
     result = model(session, '/api/generate', {'model': 'smollm2:135m', 'prompt': 'Say hello.',
