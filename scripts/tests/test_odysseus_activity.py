@@ -1,0 +1,220 @@
+import asyncio
+from pathlib import Path
+import sys
+import unittest
+import threading
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / 'apps/containers/odysseus'))
+from lifecycle.tracking import Tracker, CURRENT, task_factory, AdmissionClosed, scheduled, admit, install_thread_hooks
+from lifecycle.middleware import ActivityMiddleware
+
+
+class ActivityTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        self.calls = []
+        self.tracker = Tracker('unused', 'source', 'pod', transport=lambda op, data: self.calls.append((op, data)))
+
+    async def test_stream_and_detached_agent_survive_client_disconnect(self):
+        loop = asyncio.get_running_loop()
+        original = loop.get_task_factory()
+        loop.set_task_factory(task_factory)
+        self.addCleanup(loop.set_task_factory, original)
+        release = asyncio.Event()
+        detached = []
+        async def agent():
+            await release.wait()
+        async def app(scope, receive, send):
+            await send({'type': 'http.response.start', 'status': 200})
+            detached.append(asyncio.create_task(agent()))
+            await send({'type': 'http.response.body', 'body': b'first', 'more_body': True})
+            raise asyncio.CancelledError()
+        async def send(message):
+            if message['type'] == 'http.response.body':
+                self.assertTrue(self.tracker.tickets)
+        with self.assertRaises(asyncio.CancelledError):
+            await ActivityMiddleware(app, self.tracker)({'type': 'http', 'path': '/api/chat', 'method': 'POST'}, None, send)
+        self.tracker.report()
+        self.assertNotIn('finish', [op for op, _ in self.calls])
+        release.set()
+        await detached[0]
+        await asyncio.sleep(0)
+        self.tracker.report()
+        self.assertFalse(self.tracker.tickets)
+
+    async def test_task_cancelled_before_first_instruction_releases_reference(self):
+        loop = asyncio.get_running_loop()
+        original = loop.get_task_factory()
+        loop.set_task_factory(task_factory)
+        self.addCleanup(loop.set_task_factory, original)
+        work = self.tracker.begin()
+        token = CURRENT.set(work)
+        try:
+            task = asyncio.create_task(asyncio.sleep(100))
+        finally:
+            CURRENT.reset(token)
+        task.cancel()
+        with self.assertRaises(asyncio.CancelledError):
+            await task
+        work.release()
+        self.tracker.report()
+        self.assertFalse(self.tracker.tickets)
+
+    async def test_passive_browser_heartbeat_does_not_admit_work(self):
+        async def app(*args):
+            return 'passive'
+        result = await ActivityMiddleware(app, self.tracker)(
+            {'type': 'http', 'path': '/api/activity/heartbeat', 'method': 'POST'}, None, None)
+        self.assertEqual(result, 'passive')
+        self.assertFalse(self.calls)
+
+    async def test_idle_cookbook_reads_are_passive_but_mutations_require_admission(self):
+        async def app(*args):
+            return 'read'
+        middleware = ActivityMiddleware(app, self.tracker)
+        self.tracker.transport = lambda *args: (_ for _ in ()).throw(AdmissionClosed())
+        messages = []
+        async def send(message):
+            messages.append(message)
+        for path in ('/api/cookbook/state', '/api/cookbook/gpus'):
+            for method in ('GET', 'HEAD'):
+                self.assertEqual(await middleware({'type': 'http', 'path': path, 'method': method}, None, send), 'read')
+            await middleware({'type': 'http', 'path': path, 'method': 'POST'}, None, send)
+        for path in ('/api/shell/exec', '/api/cookbook/tasks/status'):
+            await middleware({'type': 'http', 'path': path, 'method': 'POST'}, None, send)
+        self.assertEqual([m['status'] for m in messages if m['type'] == 'http.response.start'], [503] * 4)
+
+    async def test_scheduled_execution_requires_fresh_root_admission(self):
+        work = self.tracker.begin()
+        token = CURRENT.set(work)
+        self.tracker.transport = lambda *args: (_ for _ in ()).throw(AdmissionClosed())
+        @scheduled(self.tracker)
+        async def job():
+            self.fail('draining admitted a new scheduled execution')
+        try:
+            with self.assertRaises(AdmissionClosed):
+                await job()
+        finally:
+            CURRENT.reset(token)
+            work.release()
+
+    async def test_disconnect_during_admission_retires_late_acknowledgement(self):
+        entered, release = threading.Event(), threading.Event()
+        def transport(operation, payload):
+            if operation == 'begin':
+                entered.set()
+                release.wait(2)
+        self.tracker.transport = transport
+        task = asyncio.create_task(admit(self.tracker))
+        while not entered.is_set():
+            await asyncio.sleep(0.001)
+        task.cancel()
+        with self.assertRaises(asyncio.CancelledError):
+            await task
+        release.set()
+        for _ in range(100):
+            if self.tracker.tickets and all(value == 0 for value in self.tracker.tickets.values()):
+                break
+            await asyncio.sleep(0.001)
+        self.tracker.report()
+        self.assertFalse(self.tracker.tickets)
+
+
+class ThreadActivityTests(unittest.TestCase):
+    def test_idle_pool_threads_are_excluded_but_submitted_work_is_retained(self):
+        from concurrent.futures import ThreadPoolExecutor
+        tracker = Tracker('unused', 'source', 'pod', transport=lambda *args: {})
+        original_submit, original_start = install_thread_hooks()
+        self.addCleanup(setattr, ThreadPoolExecutor, 'submit', original_submit)
+        self.addCleanup(setattr, threading.Thread, 'start', original_start)
+        release = threading.Event()
+        work = tracker.begin()
+        token = CURRENT.set(work)
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            try:
+                future = pool.submit(release.wait, 2)
+            finally:
+                CURRENT.reset(token)
+                work.release()
+            tracker.report()
+            self.assertTrue(tracker.tickets)
+            release.set()
+            future.result(timeout=2)
+            tracker.report()
+            self.assertFalse(tracker.tickets)
+
+class LifespanTests(unittest.IsolatedAsyncioTestCase):
+    async def test_source_lifespan_installs_tracking_before_startup_and_restores_on_shutdown(self):
+        from contextlib import asynccontextmanager
+        from unittest.mock import patch
+        from lifecycle import bootstrap
+        tracker = Tracker('fixture', 'fixture', 'fixture', transport=lambda *args: {})
+        events = []
+        @asynccontextmanager
+        async def original(app):
+            self.assertIs(asyncio.get_running_loop().get_task_factory(), task_factory)
+            self.assertFalse(tracker.known)
+            events.append('startup')
+            yield {'fixture': True}
+            events.append('shutdown')
+        with patch.object(bootstrap, 'tracker', tracker):
+            async with bootstrap.lifespan(original)(None) as state:
+                self.assertEqual(state, {'fixture': True})
+                self.assertTrue(tracker.known)
+        self.assertEqual(events, ['startup', 'shutdown'])
+        self.assertFalse(tracker.known)
+        self.assertIsNone(asyncio.get_running_loop().get_task_factory())
+
+class AnyIOTests(unittest.IsolatedAsyncioTestCase):
+    async def test_sync_work_retires_while_anyio_worker_remains_alive(self):
+        import anyio.to_thread
+        from concurrent.futures import ThreadPoolExecutor
+        from lifecycle.tracking import install_anyio_hook
+        tracker = Tracker('fixture', 'fixture', 'fixture', transport=lambda *args: {})
+        submit, start = install_thread_hooks()
+        original = install_anyio_hook()
+        self.addCleanup(setattr, ThreadPoolExecutor, 'submit', submit)
+        self.addCleanup(setattr, threading.Thread, 'start', start)
+        self.addCleanup(setattr, anyio.to_thread, 'run_sync', original)
+        work = tracker.begin()
+        token = CURRENT.set(work)
+        try:
+            worker = await anyio.to_thread.run_sync(threading.current_thread)
+        finally:
+            CURRENT.reset(token)
+            work.release()
+        tracker.report()
+        self.assertTrue(worker.is_alive())
+        self.assertFalse(tracker.tickets)
+
+    async def test_cancelled_sync_caller_remains_tracked_until_thread_finishes(self):
+        import anyio.to_thread
+        from lifecycle.tracking import install_anyio_hook
+        original = install_anyio_hook()
+        self.addCleanup(setattr, anyio.to_thread, 'run_sync', original)
+        tracker = Tracker('fixture', 'fixture', 'fixture', transport=lambda *args: {})
+        entered, release = threading.Event(), threading.Event()
+        def function():
+            entered.set()
+            release.wait(3)
+        work = tracker.begin()
+        token = CURRENT.set(work)
+        try:
+            caller = asyncio.create_task(anyio.to_thread.run_sync(function, abandon_on_cancel=True))
+        finally:
+            CURRENT.reset(token)
+        while not entered.is_set():
+            await asyncio.sleep(.01)
+        caller.cancel()
+        with self.assertRaises(asyncio.CancelledError):
+            await caller
+        work.release()
+        tracker.report()
+        self.assertTrue(tracker.tickets)
+        release.set()
+        for _ in range(100):
+            tracker.report()
+            if not tracker.tickets:
+                break
+            await asyncio.sleep(.01)
+        self.assertFalse(tracker.tickets)
