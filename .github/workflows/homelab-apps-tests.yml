@@ -3,9 +3,14 @@ on:
   pull_request:
     paths:
       - 'live/kubernetes/**'
+      - 'charts/**'
+      - 'apps/containers/odysseus/**'
+      - 'scripts/odysseus-image-context.py'
       - 'config/environments/kubernetes/**'
       - 'scripts/homelab-apps.py'
       - 'scripts/tests/test_homelab_apps.py'
+      - 'scripts/tests/test_odysseus_backup.py'
+      - 'scripts/odysseus-*.sh'
       - 'scripts/tests/test_deploy_units.py'
       - 'scripts/deploy-units.py'
       - 'deploy-units.json'
@@ -31,5 +36,8 @@ jobs:
           python3 scripts/homelab-apps.py setup
           uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p test_homelab_apps.py
           python3 -m unittest discover -s scripts/tests -p test_deploy_units.py
+          python3 -m unittest discover -s scripts/tests -p test_odysseus_backup.py
+          bash -n scripts/odysseus-backup.sh
+          bash -n scripts/odysseus-setup-wizard.sh
           tofu -chdir=live/kubernetes/homelab init -backend=false -input=false -lockfile=readonly
           tofu -chdir=live/kubernetes/homelab validate

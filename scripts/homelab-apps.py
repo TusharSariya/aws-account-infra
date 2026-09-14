@@ -6,6 +6,7 @@ import hashlib
 import ipaddress
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import time
@@ -15,17 +16,19 @@ import urllib.request
 ROOT = Path(__file__).resolve().parents[1]
 TF = ROOT / 'live/kubernetes/homelab'
 CONFIG = ROOT / 'config/environments/kubernetes/homelab'
-SECRET_NAMES = ('TS_OPERATOR_CLIENT_ID', 'TS_OPERATOR_CLIENT_SECRET', 'PIHOLE_ADMIN_PASSWORD', 'TALOS_SECRETS_B64')
+SECRET_NAMES = ('TS_OPERATOR_CLIENT_ID', 'TS_OPERATOR_CLIENT_SECRET', 'PIHOLE_ADMIN_PASSWORD', 'GHCR_READ_USER', 'GHCR_READ_TOKEN', 'ODYSSEUS_ADMIN_PASSWORD', 'SEARXNG_SECRET', 'TALOS_SECRETS_B64')
 class AppError(ValueError):
     """Only deliberately authored, secret-free diagnostics."""
 
 
-ADDRESSES = {'helm_release.tailscale_operator', 'helm_release.pihole'}
+ADDRESSES = {'helm_release.tailscale_operator', 'helm_release.pihole', 'helm_release.ollama', 'helm_release.odysseus'}
 
 
 def run(command, data=None):
     env = {k: v for k, v in os.environ.items() if k not in SECRET_NAMES}
-    result = subprocess.run(list(map(str, command)), input=data, capture_output=True, env=env, timeout=900)
+    # Allow the operator (600s), dependent releases (900s), and cleanup/state writes.
+    # Killing tofu at the Helm deadline leaves pending releases and a stale lock.
+    result = subprocess.run(list(map(str, command)), input=data, capture_output=True, env=env, timeout=2400)
     if result.returncode:
         raise AppError('Private command failed: ' + Path(str(command[0])).name + '; diagnostics suppressed')
     return result.stdout
@@ -41,16 +44,20 @@ def setup():
 
 
 def credentials():
-    values = {name: os.environ.get(name, '') for name in SECRET_NAMES[:3]}
+    values = {name: os.environ.get(name, '') for name in SECRET_NAMES[:-1]}
     if any(not value for value in values.values()):
-        raise AppError('Set TS_OPERATOR_CLIENT_ID, TS_OPERATOR_CLIENT_SECRET and PIHOLE_ADMIN_PASSWORD in prod before apply')
+        raise AppError('Set all application credentials in prod before apply; see docs/odysseus.md')
     if len(values['PIHOLE_ADMIN_PASSWORD']) < 20:
         raise AppError('Pi-hole password must contain at least 20 characters')
+    if len(values['ODYSSEUS_ADMIN_PASSWORD'].encode()) not in range(20, 73):
+        raise AppError('Odysseus password must be 20 to 72 UTF-8 bytes')
+    if len(values['SEARXNG_SECRET']) < 32:
+        raise AppError('SearxNG secret must contain at least 32 characters')
     return values
 
 
 def tailnet_ip(hostname):
-    if hostname not in ('pve.tail2f646b.ts.net', 'pihole-admin.tail2f646b.ts.net', 'pihole-dns.tail2f646b.ts.net'):
+    if hostname not in ('pve.tail2f646b.ts.net', 'pihole-admin.tail2f646b.ts.net', 'pihole-dns.tail2f646b.ts.net', 'odysseus.tail2f646b.ts.net', 'ollama.tail2f646b.ts.net'):
         raise AppError('Unexpected private HTTPS hostname')
     for attempt in range(12):
         status = json.loads(run(['tailscale', 'status', '--json']))
@@ -79,13 +86,15 @@ def bootstrap(kubectl):
         raise AppError('Credential reconciliation only runs in approved CI apply')
     values = credentials()
     # Do not change an independently managed namespace or create a parallel cluster.
-    run([kubectl, 'get', 'namespace', 'homelab-services'])
+    run([kubectl, 'get', 'namespace', 'homelab-services', 'homelab-models'])
     run([kubectl, 'apply', '--server-side', '--field-manager=homelab-app-credentials', '-f', CONFIG / 'namespaces.yaml'])
     for namespace, name, data in [
         ('tailscale', 'operator-oauth', {'client_id': values['TS_OPERATOR_CLIENT_ID'], 'client_secret': values['TS_OPERATOR_CLIENT_SECRET']}),
-        ('homelab-services', 'pihole-admin', {'password': values['PIHOLE_ADMIN_PASSWORD']})]:
+        ('homelab-services', 'pihole-admin', {'password': values['PIHOLE_ADMIN_PASSWORD']}),
+        ('homelab-models', 'odysseus-bootstrap', {'admin-password': values['ODYSSEUS_ADMIN_PASSWORD'], 'searxng-secret': values['SEARXNG_SECRET']}),
+        ('homelab-models', 'ghcr-read', {'.dockerconfigjson': json.dumps({'auths': {'ghcr.io': {'auth': base64.b64encode((values['GHCR_READ_USER'] + ':' + values['GHCR_READ_TOKEN']).encode()).decode()}}})})]:
         manifest = {'apiVersion': 'v1', 'kind': 'Secret', 'metadata': {'name': name, 'namespace': namespace},
-                    'type': 'Opaque', 'data': {k: base64.b64encode(v.encode()).decode() for k, v in data.items()}}
+                    'type': 'kubernetes.io/dockerconfigjson' if name == 'ghcr-read' else 'Opaque', 'data': {k: base64.b64encode(v.encode()).decode() for k, v in data.items()}}
         # Server-side apply avoids storing plaintext in a last-applied annotation.
         run([kubectl, 'apply', '--server-side', '--field-manager=homelab-app-credentials', '-f', '-'], json.dumps(manifest).encode())
 
@@ -100,12 +109,12 @@ def guard_plan(plan):
             raise AppError('Unexpected application resource or destructive action')
         summary.append({'resource': resource['address'], 'actions': actions})
     if {item['resource'] for item in summary} != ADDRESSES:
-        raise AppError('Plan must retain both application releases')
+        raise AppError('Plan must retain all application releases')
     return summary
 
 
 def check_secrets(data, private):
-    forbidden = [os.environ.get(name, '') for name in SECRET_NAMES[:3]]
+    forbidden = [os.environ.get(name, '') for name in SECRET_NAMES[:-1] if name != 'GHCR_READ_USER']
     # Every credential in kubeconfig must stay out of provider state/plan.
     import yaml
     kube = yaml.safe_load((private / 'kubeconfig').read_text())
@@ -118,9 +127,22 @@ def check_secrets(data, private):
             raise AppError('Credential appeared in private plan/state; refusing publication')
 
 
+def guard_images():
+    import yaml
+    ollama = yaml.safe_load((CONFIG / 'ollama-values.yaml').read_text())
+    workspace = yaml.safe_load((CONFIG / 'workspace-values.yaml').read_text())
+    images = [ollama['image'], workspace['image'], workspace['initImage']]
+    images.extend(c['image'] for c in workspace['components'].values() if 'image' in c)
+    if any(not re.fullmatch(r'[^\s@]+@sha256:[a-f0-9]{64}', image) for image in images):
+        raise AppError('Every workspace image must use a reviewed immutable SHA-256 digest')
+    if not workspace['image'].startswith('ghcr.io/tusharsariyaorg/homelab-odysseus@sha256:'):
+        raise AppError('Workspace image must use the private homelab package')
+
+
 def execute(operation, private):
     command = ['tofu', '-chdir=' + str(TF)]
     plan = private / 'apps.tfplan'
+    guard_images()
     if operation == 'plan':
         run(command + ['plan', '-input=false', '-lock-timeout=60s', '-out=' + str(plan)])
         data = run(command + ['show', '-json', plan])
@@ -129,6 +151,7 @@ def execute(operation, private):
         (private / 'apps-plan.sha256').write_text(hashlib.sha256(plan.read_bytes()).hexdigest())
         print(json.dumps({'application_plan': summary}, indent=2))
     elif operation == 'apply':
+        credentials()
         if os.environ.get('GITHUB_ACTIONS') != 'true':
             raise AppError('Application apply only runs through GitHub CI')
         if hashlib.sha256(plan.read_bytes()).hexdigest() != (private / 'apps-plan.sha256').read_text():
@@ -160,6 +183,20 @@ def endpoints(kubectl):
                            ['-o', '/dev/null', '-w', '%{http_code}']).decode()
     if status != '401':
         raise AppError('Pi-hole administration did not reject unauthenticated API access')
+    for deployment in ['ollama', 'odysseus', 'chromadb', 'searxng']:
+        run([kubectl, '-n', 'homelab-models', 'rollout', 'status', 'deployment/' + deployment, '--timeout=900s'])
+    for service in ['ollama', 'odysseus']:
+        run([kubectl, '-n', 'homelab-models', 'wait', 'ingress/' + service,
+             '--for=jsonpath={.status.loadBalancer.ingress}', '--timeout=600s'])
+    version = json.loads(tailnet_https('ollama.tail2f646b.ts.net', '/api/version', ['--fail']))
+    if not version.get('version'):
+        raise AppError('Ollama version endpoint did not return a version')
+    tailnet_https('odysseus.tail2f646b.ts.net', '/api/health', ['--fail'])
+    auth = tailnet_https('odysseus.tail2f646b.ts.net', '/api/conversations/topics',
+                         ['-o', '/dev/null', '-w', '%{http_code}']).decode()
+    if auth != '401':
+        raise AppError('Workspace did not reject unauthenticated API access')
+    print('PASS: private model API and authenticated workspace HTTPS; model/UI/restore acceptance remains separate')
     print(json.dumps({'dns_ip': ip, 'admin_url': url + '/admin/', 'status': 'DNS UDP/TCP and trusted HTTPS passed; client cutover remains explicit'}, indent=2))
 
 

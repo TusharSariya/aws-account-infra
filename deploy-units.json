@@ -136,7 +136,9 @@
         "live/kubernetes/homelab/",
         "config/environments/kubernetes/homelab/",
         "scripts/homelab-apps.py",
-        ".github/actions/kubernetes-deploy/"
+        ".github/actions/kubernetes-deploy/",
+        "charts/homelab-ollama/",
+        "charts/homelab-odysseus/"
       ]
     }
   ]

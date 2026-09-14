@@ -1,0 +1,5 @@
+apiVersion: v2
+name: homelab-odysseus
+description: Private homelab service managed through OpenTofu
+type: application
+version: 0.1.0

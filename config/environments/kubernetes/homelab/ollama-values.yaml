@@ -1,0 +1,7 @@
+image: ollama/ollama@sha256:684d8674b4315fa18f4f0e973a118ec2652ed96f67563277839985175858e0ba
+hostname: ollama
+node: talos-worker-01
+storage: 300Gi
+resources:
+  requests: {cpu: '8', memory: 32Gi}
+  limits: {cpu: '24', memory: 64Gi}

@@ -1,7 +1,9 @@
 # Homelab application deployment
 
-OpenSpec: `deploy-pihole-tailnet-dns`. This root owns Pi-hole and the shared
-Tailscale operator. State is independent of Talos at
+OpenSpecs: `deploy-pihole-tailnet-dns` and `deploy-odysseus-tailnet-workspace`.
+This root owns Pi-hole, the shared Tailscale operator, Ollama and Odysseus.
+See [the workspace runbook](../../../docs/odysseus.md) for model management,
+private registry credentials and application-data backup/restore. State is independent of Talos at
 `s3://tofu-state-992382747916-us-east-1/kubernetes/homelab/terraform.tfstate`.
 
 Pi-hole runs on `talos-worker-01` with a retained 2Gi claim, 100m/128Mi requests,
@@ -18,6 +20,8 @@ web UI. Query history is retained seven days. No DHCP or LAN DNS changes.
    `PIHOLE_ADMIN_PASSWORD` in this repository's protected `prod` environment.
    A private recovery copy is retained under `~/.config/aws-account-infra/pihole/`.
    Never paste that file, credentials or passwords into chat or Git.
+   Also run `bash scripts/odysseus-setup-wizard.sh` to supply the required private
+   image and workspace inputs before applying this root.
 2. Review the PR's application plan, then add the `apply` label. The existing
    gate requires successful CI apply. No local apply is necessary.
 3. CI reconciles the tailscale namespace and credential Secrets using server-side

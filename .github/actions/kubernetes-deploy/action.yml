@@ -16,6 +16,18 @@ inputs:
   pihole-password:
     description: Pi-hole admin password
     default: ''
+  ghcr-user:
+    description: Private registry read username
+    default: ''
+  ghcr-token:
+    description: Private registry read-only token
+    default: ''
+  odysseus-password:
+    description: Workspace bootstrap admin password
+    default: ''
+  searxng-secret:
+    description: Private search signing secret
+    default: ''
 runs:
   using: composite
   steps:
@@ -57,6 +69,10 @@ runs:
         TS_OPERATOR_CLIENT_ID: ${{ inputs.operator-client-id }}
         TS_OPERATOR_CLIENT_SECRET: ${{ inputs.operator-client-secret }}
         PIHOLE_ADMIN_PASSWORD: ${{ inputs.pihole-password }}
+        GHCR_READ_USER: ${{ inputs.ghcr-user }}
+        GHCR_READ_TOKEN: ${{ inputs.ghcr-token }}
+        ODYSSEUS_ADMIN_PASSWORD: ${{ inputs.odysseus-password }}
+        SEARXNG_SECRET: ${{ inputs.searxng-secret }}
       run: |
         set -o pipefail
         uv run --with PyYAML==6.0.3 python scripts/homelab-apps.py plan --private "$PRIVATE" | tee applications-plan.txt
@@ -68,6 +84,10 @@ runs:
         TS_OPERATOR_CLIENT_ID: ${{ inputs.operator-client-id }}
         TS_OPERATOR_CLIENT_SECRET: ${{ inputs.operator-client-secret }}
         PIHOLE_ADMIN_PASSWORD: ${{ inputs.pihole-password }}
+        GHCR_READ_USER: ${{ inputs.ghcr-user }}
+        GHCR_READ_TOKEN: ${{ inputs.ghcr-token }}
+        ODYSSEUS_ADMIN_PASSWORD: ${{ inputs.odysseus-password }}
+        SEARXNG_SECRET: ${{ inputs.searxng-secret }}
       run: uv run --with PyYAML==6.0.3 python scripts/homelab-apps.py bootstrap --private "$PRIVATE"
     - name: Apply exact saved plan and inspect state for credentials
       if: inputs.mode == 'apply'
@@ -77,6 +97,10 @@ runs:
         TS_OPERATOR_CLIENT_ID: ${{ inputs.operator-client-id }}
         TS_OPERATOR_CLIENT_SECRET: ${{ inputs.operator-client-secret }}
         PIHOLE_ADMIN_PASSWORD: ${{ inputs.pihole-password }}
+        GHCR_READ_USER: ${{ inputs.ghcr-user }}
+        GHCR_READ_TOKEN: ${{ inputs.ghcr-token }}
+        ODYSSEUS_ADMIN_PASSWORD: ${{ inputs.odysseus-password }}
+        SEARXNG_SECRET: ${{ inputs.searxng-secret }}
       run: uv run --with PyYAML==6.0.3 python scripts/homelab-apps.py apply --private "$PRIVATE"
     - name: Verify private DNS and HTTPS endpoints
       if: inputs.mode == 'apply'
