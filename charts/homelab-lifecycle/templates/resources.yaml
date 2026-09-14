@@ -1,0 +1,219 @@
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: ai-lifecycle-code, namespace: homelab-platform}
+data:
+  {{- range $name, $content := .Values.code }}
+  {{ $name }}: {{ $content | quote }}
+  {{- end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: ai-lifecycle-config, namespace: homelab-platform}
+data:
+  config.json: {{ .Values.config | toJson | quote }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: ai-lifecycle, namespace: homelab-platform}
+automountServiceAccountToken: false
+---
+apiVersion: coordination.k8s.io/v1
+kind: Lease
+metadata: {name: ai-lifecycle, namespace: homelab-platform}
+# Runtime fields are managed exclusively by the controller after creation.
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: {name: ai-lifecycle, namespace: homelab-platform}
+rules:
+  - apiGroups: ['']
+    resources: [configmaps]
+    resourceNames: [guest-capacity, physical-capacity, ai-volume-reset-v1]
+    verbs: [get]
+  - apiGroups: [coordination.k8s.io]
+    resources: [leases]
+    resourceNames: [ai-lifecycle]
+    verbs: [get, update]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: {name: ai-lifecycle, namespace: homelab-platform}
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: ai-lifecycle}
+subjects: [{kind: ServiceAccount, name: ai-lifecycle, namespace: homelab-platform}]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: {name: ai-lifecycle, namespace: homelab-models}
+rules:
+  - apiGroups: ['']
+    resources: [configmaps]
+    resourceNames: [ai-approved-template]
+    verbs: [get]
+  - apiGroups: ['']
+    resources: [pods]
+    verbs: [get, list]
+  - apiGroups: ['']
+    resources: [events]
+    verbs: [create]
+  - apiGroups: [apps]
+    resources: [deployments]
+    resourceNames: [ai-runtime]
+    verbs: [get, update]
+  # RBAC cannot restrict create by resourceNames; admission below restricts it.
+  - apiGroups: [apps]
+    resources: [deployments]
+    verbs: [create]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: {name: ai-lifecycle, namespace: homelab-models}
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: ai-lifecycle}
+subjects: [{kind: ServiceAccount, name: ai-lifecycle, namespace: homelab-platform}]
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata: {name: homelab-lifecycle-runtime}
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [apps]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [deployments]
+  matchConditions:
+    - name: lifecycle-controller
+      expression: "request.userInfo.username == 'system:serviceaccount:homelab-platform:ai-lifecycle'"
+  validations:
+    - expression: "object.metadata.namespace == 'homelab-models' && object.metadata.name == 'ai-runtime'"
+      message: Lifecycle controller may only create or update the AI runtime.
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata: {name: homelab-lifecycle-runtime}
+spec:
+  policyName: homelab-lifecycle-runtime
+  validationActions: [Deny]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: ai-lifecycle, namespace: homelab-platform}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app: ai-lifecycle}
+  template:
+    metadata:
+      labels: {app: ai-lifecycle}
+      annotations:
+        checksum/code: {{ .Values.code | toJson | sha256sum }}
+        checksum/config: {{ .Values.config | toJson | sha256sum }}
+    spec:
+      serviceAccountName: ai-lifecycle
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: controller
+          image: {{ .Values.image | quote }}
+          command: [python, -B, /app/server.py]
+          env:
+            - name: POD_UID
+              valueFrom:
+                fieldRef: {fieldPath: metadata.uid}
+          ports: [{name: http, containerPort: 8080}]
+          resources:
+            requests: {cpu: 100m, memory: 64Mi, ephemeral-storage: 16Mi}
+            limits: {cpu: 500m, memory: 128Mi, ephemeral-storage: 32Mi}
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+          readinessProbe:
+            httpGet: {path: /healthz, port: http}
+            timeoutSeconds: 3
+            periodSeconds: 10
+          volumeMounts:
+            - {name: code, mountPath: /app, readOnly: true}
+            - {name: config, mountPath: /config, readOnly: true}
+            - {name: credentials, mountPath: /credentials, readOnly: true}
+            - {name: api, mountPath: /var/run/secrets/kubernetes.io/serviceaccount, readOnly: true}
+      volumes:
+        - name: code
+          configMap: {name: ai-lifecycle-code}
+        - name: config
+          configMap: {name: ai-lifecycle-config}
+        - name: credentials
+          secret: {secretName: ai-lifecycle-credentials, defaultMode: 288}
+        - name: api
+          projected:
+            defaultMode: 288
+            sources:
+              - serviceAccountToken: {path: token, expirationSeconds: 3600}
+              - configMap:
+                  name: kube-root-ca.crt
+                  items: [{key: ca.crt, path: ca.crt}]
+---
+apiVersion: v1
+kind: Service
+metadata: {name: ai-lifecycle, namespace: homelab-platform}
+spec:
+  selector: {app: ai-lifecycle}
+  ports: [{name: http, port: 8080, targetPort: http}]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata: {name: ai-lifecycle, namespace: homelab-platform}
+spec:
+  ingressClassName: tailscale
+  tls: [{hosts: [ai-lifecycle]}]
+  defaultBackend:
+    service:
+      name: ai-lifecycle
+      port: {number: 8080}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: ai-lifecycle, namespace: homelab-platform}
+spec:
+  podSelector:
+    matchLabels: {app: ai-lifecycle}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: homelab-models}
+          podSelector:
+            matchLabels: {app: ai-runtime}
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: tailscale}
+          podSelector:
+            matchLabels: {tailscale.com/parent-resource: ai-lifecycle}
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: homelab-jobs}
+          podSelector:
+            matchLabels: {homelab/lifecycle-operation: 'true'}
+      ports: [{protocol: TCP, port: 8080}]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: homelab-models}
+          podSelector:
+            matchLabels: {app: ai-runtime}
+      ports: [{protocol: TCP, port: 7001}, {protocol: TCP, port: 11434}]
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata: {name: ai-lifecycle-apiserver, namespace: homelab-platform}
+spec:
+  endpointSelector:
+    matchLabels: {app: ai-lifecycle}
+  egress:
+    - toEntities: [kube-apiserver]
+      toPorts:
+        - ports: [{port: '6443', protocol: TCP}]
