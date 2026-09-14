@@ -141,7 +141,8 @@
         "charts/homelab-odysseus/",
         "charts/homelab-capacity/",
         "charts/homelab-ai/",
-        "apps/platform/storage/"
+        "apps/platform/storage/",
+        "apps/platform/migration/"
       ]
     }
   ]

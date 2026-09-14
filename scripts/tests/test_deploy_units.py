@@ -10,6 +10,13 @@ spec.loader.exec_module(units)
 
 
 class SelectionTests(unittest.TestCase):
+    def test_migration_helper_alone_selects_guarded_kubernetes_deployment(self):
+        files = ['apps/platform/migration/reset.py']
+        selected = units.select_units(files, units.load_units())
+        self.assertEqual([unit['cloud'] for unit in selected], ['kubernetes'])
+        self.assertEqual(units.acceptance_suite(files, selected), 'all')
+        self.assertTrue(units.storage_checks_required(files, selected))
+
     def test_test_only_changes_do_not_require_apply_but_select_acceptance(self):
         for path, suite in [('scripts/homelab-cilium-validate.sh', 'network'),
                             ('scripts/homelab-storage-validate.py', 'pvc')]:
