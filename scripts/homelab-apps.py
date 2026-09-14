@@ -30,6 +30,14 @@ def run(command, data=None):
     # Killing tofu at the Helm deadline leaves pending releases and a stale lock.
     result = subprocess.run(list(map(str, command)), input=data, capture_output=True, env=env, timeout=2400)
     if result.returncode:
+        diagnostic = (result.stderr or b'').decode(errors='replace').lower()
+        markers = {'openapi': 'schema-discovery', 'timeout': 'timeout', 'deadline exceeded': 'deadline',
+                   'invalid ownership': 'ownership', 'already exists': 'already-exists',
+                   'another operation': 'pending-operation', 'forbidden': 'forbidden',
+                   'validation': 'validation', 'invalid': 'invalid', 'cannot re-use': 'release-name-in-use'}
+        categories = sorted({value for key, value in markers.items() if key in diagnostic})
+        if categories:
+            print('Application diagnostic categories: ' + ','.join(categories), file=sys.stderr)
         raise AppError('Private command failed: ' + Path(str(command[0])).name + '; diagnostics suppressed')
     return result.stdout
 
@@ -191,7 +199,20 @@ def execute(operation, private):
             raise AppError('Application apply only runs through GitHub CI')
         if hashlib.sha256(plan.read_bytes()).hexdigest() != (private / 'apps-plan.sha256').read_text():
             raise AppError('Saved application plan changed after validation')
-        run(command + ['apply', '-input=false', '-lock-timeout=60s', plan])
+        try:
+            run(command + ['apply', '-input=false', '-lock-timeout=60s', plan])
+        except AppError:
+            try:
+                status = run([str(Path.home() / '.cache/aws-account-infra/talos/kubectl-v1.36.3'),
+                    '--request-timeout=30s', '-n', 'kube-system', 'get', 'secret',
+                    '-l', 'owner=helm,name=homelab-capacity',
+                    '-o', 'jsonpath={.items[*].metadata.labels.status}']).decode()
+                observed = [value for value in status.split() if value in
+                            ('deployed', 'failed', 'pending-install', 'pending-upgrade', 'pending-rollback')]
+                print('Capacity release states: ' + ','.join(observed or ['unknown' if status.strip() else 'absent']), file=sys.stderr)
+            except Exception:
+                print('Capacity release state unavailable', file=sys.stderr)
+            raise
         check_secrets(run(command + ['state', 'pull']), private)
         print('PASS: exact saved plan applied; application state excludes supplied credentials')
 

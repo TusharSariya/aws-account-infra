@@ -18,17 +18,33 @@ class CredentialTests(unittest.TestCase):
             credentials.main()
         run.assert_not_called()
 
+    def test_rotation_preserves_version_and_aborts_on_conflict(self):
+        bundle = {'ca.crt': 'test-ca', 'tls.crt': 'test-client', 'tls.key': 'test-key'}
+        env = {'GITHUB_ACTIONS': 'true', 'GITHUB_REF': 'refs/heads/main', 'KUBECTL': 'kubectl',
+               'CAPACITY_CLIENT_CREDENTIALS_B64': base64.b64encode(json.dumps(bundle).encode()).decode()}
+        old = {'apiVersion': 'v1', 'kind': 'Secret', 'type': 'Opaque', 'data': {},
+               'metadata': {'name': 'physical-capacity-client', 'namespace': 'homelab-platform',
+                            'resourceVersion': '17', 'labels': {'preserve': 'true'}}}
+        with patch.dict(os.environ, env, clear=True), patch.object(credentials.subprocess, 'run',
+                side_effect=[Mock(returncode=0, stdout=json.dumps(old)), Mock(returncode=1)]) as run, self.assertRaises(ValueError):
+            credentials.main()
+        self.assertEqual(run.call_count, 2)
+        request = json.loads(run.call_args.kwargs['input'])
+        self.assertEqual(request['metadata'], old['metadata'])
+        self.assertIn('replace', run.call_args.args[0])
+
     def test_secret_is_scoped_and_removed_from_child_environment(self):
         bundle = {'ca.crt': 'test-ca', 'tls.crt': 'test-client', 'tls.key': 'test-key'}
         env = {'GITHUB_ACTIONS': 'true', 'GITHUB_REF': 'refs/heads/main', 'KUBECTL': 'kubectl',
                'CAPACITY_CLIENT_CREDENTIALS_B64': base64.b64encode(json.dumps(bundle).encode()).decode()}
         with patch.dict(os.environ, env, clear=True), \
-             patch.object(credentials.subprocess, 'run', return_value=Mock(returncode=0)) as run:
+             patch.object(credentials.subprocess, 'run', return_value=Mock(returncode=0, stdout='')) as run:
             credentials.main()
         request = json.loads(run.call_args.kwargs['input'])
         self.assertEqual(request['metadata'], {'name': 'physical-capacity-client', 'namespace': 'homelab-platform'})
         self.assertNotIn('CAPACITY_CLIENT_CREDENTIALS_B64', run.call_args.kwargs['env'])
-        self.assertIn('--server-side', run.call_args.args[0])
+        self.assertIn('--raw', run.call_args.args[0])
+        self.assertIn('/api/v1/namespaces/homelab-platform/secrets?fieldValidation=Strict&fieldManager=homelab-capacity-credentials', run.call_args.args[0])
 
 
 if __name__ == '__main__':

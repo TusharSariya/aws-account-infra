@@ -122,6 +122,18 @@ class GuardTests(unittest.TestCase):
                 apps.execute('plan', config)
             run.assert_not_called()
 
+    def test_failure_diagnostics_emit_only_fixed_categories(self):
+        import contextlib
+        import io
+        diagnostics = io.StringIO()
+        with patch.object(apps.subprocess, 'run') as run, contextlib.redirect_stderr(diagnostics):
+            run.return_value.returncode = 1
+            run.return_value.stderr = b'openapi timeout PRIVATE-FIXTURE-CONTENT'
+            with self.assertRaises(apps.AppError):
+                apps.run(['tofu', 'apply'])
+        self.assertIn('schema-discovery,timeout', diagnostics.getvalue())
+        self.assertNotIn('PRIVATE-FIXTURE-CONTENT', diagnostics.getvalue())
+
     def test_credential_update_preserves_metadata_and_cas_without_schema_discovery(self):
         current = {'apiVersion': 'v1', 'kind': 'Secret', 'type': 'Opaque', 'data': {'password': 'old'},
                    'metadata': {'name': 'pihole-admin', 'namespace': 'homelab-services',
