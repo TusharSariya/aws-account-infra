@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import io
+import importlib.util
 import json
 from pathlib import Path
 import shutil
@@ -25,6 +26,11 @@ def prepare(destination):
     if len(roots) != 1 or not roots[0].is_dir():
         raise ValueError('Expected one upstream source directory')
     source = roots[0]
+    shutil.copytree(PACKAGE / 'lifecycle', source / 'lifecycle')
+    spec = importlib.util.spec_from_file_location('odysseus_lifecycle_patch', PACKAGE / 'patch-lifecycle.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    module.patch(source)
     dockerfile = (source / 'Dockerfile').read_text()
     if dockerfile.count('FROM python:3.14-slim') != 2:
         raise ValueError('Upstream Dockerfile changed; review base image pinning')
