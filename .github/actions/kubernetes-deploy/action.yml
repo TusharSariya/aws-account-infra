@@ -56,6 +56,11 @@ runs:
       env:
         PRIVATE: ${{ steps.private.outputs.path }}
       run: uv run scripts/talos-ci.py connect --private "$PRIVATE"
+    - name: Diagnose schema transport without changing resources
+      shell: bash
+      env:
+        PRIVATE: ${{ steps.private.outputs.path }}
+      run: python3 scripts/homelab-api-probe.py "$PRIVATE"
     - name: Initialize and validate application state
       shell: bash
       run: |
