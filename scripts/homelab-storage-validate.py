@@ -7,6 +7,7 @@ import time
 import uuid
 import traceback
 import sys
+import homelab_fixture
 
 K = os.environ.get('KUBECTL', 'kubectl')
 TC = os.environ.get('TALOSCTL', 'talosctl')
@@ -17,17 +18,6 @@ def run(args, value=None, check=True):
     p = subprocess.run(args, input=json.dumps(value) if value else None,
                        text=True, capture_output=True, timeout=180)
     if check and p.returncode:
-        if value and value.get('kind') == 'Namespace':
-            for name, probe_args, probe_input in [
-                ('api-read', [K, '--request-timeout=15s', 'get', '--raw=/version'], None),
-                ('namespace-dry-run', [K, '--request-timeout=30s', 'create', '--dry-run=server',
-                                       '--validate=false', '-f', '-'], json.dumps(value))]:
-                try:
-                    probe = subprocess.run(probe_args, input=probe_input, text=True, capture_output=True, timeout=40)
-                    outcome = 'success' if probe.returncode == 0 else 'failure'
-                except subprocess.TimeoutExpired:
-                    outcome = 'timeout'
-                print('ACCEPTANCE_DIAGNOSTIC: probe ' + name + ' ' + outcome, file=sys.stderr)
         for marker in ('Forbidden', 'InternalError', 'Unauthorized', 'failed calling webhook',
                        'connection refused', 'timeout', 'no endpoints available', 'AlreadyExists',
                        'ServiceUnavailable', 'certificate', 'EOF'):
@@ -42,7 +32,10 @@ def get(kind, name, namespace=None):
 
 
 def create(value):
-    return run([K, 'create', '-f', '-'], value)
+    result = homelab_fixture.create(K, value)
+    if result.returncode:
+        raise RuntimeError('Strict server fixture creation failed')
+    return result
 
 
 def main():
@@ -85,7 +78,7 @@ def main():
         for suffix in ['retain', 'delete']:
             create(pvc(suffix, suffix))
             claim_uids.add(get('pvc', suffix, ns)['metadata']['uid'])
-        denied = run([K, 'create', '--dry-run=server', '-f', '-'], pvc('over-budget', 'delete'), check=False)
+        denied = homelab_fixture.create(K, pvc('over-budget', 'delete'), dry_run=True)
         assert denied.returncode != 0 and 'exceeded quota' in denied.stderr
         print('PASS: requested-capacity/count quota rejects excess PVC')
         for suffix in ['retain', 'delete']:

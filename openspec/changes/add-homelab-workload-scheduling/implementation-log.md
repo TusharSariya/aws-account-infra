@@ -41,3 +41,6 @@ Read-only Proxmox inspection verified VM 102 scsi1 maps to the existing 1200 GiB
 
 - Run 34807222816 passes isolated tests and correctly reports capacity activation disabled. PVC acceptance reports timeout creating its temporary Namespace. Added bounded read-only API and server dry-run probes to distinguish schema discovery from API/admission failures; the original check still fails on its original failure.
 - Added separate protected-main credential reconciliation for the physical client Secret with tests proving PR refs cannot invoke it and credential data is removed from child environments.
+
+- Run 34807402562 reproduced namespace creation timeout while a bounded API read and server-side dry-run without schema discovery both succeeded. Updated only disposable core-v1 fixture submission to direct core API requests with `fieldValidation=Strict`, preserving server validation/admission and all behavioral assertions. A transport regression test guards against falling back to discovery or disabling strict validation. Original diagnostic probes were removed after isolating this failure.
+- Local full suite passed 99 tests before this fixture fix; its two new regression tests also pass. An independent correctly mounted gitleaks scan checked 196 commits / 4.65 MB with no leaks (the existing linked-worktree pre-push wrapper incorrectly scans zero commits).

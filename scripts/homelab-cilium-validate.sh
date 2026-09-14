@@ -13,7 +13,7 @@ bash "$(dirname "$0")/homelab-readiness.sh"
 [[ "$(k -n kube-system get cm cilium-config -o jsonpath='{.data.tunnel-protocol}')" == vxlan ]]
 [[ "$(k -n kube-system get cm cilium-config -o jsonpath='{.data.ipam}')" == kubernetes ]]
 
-ns=$(k create -f - -o jsonpath='{.metadata.name}' <<'YAML'
+ns=$(python3 "$(dirname "$0")/homelab_fixture.py" --name <<'YAML'
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -25,7 +25,7 @@ YAML
 cleanup() { k delete namespace "$ns" --wait=false >/dev/null; }
 trap cleanup EXIT
 for node in talos-cp-01 talos-worker-01; do
-  k -n "$ns" create -f - >/dev/null <<YAML
+  python3 "$(dirname "$0")/homelab_fixture.py" --namespace "$ns" >/dev/null <<YAML
 apiVersion: v1
 kind: Pod
 metadata:

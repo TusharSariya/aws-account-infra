@@ -55,7 +55,7 @@ def acceptance_suite(files, selected):
         path.startswith(('.github/actions/talos-', '.github/workflows/homelab-acceptance',
                          'scripts/homelab-capacity-',
                          '.github/workflows/homelab-worker-maintenance'))
-        or path == 'scripts/homelab-readiness.sh' for path in files)
+        or path in ('scripts/homelab-readiness.sh', 'scripts/homelab_fixture.py', 'scripts/tests/test_homelab_fixture.py') for path in files)
     network = both or 'scripts/homelab-cilium-validate.sh' in files
     pvc = both or 'scripts/homelab-storage-validate.py' in files
     return 'all' if network and pvc else 'network' if network else 'pvc' if pvc else 'none'
@@ -67,7 +67,7 @@ def storage_checks_required(files, selected):
                          'scripts/tests/storage/', 'scripts/tests/test_capacity', 'scripts/homelab-capacity-',
                          '.github/workflows/homelab-capacity-', 'config/environments/proxmox/homelab/capacity/',
                          'openspec/changes/add-homelab-workload-scheduling/'))
-        or path in ('scripts/tests/test_capacity.py', 'scripts/tests/test_physical_capacity.py',
+        or path in ('scripts/homelab_fixture.py', 'scripts/tests/test_homelab_fixture.py', 'scripts/tests/test_capacity.py', 'scripts/tests/test_physical_capacity.py',
                     'scripts/tests/test_capacity_chart.py', 'scripts/tests/test_capacity_collectors.py', 'scripts/install-homelab-capacity.sh',
                     '.github/workflows/storage-foundation.yml') for path in files)
 
