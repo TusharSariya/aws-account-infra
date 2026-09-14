@@ -40,3 +40,8 @@ jobs:
           CAPACITY_HOST_KNOWN_HOSTS: ${{ vars.CAPACITY_HOST_KNOWN_HOSTS }}
           CAPACITY_HOST_CREDENTIALS_B64: ${{ secrets.CAPACITY_HOST_CREDENTIALS_B64 }}
         run: python3 scripts/homelab-capacity-host.py
+      - uses: ./.github/actions/talos-check
+        with:
+          operation: capacity-credentials
+          capacity-credentials-b64: ${{ secrets.CAPACITY_CLIENT_CREDENTIALS_B64 }}
+          secrets-b64: ${{ secrets.TALOS_SECRETS_B64 }}

@@ -17,6 +17,17 @@ def run(args, value=None, check=True):
     p = subprocess.run(args, input=json.dumps(value) if value else None,
                        text=True, capture_output=True, timeout=180)
     if check and p.returncode:
+        if value and value.get('kind') == 'Namespace':
+            for name, probe_args, probe_input in [
+                ('api-read', [K, '--request-timeout=15s', 'get', '--raw=/version'], None),
+                ('namespace-dry-run', [K, '--request-timeout=30s', 'create', '--dry-run=server',
+                                       '--validate=false', '-f', '-'], json.dumps(value))]:
+                try:
+                    probe = subprocess.run(probe_args, input=probe_input, text=True, capture_output=True, timeout=40)
+                    outcome = 'success' if probe.returncode == 0 else 'failure'
+                except subprocess.TimeoutExpired:
+                    outcome = 'timeout'
+                print('ACCEPTANCE_DIAGNOSTIC: probe ' + name + ' ' + outcome, file=sys.stderr)
         for marker in ('Forbidden', 'InternalError', 'Unauthorized', 'failed calling webhook',
                        'connection refused', 'timeout', 'no endpoints available', 'AlreadyExists',
                        'ServiceUnavailable', 'certificate', 'EOF'):

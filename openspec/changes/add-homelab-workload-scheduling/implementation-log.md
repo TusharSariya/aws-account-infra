@@ -38,3 +38,6 @@ Read-only Proxmox inspection verified VM 102 scsi1 maps to the existing 1200 GiB
 
 - Added reviewed-main-only protected host reconciliation using an independent SSH identity and certificate bundle, plus live capacity acceptance in the existing required acceptance workflow. No credentials have been enrolled and no host workflow has run.
 - Third isolated CI run 34807002496 passes. Its PVC failure is at disposable namespace creation, before any PVC or application data write. Plan run 34807002134 failed downloading OpenTofu release metadata; this is distinct from validation and the live acceptance failures.
+
+- Run 34807222816 passes isolated tests and correctly reports capacity activation disabled. PVC acceptance reports timeout creating its temporary Namespace. Added bounded read-only API and server dry-run probes to distinguish schema discovery from API/admission failures; the original check still fails on its original failure.
+- Added separate protected-main credential reconciliation for the physical client Secret with tests proving PR refs cannot invoke it and credential data is removed from child environments.
