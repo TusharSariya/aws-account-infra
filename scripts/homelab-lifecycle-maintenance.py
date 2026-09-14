@@ -272,6 +272,8 @@ def jobs(session):
             if predicate(values):
                 print('PASS: ' + label, flush=True)
                 return values
+            if any(value.get('status', {}).get('phase') in ('Failed', 'Error') for value in values):
+                raise apps.AppError('Workflow failed before proof: ' + label)
             time.sleep(2)
         raise apps.AppError('Timed out: ' + label)
 

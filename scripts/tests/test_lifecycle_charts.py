@@ -68,6 +68,10 @@ class ChartTests(unittest.TestCase):
 
     def test_reviewed_jobs_have_scoped_accounts_and_shared_schedule_mutex(self):
         docs = render('jobs')
+        accounts = {doc['metadata']['name']: doc for doc in docs if doc['kind'] == 'ServiceAccount'}
+        self.assertTrue(accounts['homelab-job']['automountServiceAccountToken'])
+        self.assertTrue(accounts['ai-operator-job']['automountServiceAccountToken'])
+        self.assertFalse(accounts['homelab-workflow-client']['automountServiceAccountToken'])
         templates = {doc['metadata']['name']: doc['spec'] for doc in docs if doc['kind'] == 'WorkflowTemplate'}
         self.assertEqual(set(templates), {'ai-start', 'ai-stop', 'ai-force-stop', 'ai-status', 'smoke', 'independent-smoke'})
         for name, spec in templates.items():
