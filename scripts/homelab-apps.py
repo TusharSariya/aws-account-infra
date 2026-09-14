@@ -26,7 +26,9 @@ ADDRESSES = {'helm_release.tailscale_operator', 'helm_release.pihole', 'helm_rel
 
 def run(command, data=None):
     env = {k: v for k, v in os.environ.items() if k not in SECRET_NAMES}
-    result = subprocess.run(list(map(str, command)), input=data, capture_output=True, env=env, timeout=900)
+    # Allow the operator (600s), dependent releases (900s), and cleanup/state writes.
+    # Killing tofu at the Helm deadline leaves pending releases and a stale lock.
+    result = subprocess.run(list(map(str, command)), input=data, capture_output=True, env=env, timeout=2400)
     if result.returncode:
         raise AppError('Private command failed: ' + Path(str(command[0])).name + '; diagnostics suppressed')
     return result.stdout

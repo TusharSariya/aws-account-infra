@@ -98,6 +98,13 @@ class GuardTests(unittest.TestCase):
         dns_wait = next(argv for argv in waits if 'service/pihole-dns' in argv)
         self.assertIn('--for=condition=TailscaleProxyReady=true', dns_wait)
 
+    def test_command_timeout_allows_helm_to_finish_and_release_state_lock(self):
+        with patch.object(apps.subprocess, 'run') as run:
+            run.return_value.returncode = 0
+            run.return_value.stdout = b''
+            apps.run(['tofu', 'apply'])
+            self.assertGreater(run.call_args.kwargs['timeout'], 900 + 60)
+
     def test_child_environment_excludes_credentials(self):
         with patch.dict(apps.os.environ, dict.fromkeys(apps.SECRET_NAMES, 'fixture')), patch.object(apps.subprocess, 'run') as run:
             run.return_value.returncode = 0

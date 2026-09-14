@@ -24,3 +24,5 @@
 
 - Packaged startup/authentication passed in [34789879143](https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/34789879143); its digest `sha256:6feb3dd257b13d746a1e88e8e624b083d71f0cc1e2420a810c7ef65f6126862a` is now pinned.
 - Application plan in [34789879109](https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/34789879109) creates only the two new releases; Pi-hole and operator are no-op. Actual worker model execution and restore are still outstanding.
+
+- First rollout was blocked by an invalid GHCR token; replacement token and pinned image access verified. The 900-second command wrapper interrupted Helm before it could persist state. The command budget now exceeds release deadlines and has a regression test; live rollout remains incomplete pending retry.
