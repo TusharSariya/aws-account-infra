@@ -21,7 +21,7 @@ class AppError(ValueError):
     """Only deliberately authored, secret-free diagnostics."""
 
 
-ADDRESSES = {'helm_release.tailscale_operator', 'helm_release.pihole', 'helm_release.ollama', 'helm_release.odysseus'}
+ADDRESSES = {'helm_release.tailscale_operator', 'helm_release.pihole', 'helm_release.ollama', 'helm_release.odysseus', 'helm_release.capacity'}
 
 
 def run(command, data=None):

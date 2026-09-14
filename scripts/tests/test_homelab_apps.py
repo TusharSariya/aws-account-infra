@@ -21,7 +21,7 @@ class GuardTests(unittest.TestCase):
 
     def test_safe_plan_and_forbidden_resource_actions(self):
         for actions in [['create'], ['update'], ['no-op']]:
-            self.assertEqual(len(apps.guard_plan(self.plan(actions))), 4)
+            self.assertEqual(len(apps.guard_plan(self.plan(actions))), len(apps.ADDRESSES))
         for actions in [['delete'], ['delete', 'create'], ['forget']]:
             with self.assertRaises(apps.AppError):
                 apps.guard_plan(self.plan(actions))

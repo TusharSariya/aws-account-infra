@@ -167,3 +167,14 @@ requiring an infrastructure apply.
 #### Scenario: Worker persistence rehearsal is requested
 - **WHEN** the operator explicitly labels a deployment for worker reboot or confirms a main-branch maintenance dispatch
 - **THEN** a separate job checks the existing worker data disk, reboots only that worker, compares OS/data partition identities and verifies readiness without forced reset; first-provision acceptance requires this evidence
+
+### Requirement: Enforced AI storage boundaries
+AI models, workspace and vector data SHALL use separate project-quota directories on the existing shared XFS worker filesystem and retained static local volumes with worker affinity. Initial enforced hard limits SHALL be 300 GiB, 20 GiB and 10 GiB respectively. Stable project IDs SHALL be 31001, 31002 and 31003. Declared limits MAY exceed physical capacity and MUST NOT reserve or preallocate space. Existing disks, unrelated provisioner claims and data MUST remain unchanged. Temporary storage MUST have separate limits. Provisioning and startup MUST account for physical thin-pool data and metadata capacity as well as guest filesystem space. Missing mounts or unavailable capacity checks MUST block AI startup. An AI reset MUST affect only those three application volumes and preserve unrelated data, including Pi-hole.
+
+#### Scenario: Write exceeds an application boundary
+- **WHEN** an AI application reaches its project hard limit
+- **THEN** writes fail with quota enforcement while another project below its limit remains writable when physical headroom remains
+
+#### Scenario: Storage evidence unavailable
+- **WHEN** physical capacity or mount identity cannot be verified
+- **THEN** AI startup is rejected instead of assuming thin provisioning or a directory constitutes usable capacity

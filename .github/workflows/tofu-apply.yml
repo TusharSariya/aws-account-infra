@@ -19,6 +19,7 @@ jobs:
     outputs:
       units: ${{ steps.units.outputs.units }}
       suite: ${{ steps.units.outputs.suite }}
+      storage: ${{ steps.units.outputs.storage }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -28,8 +29,11 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.sha }}
         run: |
-          echo "units=$(python3 scripts/deploy-units.py changed "$BASE_SHA" "$HEAD_SHA")" >> "$GITHUB_OUTPUT"
-          echo "suite=$(python3 scripts/deploy-units.py acceptance "$BASE_SHA" "$HEAD_SHA")" >> "$GITHUB_OUTPUT"
+          {
+            echo "units=$(python3 scripts/deploy-units.py changed "$BASE_SHA" "$HEAD_SHA")"
+            echo "suite=$(python3 scripts/deploy-units.py acceptance "$BASE_SHA" "$HEAD_SHA")"
+            echo "storage=$(python3 scripts/deploy-units.py storage "$BASE_SHA" "$HEAD_SHA")"
+          } >> "$GITHUB_OUTPUT"
 
   apply:
     needs: detect
@@ -167,8 +171,13 @@ jobs:
       suite: ${{ needs.detect.outputs.suite }}
     secrets: inherit
 
+  storage-foundation:
+    needs: detect
+    if: needs.detect.outputs.storage == 'true'
+    uses: ./.github/workflows/storage-foundation.yml
+
   apply-gate:
-    needs: [detect, apply, worker-maintenance, acceptance]
+    needs: [detect, apply, worker-maintenance, acceptance, storage-foundation]
     if: always()
     runs-on: ubuntu-latest
     steps:

@@ -1,4 +1,6 @@
 machine:
+  sysctls:
+    user.max_user_namespaces: "11255"
   nodeLabels:
     workload.security/shared: "true"
 ---
@@ -29,3 +31,4 @@ provisioning:
   grow: false
 filesystem:
   type: xfs
+  projectQuotaSupport: true

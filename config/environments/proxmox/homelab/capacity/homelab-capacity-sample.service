@@ -1,0 +1,21 @@
+[Unit]
+Description=Read physical thin-pool data and metadata usage
+[Service]
+Type=oneshot
+User=root
+Group=homelab-capacity
+ExecStart=/usr/bin/python3 -B /usr/local/lib/homelab-capacity/physical.py
+RuntimeDirectory=homelab-capacity
+RuntimeDirectoryMode=0750
+RuntimeDirectoryPreserve=yes
+UMask=0027
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateNetwork=yes
+ReadWritePaths=/run/homelab-capacity /run/lock/lvm
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+TimeoutStartSec=20

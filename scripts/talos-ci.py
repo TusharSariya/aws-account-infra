@@ -99,9 +99,11 @@ def guard_storage_config(configs):
                 'name': 'local-path-provisioner', 'volumeType': 'partition',
                 'provisioning': {'diskSelector': {'match': SELECTOR},
                                  'minSize': '1199GiB', 'grow': False},
-                'filesystem': {'type': 'xfs'}}
+                'filesystem': {'type': 'xfs', 'projectQuotaSupport': True}}
     for name, config in configs.items():
         docs = list(yaml.safe_load_all(config))
+        if name == 'talos-worker-01' and docs[0].get('machine', {}).get('sysctls', {}).get('user.max_user_namespaces') != '11255':
+            raise StageError('Worker user namespaces are required to prevent project quota bypass')
         volumes = [d for d in docs if d.get('kind') == 'UserVolumeConfig']
         if volumes != ([expected] if name == 'talos-worker-01' else []):
             raise StageError('User volume must target only the verified worker data disk')

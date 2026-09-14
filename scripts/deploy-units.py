@@ -60,11 +60,23 @@ def acceptance_suite(files, selected):
     return 'all' if network and pvc else 'network' if network else 'pvc' if pvc else 'none'
 
 
+def storage_checks_required(files, selected):
+    return any(unit['cloud'] in ('proxmox', 'talos', 'kubernetes') for unit in selected) or any(
+        path.startswith(('apps/platform/storage/', 'charts/homelab-capacity/',
+                         'scripts/tests/storage/', 'config/environments/proxmox/homelab/capacity/',
+                         'openspec/changes/add-homelab-workload-scheduling/'))
+        or path in ('scripts/tests/test_capacity.py', 'scripts/tests/test_physical_capacity.py',
+                    'scripts/tests/test_capacity_chart.py', 'scripts/tests/test_capacity_collectors.py', 'scripts/install-homelab-capacity.sh',
+                    '.github/workflows/storage-foundation.yml') for path in files)
+
+
 def acceptance_gate(needs, apply_requested, reboot_requested):
     if needs['detect']['result'] != 'success':
         raise ValueError('Deployment/acceptance selection failed')
     outputs = needs['detect']['outputs']
     units = json.loads(outputs['units'])
+    if outputs.get('storage') == 'true' and needs.get('storage-foundation', {}).get('result') != 'success':
+        raise ValueError('Selected storage checks must succeed, including test-only changes')
     if units and not apply_requested:
         raise ValueError('Infrastructure changes require the apply label and a successful CI apply before merge')
     apply_expected = bool(units) and apply_requested
@@ -90,7 +102,7 @@ def main():
     subparsers = parser.add_subparsers(dest="command", required=True)
     get_parser = subparsers.add_parser("get")
     get_parser.add_argument("id")
-    for command in ('changed', 'acceptance'):
+    for command in ('changed', 'acceptance', 'storage'):
         changed_parser = subparsers.add_parser(command)
         changed_parser.add_argument('base')
         changed_parser.add_argument('head')
@@ -115,7 +127,9 @@ def main():
 
     files = changed_files(args.base, args.head)
     selected = select_units(files, units)
-    if args.command == 'acceptance':
+    if args.command == 'storage':
+        print(str(storage_checks_required(files, selected)).lower())
+    elif args.command == 'acceptance':
         print(acceptance_suite(files, selected))
     else:
         print(json.dumps(selected, separators=(",", ":")))

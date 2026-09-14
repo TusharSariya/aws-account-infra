@@ -66,3 +66,19 @@ resource "helm_release" "odysseus" {
     prevent_destroy = true
   }
 }
+
+resource "helm_release" "capacity" {
+  name      = "homelab-capacity"
+  namespace = "kube-system"
+  chart     = "${path.module}/../../../charts/homelab-capacity"
+  values = [file("${local.config}/capacity-values.yaml"), yamlencode({
+    chartRevision = sha256(join("", [for f in sort(tolist(fileset("${path.module}/../../../charts/homelab-capacity", "**"))) : filesha256("${path.module}/../../../charts/homelab-capacity/${f}")]))
+    code          = { for f in fileset("${path.module}/../../../apps/platform/storage", "*.py") : f => file("${path.module}/../../../apps/platform/storage/${f}") }
+  })]
+  wait        = true
+  timeout     = 300
+  max_history = 5
+  lifecycle {
+    prevent_destroy = true
+  }
+}

@@ -1,0 +1,8 @@
+# Activate only after trusted filesystem UUID enrollment, independent physical
+# credential provisioning and explicit quota maintenance acceptance.
+enabled: false
+config:
+  filesystemUUID: ''
+  physicalURL: ''
+  physicalPool: ''
+physicalAddress: ''
