@@ -1,10 +1,10 @@
 """Install reviewed hooks before the pinned app registers startup work."""
 import asyncio
+from contextlib import asynccontextmanager
 from functools import wraps
 import os
 from pathlib import Path
 import threading
-import time
 
 from .http_clients import install_http_hooks
 from .identity import serve as serve_identity
@@ -33,20 +33,34 @@ def configure(app, internal_token):
     install_http_hooks(model)
     app.add_middleware(ActivityMiddleware, tracker=tracker, internal_token=internal_token)
 
-    async def startup():
+
+
+def lifespan(original):
+    @asynccontextmanager
+    async def wrapped(app):
         loop = asyncio.get_running_loop()
         if loop.get_task_factory() is not None:
             raise RuntimeError('Unreviewed task factory would bypass lifecycle tracking')
         loop.set_task_factory(task_factory)
+        tracker.known = False
+        stopped = threading.Event()
         def report():
-            while True:
+            while not stopped.is_set():
                 try:
                     tracker.report()
                 except Exception:
                     print('Workspace activity publication unavailable', flush=True)
-                time.sleep(3)
+                stopped.wait(3)
         threading.Thread(target=report, daemon=True, name='workspace-activity').start()
-    app.add_event_handler('startup', startup)
+        try:
+            async with original(app) as state:
+                tracker.known = True
+                yield state
+        finally:
+            tracker.known = False
+            stopped.set()
+            loop.set_task_factory(None)
+    return wrapped
 
 
 def scheduled_work(function):

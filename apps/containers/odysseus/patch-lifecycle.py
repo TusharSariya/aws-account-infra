@@ -16,6 +16,9 @@ def patch(source):
         'from core.middleware import INTERNAL_TOOL_TOKEN as lifecycle_internal_token\n'
         'configure_lifecycle(app, lifecycle_internal_token)\n\n'
         'app.add_middleware(_RequestTimeoutMiddleware)')
+    replace('app.py', 'app.router.lifespan_context = _lifespan',
+        'from lifecycle.bootstrap import lifespan as lifecycle_lifespan\n'
+        'app.router.lifespan_context = lifecycle_lifespan(_lifespan)')
     replace('src/task_scheduler.py', '    async def _execute_task(self,',
         '    async def _execute_task(self,')  # Assert one reviewed scheduler entry point.
     replace('src/task_scheduler.py', '        try:\n            if bypass_model_slot or not self._task_needs_model_slot(task_id):',

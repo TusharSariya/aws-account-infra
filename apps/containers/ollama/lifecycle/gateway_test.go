@@ -57,11 +57,14 @@ func TestGatewayAuthenticationAdmissionAndContinuation(t *testing.T) {
 	if admitted[0]["parent"] != nil {
 		t.Fatal("external user forged continuation")
 	}
-	if request("POST", "/api/pull", "workspace", strings.Repeat("b", 32)) != 204 {
+	if request("POST", "/api/chat", "workspace", strings.Repeat("b", 32)) != 204 {
 		t.Fatal("workspace rejected")
 	}
 	if admitted[1]["parent"] != strings.Repeat("b", 32) {
 		t.Fatal("workspace continuation lost")
+	}
+	if request("POST", "/api/pull", "workspace", strings.Repeat("b", 32)) != 204 || admitted[2]["parent"] != nil {
+		t.Fatal("model download inherited admission during drain")
 	}
 	for _, item := range configured.tickets {
 		if !item.ending {

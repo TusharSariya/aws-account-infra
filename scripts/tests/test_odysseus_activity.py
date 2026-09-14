@@ -126,3 +126,25 @@ class ThreadActivityTests(unittest.TestCase):
             future.result(timeout=2)
             tracker.report()
             self.assertFalse(tracker.tickets)
+
+class LifespanTests(unittest.IsolatedAsyncioTestCase):
+    async def test_source_lifespan_installs_tracking_before_startup_and_restores_on_shutdown(self):
+        from contextlib import asynccontextmanager
+        from unittest.mock import patch
+        from lifecycle import bootstrap
+        tracker = Tracker('fixture', 'fixture', 'fixture', transport=lambda *args: {})
+        events = []
+        @asynccontextmanager
+        async def original(app):
+            self.assertIs(asyncio.get_running_loop().get_task_factory(), task_factory)
+            self.assertFalse(tracker.known)
+            events.append('startup')
+            yield {'fixture': True}
+            events.append('shutdown')
+        with patch.object(bootstrap, 'tracker', tracker):
+            async with bootstrap.lifespan(original)(None) as state:
+                self.assertEqual(state, {'fixture': True})
+                self.assertTrue(tracker.known)
+        self.assertEqual(events, ['startup', 'shutdown'])
+        self.assertFalse(tracker.known)
+        self.assertIsNone(asyncio.get_running_loop().get_task_factory())

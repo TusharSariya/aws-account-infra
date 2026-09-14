@@ -142,7 +142,10 @@ func Middleware(next http.Handler) http.Handler {
 			return
 		}
 		parent := ""
-		if workspace {
+		// Only inference can extend already-admitted work while draining.
+		// Downloads, uploads and model mutations always require fresh admission.
+		inference := r.URL.Path == "/api/generate" || r.URL.Path == "/api/chat" || r.URL.Path == "/api/embed" || r.URL.Path == "/api/embeddings" || r.URL.Path == "/v1/chat/completions" || r.URL.Path == "/v1/completions" || r.URL.Path == "/v1/embeddings" || r.URL.Path == "/v1/responses"
+		if workspace && inference {
 			parent = r.Header.Get("X-Homelab-Work")
 		}
 		var random [16]byte
