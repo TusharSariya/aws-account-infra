@@ -122,9 +122,29 @@ class GuardTests(unittest.TestCase):
                 apps.execute('plan', config)
             run.assert_not_called()
 
+    def test_credential_update_preserves_metadata_and_cas_without_schema_discovery(self):
+        current = {'apiVersion': 'v1', 'kind': 'Secret', 'type': 'Opaque', 'data': {'password': 'old'},
+                   'metadata': {'name': 'pihole-admin', 'namespace': 'homelab-services',
+                                'resourceVersion': '17', 'labels': {'preserve': 'true'}}}
+        desired = {**current, 'metadata': {'name': 'pihole-admin', 'namespace': 'homelab-services'},
+                   'data': {'password': 'new'}}
+        with patch.object(apps, 'run', side_effect=[json.dumps(current).encode(), b'']) as run:
+            apps.reconcile_credential_object('kubectl', desired)
+        command, payload = run.call_args.args
+        self.assertIn('replace', command)
+        self.assertIn('/api/v1/namespaces/homelab-services/secrets/pihole-admin?fieldValidation=Strict&fieldManager=homelab-app-credentials', command)
+        result = json.loads(payload)
+        self.assertEqual(result['metadata']['resourceVersion'], '17')
+        self.assertEqual(result['metadata']['labels'], {'preserve': 'true'})
+        self.assertNotIn('kubectl.kubernetes.io/last-applied-configuration', result['metadata'].get('annotations', {}))
+        self.assertEqual(result['data'], {'password': 'new'})
+        with patch.object(apps, 'run') as run, self.assertRaises(apps.AppError):
+            apps.reconcile_credential_object('kubectl', {'apiVersion': 'v1', 'kind': 'Secret', 'metadata': {'name': 'unrelated', 'namespace': 'default'}})
+        run.assert_not_called()
+
     def test_new_credentials_are_external_and_registry_secret_has_correct_type(self):
         values = dict.fromkeys(apps.SECRET_NAMES, 'a-fixture-only-value-that-is-long-enough')
-        with patch.dict(apps.os.environ, {**values, 'GITHUB_ACTIONS': 'true'}), patch.object(apps, 'run') as run:
+        with patch.dict(apps.os.environ, {**values, 'GITHUB_ACTIONS': 'true'}), patch.object(apps, 'run', return_value=b'') as run:
             apps.bootstrap('kubectl')
         manifests = [json.loads(call.args[1]) for call in run.call_args_list if len(call.args) == 2]
         registry = next(m for m in manifests if m['metadata']['name'] == 'ghcr-read')

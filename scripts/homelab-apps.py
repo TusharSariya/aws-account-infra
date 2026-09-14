@@ -81,13 +81,49 @@ def tailnet_https(hostname, path, options):
                 '--resolve', hostname + ':443:' + address, *options, 'https://' + hostname + path])
 
 
+def reconcile_credential_object(kubectl, manifest):
+    """Strict core API writes preserve metadata and use the observed version.
+
+    Avoid OpenAPI discovery without disabling validation. No last-applied
+    annotation is written, and credential content travels only through stdin.
+    """
+    metadata = manifest['metadata']
+    kind, name, namespace = manifest['kind'], metadata['name'], metadata.get('namespace')
+    allowed = {('Secret', 'operator-oauth', 'tailscale'),
+               ('Secret', 'pihole-admin', 'homelab-services'),
+               ('Secret', 'odysseus-bootstrap', 'homelab-models'),
+               ('Secret', 'ghcr-read', 'homelab-models'), ('Namespace', 'tailscale', None)}
+    if manifest.get('apiVersion') != 'v1' or (kind, name, namespace) not in allowed:
+        raise AppError('Unexpected credential object')
+    path = '/api/v1/' + ('namespaces/' + namespace + '/secrets' if kind == 'Secret' else 'namespaces')
+    existing = run([kubectl, '--request-timeout=30s', 'get', kind, name, '--ignore-not-found', '-o', 'json',
+                    *(['-n', namespace] if namespace else [])])
+    operation = 'create'
+    if existing.strip():
+        current = json.loads(existing)
+        if not current['metadata'].get('resourceVersion'):
+            raise AppError('Missing resource version for credential update')
+        if kind == 'Secret':
+            current['data'], current['type'] = manifest['data'], manifest['type']
+        else:
+            current['metadata'].setdefault('labels', {}).update(metadata.get('labels', {}))
+        current.pop('status', None)
+        manifest = current
+        operation = 'replace'
+        path += '/' + name
+    run([kubectl, '--request-timeout=30s', operation, '--raw',
+         path + '?fieldValidation=Strict&fieldManager=homelab-app-credentials', '-f', '-'], json.dumps(manifest).encode())
+
+
 def bootstrap(kubectl):
     if os.environ.get('GITHUB_ACTIONS') != 'true':
         raise AppError('Credential reconciliation only runs in approved CI apply')
     values = credentials()
     # Do not change an independently managed namespace or create a parallel cluster.
     run([kubectl, 'get', 'namespace', 'homelab-services', 'homelab-models'])
-    run([kubectl, 'apply', '--server-side', '--field-manager=homelab-app-credentials', '-f', CONFIG / 'namespaces.yaml'])
+    import yaml
+    for manifest in yaml.safe_load_all((CONFIG / 'namespaces.yaml').read_text()):
+        reconcile_credential_object(kubectl, manifest)
     for namespace, name, data in [
         ('tailscale', 'operator-oauth', {'client_id': values['TS_OPERATOR_CLIENT_ID'], 'client_secret': values['TS_OPERATOR_CLIENT_SECRET']}),
         ('homelab-services', 'pihole-admin', {'password': values['PIHOLE_ADMIN_PASSWORD']}),
@@ -95,8 +131,7 @@ def bootstrap(kubectl):
         ('homelab-models', 'ghcr-read', {'.dockerconfigjson': json.dumps({'auths': {'ghcr.io': {'auth': base64.b64encode((values['GHCR_READ_USER'] + ':' + values['GHCR_READ_TOKEN']).encode()).decode()}}})})]:
         manifest = {'apiVersion': 'v1', 'kind': 'Secret', 'metadata': {'name': name, 'namespace': namespace},
                     'type': 'kubernetes.io/dockerconfigjson' if name == 'ghcr-read' else 'Opaque', 'data': {k: base64.b64encode(v.encode()).decode() for k, v in data.items()}}
-        # Server-side apply avoids storing plaintext in a last-applied annotation.
-        run([kubectl, 'apply', '--server-side', '--field-manager=homelab-app-credentials', '-f', '-'], json.dumps(manifest).encode())
+        reconcile_credential_object(kubectl, manifest)
 
 
 def guard_plan(plan):
