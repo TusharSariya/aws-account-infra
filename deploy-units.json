@@ -136,11 +136,17 @@
         "live/kubernetes/homelab/",
         "config/environments/kubernetes/homelab/",
         "scripts/homelab-apps.py",
+        "scripts/issue-capacity-credentials.py",
+        "scripts/quota-acceptance.py",
+        ".github/workflows/homelab-quota-acceptance.yml",
+        "scripts/enroll-capacity-host-key.sh",
         ".github/actions/kubernetes-deploy/",
         "charts/homelab-ollama/",
         "charts/homelab-odysseus/",
         "charts/homelab-capacity/",
-        "apps/platform/storage/"
+        "charts/homelab-ai/",
+        "apps/platform/storage/",
+        "apps/platform/migration/"
       ]
     }
   ]

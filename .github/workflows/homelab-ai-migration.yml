@@ -1,0 +1,41 @@
+name: homelab-ai-migration
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type reset-three-ai-volumes-v1 to erase only the three pinned legacy AI volumes
+        type: string
+        required: true
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: tofu-apply
+  cancel-in-progress: false
+jobs:
+  reset:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: prod
+    steps:
+      - name: Require the explicit single-use reset
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: test "$CONFIRM" = reset-three-ai-volumes-v1
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4
+        with:
+          oauth-client-id: ${{ vars.TS_OIDC_CLIENT_ID }}
+          audience: ${{ vars.TS_OIDC_AUDIENCE }}
+          tags: tag:github-ci
+          version: 1.102.4
+          hostname: gh-ai-migration-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Accept private subnet route
+        run: sudo tailscale set --accept-routes=true
+      - uses: ./.github/actions/talos-check
+        with:
+          operation: ai-migrate
+          reset-confirm: ${{ inputs.confirm }}
+          secrets-b64: ${{ secrets.TALOS_SECRETS_B64 }}

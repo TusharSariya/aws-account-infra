@@ -15,6 +15,11 @@ ROOT = Path(__file__).resolve().parents[1]
 SECRET_NAMES = ('CAPACITY_HOST_SSH_KEY', 'CAPACITY_HOST_CREDENTIALS_B64')
 
 
+def write_ssh_key(path, value):
+    # gh secret set's stdin path trims CR/LF. OpenSSH requires its final newline.
+    path.write_text(value.rstrip('\r\n') + '\n')
+
+
 def main():
     if os.environ.get('GITHUB_ACTIONS') != 'true' or os.environ.get('GITHUB_REF') != 'refs/heads/main':
         raise ValueError('Reviewed main CI required')
@@ -26,7 +31,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix='capacity-host-') as directory:
         directory = Path(directory)
         key, known = directory / 'ssh-key', directory / 'known-hosts'
-        key.write_text(os.environ['CAPACITY_HOST_SSH_KEY'])
+        write_ssh_key(key, os.environ['CAPACITY_HOST_SSH_KEY'])
         known.write_text(os.environ['CAPACITY_HOST_KNOWN_HOSTS'])
         ssh = ['ssh', '-i', str(key), '-o', 'IdentitiesOnly=yes', '-o', 'BatchMode=yes',
                '-o', 'StrictHostKeyChecking=yes', '-o', 'UserKnownHostsFile=' + str(known),

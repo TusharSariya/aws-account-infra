@@ -9,14 +9,14 @@
 - [x] 1.7 Package helpers/configuration/policies through Kubernetes-root Helm, track all inputs in deploy selection and required acceptance; render and selection/gate tests pass.
 - [x] 1.8 Exercise disposable quota enforcement and simulated stale/missing/disabled/exhausted conditions through explicit CI; record successful run separately from local tests.
 - [ ] 1.9 Verify quota activation and persistence through explicit worker maintenance, retaining identities and Pi-hole DNS; attach live evidence.
-- [ ] 1.10 Run relevant formatting, OpenTofu validation, lint/security checks and strict OpenSpec validation, then deliver and review storage PR through guarded apply and required acceptance.
+- [x] 1.10 Run relevant formatting, OpenTofu validation, lint/security checks and strict OpenSpec validation, then deliver and review storage PR through guarded apply and required acceptance.
 
 ## 2. AI packaging PR
 
-- [ ] 2.1 Publish one approved four-container template with exact aggregate requests/limits, hostUsers=false and bounded ephemeral storage; rendered resource totals and security checks pass.
-- [ ] 2.2 Add retained static local PVs and claims with fixed worker affinity and project directories; rendering verifies claim binding, retention and isolation.
-- [ ] 2.3 Add one-time migration recording exact old PVC/PV UIDs and stopped writers, narrowly scoped plan allowances and replay rejection; adversarial migration tests pass.
-- [ ] 2.4 Disable old writers and default migrated AI to zero without disturbing Pi-hole; CI health verifies intentional-off without starting AI.
+- [x] 2.1 Publish one approved four-container template with exact aggregate requests/limits, hostUsers=false and bounded ephemeral storage; rendered resource totals and security checks pass.
+- [x] 2.2 Add retained static local PVs and claims with fixed worker affinity and project directories; rendering verifies claim binding, retention and isolation.
+- [x] 2.3 Add one-time migration recording exact old PVC/PV UIDs and stopped writers, narrowly scoped plan allowances and replay rejection; adversarial migration tests pass.
+- [x] 2.4 Disable old writers and default migrated AI to zero without disturbing Pi-hole; CI health verifies intentional-off without starting AI.
 - [ ] 2.5 Perform authorized reset only through explicit reviewed CI migration; prove unrelated data survives and runtime remains off.
 - [ ] 2.6 Verify data persists across stop/start and full Pod stays Pending with insufficient resources while Pi-hole answers UDP/TCP DNS; record explicit acceptance evidence.
 - [ ] 2.7 Run rendering, unit/integration, OpenTofu, lint/security and strict OpenSpec checks; deliver and review packaging PR after storage PR succeeds.

@@ -9,6 +9,10 @@ on:
       - 'config/environments/kubernetes/**'
       - 'scripts/homelab-apps.py'
       - 'scripts/tests/test_homelab_apps.py'
+      - 'scripts/tests/test_ai_*.py'
+      - 'apps/platform/migration/**'
+      - 'scripts/ai-migration.py'
+      - '.github/workflows/homelab-ai-migration.yml'
       - 'scripts/tests/test_odysseus_backup.py'
       - 'scripts/odysseus-*.sh'
       - 'scripts/tests/test_deploy_units.py'
@@ -35,6 +39,7 @@ jobs:
         run: |
           python3 scripts/homelab-apps.py setup
           uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p test_homelab_apps.py
+          uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p "test_ai_*.py"
           python3 -m unittest discover -s scripts/tests -p test_deploy_units.py
           python3 -m unittest discover -s scripts/tests -p test_odysseus_backup.py
           bash -n scripts/odysseus-backup.sh

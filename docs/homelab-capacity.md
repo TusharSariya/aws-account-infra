@@ -42,6 +42,24 @@ Pin the trusted worker XFS UUID from Talos discovery and the actual physical poo
 
 Rotate the dedicated client identity by reconciling the Secret and restarting only the physical collector. For CA rotation, temporarily trust both dedicated CAs, replace the leaf certificates and then remove the old CA. Loss of credentials must produce missing/unhealthy evidence and blocked AI admission, never an authentication bypass.
 
+### Issuance and initial credential enrollment
+
+Run `uv run scripts/issue-capacity-credentials.py --output "$HOME/.config/aws-account-infra/capacity/initial"` from the reviewed checkout. It requires a new output directory outside every Git checkout, creates private files, verifies distinct client/server CAs and certificate purposes, pins the configured server IP, and refuses to overwrite identities. Leaf certificates last 365 days; CAs last five years. Keep both CA signing keys in separately protected offline custody. Issuance alone does not prove an offline backup exists.
+
+The generated `ci-host-ed25519` is an administrative host-installation identity. Enroll its public key once through `bash scripts/enroll-capacity-host-key.sh "$HOME/.config/aws-account-infra/capacity/initial/ci-host-ed25519.pub"`. This idempotent repository recipe uses the existing pinned Proxmox administrative SSH connection, preserves other keys, restricts the new key to tailnet source addresses, and disables forwarding and PTY access. It still permits root installation commands; it is distinct from the read-only collector certificate.
+
+Enroll the following through `gh secret set NAME --env prod < FILE`, using the private issuance directory:
+
+| Protected secret | Private file |
+|---|---|
+| `CAPACITY_HOST_SSH_KEY` | `ci-host-ed25519` |
+| `CAPACITY_HOST_CREDENTIALS_B64` | `host-credentials.b64` |
+| `CAPACITY_CLIENT_CREDENTIALS_B64` | `client-credentials.b64` |
+
+Copy the already trusted `pve.tail2f646b.ts.net` known-host entry to the prod variable `CAPACITY_HOST_KNOWN_HOSTS`; do not establish trust using an unchecked key scan. Never upload either CA private key. Dispatch `homelab-capacity-host` on reviewed `main` with `confirm=pve-capacity`. Its protected, serialized job installs the host recipe, verifies fresh thin-pool measurements and reconciles the separate Kubernetes client Secret. Verify a successful run before enabling collectors. The namespace and Talos identity must already exist from the storage foundation.
+
+For loss or expiry, issue a replacement bundle into a new directory, enroll its separate administrative public key if needed, replace the three protected secrets, and rerun the same reviewed-main workflow. Revoke the old administrative public key by its exact key material during credential recovery. Replacement CAs require coordinated host and client reconciliation; missing telemetry during that interval must keep AI admission closed. Application data is independent of these credentials and is not recovered by reissuing them.
+
 ## Capacity decisions
 
 Every filesystem space/inode, project usage and physical data/metadata measurement must be present, healthy, match its configured identity and be at most 90 seconds old. Future timestamps, nonfinite percentages and out-of-range values fail closed. Guest and physical collectors run every 30 seconds; do not refresh upstream timestamps in the collector.
@@ -67,3 +85,9 @@ The `storage-foundation` reusable CI workflow repeats isolated Linux checks. Sel
 Project quotas, retained PVs, Git history and OpenTofu state are not application backups. Before the later authorized reset, record exact old claim/PV UIDs and paths, stop and verify all writers, and capture any separately desired application backup using the existing Odysseus backup procedure. The reset record must be durable and single-use, and must name only the three authorized application volumes. This foundation contains no reset code.
 
 Reconstruct quota configuration before restoring data to fresh isolated claims. Restore workspace and vector data with ownership compatible with the user-namespaced Pod, verify representative records and model inventory, and document external credentials separately. Do not mark recovery complete until an isolated restore actually succeeds. Configuration rollback cannot recover data erased by the authorized reset.
+
+## API publication policy
+
+The collectors and reset helper use a narrowly selected `CiliumNetworkPolicy` allowing only the `kube-apiserver` identity on TCP 6443. Disposable quota consumers receive no API access. Cilium's default CIDR selectors exclude cluster nodes, so an IP-block rule for the control-plane address does not permit this traffic. See [Cilium node and API-server selectors](https://docs.cilium.io/en/stable/security/policy/layer3/). Default ingress and other egress remain denied, with a separate fixed physical-exporter exception for its collector.
+
+The failed initial activation left capacity Helm revision 2 marked failed. Its release inputs were read back and matched commit `f7adc49` exactly. `reviewed-drift.json` records the exact redacted plan-drift fingerprint and originating CI run. The plan guard accepts only that capacity release's deployed-to-failed metadata/status transition with unchanged configured fields; every different fingerprint, resource, configuration change or destructive action remains blocked. A successful saved-plan apply records the refreshed state, so this exception does not grant blanket failed-release recovery.

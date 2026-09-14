@@ -1,0 +1,20 @@
+node: talos-worker-01
+images:
+  ollama: ollama/ollama@sha256:684d8674b4315fa18f4f0e973a118ec2652ed96f67563277839985175858e0ba
+  odysseus: ghcr.io/tusharsariyaorg/homelab-odysseus@sha256:6feb3dd257b13d746a1e88e8e624b083d71f0cc1e2420a810c7ef65f6126862a
+  chroma: chromadb/chroma:1.5.5@sha256:0771874eaffc80fb4a66ba4de41a8fadf0447240b08d92353450e26ee43c9355
+  searx: searxng/searxng:2026.5.31-7159b8aed@sha256:35b089054ac9b4257976107e71673d9e30ac17c9b50bbf8b4783f2f6d1d1981f
+  configure: python:3.14-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6
+volumes:
+  models:
+    project: 31001
+    size: 300Gi
+    path: ai-models
+  workspace:
+    project: 31002
+    size: 20Gi
+    path: ai-workspace
+  vector:
+    project: 31003
+    size: 10Gi
+    path: ai-vector

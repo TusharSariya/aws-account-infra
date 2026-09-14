@@ -1,6 +1,6 @@
 # Activate only after trusted filesystem UUID enrollment, independent physical
 # credential provisioning and explicit quota maintenance acceptance.
-enabled: false
+enabled: true
 config:
   filesystemUUID: '86f3ada1-17e4-4f74-9d73-a18c1774cc31'
   physicalURL: 'https://10.42.0.115:9443/capacity'

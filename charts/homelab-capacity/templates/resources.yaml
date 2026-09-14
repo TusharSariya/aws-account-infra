@@ -84,11 +84,12 @@ spec:
               {{- if eq $mode "guest" }}
               add: [SYS_ADMIN, CHOWN, FOWNER, DAC_READ_SEARCH]
               {{- end }}
+          ports: [{name: health, containerPort: 8081}]
           readinessProbe:
-            exec:
-              command: [python, -B, /code/collector.py, ready]
+            exec: null
+            httpGet: {path: /ready, port: health}
             periodSeconds: 10
-            timeoutSeconds: 5
+            timeoutSeconds: 3
           resources:
             requests: {cpu: 25m, memory: 32Mi, ephemeral-storage: 16Mi}
             limits: {cpu: 100m, memory: 64Mi, ephemeral-storage: 32Mi}
@@ -125,13 +126,24 @@ spec:
   podSelector: {}
   policyTypes: [Ingress, Egress]
   ingress: []
+  egress: []
+---
+# Cilium excludes cluster nodes from CIDR peers by default. Select only the
+# API-server identity, never all nodes or the whole cluster.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata: {name: capacity-api-access, namespace: homelab-platform}
+spec:
+  endpointSelector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values: [guest-capacity, physical-capacity, ai-volume-reset]
   egress:
-    - to:
-        - ipBlock: {cidr: 10.42.0.220/32}
-        - ipBlock: {cidr: 10.96.0.1/32}
-      ports:
-        - {protocol: TCP, port: 443}
-        - {protocol: TCP, port: 6443}
+    - toEntities: [kube-apiserver]
+      toPorts:
+        - ports:
+            - {port: '6443', protocol: TCP}
 ---
 {{- if .Values.enabled }}
 apiVersion: networking.k8s.io/v1

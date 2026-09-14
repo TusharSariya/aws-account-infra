@@ -1,4 +1,6 @@
 """Single-purpose collectors; each service account writes one named status object."""
+from http.server import BaseHTTPRequestHandler, HTTPServer
+import threading
 import json
 import os
 from pathlib import Path
@@ -114,6 +116,30 @@ def healthy_sample(mode, config, sample, now):
                for reason in result.reasons)
 
 
+class ReadinessHandler(BaseHTTPRequestHandler):
+    def log_message(self, *_args):
+        pass
+
+    def setup(self):
+        super().setup()
+        self.connection.settimeout(1)
+
+    def do_GET(self):
+        ready = self.path == '/ready' and self.server.ready()
+        self.send_response(200 if ready else 503)
+        self.send_header('Content-Length', '0')
+        self.send_header('Connection', 'close')
+        self.end_headers()
+        self.close_connection = True
+
+
+def readiness_server(ready, address=('0.0.0.0', 8081)):
+    server = HTTPServer(address, ReadinessHandler)
+    server.ready = ready
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    return server
+
+
 def main():
     config = json.loads(Path('/config/config.json').read_text())
     mode = os.environ['COLLECTOR_MODE']
@@ -121,6 +147,8 @@ def main():
     if sys.argv[1:] == ['ready']:
         sample = json.loads(readiness.read_text())
         sys.exit(0 if healthy_sample(mode, config, sample, time.time()) else 1)
+    published = {}
+    readiness_server(lambda: healthy_sample(mode, config, published, time.time()))
     collect = {'guest': guest, 'physical': physical}[mode]
     while True:
         start = time.monotonic()
@@ -132,7 +160,9 @@ def main():
         try:
             publish(mode, sample)
             readiness.write_text(json.dumps(sample, allow_nan=False))
+            published = sample
         except Exception as error:
+            published = {}
             readiness.unlink(missing_ok=True)
             print(mode + ' capacity publication failed: ' + type(error).__name__, flush=True)
         time.sleep(max(0, 30 - (time.monotonic() - start)))

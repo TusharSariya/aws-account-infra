@@ -2,13 +2,19 @@ name: Talos acceptance session
 description: Independent authenticated acceptance or explicitly approved worker maintenance
 inputs:
   operation:
-    description: network, pvc, capacity, capacity-credentials, or worker-reboot
+    description: network, pvc, capacity, capacity-credentials, worker-reboot, ai-migrate, quota-prepare, or quota-verify
     required: true
   reboot-approved:
     description: Explicit maintenance consent, never inferred from an apply
     default: 'false'
   capacity-credentials-b64:
     description: Independently issued capacity client credential bundle
+    default: ''
+  reset-confirm:
+    description: Explicit single-use AI reset confirmation
+    default: ''
+  quota-confirm:
+    description: Explicit disposable quota and reboot maintenance confirmation
     default: ''
   secrets-b64:
     description: Existing Talos identity
@@ -22,7 +28,7 @@ runs:
       env:
         OPERATION: ${{ inputs.operation }}
       run: |
-        [[ "$OPERATION" == network || "$OPERATION" == pvc || "$OPERATION" == capacity || "$OPERATION" == capacity-credentials || "$OPERATION" == worker-reboot ]]
+        [[ "$OPERATION" == network || "$OPERATION" == pvc || "$OPERATION" == capacity || "$OPERATION" == capacity-credentials || "$OPERATION" == ai-migrate || "$OPERATION" == worker-reboot || "$OPERATION" == quota-prepare || "$OPERATION" == quota-verify ]]
         umask 077
         echo "path=$(mktemp -d "$RUNNER_TEMP/talos-check.XXXXXXXX")" >> "$GITHUB_OUTPUT"
     - name: Set up verified tools
@@ -45,6 +51,8 @@ runs:
         PRIVATE: ${{ steps.private.outputs.path }}
         OPERATION: ${{ inputs.operation }}
         CAPACITY_CLIENT_CREDENTIALS_B64: ${{ inputs.capacity-credentials-b64 }}
+        AI_RESET_CONFIRM: ${{ inputs.reset-confirm }}
+        QUOTA_ACCEPTANCE_CONFIRM: ${{ inputs.quota-confirm }}
         HOMELAB_WORKER_REBOOT_APPROVED: ${{ inputs.reboot-approved }}
       run: uv run scripts/talos-ci.py "$OPERATION" --private "$PRIVATE"
     - name: Remove private authentication inputs

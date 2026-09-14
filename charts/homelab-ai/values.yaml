@@ -1,0 +1,15 @@
+node: talos-worker-01
+images: {}
+volumes:
+  models:
+    project: 31001
+    size: 300Gi
+    path: ai-models
+  workspace:
+    project: 31002
+    size: 20Gi
+    path: ai-workspace
+  vector:
+    project: 31003
+    size: 10Gi
+    path: ai-vector

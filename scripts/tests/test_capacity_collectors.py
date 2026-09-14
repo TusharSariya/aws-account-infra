@@ -2,12 +2,38 @@ import json
 from pathlib import Path
 import sys
 import unittest
+import urllib.request
+import urllib.error
 from unittest.mock import MagicMock, patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'apps/platform/storage'))
 import collector
 
 
 class CollectorTests(unittest.TestCase):
+    def test_resident_readiness_reports_only_published_fresh_sample_without_exec(self):
+        config = {'physicalPool': 'pve/data'}
+        published = {}
+        sample = {name: {'identity': 'pve/data', 'healthy': True, 'measured_at': 100,
+                        'used_percent': 95} for name in ('pool.data', 'pool.metadata')}
+        server = collector.readiness_server(lambda: collector.healthy_sample('physical', config, published, 100),
+                                            ('127.0.0.1', 0))
+        url = 'http://127.0.0.1:' + str(server.server_port) + '/ready'
+        try:
+            with self.assertRaises(urllib.error.HTTPError) as error:
+                urllib.request.urlopen(url, timeout=2)
+            self.assertEqual(error.exception.code, 503)
+            published = sample
+            with urllib.request.urlopen(url, timeout=2) as response:
+                self.assertEqual(response.status, 200)
+                self.assertEqual(response.read(), b'')
+            published = {}  # Publication failure invalidates readiness immediately.
+            with self.assertRaises(urllib.error.HTTPError) as error:
+                urllib.request.urlopen(url, timeout=2)
+            self.assertEqual(error.exception.code, 503)
+        finally:
+            server.shutdown()
+            server.server_close()
+
     def test_unenrolled_uuid_cannot_touch_storage(self):
         with patch.object(collector, 'open_mount') as mount, self.assertRaises(ValueError):
             collector.guest({'filesystemUUID': ''})

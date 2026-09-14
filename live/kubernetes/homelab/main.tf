@@ -82,3 +82,23 @@ resource "helm_release" "capacity" {
     prevent_destroy = true
   }
 }
+
+resource "helm_release" "ai" {
+  name      = "homelab-ai"
+  namespace = "homelab-models"
+  chart     = "${path.module}/../../../charts/homelab-ai"
+  values = [file("${local.config}/ai-values.yaml"), yamlencode({
+    migrationCode = merge(
+      { for f in fileset("${path.module}/../../../apps/platform/storage", "*.py") : f => file("${path.module}/../../../apps/platform/storage/${f}") },
+      { "reset.py" = file("${path.module}/../../../apps/platform/migration/reset.py") }
+    )
+    chartRevision = sha256(join("", [for f in sort(tolist(fileset("${path.module}/../../../charts/homelab-ai", "**"))) : filesha256("${path.module}/../../../charts/homelab-ai/${f}")]))
+  })]
+  wait        = true
+  timeout     = 300
+  max_history = 5
+  depends_on  = [helm_release.capacity, helm_release.ollama, helm_release.odysseus]
+  lifecycle {
+    prevent_destroy = true
+  }
+}
