@@ -26,6 +26,33 @@ def receipt():
 
 
 class MigrationTests(unittest.TestCase):
+    def test_missing_live_proof_blocks_reset_receipt_and_job_creation(self):
+        import subprocess
+        def api(command, **_kwargs):
+            self.assertIn('get', command)
+            resource = command[command.index('get') + 1]
+            name = command[command.index('get') + 2]
+            if resource == 'deployment':
+                value = {'spec': {'replicas': 0}}
+            elif resource == 'pods':
+                value = {'items': []}
+            elif resource == 'node':
+                value = {'metadata': {'uid': 'node'}, 'status': {'nodeInfo': {'bootID': 'boot'}}}
+            elif name in ('guest-capacity', 'physical-capacity'):
+                value = {'data': {'sample.json': json.dumps({'fixture': {'used_percent': 1}})}}
+            elif name.startswith('quota-') and name.endswith('-template'):
+                value = {'data': {'job.yaml': name}}
+            elif name == 'quota-live-acceptance':
+                value = {'data': {'proof.json': '{}'}}
+            else:
+                self.fail('Reset progressed past the missing-proof boundary')
+            return subprocess.CompletedProcess(command, 0, stdout=json.dumps(value))
+        env = {'GITHUB_ACTIONS': 'true', 'GITHUB_REF': 'refs/heads/main',
+               'AI_RESET_CONFIRM': 'reset-three-ai-volumes-v1', 'KUBECTL': 'kubectl-test', 'GITHUB_SHA': 'fixture'}
+        with patch.dict(os.environ, env), patch.object(migration_ci, 'healthy_sample', return_value=True), \
+             patch.object(migration_ci.subprocess, 'run', side_effect=api), self.assertRaisesRegex(ValueError, 'proof is required'):
+            migration_ci.main()
+
     def test_exact_claim_set_and_lineage_are_required(self):
         reset.validate_receipt(receipt())
         changed = receipt()

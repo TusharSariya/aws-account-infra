@@ -1,0 +1,69 @@
+name: homelab-quota-acceptance
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type verify-disposable-quotas-and-reboot to test bounded fixtures and reboot the worker
+        type: string
+        required: true
+      resume_verify:
+        description: Resume only verification of already prepared fixtures after an observed reboot
+        type: boolean
+        default: false
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: tofu-apply
+  cancel-in-progress: false
+jobs:
+  proof:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    environment: prod
+    steps:
+      - name: Require explicit disposable test and worker target
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: test "$CONFIRM" = verify-disposable-quotas-and-reboot
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4
+        with:
+          oauth-client-id: ${{ vars.TS_OIDC_CLIENT_ID }}
+          audience: ${{ vars.TS_OIDC_AUDIENCE }}
+          tags: tag:github-ci
+          version: 1.102.4
+          hostname: gh-quota-proof-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Accept private subnet route
+        run: sudo tailscale set --accept-routes=true
+      - name: Prepare bounded fixtures and prove application isolation
+        if: inputs.resume_verify == false
+        uses: ./.github/actions/talos-check
+        with:
+          operation: quota-prepare
+          quota-confirm: ${{ inputs.confirm }}
+          secrets-b64: ${{ secrets.TALOS_SECRETS_B64 }}
+      - name: Reboot only the explicitly selected worker
+        if: inputs.resume_verify == false
+        uses: ./.github/actions/talos-check
+        with:
+          operation: worker-reboot
+          reboot-approved: 'true'
+          secrets-b64: ${{ secrets.TALOS_SECRETS_B64 }}
+      - name: Repeat enforcement and isolation proof after reboot
+        uses: ./.github/actions/talos-check
+        with:
+          operation: quota-verify
+          quota-confirm: ${{ inputs.confirm }}
+          secrets-b64: ${{ secrets.TALOS_SECRETS_B64 }}
+      - name: Verify private DNS after maintenance
+        shell: bash
+        run: |
+          address=$(uv run --with PyYAML==6.0.3 python scripts/homelab-apps.py resolve --hostname pihole-dns.tail2f646b.ts.net)
+          for transport in +tcp +notcp; do
+            result=$(dig "@$address" example.com A +short +time=5 +tries=2 "$transport")
+            test -n "$result"
+            test "$result" != 0.0.0.0
+          done

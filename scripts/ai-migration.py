@@ -12,6 +12,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT / 'apps/platform/storage'), str(ROOT / 'apps/platform/migration')]
 from collector import healthy_sample
 from reset import CLAIMS, validate_receipt
+from quota_proof import require_proof, template_revision
+from workload_state import is_terminated
 
 
 def main():
@@ -38,9 +40,16 @@ def main():
         if get('deployment', name, 'homelab-models')['spec'].get('replicas', 1) != 0:
             raise ValueError('Legacy writers must already be stopped by the reviewed Helm release')
     pods = run(['get', 'pods', '-n', 'homelab-models', '-o', 'json'])['items']
-    if any(v.get('persistentVolumeClaim', {}).get('claimName') in CLAIMS for p in pods for v in p['spec'].get('volumes', [])):
+    if any(v.get('persistentVolumeClaim', {}).get('claimName') in CLAIMS and not is_terminated(p)
+           for p in pods for v in p['spec'].get('volumes', [])):
         raise ValueError('An old AI claim still has a Pod')
-    receipt = {'filesystem_uuid': values['config']['filesystemUUID'], 'source_commit': os.environ['GITHUB_SHA'], 'claims': {}}
+    templates = {mode: get('configmap', 'quota-' + mode + '-template', 'homelab-platform')['data']['job.yaml']
+                 for mode in ('admin', 'consumer')}
+    proof = json.loads(get('configmap', 'quota-live-acceptance', 'homelab-platform')['data']['proof.json'])
+    require_proof(proof, template_revision(templates), values['config']['filesystemUUID'],
+                  get('node', 'talos-worker-01'), time.time())
+    receipt = {'filesystem_uuid': values['config']['filesystemUUID'], 'source_commit': os.environ['GITHUB_SHA'],
+               'quota_proof_run_id': proof['run_id'], 'claims': {}}
     for name in CLAIMS:
         claim = get('pvc', name, 'homelab-models')
         pv = get('pv', claim['spec']['volumeName'])

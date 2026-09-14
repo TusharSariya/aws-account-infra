@@ -111,7 +111,8 @@ class GateTests(unittest.TestCase):
 
 class StorageSelectionTests(unittest.TestCase):
     def test_credential_recipes_select_deployment_and_full_checks(self):
-        for path in ('scripts/issue-capacity-credentials.py', 'scripts/enroll-capacity-host-key.sh'):
+        for path in ('scripts/issue-capacity-credentials.py', 'scripts/enroll-capacity-host-key.sh',
+                     'scripts/quota-acceptance.py', '.github/workflows/homelab-quota-acceptance.yml'):
             selected = units.select_units([path], units.load_units())
             self.assertEqual([unit['cloud'] for unit in selected], ['kubernetes'])
             self.assertEqual(units.acceptance_suite([path], selected), 'all')

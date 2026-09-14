@@ -116,13 +116,25 @@ class GuardTests(unittest.TestCase):
     def test_off_acceptance_never_starts_or_changes_runtime(self):
         legacy = {'items': [{'metadata': {'name': name}, 'spec': {'replicas': 0}}
                             for name in ('ollama', 'odysseus', 'chromadb', 'searxng')]}
-        with patch.object(apps, 'run', side_effect=[json.dumps(legacy).encode(), b'', b'']) as run:
+        terminal = {'spec': {'containers': [{'name': 'retained'}]}, 'status': {'phase': 'Succeeded',
+                    'containerStatuses': [{'name': 'retained', 'state': {'terminated': {'exitCode': 0}}}]}}
+        with patch.object(apps, 'run', side_effect=[json.dumps(legacy).encode(), b'', json.dumps({'items': [terminal]}).encode()]) as run:
             apps.verify_ai_off('kubectl')
         for call in run.call_args_list:
             self.assertFalse(set(call.args[0]) & {'scale', 'apply', 'patch', 'create', 'delete'})
         runtime = {'metadata': {'annotations': {'homelab/desired-state': 'on'}}, 'spec': {'replicas': 1}}
         with patch.object(apps, 'run', side_effect=[json.dumps(legacy).encode(), json.dumps(runtime).encode()]), self.assertRaises(apps.AppError):
             apps.verify_ai_off('kubectl')
+
+    def test_off_acceptance_blocks_unknown_container_state_without_mutation(self):
+        legacy = {'items': [{'metadata': {'name': name}, 'spec': {'replicas': 0}}
+                            for name in ('ollama', 'odysseus', 'chromadb', 'searxng')]}
+        unverified = {'spec': {'containers': [{'name': 'unknown'}]}, 'status': {'phase': 'Failed'}}
+        with patch.object(apps, 'run', side_effect=[json.dumps(legacy).encode(), b'', json.dumps({'items': [unverified]}).encode()]) as run, \
+             patch.object(apps.time, 'monotonic', side_effect=[0, 0, 901]), patch.object(apps.time, 'sleep'):
+            with self.assertRaisesRegex(apps.AppError, 'unverified Pods'):
+                apps.verify_ai_off('kubectl')
+        self.assertTrue(all('get' in call.args[0] for call in run.call_args_list))
 
     def test_command_timeout_allows_helm_to_finish_and_release_state_lock(self):
         with patch.object(apps.subprocess, 'run') as run:

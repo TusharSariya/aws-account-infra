@@ -9,6 +9,7 @@ import ssl
 
 from collector import filesystem_uuid
 from xfs import open_mount, project_attributes, get_quota, PROJINHERIT
+from workload_state import is_terminated
 
 CLAIMS = {'ollama-models': ('ai-models', 31001, 300 * 1024**3),
           'odysseus-data': ('ai-workspace', 31002, 20 * 1024**3),
@@ -58,7 +59,7 @@ def verify_stopped(receipt):
             raise ValueError('Legacy writer is not explicitly stopped')
     for pod in api('/api/v1/namespaces/homelab-models/pods')['items']:
         claims = {v.get('persistentVolumeClaim', {}).get('claimName') for v in pod['spec'].get('volumes', [])}
-        if claims & set(CLAIMS):
+        if claims & set(CLAIMS) and not is_terminated(pod):
             raise ValueError('A legacy claim still has a Pod, including pending termination')
     for name, expected in receipt['claims'].items():
         claim = api('/api/v1/namespaces/homelab-models/persistentvolumeclaims/' + name)

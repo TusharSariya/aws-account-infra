@@ -137,6 +137,8 @@
         "config/environments/kubernetes/homelab/",
         "scripts/homelab-apps.py",
         "scripts/issue-capacity-credentials.py",
+        "scripts/quota-acceptance.py",
+        ".github/workflows/homelab-quota-acceptance.yml",
         "scripts/enroll-capacity-host-key.sh",
         ".github/actions/kubernetes-deploy/",
         "charts/homelab-ollama/",

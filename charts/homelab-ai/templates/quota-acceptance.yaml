@@ -1,0 +1,106 @@
+{{- range $name := list "first" "neighbor" }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: homelab-quota-proof-{{ $name }}
+  annotations: {helm.sh/resource-policy: keep}
+spec:
+  capacity: {storage: 2Mi}
+  accessModes: [ReadWriteOnce]
+  volumeMode: Filesystem
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ''
+  claimRef: {namespace: homelab-platform, name: quota-proof-{{ $name }}}
+  local: {path: /var/mnt/local-path-provisioner/ai-quota-proof-{{ $name }}}
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - {key: kubernetes.io/hostname, operator: In, values: [{{ $.Values.node }}]}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: quota-proof-{{ $name }}
+  namespace: homelab-platform
+  annotations: {helm.sh/resource-policy: keep}
+spec:
+  accessModes: [ReadWriteOnce]
+  volumeMode: Filesystem
+  storageClassName: ''
+  volumeName: homelab-quota-proof-{{ $name }}
+  resources:
+    requests: {storage: 2Mi}
+---
+{{- end }}
+{{- range $mode := list "admin" "consumer" }}
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: quota-{{ $mode }}-template, namespace: homelab-platform}
+data:
+  job.yaml: |
+    apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: quota-{{ $mode }}
+      namespace: homelab-platform
+      annotations:
+        homelab/quota-code-revision: {{ toJson $.Values.migrationCode | sha256sum | quote }}
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 180
+      ttlSecondsAfterFinished: 600
+      template:
+        metadata:
+          labels: {app: quota-maintenance}
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          nodeSelector: {kubernetes.io/hostname: {{ $.Values.node }}}
+          {{- if eq $mode "consumer" }}
+          hostUsers: false
+          {{- end }}
+          securityContext:
+            {{- if eq $mode "consumer" }}
+            fsGroup: 1000
+            {{- end }}
+            seccompProfile: {type: RuntimeDefault}
+          containers:
+            - name: proof
+              image: {{ $.Values.images.configure | quote }}
+              command: [python, -B, /code/live_quota.py]
+              args: [{{ if eq $mode "consumer" }}consumer{{ else }}prepare{{ end }}, REPLACED_RUN_ID]
+              securityContext:
+                runAsUser: {{ if eq $mode "consumer" }}1000{{ else }}0{{ end }}
+                runAsNonRoot: {{ eq $mode "consumer" }}
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: [ALL]
+                  {{- if eq $mode "admin" }}
+                  add: [SYS_ADMIN, CHOWN, DAC_READ_SEARCH]
+                  {{- end }}
+              resources:
+                requests: {cpu: 25m, memory: 32Mi, ephemeral-storage: 16Mi}
+                limits: {cpu: 100m, memory: 64Mi, ephemeral-storage: 32Mi}
+              volumeMounts:
+                - {name: code, mountPath: /code, readOnly: true}
+                {{- if eq $mode "admin" }}
+                - {name: config, mountPath: /config, readOnly: true}
+                - {name: worker-data, mountPath: /var/mnt/local-path-provisioner}
+                {{- else }}
+                - {name: first, mountPath: /first}
+                - {name: neighbor, mountPath: /neighbor}
+                {{- end }}
+          volumes:
+            - {name: code, configMap: {name: capacity-code}}
+            {{- if eq $mode "admin" }}
+            - {name: config, configMap: {name: capacity-config}}
+            - name: worker-data
+              hostPath: {path: /var/mnt/local-path-provisioner, type: Directory}
+            {{- else }}
+            - {name: first, persistentVolumeClaim: {claimName: quota-proof-first}}
+            - {name: neighbor, persistentVolumeClaim: {claimName: quota-proof-neighbor}}
+            {{- end }}
+---
+{{- end }}

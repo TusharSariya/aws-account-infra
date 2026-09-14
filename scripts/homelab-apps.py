@@ -14,6 +14,8 @@ import sys
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'apps/platform/storage'))
+from workload_state import is_terminated
 TF = ROOT / 'live/kubernetes/homelab'
 CONFIG = ROOT / 'config/environments/kubernetes/homelab'
 SECRET_NAMES = ('TS_OPERATOR_CLIENT_ID', 'TS_OPERATOR_CLIENT_SECRET', 'PIHOLE_ADMIN_PASSWORD', 'GHCR_READ_USER', 'GHCR_READ_TOKEN', 'ODYSSEUS_ADMIN_PASSWORD', 'SEARXNG_SECRET', 'TALOS_SECRETS_B64')
@@ -246,8 +248,14 @@ def verify_ai_off(kubectl):
         if (runtime['spec'].get('replicas', 1) != 0 or
                 runtime['metadata'].get('annotations', {}).get('homelab/desired-state') != 'off'):
             raise AppError('Runtime must remain off until lifecycle activation')
-    run([kubectl, '-n', 'homelab-models', 'wait', '--for=delete', 'pod',
-         '-l', 'app in (ollama,odysseus,chromadb,searxng,ai-runtime)', '--timeout=900s'])
+    deadline = time.monotonic() + 900
+    while time.monotonic() < deadline:
+        pods = json.loads(run([kubectl, '--request-timeout=30s', '-n', 'homelab-models', 'get', 'pods',
+                              '-l', 'app in (ollama,odysseus,chromadb,searxng,ai-runtime)', '-o', 'json']))
+        if all(is_terminated(pod) for pod in pods['items']):
+            return
+        time.sleep(3)
+    raise AppError('AI still has active or unverified Pods after shutdown deadline')
 
 
 def endpoints(kubectl):

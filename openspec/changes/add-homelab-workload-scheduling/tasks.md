@@ -9,7 +9,7 @@
 - [x] 1.7 Package helpers/configuration/policies through Kubernetes-root Helm, track all inputs in deploy selection and required acceptance; render and selection/gate tests pass.
 - [x] 1.8 Exercise disposable quota enforcement and simulated stale/missing/disabled/exhausted conditions through explicit CI; record successful run separately from local tests.
 - [ ] 1.9 Verify quota activation and persistence through explicit worker maintenance, retaining identities and Pi-hole DNS; attach live evidence.
-- [ ] 1.10 Run relevant formatting, OpenTofu validation, lint/security checks and strict OpenSpec validation, then deliver and review storage PR through guarded apply and required acceptance.
+- [x] 1.10 Run relevant formatting, OpenTofu validation, lint/security checks and strict OpenSpec validation, then deliver and review storage PR through guarded apply and required acceptance.
 
 ## 2. AI packaging PR
 

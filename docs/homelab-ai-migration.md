@@ -8,15 +8,17 @@ Three explicitly bound static local PVs retain data on the worker's `ai-models`,
 
 ## Prerequisites
 
-Complete the reviewed storage foundation, host/client credential enrollment, worker quota activation and actual user-namespace/volume acceptance. Continuous guest and physical collectors must be enabled and healthy before migration. This stage's new `enabled: true` capacity configuration must not be deployed before the independent Secret and host endpoint are enrolled. The guarded Helm apply waits for collector readiness.
+Complete the reviewed storage foundation, host/client credential enrollment and worker quota activation. Continuous guest and physical collectors must be enabled and healthy before migration. This stage's new `enabled: true` capacity configuration must not be deployed before the independent Secret and host endpoint are enrolled. The guarded Helm apply waits for collector readiness.
 
 Apply this stage through the existing saved-plan CI gate. It stops legacy writers and creates retained destination claims without deleting any old claim or PV. Existing destructive-action protection stays intact; only the exact new Helm release is added to the allowlist. No general delete/replacement allowance is necessary. Routine deployment never invokes reset code.
+
+After this stage merges and deploys, run [explicit live quota acceptance](homelab-quota-acceptance.md) before reset. Its completed proof must match the current worker boot and reviewed templates and be no older than 24 hours. Missing or partial proof blocks creation of the reset receipt and Job.
 
 ## Authorized reset
 
 After reviewing the exact stage and any separately desired application backup, dispatch `homelab-ai-migration` from `main`, in the protected `prod` environment, with confirmation `reset-three-ai-volumes-v1`. It serializes with infrastructure applies and refuses any other branch or confirmation.
 
-The workflow reads the three existing claims `ollama-models`, `odysseus-data` and `chromadb-data` in `homelab-models`. It pins their claim UIDs, PV names/UIDs and exact provisioner paths in immutable ConfigMap data at `homelab-platform/ai-volume-reset-v1`. It verifies fresh independent capacity below warning thresholds and that the old Deployments are at zero with no Pods referencing these claims.
+The workflow reads the three existing claims `ollama-models`, `odysseus-data` and `chromadb-data` in `homelab-models`. It pins their claim UIDs, PV names/UIDs and exact provisioner paths in immutable ConfigMap data at `homelab-platform/ai-volume-reset-v1`. It verifies fresh independent capacity below warning thresholds and that the old Deployments are at zero with no active or unverified Pods referencing these claims. Retained terminal records are allowed only when every declared container has a recorded exit.
 
 A separate restricted platform Job verifies the receipt, current bindings, worker filesystem UUID, empty quota-enforced destination directories and stopped writers again. It changes the receipt's phase from `prepared` to `started` using a resource-version compare-and-swap before deleting any data. Deletion walks anchored directory descriptors, never follows symlinks, refuses other filesystems, and only empties the three pinned old directories. Unrelated claims, directories and Pi-hole data are outside its input set. Completion is recorded only after all three resets finish.
 

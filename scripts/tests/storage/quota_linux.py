@@ -6,10 +6,23 @@ from xfs import assign_empty_directory, get_quota, open_mount, open_project, pro
 
 from collector import filesystem_uuid
 from project_identity import verify
+from live_quota import admin, FIXTURES, create_file
 
 mount = open_mount('/quota-test', sys.argv[1])
 try:
     assert filesystem_uuid(mount) == sys.argv[2]
+    proof_id = '1' * 32
+    admin(mount, 'prepare', proof_id)
+    for name, _ in FIXTURES:
+        directory = open_project(mount, name)
+        try:
+            create_file(directory, 'persist', proof_id.encode())
+            if name.endswith('neighbor'):
+                create_file(directory, 'neighbor', proof_id.encode())
+        finally:
+            os.close(directory)
+    admin(mount, 'verify', proof_id)
+    admin(mount, 'cleanup', proof_id)
     first = open_project(mount, 'ai-test-first')
     second = open_project(mount, 'ai-test-second')
     try:

@@ -34,7 +34,7 @@ class PackagingTests(unittest.TestCase):
             self.assertIn('readinessProbe', container)
 
     def test_retained_static_bindings_use_only_the_three_project_directories(self):
-        pvs = [d for d in self.docs if d['kind'] == 'PersistentVolume']
+        pvs = [d for d in self.docs if d['kind'] == 'PersistentVolume' and d['spec']['claimRef']['namespace'] == 'homelab-models']
         claims = {d['metadata']['name']: d for d in self.docs if d['kind'] == 'PersistentVolumeClaim'}
         self.assertEqual(len(pvs), 3)
         self.assertEqual({pv['spec']['local']['path'] for pv in pvs}, {
