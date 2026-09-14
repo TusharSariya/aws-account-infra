@@ -47,7 +47,8 @@ class ApplicationSelectionTests(unittest.TestCase):
     def test_lifecycle_and_image_inputs_select_required_application_acceptance(self):
         for path in ['apps/platform/lifecycle/runtime.py', 'apps/containers/ollama/lifecycle/gateway.go',
                      'apps/containers/odysseus/lifecycle/tracking.py', 'scripts/ollama-image-context.py',
-                     '.github/workflows/ollama-image.yml', 'scripts/tests/test_lifecycle_state.py']:
+                     '.github/workflows/ollama-image.yml', 'scripts/tests/test_lifecycle_state.py',
+                     'scripts/odysseus-scheduler-acceptance.py']:
             with self.subTest(path=path):
                 selected = units.select_units([path], units.load_units())
                 self.assertEqual([unit['id'] for unit in selected], ['kubernetes-homelab'])

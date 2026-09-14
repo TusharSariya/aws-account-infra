@@ -18,6 +18,7 @@ on:
       - 'scripts/argo-client-token.py'
       - 'scripts/odysseus-source-tests.py'
       - 'scripts/odysseus-document-acceptance.py'
+      - 'scripts/odysseus-scheduler-acceptance.py'
       - 'scripts/homelab-lifecycle-validate.py'
       - 'scripts/ollama-image-*.py'
       - 'scripts/ollama-image-*.sh'
@@ -58,6 +59,7 @@ jobs:
           python3 scripts/homelab-apps.py setup
           source=$(python3 scripts/odysseus-image-context.py "$RUNNER_TEMP/document-source")
           python3 scripts/odysseus-document-acceptance.py "$source"
+          python3 scripts/odysseus-scheduler-acceptance.py "$source"
           uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p test_homelab_apps.py
           uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p "test_ai_*.py"
           uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p "test_lifecycle_*.py"
