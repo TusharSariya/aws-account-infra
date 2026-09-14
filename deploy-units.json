@@ -136,6 +136,8 @@
         "live/kubernetes/homelab/",
         "config/environments/kubernetes/homelab/",
         "scripts/homelab-apps.py",
+        "scripts/issue-capacity-credentials.py",
+        "scripts/enroll-capacity-host-key.sh",
         ".github/actions/kubernetes-deploy/",
         "charts/homelab-ollama/",
         "charts/homelab-odysseus/",
