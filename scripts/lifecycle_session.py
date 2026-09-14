@@ -35,7 +35,44 @@ class Maintenance:
         if payload is not None:
             config += 'header = "Content-Type: application/json"\n'
             arguments += ['--data-binary', json.dumps(payload)]
-        return json.loads(apps.tailnet_https(host, path, arguments, config.encode()))
+        if host != 'ai-lifecycle.tail2f646b.ts.net':
+            # Argo submissions with generateName are not safe to replay.
+            return json.loads(apps.tailnet_https(host, path, arguments, config.encode()))
+        # Lifecycle commands carry a stable UUID/revision. Retry only transient
+        # observations/transport and storage-RV conflicts, never a semantic rejection.
+        arguments.remove('--fail-with-body')
+        arguments += ['--write-out', '\n%{http_code}']
+        deadline = time.monotonic() + 30
+        address = apps.tailnet_ip(host, deadline=deadline)
+        for attempt in range(10):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise apps.AppError('Lifecycle API request deadline exceeded')
+            budget = min(5, remaining)
+            try:
+                raw = apps.tailnet_https(host, path, [*arguments, '--max-time', str(budget)],
+                                         config.encode(), address=address, timeout=budget)
+            except apps.AppError:
+                status, value = 0, {}
+            else:
+                body, _, code = raw.rpartition(b'\n')
+                status = int(code)
+                try:
+                    value = json.loads(body)
+                except ValueError:
+                    value = {}
+                if not isinstance(value, dict):
+                    value = {}
+                if status == 200:
+                    if not isinstance(value, dict) or not value:
+                        raise apps.AppError('Lifecycle API returned invalid successful state')
+                    return value
+            conflict = status == 409 and str(value.get('error', '')).startswith('State changed; retry the same command ID')
+            if status not in (0, 408, 429, 500, 502, 503, 504) and not conflict:
+                raise apps.AppError('Lifecycle API rejected request with HTTP ' + str(status))
+            if attempt == 9 or time.monotonic() >= deadline:
+                raise apps.AppError('Lifecycle API remained unavailable; last HTTP ' + str(status))
+            time.sleep(max(0, min(1, deadline - time.monotonic())))
 
     def status(self):
         return self.api('/status')

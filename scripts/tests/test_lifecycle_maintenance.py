@@ -12,6 +12,56 @@ spec.loader.exec_module(maintenance)
 
 
 class MaintenanceTests(unittest.TestCase):
+    def test_cancelled_storage_cleanup_rejects_replacement_namespace_before_mutation(self):
+        session = Mock()
+        session.kube.return_value = b'{"metadata":{"uid":"replacement"}}'
+        with self.assertRaisesRegex(maintenance.apps.AppError, 'namespace identity changed'):
+            maintenance.cleanup_cancelled_storage_fixture(session)
+        self.assertEqual(session.kube.call_count, 1)
+        self.assertEqual(session.kube.call_args.args[0], 'get')
+
+    def test_cancelled_storage_cleanup_is_noop_after_fixture_is_gone(self):
+        session = Mock()
+        session.kube.side_effect = [b'', b'{"items":[]}']
+        maintenance.cleanup_cancelled_storage_fixture(session)
+        self.assertTrue(all(call.args[0] == 'get' for call in session.kube.call_args_list))
+
+    def test_lifecycle_retry_preserves_command_and_does_not_retry_semantic_conflict(self):
+        import lifecycle_session
+        session = lifecycle_session.Maintenance.__new__(lifecycle_session.Maintenance)
+        session.tokens = {'operator': 'disposable-test-token'}
+        payload = {'revision': 7, 'command_id': '420a154c-350e-429c-87ee-7317ca995728'}
+        replies = [b'{"error":"State changed; retry the same command ID and revision"}\n409',
+                   b'{"error":"temporary observation failure"}\n503', b'{"acknowledged_revision":8}\n200']
+        with patch.object(lifecycle_session.apps, 'tailnet_ip', return_value='100.101.182.1') as resolve, patch.object(lifecycle_session.apps, 'tailnet_https', side_effect=replies) as request, patch.object(lifecycle_session.time, 'sleep'):
+            self.assertEqual(session.api('/stop', payload)['acknowledged_revision'], 8)
+            resolve.assert_called_once()
+            self.assertEqual(request.call_args_list[0], request.call_args_list[1])
+            self.assertEqual(request.call_args_list[1], request.call_args_list[2])
+        with patch.object(lifecycle_session.apps, 'tailnet_ip', return_value='100.101.182.1'), patch.object(lifecycle_session.apps, 'tailnet_https', return_value=b'{"error":"Command revision changed"}\n409') as request:
+            with self.assertRaisesRegex(maintenance.apps.AppError, 'HTTP 409'):
+                session.api('/stop', payload)
+            self.assertEqual(request.call_count, 1)
+        with patch.object(lifecycle_session.apps, 'tailnet_https', side_effect=maintenance.apps.AppError('ambiguous submission')) as request:
+            with self.assertRaises(maintenance.apps.AppError):
+                session.api('/api/v1/workflows/homelab-jobs', {}, host='argo.tail2f646b.ts.net')
+            self.assertEqual(request.call_count, 1)
+
+    def test_missing_peer_consumes_only_request_deadline_without_curl(self):
+        import lifecycle_session
+        session = lifecycle_session.Maintenance.__new__(lifecycle_session.Maintenance)
+        session.tokens = {'operator': 'disposable-test-token'}
+        now = [100.0]
+        def sleep(seconds):
+            now[0] += seconds
+        with patch.object(lifecycle_session.time, 'monotonic', side_effect=lambda: now[0]), patch.object(lifecycle_session.time, 'sleep', side_effect=sleep), patch.object(lifecycle_session.apps, 'run', return_value=b'{"Peer":{}}') as run, patch.object(lifecycle_session.apps, 'tailnet_https') as request:
+            with self.assertRaisesRegex(maintenance.apps.AppError, 'discovery deadline'):
+                session.api('/status')
+            self.assertEqual(now[0], 130)
+            self.assertEqual(run.call_count, 6)
+            self.assertTrue(all(call.kwargs['timeout'] <= 5 for call in run.call_args_list))
+            request.assert_not_called()
+
     def test_workspace_login_keeps_password_out_of_command_arguments(self):
         import base64
         import json

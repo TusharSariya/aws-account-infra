@@ -14,6 +14,48 @@ import uuid
 from lifecycle_session import Maintenance, KUBECTL, ROOT, apps
 
 
+def cleanup_cancelled_storage_fixture(session):
+    # Exact fixture identities from cancelled CI 34845325734, never application PVCs.
+    namespace = 'storage-check-3e2214f6e9'
+    namespace_uid = '3eb9d8ac-1392-4487-ac0f-b345f3589461'
+    expected = {
+        'retain': ('e5d09532-9a8f-48e9-839b-e70f32c3daa0', '2f1d7240-64c3-43d3-9bd9-9bbde8e87e15'),
+        'delete': ('6b29b47a-bf4f-4ce3-bb4c-ca48bf53af9c', '3d4a6d9e-9338-443e-a4f5-29cc02a75c24'),
+    }
+    raw = session.kube('get', 'namespace', namespace, '--ignore-not-found', '-o', 'json')
+    if raw.strip():
+        value = json.loads(raw)
+        if value['metadata']['uid'] != namespace_uid:
+            raise apps.AppError('Cancelled fixture namespace identity changed')
+        pods = json.loads(session.kube('-n', namespace, 'get', 'pods', '-o', 'json'))['items']
+        claims = json.loads(session.kube('-n', namespace, 'get', 'pvc', '-o', 'json'))['items']
+        if pods or any(claim['metadata']['name'] not in expected or
+                        claim['metadata']['uid'] != expected[claim['metadata']['name']][0] for claim in claims):
+            raise apps.AppError('Cancelled fixture has unexpected consumers or claims')
+    volumes = json.loads(session.kube('get', 'pv', '-o', 'json'))['items']
+    volumes = [volume for volume in volumes if volume['spec'].get('claimRef', {}).get('namespace') == namespace]
+    for volume in volumes:
+        claim = volume['spec']['claimRef']
+        pair = expected.get(claim['name'])
+        if (not pair or (claim['uid'], volume['metadata']['uid']) != pair or
+                volume['metadata']['name'] != 'pvc-' + pair[0] or
+                volume['spec'].get('hostPath', {}).get('path') !=
+                '/var/mnt/local-path-provisioner/pvc-' + pair[0] + '_' + namespace + '_' + claim['name']):
+            raise apps.AppError('Cancelled fixture PV identity changed')
+    for volume in volumes:
+        patch = [{'op': 'test', 'path': '/metadata/uid', 'value': volume['metadata']['uid']},
+                 {'op': 'test', 'path': '/metadata/resourceVersion', 'value': volume['metadata']['resourceVersion']},
+                 {'op': 'replace', 'path': '/spec/persistentVolumeReclaimPolicy', 'value': 'Delete'}]
+        session.kube('patch', 'pv', volume['metadata']['name'], '--type=json', '-p', json.dumps(patch))
+    if raw.strip():
+        session.kube('delete', '--raw', '/api/v1/namespaces/' + namespace, '-f', '-',
+            value={'apiVersion': 'v1', 'kind': 'DeleteOptions', 'preconditions': {'uid': namespace_uid}})
+        session.kube('wait', '--for=delete', 'namespace/' + namespace, '--timeout=120s')
+    for volume in volumes:
+        session.kube('wait', '--for=delete', 'pv/' + volume['metadata']['name'], '--timeout=120s')
+    print('PASS: exact cancelled storage fixture reconciled; application data untouched', flush=True)
+
+
 def dns():
     address = apps.tailnet_ip('pihole-dns.tail2f646b.ts.net')
     for transport in ('+tcp', '+notcp'):
@@ -341,6 +383,7 @@ def main():
     session = Maintenance()
     try:
         session.off()
+        cleanup_cancelled_storage_fixture(session)
         session.wait(lambda s: not s['blocking_reasons'], 'initial capacity hysteresis is healthy', timeout=420)
         jobs(session)
         pending(session)

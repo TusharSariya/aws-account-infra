@@ -27,11 +27,14 @@ class AppError(ValueError):
 ADDRESSES = {'helm_release.tailscale_operator', 'helm_release.pihole', 'helm_release.ollama', 'helm_release.odysseus', 'helm_release.capacity', 'helm_release.ai', 'helm_release.lifecycle', 'helm_release.argo', 'helm_release.jobs'}
 
 
-def run(command, data=None):
+def run(command, data=None, *, timeout=2400):
     env = {k: v for k, v in os.environ.items() if k not in SECRET_NAMES and k not in ('GH_TOKEN', 'GITHUB_TOKEN')}
     # Allow the operator (600s), dependent releases (900s), and cleanup/state writes.
     # Killing tofu at the Helm deadline leaves pending releases and a stale lock.
-    result = subprocess.run(list(map(str, command)), input=data, capture_output=True, env=env, timeout=2400)
+    try:
+        result = subprocess.run(list(map(str, command)), input=data, capture_output=True, env=env, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        raise AppError("Private command timed out; diagnostics suppressed") from None
     if result.returncode:
         diagnostic = (result.stderr or b'').decode(errors='replace').lower()
         markers = {'openapi': 'schema-discovery', 'timeout': 'timeout', 'deadline exceeded': 'deadline',
@@ -95,11 +98,15 @@ def lifecycle_credentials():
         raise AppError("Five independent 256-bit lifecycle credentials are required") from None
 
 
-def tailnet_ip(hostname):
+def tailnet_ip(hostname, *, deadline=None):
     if hostname not in ('pve.tail2f646b.ts.net', 'pihole-admin.tail2f646b.ts.net', 'pihole-dns.tail2f646b.ts.net', 'odysseus.tail2f646b.ts.net', 'ollama.tail2f646b.ts.net', 'ai-lifecycle.tail2f646b.ts.net', 'argo.tail2f646b.ts.net'):
         raise AppError('Unexpected private HTTPS hostname')
     for attempt in range(12):
-        status = json.loads(run(['tailscale', 'status', '--json']))
+        remaining = None if deadline is None else deadline - time.monotonic()
+        if remaining is not None and remaining <= 0:
+            raise AppError('Private peer discovery deadline exceeded')
+        options = {} if remaining is None else {'timeout': min(5, remaining)}
+        status = json.loads(run(['tailscale', 'status', '--json'], **options))
         peers = list((status.get('Peer') or {}).values()) + [status.get('Self') or {}]
         matches = [peer for peer in peers if peer.get('DNSName', '').rstrip('.').lower() == hostname]
         addresses = [ipaddress.ip_address(value) for peer in matches for value in peer.get('TailscaleIPs', [])]
@@ -109,15 +116,15 @@ def tailnet_ip(hostname):
                 raise AppError('Expected exactly one private Tailscale IPv4 address for ' + hostname)
             return str(ipv4[0])
         if attempt < 11:
-            time.sleep(5)
+            time.sleep(5 if deadline is None else max(0, min(5, deadline - time.monotonic())))
     raise AppError('Tailscale peer not visible after waiting: ' + hostname)
 
 
-def tailnet_https(hostname, path, options, data=None):
-    address = tailnet_ip(hostname)
+def tailnet_https(hostname, path, options, data=None, *, address=None, timeout=None):
+    address = address or tailnet_ip(hostname)
     # Explicit address, original hostname/SNI and certificate verification intact.
     return run(['curl', '--silent', '--show-error', '--max-time', '30',
-                '--resolve', hostname + ':443:' + address, *options, 'https://' + hostname + path], data)
+                '--resolve', hostname + ':443:' + address, *options, 'https://' + hostname + path], data, **({} if timeout is None else {'timeout': timeout}))
 
 
 def reconcile_credential_object(kubectl, manifest):
