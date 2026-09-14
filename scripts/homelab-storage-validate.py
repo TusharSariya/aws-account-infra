@@ -5,6 +5,9 @@ import os
 import subprocess
 import time
 import uuid
+import traceback
+import sys
+import homelab_fixture
 
 K = os.environ.get('KUBECTL', 'kubectl')
 TC = os.environ.get('TALOSCTL', 'talosctl')
@@ -15,6 +18,11 @@ def run(args, value=None, check=True):
     p = subprocess.run(args, input=json.dumps(value) if value else None,
                        text=True, capture_output=True, timeout=180)
     if check and p.returncode:
+        for marker in ('Forbidden', 'InternalError', 'Unauthorized', 'failed calling webhook',
+                       'connection refused', 'timeout', 'no endpoints available', 'AlreadyExists',
+                       'ServiceUnavailable', 'certificate', 'EOF'):
+            if marker.lower() in p.stderr.lower():
+                print('ACCEPTANCE_DIAGNOSTIC: error ' + marker.replace(' ', '-'), file=sys.stderr)
         raise RuntimeError('Storage acceptance command failed: ' + args[0])
     return p
 
@@ -24,7 +32,10 @@ def get(kind, name, namespace=None):
 
 
 def create(value):
-    return run([K, 'create', '-f', '-'], value)
+    result = homelab_fixture.create(K, value)
+    if result.returncode:
+        raise RuntimeError('Strict server fixture creation failed')
+    return result
 
 
 def main():
@@ -67,7 +78,7 @@ def main():
         for suffix in ['retain', 'delete']:
             create(pvc(suffix, suffix))
             claim_uids.add(get('pvc', suffix, ns)['metadata']['uid'])
-        denied = run([K, 'create', '--dry-run=server', '-f', '-'], pvc('over-budget', 'delete'), check=False)
+        denied = homelab_fixture.create(K, pvc('over-budget', 'delete'), dry_run=True)
         assert denied.returncode != 0 and 'exceeded quota' in denied.stderr
         print('PASS: requested-capacity/count quota rejects excess PVC')
         for suffix in ['retain', 'delete']:
@@ -124,4 +135,10 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except Exception as error:
+        for frame in traceback.extract_tb(error.__traceback__):
+            if frame.filename == __file__:
+                print('ACCEPTANCE_DIAGNOSTIC: storage line ' + str(frame.lineno), file=sys.stderr)
+        sys.exit(1)

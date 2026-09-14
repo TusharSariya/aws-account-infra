@@ -138,7 +138,9 @@
         "scripts/homelab-apps.py",
         ".github/actions/kubernetes-deploy/",
         "charts/homelab-ollama/",
-        "charts/homelab-odysseus/"
+        "charts/homelab-odysseus/",
+        "charts/homelab-capacity/",
+        "apps/platform/storage/"
       ]
     }
   ]

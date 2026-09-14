@@ -1,0 +1,148 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: homelab-platform
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: capacity-code, namespace: homelab-platform}
+data:
+  {{- toYaml .Values.code | nindent 2 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: capacity-config, namespace: homelab-platform}
+data:
+  config.json: {{ toJson .Values.config | quote }}
+---
+{{- range $mode := list "guest" "physical" }}
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: {{ $mode }}-capacity, namespace: homelab-platform}
+data:
+  sample.json: '{}'
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: {{ $mode }}-capacity, namespace: homelab-platform}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: {name: {{ $mode }}-capacity, namespace: homelab-platform}
+rules:
+  - apiGroups: ['']
+    resources: [configmaps]
+    resourceNames: [{{ $mode }}-capacity]
+    verbs: [patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: {name: {{ $mode }}-capacity, namespace: homelab-platform}
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: {{ $mode }}-capacity}
+subjects:
+  - {kind: ServiceAccount, name: {{ $mode }}-capacity, namespace: homelab-platform}
+---
+{{- if $.Values.enabled }}
+{{- $_ := required "Pin the observed filesystem UUID before activating collectors" $.Values.config.filesystemUUID }}
+{{- $_ := required "Dedicated physical collector HTTPS URL required" $.Values.config.physicalURL }}
+{{- $_ := required "Dedicated physical pool identity required" $.Values.config.physicalPool }}
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: {{ $mode }}-capacity, namespace: homelab-platform}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app: {{ $mode }}-capacity}
+  template:
+    metadata:
+      labels: {app: {{ $mode }}-capacity}
+      annotations:
+        homelab/config-revision: {{ toJson $.Values | sha256sum | quote }}
+    spec:
+      serviceAccountName: {{ $mode }}-capacity
+      nodeSelector: {kubernetes.io/hostname: {{ $.Values.node }}}
+      securityContext:
+        fsGroup: 1000
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: collector
+          image: {{ $.Values.image | quote }}
+          command: [python, -B, /code/collector.py]
+          env: [{name: COLLECTOR_MODE, value: {{ $mode }}}]
+          securityContext:
+            runAsUser: {{ if eq $mode "guest" }}0{{ else }}1000{{ end }}
+            runAsNonRoot: {{ ne $mode "guest" }}
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+              {{- if eq $mode "guest" }}
+              add: [SYS_ADMIN, CHOWN, FOWNER, DAC_READ_SEARCH]
+              {{- end }}
+          readinessProbe:
+            exec:
+              command: [python, -B, /code/collector.py, ready]
+            periodSeconds: 10
+            timeoutSeconds: 5
+          resources:
+            requests: {cpu: 25m, memory: 32Mi, ephemeral-storage: 16Mi}
+            limits: {cpu: 100m, memory: 64Mi, ephemeral-storage: 32Mi}
+          volumeMounts:
+            - {name: health, mountPath: /health}
+            - {name: code, mountPath: /code, readOnly: true}
+            - {name: config, mountPath: /config, readOnly: true}
+            {{- if eq $mode "guest" }}
+            - {name: storage, mountPath: /var/mnt/local-path-provisioner}
+            {{- else }}
+            - {name: credentials, mountPath: /physical-credentials, readOnly: true}
+            {{- end }}
+      volumes:
+        - name: health
+          emptyDir: {medium: Memory, sizeLimit: 1Mi}
+        - name: code
+          configMap: {name: capacity-code}
+        - name: config
+          configMap: {name: capacity-config}
+        {{- if eq $mode "guest" }}
+        - name: storage
+          hostPath: {path: /var/mnt/local-path-provisioner, type: Directory}
+        {{- else }}
+        - name: credentials
+          secret: {secretName: physical-capacity-client, defaultMode: 0444}
+        {{- end }}
+---
+{{- end }}
+{{- end }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: capacity-isolation, namespace: homelab-platform}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+  ingress: []
+  egress:
+    - to:
+        - ipBlock: {cidr: 10.42.0.220/32}
+        - ipBlock: {cidr: 10.96.0.1/32}
+      ports:
+        - {protocol: TCP, port: 443}
+        - {protocol: TCP, port: 6443}
+---
+{{- if .Values.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: physical-capacity-endpoint, namespace: homelab-platform}
+spec:
+  podSelector:
+    matchLabels: {app: physical-capacity}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - ipBlock: {cidr: {{ required "Pin private physical exporter IPv4/32" .Values.physicalAddress | quote }}}
+      ports: [{protocol: TCP, port: 9443}]
+{{- end }}

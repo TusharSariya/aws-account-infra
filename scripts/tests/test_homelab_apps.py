@@ -16,12 +16,25 @@ spec.loader.exec_module(apps)
 
 
 class GuardTests(unittest.TestCase):
+    def test_schema_preflight_recovers_transient_read_and_rejects_invalid_data(self):
+        valid = json.dumps({'swagger': '2.0', 'definitions': {'test': {}}, 'paths': {'/api': {}}}).encode()
+        with patch.object(apps, 'run', side_effect=[apps.AppError('timeout'), valid]) as run, \
+             patch.object(apps.time, 'sleep'):
+            apps.schema_readiness('kubectl')
+        self.assertEqual(run.call_count, 2)
+        for call in run.call_args_list:
+            self.assertEqual(call.args[0], ['kubectl', '--request-timeout=20s', 'get', '--raw=/openapi/v2'])
+        with patch.object(apps, 'run', return_value=b'{}') as run, patch.object(apps.time, 'sleep'):
+            with self.assertRaisesRegex(apps.AppError, 'three bounded reads'):
+                apps.schema_readiness('kubectl')
+        self.assertEqual(run.call_count, 3)
+
     def plan(self, action):
         return {'resource_changes': [{'address': a, 'change': {'actions': action}} for a in apps.ADDRESSES]}
 
     def test_safe_plan_and_forbidden_resource_actions(self):
         for actions in [['create'], ['update'], ['no-op']]:
-            self.assertEqual(len(apps.guard_plan(self.plan(actions))), 4)
+            self.assertEqual(len(apps.guard_plan(self.plan(actions))), len(apps.ADDRESSES))
         for actions in [['delete'], ['delete', 'create'], ['forget']]:
             with self.assertRaises(apps.AppError):
                 apps.guard_plan(self.plan(actions))
@@ -122,9 +135,41 @@ class GuardTests(unittest.TestCase):
                 apps.execute('plan', config)
             run.assert_not_called()
 
+    def test_failure_diagnostics_emit_only_fixed_categories(self):
+        import contextlib
+        import io
+        diagnostics = io.StringIO()
+        with patch.object(apps.subprocess, 'run') as run, contextlib.redirect_stderr(diagnostics):
+            run.return_value.returncode = 1
+            run.return_value.stderr = b'openapi timeout PRIVATE-FIXTURE-CONTENT'
+            with self.assertRaises(apps.AppError):
+                apps.run(['tofu', 'apply'])
+        self.assertIn('schema-discovery,timeout', diagnostics.getvalue())
+        self.assertNotIn('PRIVATE-FIXTURE-CONTENT', diagnostics.getvalue())
+
+    def test_credential_update_preserves_metadata_and_cas_without_schema_discovery(self):
+        current = {'apiVersion': 'v1', 'kind': 'Secret', 'type': 'Opaque', 'data': {'password': 'old'},
+                   'metadata': {'name': 'pihole-admin', 'namespace': 'homelab-services',
+                                'resourceVersion': '17', 'labels': {'preserve': 'true'}}}
+        desired = {**current, 'metadata': {'name': 'pihole-admin', 'namespace': 'homelab-services'},
+                   'data': {'password': 'new'}}
+        with patch.object(apps, 'run', side_effect=[json.dumps(current).encode(), b'']) as run:
+            apps.reconcile_credential_object('kubectl', desired)
+        command, payload = run.call_args.args
+        self.assertIn('replace', command)
+        self.assertIn('/api/v1/namespaces/homelab-services/secrets/pihole-admin?fieldValidation=Strict&fieldManager=homelab-app-credentials', command)
+        result = json.loads(payload)
+        self.assertEqual(result['metadata']['resourceVersion'], '17')
+        self.assertEqual(result['metadata']['labels'], {'preserve': 'true'})
+        self.assertNotIn('kubectl.kubernetes.io/last-applied-configuration', result['metadata'].get('annotations', {}))
+        self.assertEqual(result['data'], {'password': 'new'})
+        with patch.object(apps, 'run') as run, self.assertRaises(apps.AppError):
+            apps.reconcile_credential_object('kubectl', {'apiVersion': 'v1', 'kind': 'Secret', 'metadata': {'name': 'unrelated', 'namespace': 'default'}})
+        run.assert_not_called()
+
     def test_new_credentials_are_external_and_registry_secret_has_correct_type(self):
         values = dict.fromkeys(apps.SECRET_NAMES, 'a-fixture-only-value-that-is-long-enough')
-        with patch.dict(apps.os.environ, {**values, 'GITHUB_ACTIONS': 'true'}), patch.object(apps, 'run') as run:
+        with patch.dict(apps.os.environ, {**values, 'GITHUB_ACTIONS': 'true'}), patch.object(apps, 'run', return_value=b'') as run:
             apps.bootstrap('kubectl')
         manifests = [json.loads(call.args[1]) for call in run.call_args_list if len(call.args) == 2]
         registry = next(m for m in manifests if m['metadata']['name'] == 'ghcr-read')

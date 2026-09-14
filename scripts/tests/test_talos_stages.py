@@ -61,6 +61,25 @@ class StageTests(unittest.TestCase):
 
 
 class RebootBoundaryTests(unittest.TestCase):
+    def test_reboot_rejects_mount_without_project_quota_activation(self):
+        session = ci.Session.__new__(ci.Session)
+        session.worker_tc = ['talosctl', '-n', 'worker-test-only']
+        volumes = [{'spec': {'dev_path': '/dev/sdb1', 'parent_dev_path': '/dev/sdb',
+                             'uuid': 'same-filesystem', 'partition_uuid': 'same-partition'}}]
+        for enabled in (False, True):
+            mount = [{'metadata': {'id': ci.VOLUME}, 'spec': {
+                'source': '/dev/sdb1', 'target': ci.MOUNT, 'filesystem': 'xfs',
+                'projectQuotaSupport': enabled}}]
+            with patch.dict(os.environ, {'HOMELAB_WORKER_REBOOT_APPROVED': 'true'}), \
+                 patch.object(session, 'storage'), patch.object(session, 'readiness'), \
+                 patch.object(session, 'run'), \
+                 patch.object(session, 'worker_resources', side_effect=[volumes, volumes, mount]):
+                if enabled:
+                    session.worker_reboot()
+                else:
+                    with self.assertRaisesRegex(ValueError, 'project quotas'):
+                        session.worker_reboot()
+
     def test_maintenance_requires_explicit_approval_before_any_command(self):
         session = ci.Session.__new__(ci.Session)
         with patch.dict(os.environ, {}, clear=True), patch.object(session, 'run') as run:

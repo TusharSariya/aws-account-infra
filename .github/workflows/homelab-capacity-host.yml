@@ -1,0 +1,47 @@
+name: homelab-capacity-host
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type pve-capacity to reconcile the reviewed host exporter and collector credential
+        type: string
+        required: true
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: tofu-apply
+  cancel-in-progress: false
+jobs:
+  reconcile:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: prod
+    steps:
+      - name: Require explicit host target
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: test "$CONFIRM" = pve-capacity
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4
+        with:
+          oauth-client-id: ${{ vars.TS_OIDC_CLIENT_ID }}
+          audience: ${{ vars.TS_OIDC_AUDIENCE }}
+          tags: tag:github-ci
+          version: 1.102.4
+          hostname: gh-capacity-host-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Accept private subnet route
+        run: sudo tailscale set --accept-routes=true
+      - name: Reconcile host from reviewed source and independent credentials
+        env:
+          CAPACITY_HOST_SSH_KEY: ${{ secrets.CAPACITY_HOST_SSH_KEY }}
+          CAPACITY_HOST_KNOWN_HOSTS: ${{ vars.CAPACITY_HOST_KNOWN_HOSTS }}
+          CAPACITY_HOST_CREDENTIALS_B64: ${{ secrets.CAPACITY_HOST_CREDENTIALS_B64 }}
+        run: python3 scripts/homelab-capacity-host.py
+      - uses: ./.github/actions/talos-check
+        with:
+          operation: capacity-credentials
+          capacity-credentials-b64: ${{ secrets.CAPACITY_CLIENT_CREDENTIALS_B64 }}
+          secrets-b64: ${{ secrets.TALOS_SECRETS_B64 }}

@@ -56,6 +56,11 @@ runs:
       env:
         PRIVATE: ${{ steps.private.outputs.path }}
       run: uv run scripts/talos-ci.py connect --private "$PRIVATE"
+    - name: Check authenticated schema discovery before planning
+      shell: bash
+      env:
+        PRIVATE: ${{ steps.private.outputs.path }}
+      run: python3 scripts/homelab-apps.py schema --private "$PRIVATE"
     - name: Initialize and validate application state
       shell: bash
       run: |

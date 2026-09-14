@@ -1,0 +1,39 @@
+name: storage-foundation
+on:
+  workflow_call:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  isolated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: astral-sh/setup-uv@v6
+      - name: Validate active specifications strictly
+        run: |
+          npx --yes @fission-ai/openspec@1.10.0 validate add-homelab-workload-scheduling --strict
+          npx --yes @fission-ai/openspec@1.10.0 validate build-talos-proxmox-homelab --strict
+          npx --yes @fission-ai/openspec@1.10.0 validate deploy-odysseus-tailnet-workspace --strict
+      - name: Test capacity and merge policy
+        run: |
+          uv run --with pyyaml python -m unittest discover -s scripts/tests -p '*capacity*.py'
+          uv run --with pyyaml python -m unittest discover -s scripts/tests -p test_deploy_units.py
+          uv run --with pyyaml python -m unittest discover -s scripts/tests -p test_homelab_fixture.py
+          shellcheck scripts/install-homelab-capacity.sh scripts/tests/storage/quota-linux.sh
+      - name: Verify actual XFS enforcement on a disposable loop filesystem
+        run: |
+          docker run --rm --privileged \
+            -e QUOTA_DISPOSABLE_TEST=yes -e DEBIAN_FRONTEND=noninteractive \
+            -v "$GITHUB_WORKSPACE:/source:ro" \
+            python:3.14-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6 \
+            sh -c 'apt-get update -qq && apt-get install -y -qq xfsprogs util-linux >/dev/null && bash /source/scripts/tests/storage/quota-linux.sh'

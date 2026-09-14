@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Read-only node and platform readiness; no disposable workloads or reboot.
-set -euo pipefail
+set -Eeuo pipefail
+trap 'echo "ACCEPTANCE_DIAGNOSTIC: readiness line $LINENO" >&2' ERR
 : "${KUBECONFIG:?Set KUBECONFIG}"
 KUBECTL="${KUBECTL:-kubectl}"
 k() { "$KUBECTL" --request-timeout=30s "$@"; }

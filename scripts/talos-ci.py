@@ -99,9 +99,11 @@ def guard_storage_config(configs):
                 'name': 'local-path-provisioner', 'volumeType': 'partition',
                 'provisioning': {'diskSelector': {'match': SELECTOR},
                                  'minSize': '1199GiB', 'grow': False},
-                'filesystem': {'type': 'xfs'}}
+                'filesystem': {'type': 'xfs', 'projectQuotaSupport': True}}
     for name, config in configs.items():
         docs = list(yaml.safe_load_all(config))
+        if name == 'talos-worker-01' and docs[0].get('machine', {}).get('sysctls', {}).get('user.max_user_namespaces') != '11255':
+            raise StageError('Worker user namespaces are required to prevent project quota bypass')
         volumes = [d for d in docs if d.get('kind') == 'UserVolumeConfig']
         if volumes != ([expected] if name == 'talos-worker-01' else []):
             raise StageError('User volume must target only the verified worker data disk')
@@ -154,6 +156,12 @@ def run_private(command, env):
     result = subprocess.run(list(map(str, command)), env=env,
                             capture_output=True, text=True, timeout=900)
     if result.returncode:
+        # Only fixed check identifiers and line numbers cross the private boundary.
+        # Never forward command output, exception text, resource YAML or credentials.
+        import re
+        for line in result.stderr.splitlines():
+            if re.fullmatch(r'ACCEPTANCE_DIAGNOSTIC: (?:(?:network|readiness|storage|capacity) line [0-9]{1,4}|probe (?:api-read|namespace-dry-run) (?:success|failure|timeout)|error (?:Forbidden|InternalError|Unauthorized|failed-calling-webhook|connection-refused|timeout|no-endpoints-available|AlreadyExists|ServiceUnavailable|certificate|EOF))', line):
+                print(line, file=sys.stderr)
         raise StageError('Private command failed: ' + Path(str(command[0])).name
                          + '; exit ' + str(result.returncode) + '; output suppressed')
     return result.stdout
@@ -316,13 +324,19 @@ class Session:
         self.readiness()
         if before != identities():
             raise StageError('Worker partition identities changed across reboot')
-        print('PASS: explicit worker reboot preserves OS/data partition identities and mount')
+        mounts = [item.get('spec', {}) for item in self.worker_resources('mountstatus')
+                  if item.get('metadata', {}).get('id') == VOLUME]
+        if (len(mounts) != 1 or mounts[0].get('source') != '/dev/sdb1'
+                or mounts[0].get('target') != MOUNT or mounts[0].get('filesystem') != 'xfs'
+                or mounts[0].get('projectQuotaSupport') is not True):
+            raise StageError('Worker data mount must activate project quotas after maintenance')
+        print('PASS: explicit worker reboot preserves partition identities and activates XFS project quotas; write enforcement remains a separate check')
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('stage', choices=['setup', 'prepare', 'preflight', 'exec', 'guard',
-                                         'state', 'storage', 'readiness', 'connect', 'worker-reboot', 'network', 'pvc'])
+                                         'state', 'storage', 'readiness', 'connect', 'worker-reboot', 'network', 'pvc', 'capacity', 'capacity-credentials'])
     parser.add_argument('--private', type=Path)
     parser.add_argument('--secrets-file', type=Path)
     parser.add_argument('--acceptance', action='store_true')
@@ -344,6 +358,10 @@ def main():
         session.execute(command[1:] if command[:1] == ['--'] else command)
     elif args.stage == 'network':
         print(session.run(['bash', ROOT / 'scripts/homelab-cilium-validate.sh']))
+    elif args.stage == 'capacity-credentials':
+        print(session.run([sys.executable, ROOT / 'scripts/homelab-capacity-credentials.py']))
+    elif args.stage == 'capacity':
+        print(session.run([sys.executable, ROOT / 'scripts/homelab-capacity-validate.py']))
     elif args.stage == 'pvc':
         print(session.run([sys.executable, ROOT / 'scripts/homelab-storage-validate.py']))
     else:

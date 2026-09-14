@@ -2,11 +2,14 @@ name: Talos acceptance session
 description: Independent authenticated acceptance or explicitly approved worker maintenance
 inputs:
   operation:
-    description: network, pvc, or worker-reboot
+    description: network, pvc, capacity, capacity-credentials, or worker-reboot
     required: true
   reboot-approved:
     description: Explicit maintenance consent, never inferred from an apply
     default: 'false'
+  capacity-credentials-b64:
+    description: Independently issued capacity client credential bundle
+    default: ''
   secrets-b64:
     description: Existing Talos identity
     required: true
@@ -19,7 +22,7 @@ runs:
       env:
         OPERATION: ${{ inputs.operation }}
       run: |
-        [[ "$OPERATION" == network || "$OPERATION" == pvc || "$OPERATION" == worker-reboot ]]
+        [[ "$OPERATION" == network || "$OPERATION" == pvc || "$OPERATION" == capacity || "$OPERATION" == capacity-credentials || "$OPERATION" == worker-reboot ]]
         umask 077
         echo "path=$(mktemp -d "$RUNNER_TEMP/talos-check.XXXXXXXX")" >> "$GITHUB_OUTPUT"
     - name: Set up verified tools
@@ -41,6 +44,7 @@ runs:
       env:
         PRIVATE: ${{ steps.private.outputs.path }}
         OPERATION: ${{ inputs.operation }}
+        CAPACITY_CLIENT_CREDENTIALS_B64: ${{ inputs.capacity-credentials-b64 }}
         HOMELAB_WORKER_REBOOT_APPROVED: ${{ inputs.reboot-approved }}
       run: uv run scripts/talos-ci.py "$OPERATION" --private "$PRIVATE"
     - name: Remove private authentication inputs

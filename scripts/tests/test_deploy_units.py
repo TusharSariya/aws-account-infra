@@ -102,5 +102,27 @@ class GateTests(unittest.TestCase):
             units.acceptance_gate(self.needs, True, requested)
 
 
+class StorageSelectionTests(unittest.TestCase):
+    def test_storage_inputs_and_tests_select_required_gate(self):
+        for path in ['apps/platform/storage/collector.py', 'charts/homelab-capacity/values.yaml',
+                     'scripts/tests/test_capacity.py', 'scripts/tests/storage/quota-linux.sh',
+                     'scripts/install-homelab-capacity.sh', '.github/workflows/storage-foundation.yml']:
+            with self.subTest(path=path):
+                selected = units.select_units([path], units.load_units())
+                self.assertTrue(units.storage_checks_required([path], selected))
+
+    def test_storage_gate_rejects_skips_cancellations_and_failures(self):
+        for result in ['skipped', 'cancelled', 'failure']:
+            needs = {'detect': {'result': 'success', 'outputs': {'units': '[]', 'suite': 'none', 'storage': 'true'}},
+                     'storage-foundation': {'result': result}}
+            with self.subTest(result=result), self.assertRaisesRegex(ValueError, 'storage checks'):
+                units.acceptance_gate(needs, False, False)
+
+    def test_storage_gate_rejects_missing_job(self):
+        with self.assertRaisesRegex(ValueError, 'storage checks'):
+            units.acceptance_gate({'detect': {'result': 'success', 'outputs': {
+                'units': '[]', 'suite': 'none', 'storage': 'true'}}}, False, False)
+
+
 if __name__ == '__main__':
     unittest.main()
