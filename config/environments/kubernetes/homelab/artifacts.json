@@ -6,5 +6,9 @@
   "tailscale-operator-1.102.3.tgz": {
     "url": "https://pkgs.tailscale.com/helmcharts/tailscale-operator-1.102.3-1787221603-c2440014df04fdf1b67b53daa4290d7b878584cf4702f9b1b50f51ba64499a6a.tgz",
     "sha256": "c2440014df04fdf1b67b53daa4290d7b878584cf4702f9b1b50f51ba64499a6a"
+  },
+  "argo-workflows-2.0.5.tgz": {
+    "url": "https://github.com/argoproj/argo-helm/releases/download/argo-workflows-2.0.5/argo-workflows-2.0.5.tgz",
+    "sha256": "1c70d5ea9a0296c7cc9c292e685759b2a1a2465b7447bff33ade7d4541913a2c"
   }
 }
