@@ -44,6 +44,16 @@ class ApplicationSelectionTests(unittest.TestCase):
         for path in ['live/kubernetes/homelab/main.tf', 'config/environments/kubernetes/homelab/pihole-values.yaml', '.github/actions/kubernetes-deploy/action.yml']:
             self.assertEqual([u['id'] for u in units.select_units([path], units.ordered(units.load_units()))], ['kubernetes-homelab'])
 
+    def test_lifecycle_and_image_inputs_select_required_application_acceptance(self):
+        for path in ['apps/platform/lifecycle/runtime.py', 'apps/containers/ollama/lifecycle/gateway.go',
+                     'apps/containers/odysseus/lifecycle/tracking.py', 'scripts/ollama-image-context.py',
+                     '.github/workflows/ollama-image.yml', 'scripts/tests/test_lifecycle_state.py']:
+            with self.subTest(path=path):
+                selected = units.select_units([path], units.load_units())
+                self.assertEqual([unit['id'] for unit in selected], ['kubernetes-homelab'])
+                self.assertEqual(units.acceptance_suite([path], selected), 'all')
+                self.assertTrue(units.storage_checks_required([path], selected))
+
     def test_order_places_applications_after_foundation(self):
         ordered = [u['id'] for u in units.ordered(units.load_units())]
         self.assertLess(ordered.index('talos-homelab'), ordered.index('kubernetes-homelab'))

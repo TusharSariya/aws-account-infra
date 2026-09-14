@@ -104,3 +104,15 @@ class StateTests(unittest.TestCase):
             begin(state, 'ollama', 'ollama', 'a' * 32, None, GOOD, True, now=70, deadline=30)
         with self.assertRaises(Rejected):
             begin(state, 'ollama', 'ollama', 'b' * 32, None, GOOD, True, now=5, deadline=99999)
+
+
+class InterruptionTests(unittest.TestCase):
+    def test_force_stop_retains_interruption_record_after_observed_termination(self):
+        state = initial()
+        state, _ = command(state, 'start', str(uuid.uuid4()), 0, GOOD)
+        state = begin(state, 'odysseus', 'instance', 'a' * 32, None, GOOD, True)
+        state, revision = command(state, 'force-stop', str(uuid.uuid4()), 1, GOOD)
+        state, replicas, status = Observation().reconcile(state, now=0, capacity=GOOD,
+            pods_present=False, ready=False, instances={})
+        self.assertEqual((replicas, status['observed'], status['active_work']), (0, 'Off', 0))
+        self.assertEqual(status['last_interruption'], {'revision': revision, 'tickets': {'a' * 32: 'odysseus'}})

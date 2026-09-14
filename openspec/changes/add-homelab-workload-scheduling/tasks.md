@@ -8,7 +8,7 @@
 - [x] 1.6 Implement 30-second guest/project collection and fail-closed capacity policy with 90-second freshness and five-minute recovery; boundary and invalid-telemetry tests pass.
 - [x] 1.7 Package helpers/configuration/policies through Kubernetes-root Helm, track all inputs in deploy selection and required acceptance; render and selection/gate tests pass.
 - [x] 1.8 Exercise disposable quota enforcement and simulated stale/missing/disabled/exhausted conditions through explicit CI; record successful run separately from local tests.
-- [ ] 1.9 Verify quota activation and persistence through explicit worker maintenance, retaining identities and Pi-hole DNS; attach live evidence.
+- [x] 1.9 Verify quota activation and persistence through explicit worker maintenance, retaining identities and Pi-hole DNS; attach live evidence.
 - [x] 1.10 Run relevant formatting, OpenTofu validation, lint/security checks and strict OpenSpec validation, then deliver and review storage PR through guarded apply and required acceptance.
 
 ## 2. AI packaging PR
@@ -19,7 +19,7 @@
 - [x] 2.4 Disable old writers and default migrated AI to zero without disturbing Pi-hole; CI health verifies intentional-off without starting AI.
 - [ ] 2.5 Perform authorized reset only through explicit reviewed CI migration; prove unrelated data survives and runtime remains off.
 - [ ] 2.6 Verify data persists across stop/start and full Pod stays Pending with insufficient resources while Pi-hole answers UDP/TCP DNS; record explicit acceptance evidence.
-- [ ] 2.7 Run rendering, unit/integration, OpenTofu, lint/security and strict OpenSpec checks; deliver and review packaging PR after storage PR succeeds.
+- [x] 2.7 Run rendering, unit/integration, OpenTofu, lint/security and strict OpenSpec checks; deliver and review packaging PR after storage PR succeeds.
 
 ## 3. Lifecycle and scheduling PR
 
@@ -43,3 +43,7 @@
 ## Local implementation record, 2026-09-14
 
 Storage foundation code and isolated tests are present. Run 34810327867 successfully applied the guarded storage release, checked private application endpoints and completed explicitly requested worker maintenance. Talos subsequently reports project quotas enabled on the same worker mount. The capacity release remains disabled pending independent physical credentials and verified Pod-to-exporter routing. Actual application-Pod enforcement and configured-project persistence remain unchecked. No production reset, migration or intentional AI shutdown has run. See the implementation log for current-head acceptance and historical failures, and `docs/homelab-capacity.md` for credential prerequisites and the observed project-ID bypass requiring user-namespaced consumers.
+
+## Deployment and live maintenance update, 2026-09-14
+
+Packaging PR #68 merged as f4708346f3e3e170226cced36a1240eee341bcb0 after guarded apply 34819433687 and all required PVC/network/capacity acceptance succeeded. Both collectors are Ready and every legacy AI Deployment remains zero. Quota run 34820173760 passed pre-reboot application enforcement and completed worker maintenance, then failed downloading verified tools before post-reboot verification. Verification-only resume 34820541091 succeeded with the same durable fixture identity and observed changed boot. Reset 34820827996 completed exactly the three-volume migration and retained its immutable receipt. Independent unrelated-data verification and AI stop/start behavior remain unfinished, so task 2.5 and 2.6 remain unchecked. The earlier local implementation paragraph is historical, not the current live state.

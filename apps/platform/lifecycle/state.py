@@ -16,7 +16,7 @@ class Rejected(ValueError):
 
 def initial():
     return {'desired': 'off', 'revision': 0, 'force': False, 'reason': 'initially off',
-            'commands': {}, 'tickets': {}, 'finished': {}, 'sources': {}, 'owner': ''}
+            'commands': {}, 'tickets': {}, 'finished': {}, 'sources': {}, 'owner': '', 'interruption': None}
 
 
 def command(state, action, command_id, expected_revision, capacity):
@@ -39,6 +39,9 @@ def command(state, action, command_id, expected_revision, capacity):
     result = deepcopy(state)
     result['revision'] += 1
     result.update(desired='on' if action == 'start' else 'off', force=action == 'force-stop', reason=action)
+    if action == 'force-stop':
+        result['interruption'] = {'revision': result['revision'],
+            'tickets': {key: value['source'] for key, value in result['tickets'].items()}}
     # Commands are bounded, but revision remains durable and strictly increasing.
     if len(result['commands']) >= 64:
         del result['commands'][next(iter(result['commands']))]
@@ -153,6 +156,6 @@ class Observation:
         else:
             observed = 'Starting/Pending'
         return result, replicas, {'desired': result['desired'], 'observed': observed,
-            'revision': result['revision'], 'storage_warning': capacity.warning, 'active_work': len(result['tickets']),
+            'revision': result['revision'], 'last_interruption': deepcopy(result.get('interruption')), 'storage_warning': capacity.warning, 'active_work': len(result['tickets']),
             'blocking_reasons': [*capacity.reasons, *unknown], 'reason': result['reason'],
             'admission': result['desired'] == 'on' and ready and capacity.admission and not result['force'] and not unknown}
