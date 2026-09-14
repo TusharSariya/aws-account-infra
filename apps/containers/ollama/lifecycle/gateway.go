@@ -3,13 +3,16 @@ package lifecycle
 
 import (
 	"bytes"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -17,10 +20,10 @@ import (
 
 type tracked struct{ ending bool }
 type gateway struct {
-	mu                                              sync.Mutex
-	endpoint, token, userToken, workspaceToken, pod string
-	tickets                                         map[string]*tracked
-	client                                          *http.Client
+	mu                                                       sync.Mutex
+	endpoint, token, userToken, workspaceToken, pod, process string
+	tickets                                                  map[string]*tracked
+	client                                                   *http.Client
 }
 
 var configured *gateway
@@ -58,13 +61,18 @@ func Configure() error {
 	if err = os.MkdirAll(nativeDirectory, 0700); err != nil {
 		return err
 	}
-	configured = &gateway{endpoint: endpoint, token: token, userToken: user, workspaceToken: workspace, pod: os.Getenv("POD_UID"), tickets: map[string]*tracked{}, client: &http.Client{Timeout: 5 * time.Second, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return errors.New("redirect rejected") }}}
+	var process [16]byte
+	if _, err := rand.Read(process[:]); err != nil {
+		return err
+	}
+	configured = &gateway{process: hex.EncodeToString(process[:]), endpoint: endpoint, token: token, userToken: user, workspaceToken: workspace, pod: os.Getenv("POD_UID"), tickets: map[string]*tracked{}, client: &http.Client{Timeout: 5 * time.Second, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return errors.New("redirect rejected") }}}
 	go configured.loop()
 	return nil
 }
 
 func (g *gateway) call(operation string, payload map[string]any) error {
 	payload["pod_uid"] = g.pod
+	payload["process_id"] = g.process
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return err
@@ -100,6 +108,19 @@ func Middleware(next http.Handler) http.Handler {
 		g := configured
 		if g == nil {
 			failure(w, 503, "gateway unavailable")
+			return
+		}
+		if r.Method == "GET" && r.URL.Path == "/activity-identity" {
+			challenge := r.URL.Query().Get("challenge")
+			if !authorized(r.Header.Get("Authorization"), g.token) || !regexp.MustCompile("^[a-f0-9]{32}$").MatchString(challenge) {
+				failure(w, 401, "source authentication required")
+				return
+			}
+			signature := hmac.New(sha256.New, []byte(g.token))
+			signature.Write([]byte(challenge + ":" + g.process))
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Cache-Control", "no-store")
+			_ = json.NewEncoder(w).Encode(map[string]string{"process_id": g.process, "signature": hex.EncodeToString(signature.Sum(nil))})
 			return
 		}
 		if r.Method == "GET" && r.URL.Path == "/healthz" {

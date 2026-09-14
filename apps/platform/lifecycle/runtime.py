@@ -10,6 +10,7 @@ from kube import Conflict, Unavailable
 from leadership import Leadership
 from state import Observation, Rejected, initial, command, begin, finish, heartbeat
 from workload_state import is_terminated
+from identity import probe
 
 PLATFORM = '/api/v1/namespaces/homelab-platform'
 MODELS = '/api/v1/namespaces/homelab-models'
@@ -19,8 +20,10 @@ STATE = 'homelab/lifecycle-state'
 
 
 class Runtime:
-    def __init__(self, api, identity, config):
+    def __init__(self, api, identity, config, source_keys=None):
         self.api, self.identity, self.config = api, identity, config
+        self.source_keys = source_keys or {}
+        self.probe = probe
         self.leader = Leadership(api, identity)
         self.lock = threading.RLock()
         self.observer = Observation()
@@ -69,8 +72,35 @@ class Runtime:
             obj = self.api.call('POST', DEPLOYMENTS + '?fieldValidation=Strict', obj)
         state = json.loads(obj['metadata']['annotations'][STATE])
         pods = self.api.call('GET', MODELS + '/pods?labelSelector=app%3Dai-runtime')['items']
+        self.retire_observed_work(state, pods)
         active = [pod for pod in pods if not is_terminated(pod)]
         return obj, state, active, approved, revision
+
+    def retire_observed_work(self, state, pods):
+        by_uid = {pod['metadata']['uid']: pod for pod in pods}
+        def terminated(instance):
+            parts = instance.split('|')
+            if len(parts) != 3:
+                return False
+            uid, container_id, _ = parts
+            if uid not in by_uid:
+                return True  # Successful Pod listing observed the former Pod absent.
+            for container in by_uid[uid].get('status', {}).get('containerStatuses', []):
+                for field in ('state', 'lastState'):
+                    result = container.get(field, {}).get('terminated', {})
+                    identifier = result.get('containerID')
+                    if field == 'state' and result:
+                        identifier = identifier or container.get('containerID')
+                    if identifier == container_id and type(result.get('exitCode')) is int:
+                        return True
+            return False
+        retired = {key: value['source'] for key, value in state['tickets'].items() if terminated(value['instance'])}
+        for ticket in retired:
+            del state['tickets'][ticket]
+        state['sources'] = {key: value for key, value in state['sources'].items() if not terminated(value['instance'])}
+        if retired:
+            state['interruption'] = {'revision': state['revision'], 'reason': 'observed container termination', 'tickets': retired}
+            self.observer.idle_since = None
 
     def persist(self, obj, state, replicas=None):
         self.leader.fence(obj, state)
@@ -104,16 +134,27 @@ class Runtime:
         instances = {}
         for pod in pods:
             for container in pod.get('status', {}).get('containerStatuses', []):
-                if container['name'] in ('ollama', 'odysseus') and container.get('state', {}).get('running') is not None:
-                    instances[container['name']] = pod['metadata']['uid'] + '/' + container.get('containerID', '')
+                source = container['name']
+                if source in ('ollama', 'odysseus') and container.get('state', {}).get('running') is not None:
+                    try:
+                        container_id = container['containerID']
+                        process = self.probe(pod['status']['podIP'], source, self.source_keys.get(source))
+                        prior = state['sources'].get(source, {}).get('instance', '').split('|')
+                        # A new listener with unchanged container status is ambiguous.
+                        # Wait for Kubernetes to observe the actual replacement.
+                        if len(prior) == 3 and prior[:2] == [pod['metadata']['uid'], container_id] and prior[2] != process:
+                            continue
+                        instances[source] = '|'.join((pod['metadata']['uid'], container_id, process))
+                    except (Unavailable, KeyError, ValueError):
+                        continue
         unstarted = bool(pods) and all(
             not any(c.get('state', {}).get('running') or c.get('state', {}).get('terminated') or c.get('lastState')
                     for c in pod.get('status', {}).get('containerStatuses', []))
             and pod.get('status', {}).get('phase') == 'Pending' for pod in pods)
         return bool(ready), instances, unstarted
 
-    def evaluate(self, obj, state, pods, approved, revision, capacity):
-        ready, instances, unstarted = self.observations(pods, state)
+    def evaluate(self, obj, state, pods, approved, revision, capacity, observed=None):
+        ready, instances, unstarted = observed if observed is not None else self.observations(pods, state)
         state, replicas, status = self.observer.reconcile(state, now=time.monotonic(), wall_time=time.time(), capacity=capacity,
             pods_present=bool(pods), ready=ready, instances=instances, unstarted=unstarted)
         if not pods and state['desired'] == 'off':
@@ -178,22 +219,25 @@ class Runtime:
         with self.lock:
             obj, state, pods, approved, revision = self.read()
             self.leader.fence(obj, state)
-            ready, instances, _ = self.observations(pods, state)
+            observed = self.observations(pods, state)
+            ready, instances, _ = observed
             instance = instances.get(source)
-            if not instance or instance.split('/')[0] != payload.get('pod_uid'):
+            if (not instance or instance.split('|')[0] != payload.get('pod_uid')
+                    or instance.split('|')[2] != payload.get('process_id')):
                 raise Rejected('Activity source is not the observed running AI container')
             capacity = self.samples()
+            obj, state, replicas, verified = self.evaluate(obj, state, pods, approved, revision, capacity, observed)
             if operation == 'heartbeat':
                 state = heartbeat(state, source, instance, payload.get('tickets', []), payload.get('known'), time.time())
             elif operation == 'begin':
                 state = begin(state, source, instance, payload.get('ticket'), payload.get('parent'), capacity,
-                              ready and bool(self.status and self.status.get('admission')),
+                              ready and verified['admission'],
                               now=time.time(), deadline=payload.get('deadline'))
             elif operation == 'finish':
                 state = finish(state, source, instance, payload.get('ticket'), now=time.time())
             else:
                 raise Rejected('Unknown activity operation')
-            obj, state, replicas, status = self.evaluate(obj, state, pods, approved, revision, capacity)
+            obj, state, replicas, status = self.evaluate(obj, state, pods, approved, revision, capacity, observed)
             self.persist(obj, state, replicas)
             self.status, self.status_at = status, time.monotonic()
             return {'accepted': True, 'desired': state['desired'], 'force': state['force'], 'admission': status['admission']}

@@ -18,6 +18,7 @@ class AdmissionClosed(RuntimeError):
 class Tracker:
     def __init__(self, endpoint, token, pod, transport=None):
         self.endpoint, self.token, self.pod = endpoint, token, pod
+        self.process = uuid.uuid4().hex
         self.lock = threading.RLock()
         self.tickets = {}
         self.transport = transport or self.request
@@ -25,7 +26,7 @@ class Tracker:
 
     def request(self, operation, payload):
         request = urllib.request.Request(self.endpoint + '/activity/odysseus/' + operation,
-            data=json.dumps({**payload, 'pod_uid': self.pod}).encode(),
+            data=json.dumps({**payload, 'pod_uid': self.pod, 'process_id': self.process}).encode(),
             headers={'Authorization': 'Bearer ' + self.token, 'Content-Type': 'application/json'}, method='POST')
         class NoRedirect(urllib.request.HTTPRedirectHandler):
             def redirect_request(self, *args, **kwargs):

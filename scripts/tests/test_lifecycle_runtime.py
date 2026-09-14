@@ -131,3 +131,88 @@ class RuntimeTests(unittest.TestCase):
         with patch.object(runtime.capacity, 'evaluate') as evaluate:
             runtime.samples()
             self.assertNotIn('filesystem.bytes', evaluate.call_args.args[0])
+
+    def running_sources(self):
+        self.operate('start', 0)
+        self.processes = {'ollama': 'a' * 32, 'odysseus': 'b' * 32}
+        self.runtime.probe = lambda address, source, key: self.processes[source]
+        self.api.pods = [{'metadata': {'uid': 'pod-one'}, 'status': {
+            'phase': 'Running', 'podIP': '10.0.0.1',
+            'conditions': [{'type': 'Ready', 'status': 'True'}],
+            'containerStatuses': [{'name': source, 'containerID': source + '-one',
+                                   'state': {'running': {}}} for source in self.processes]}}]
+        for source in self.processes:
+            self.runtime.activity(source, 'heartbeat', self.payload(source, tickets=[], known=True))
+        self.assertTrue(self.runtime.current_status()['admission'])
+
+    def payload(self, source, **values):
+        return {'pod_uid': 'pod-one', 'process_id': self.processes[source], **values}
+
+    def start_work(self):
+        import time
+        self.runtime.activity('ollama', 'begin', self.payload('ollama', ticket='c' * 32, deadline=time.time() + 25))
+
+    def test_old_process_messages_are_rejected_after_same_pod_container_restart(self):
+        self.running_sources()
+        self.start_work()
+        stale = self.payload('ollama', ticket='c' * 32, tickets=['c' * 32], known=True)
+        self.processes['ollama'] = 'd' * 32
+        self.api.pods[0]['status']['containerStatuses'][0]['containerID'] = 'ollama-two'
+        for operation in ('begin', 'finish', 'heartbeat'):
+            with self.subTest(operation=operation), self.assertRaises(Rejected):
+                self.runtime.activity('ollama', operation, stale)
+        self.assertEqual(self.runtime.current_status()['active_work'], 1)
+
+    def test_only_observed_old_container_termination_retires_its_work(self):
+        self.running_sources()
+        self.start_work()
+        self.operate('stop', 1)
+        container = self.api.pods[0]['status']['containerStatuses'][0]
+        self.processes['ollama'] = 'd' * 32
+        container['containerID'] = 'ollama-two'
+        self.runtime.tick()
+        self.assertEqual(self.runtime.current_status()['active_work'], 1)
+        self.assertEqual(self.api.objects[RUNTIME]['spec']['replicas'], 1)
+        container['lastState'] = {'terminated': {'containerID': 'ollama-one', 'exitCode': 137}}
+        self.runtime.tick()
+        self.assertEqual(self.runtime.current_status()['active_work'], 0)
+        # New process remains unverified until its own heartbeat arrives.
+        self.assertEqual(self.api.objects[RUNTIME]['spec']['replicas'], 1)
+        self.runtime.activity('ollama', 'heartbeat', self.payload('ollama', tickets=[], known=True))
+        self.assertEqual(self.api.objects[RUNTIME]['spec']['replicas'], 0)
+        self.assertEqual(self.runtime.current_status()['observed'], 'Stopping')
+        self.assertEqual(self.runtime.current_status()['last_interruption']['tickets'], {'c' * 32: 'ollama'})
+
+    def test_changed_process_with_stale_container_status_blocks_admission(self):
+        self.running_sources()
+        self.processes['ollama'] = 'd' * 32
+        with self.assertRaises(Rejected):
+            self.start_work()
+        self.runtime.tick()
+        self.assertFalse(self.runtime.current_status()['admission'])
+        self.assertIn('ollama: activity unverified', self.runtime.current_status()['blocking_reasons'])
+
+    def test_begin_checks_heartbeat_freshness_before_next_tick(self):
+        import time
+        self.running_sources()
+        self.assertTrue(self.runtime.status['admission'])
+        with patch('runtime.time.time', return_value=time.time() + 16), self.assertRaises(Rejected):
+            self.start_work()
+        self.assertEqual(json.loads(self.api.objects[RUNTIME]['metadata']['annotations'][STATE])['tickets'], {})
+
+    def test_activity_uses_one_verified_process_snapshot(self):
+        from unittest.mock import Mock
+        self.running_sources()
+        self.runtime.probe = Mock(side_effect=lambda address, source, key: self.processes[source])
+        self.start_work()
+        self.assertEqual(self.runtime.probe.call_count, 2)
+
+    def test_failed_identity_probe_blocks_graceful_drain_and_idle(self):
+        self.running_sources()
+        with patch.object(self.runtime, 'probe', side_effect=Unavailable()):
+            self.runtime.tick()
+            self.assertFalse(self.runtime.current_status()['admission'])
+            self.assertIsNone(self.runtime.observer.idle_since)
+            self.operate('stop', 1)
+        self.assertEqual(self.api.objects[RUNTIME]['spec']['replicas'], 1)
+        self.assertEqual(self.runtime.current_status()['observed'], 'Draining')

@@ -52,6 +52,8 @@ def command(state, action, command_id, expected_revision, capacity):
 def begin(state, source, instance, ticket, parent, capacity, ready, *, now=0, deadline=30):
     if source not in SOURCES or not isinstance(ticket, str) or not re.fullmatch('[a-f0-9]{32}', ticket):
         raise Rejected('Invalid activity source or ticket')
+    if parent is not None and (not isinstance(parent, str) or not re.fullmatch('[a-f0-9]{32}', parent)):
+        raise Rejected('Invalid parent activity ticket')
     result = deepcopy(state)
     result['finished'] = {key: value for key, value in result['finished'].items() if value['until'] >= now}
     if ticket in result['finished']:
@@ -94,7 +96,10 @@ def finish(state, source, instance, ticket, *, now=0):
 
 
 def heartbeat(state, source, instance, tickets, known, now):
-    if source not in SOURCES or type(known) is not bool or not math.isfinite(now):
+    if (source not in SOURCES or type(known) is not bool or not math.isfinite(now)
+            or not isinstance(tickets, list) or len(tickets) > MAX_TICKETS
+            or any(not isinstance(ticket, str) or not re.fullmatch('[a-f0-9]{32}', ticket) for ticket in tickets)
+            or len(set(tickets)) != len(tickets)):
         raise Rejected('Invalid activity report')
     expected = {key for key, value in state['tickets'].items()
                 if value['source'] == source and value['instance'] == instance}

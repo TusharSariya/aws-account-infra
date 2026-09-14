@@ -7,9 +7,10 @@ import threading
 import time
 
 from .http_clients import install_http_hooks
+from .identity import serve as serve_identity
 from .middleware import ActivityMiddleware
 from .processes import install_process_hook
-from .tracking import Tracker, admit, CURRENT, task_factory, install_thread_hooks
+from .tracking import Tracker, scheduled, task_factory, install_thread_hooks
 
 tracker = None
 
@@ -26,6 +27,7 @@ def configure(app, internal_token):
     if tracker is not None:
         raise RuntimeError('Activity hooks already installed')
     tracker = Tracker(endpoint, source, os.environ['POD_UID'])
+    serve_identity(tracker)
     install_thread_hooks()
     install_process_hook()
     install_http_hooks(model)
@@ -50,11 +52,5 @@ def configure(app, internal_token):
 def scheduled_work(function):
     @wraps(function)
     async def run(*args, **kwargs):
-        work = await admit(tracker)
-        token = CURRENT.set(work)
-        try:
-            return await function(*args, **kwargs)
-        finally:
-            CURRENT.reset(token)
-            work.release()
+        return await scheduled(tracker)(function)(*args, **kwargs)
     return run

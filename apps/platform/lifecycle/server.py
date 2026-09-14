@@ -64,7 +64,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             self.dispatch()
         except Conflict:
-            self.respond(409, {'error': 'State changed; refresh Status and retry with the same command ID'})
+            self.respond(409, {'error': 'State changed; retry the same command ID and revision, or inspect Status before issuing a new command'})
         except Rejected as error:
             self.respond(409, {'error': str(error)})
         except (ValueError, TypeError, KeyError):
@@ -102,12 +102,12 @@ class Server(ThreadingHTTPServer):
 
 def main():
     config = json.loads(Path('/config/config.json').read_text())
-    runtime = Runtime(Kubernetes(), os.environ['POD_UID'], config)
     server = Server(('0.0.0.0', 8080), Handler)
-    server.runtime = runtime
     server.tokens = {name: Path('/credentials/' + name).read_text().strip() for name in ('operator', 'odysseus', 'ollama')}
     if any(len(value) < 43 for value in server.tokens.values()) or len(set(server.tokens.values())) != 3:
         raise ValueError('Separate lifecycle credentials of at least 256 bits are required')
+    runtime = Runtime(Kubernetes(), os.environ['POD_UID'], config, source_keys=server.tokens)
+    server.runtime = runtime
 
     def loop():
         while True:

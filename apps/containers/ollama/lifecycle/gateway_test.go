@@ -1,6 +1,9 @@
 package lifecycle
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -102,5 +105,36 @@ func TestAsyncWorkIsRecordedBeforeExecution(t *testing.T) {
 	finish()
 	if work.Load() >= before {
 		t.Fatal("completed hold retained")
+	}
+}
+
+func TestIdentityChallengeUsesOnlySourceCredentialAndDoesNotAdmitWork(t *testing.T) {
+	configured = &gateway{token: "source", userToken: "user", workspaceToken: "workspace", process: strings.Repeat("b", 32), tickets: map[string]*tracked{}}
+	defer func() { configured = nil }()
+	handler := Middleware(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Fatal("identity reached model backend") }))
+	challenge := strings.Repeat("a", 32)
+	for _, token := range []string{"", "user", "workspace", "source"} {
+		r := httptest.NewRequest("GET", "/activity-identity?challenge="+challenge, nil)
+		r.Header.Set("Authorization", "Bearer "+token)
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+		if token != "source" {
+			if w.Code != 401 {
+				t.Fatalf("credential %q obtained process identity", token)
+			}
+			continue
+		}
+		var payload map[string]string
+		if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &payload) != nil {
+			t.Fatal("source probe failed")
+		}
+		mac := hmac.New(sha256.New, []byte("source"))
+		mac.Write([]byte(challenge + ":" + configured.process))
+		if payload["process_id"] != configured.process || payload["signature"] != hex.EncodeToString(mac.Sum(nil)) {
+			t.Fatal("challenge signature mismatch")
+		}
+	}
+	if len(configured.tickets) != 0 {
+		t.Fatal("identity probe counted as work")
 	}
 }
