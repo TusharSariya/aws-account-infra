@@ -1,0 +1,12 @@
+{
+  "reviews": [
+    {
+      "address": "helm_release.capacity",
+      "fingerprint": "fc6f6026120dabcf768e7090b5af82ee4fbec90ab7c9736cbb8017a3639c7adb",
+      "failed_run": "https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/34813837011",
+      "failed_revision": 2,
+      "source_commit": "f7adc49b623892f26d89e4bfc6f2b7b1a78c72be",
+      "verified_configuration_sha256": "2272116e8d304415cb6a8e887550243f41352915631e78c8b08c93656dab31df"
+    }
+  ]
+}

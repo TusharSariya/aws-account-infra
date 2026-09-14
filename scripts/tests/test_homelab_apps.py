@@ -1,6 +1,8 @@
 """Fail-closed deployment and rendered service contracts; no credentials required."""
 import base64
 import importlib.util
+import hashlib
+from copy import deepcopy
 import json
 from pathlib import Path
 import subprocess
@@ -44,6 +46,27 @@ class GuardTests(unittest.TestCase):
             apps.guard_plan(invalid)
         with self.assertRaises(apps.AppError):
             apps.guard_plan({'resource_changes': []})
+
+    def test_failed_release_recovery_requires_exact_reviewed_drift(self):
+        drift = {'address': 'helm_release.capacity', 'change': {'actions': ['update'],
+                 'before': {'status': 'deployed', 'metadata': {'revision': 1}, 'values': 'unchanged'},
+                 'after': {'status': 'failed', 'metadata': {'revision': 2}, 'values': 'unchanged'}}}
+        reviews = [{'address': drift['address'], 'fingerprint': hashlib.sha256(
+                    json.dumps(drift, sort_keys=True, separators=(',', ':')).encode()).hexdigest()}]
+        self.assertTrue(apps.reviewed_failed_drift(drift, reviews))
+        self.assertFalse(apps.reviewed_failed_drift(drift, []))
+        for field, value in [('status', 'pending-upgrade'), ('values', 'unreviewed change'),
+                             ('metadata', {'revision': 3})]:
+            changed = deepcopy(drift)
+            changed['change']['after'][field] = value
+            self.assertFalse(apps.reviewed_failed_drift(changed, reviews))
+        for address in ('helm_release.ollama', 'helm_release.ai'):
+            changed = {**drift, 'address': address}
+            self.assertFalse(apps.reviewed_failed_drift(changed, reviews))
+        for actions in (['delete'], ['delete', 'create']):
+            changed = deepcopy(drift)
+            changed['change']['actions'] = actions
+            self.assertFalse(apps.reviewed_failed_drift(changed, reviews))
 
     def test_missing_credentials_prevent_any_cluster_mutation(self):
         with patch.dict(apps.os.environ, {'GITHUB_ACTIONS': 'true', **dict.fromkeys(apps.SECRET_NAMES, '')}), patch.object(apps, 'run') as run:
