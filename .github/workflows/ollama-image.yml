@@ -5,6 +5,7 @@ on:
       - 'apps/containers/ollama/**'
       - 'scripts/ollama-image-context.py'
       - 'scripts/ollama-image-smoke.sh'
+      - 'scripts/verify-ai-images.py'
       - '.github/workflows/ollama-image.yml'
   push:
     branches: [main]
@@ -12,6 +13,7 @@ on:
       - 'apps/containers/ollama/**'
       - 'scripts/ollama-image-context.py'
       - 'scripts/ollama-image-smoke.sh'
+      - 'scripts/verify-ai-images.py'
       - '.github/workflows/ollama-image.yml'
   workflow_dispatch:
 permissions:
@@ -76,3 +78,14 @@ jobs:
         env:
           IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
         run: bash scripts/ollama-image-smoke.sh "ghcr.io/tusharsariyaorg/homelab-ollama@$IMAGE_DIGEST"
+      - name: Record verified build output
+        env:
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+          SOURCE_COMMIT: ${{ steps.source.outputs.revision }}
+        run: python3 scripts/verify-ai-images.py ollama "ghcr.io/tusharsariyaorg/homelab-ollama@$IMAGE_DIGEST" "$SOURCE_COMMIT" "$RUNNER_TEMP/receipt.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ollama-image-receipt
+          path: ${{ runner.temp }}/receipt.json
+          retention-days: 90
+          if-no-files-found: error
