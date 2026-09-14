@@ -22,3 +22,9 @@
 The new capacity release is disabled pending trusted filesystem UUID enrollment, independent collector credential provisioning, endpoint routing verification and live quota maintenance acceptance. The root host installation recipe is repository managed but has not been run. No production apply, quota activation, worker reboot, reset, migration, model benchmark or restore is claimed for this change.
 
 Storage review/CI rollout must precede AI packaging and lifecycle/Argo rollout. The task checklist remains authoritative and unfinished work is not archived.
+
+## First CI attempt
+
+[Run 34806235563](https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/34806235563) failed the isolated namespace test because the Ubuntu runner rejected unprivileged uid_map creation, before the quota-bypass assertion ran. The test now creates the user namespace as a host administrator, matching a container runtime, then tests the stronger namespace-root file owner. It also tests rejection of clearing directory project inheritance. No runner hardening is disabled.
+
+Read-only Proxmox inspection verified VM 102 scsi1 maps to the existing 1200 GiB `vm-102-disk-2`, whose only partition is named `u-local-path-provisioner` at sector 2048 (512-byte sectors). A read-only filesystem probe at that offset returned XFS UUID `86f3ada1-17e4-4f74-9d73-a18c1774cc31`; that expected UUID and observed `pve/data` pool are now pinned. The helper must still independently match the mounted guest filesystem before creating directories. Collector transport credentials and live activation remain pending.
