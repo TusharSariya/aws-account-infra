@@ -242,7 +242,7 @@ def check_secrets(data, private):
             raise AppError('Credential appeared in private plan/state; refusing publication')
 
 
-def guard_images():
+def guard_images(remote=None):
     import yaml
     ollama = yaml.safe_load((CONFIG / 'ollama-values.yaml').read_text())
     workspace = yaml.safe_load((CONFIG / 'workspace-values.yaml').read_text())
@@ -257,7 +257,7 @@ def guard_images():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     try:
-        module.verify(ai['images'], remote=os.environ.get('GITHUB_ACTIONS') == 'true')
+        module.verify(ai['images'], remote=(os.environ.get('GITHUB_ACTIONS') == 'true' if remote is None else remote))
     except module.ImageError as error:
         raise AppError(str(error)) from None
 
