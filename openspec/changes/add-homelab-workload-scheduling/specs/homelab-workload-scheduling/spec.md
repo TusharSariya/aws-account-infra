@@ -97,8 +97,14 @@ The existing worker XFS filesystem SHALL enforce project hard limits using stabl
 - **THEN** configuration remains valid and startup depends on actual fresh capacity evidence
 
 ### Requirement: Ordered protected rollout
-The platform SHALL deliver storage, aggregate default-off packaging and lifecycle/scheduling in three reviewed PRs in order through existing OpenTofu/Helm CI. Backend keys, dependency ordering, apply label, protected environment and destructive-change guards MUST remain intact. The authorized AI reset MUST stop writers, verify exact identities and record a durable one-time migration that routine CI cannot replay.
+The platform SHALL deliver storage, aggregate default-off packaging and lifecycle/scheduling in three reviewed PRs in order through existing OpenTofu/Helm infrastructure. Explicitly authorized local execution MAY use the same backend and saved-plan guards when CI is unavailable; its evidence MUST be labeled local and MUST NOT satisfy or bypass GitHub merge checks. Backend keys, dependency ordering, apply label, protected environment and destructive-change guards MUST remain intact. The authorized AI reset MUST stop writers, verify exact identities and record a durable one-time migration that routine CI cannot replay.
 
 #### Scenario: Selected check does not succeed
 - **WHEN** a required acceptance job fails, is cancelled or unexpectedly skips
 - **THEN** the merge gate fails even if apply succeeded
+
+#### Scenario: Explicit local execution during CI outage
+- **WHEN** the user explicitly authorizes local deployment and lifecycle maintenance
+- **THEN** the repository runner verifies existing Ready prerequisites, retained Off state, pinned images and the complete non-destructive saved plan
+- **AND** it records source and plan hashes, local results and encrypted recovery artifacts independently from GitHub Actions
+- **AND** changed source or plan bytes prevent applying or reusing an earlier execution record, and the reset is never replayed

@@ -179,7 +179,11 @@
         "scripts/homelab-lifecycle-maintenance.py",
         ".github/workflows/homelab-lifecycle-maintenance.yml",
         "scripts/odysseus-document-acceptance.py",
-        "scripts/odysseus-scheduler-acceptance.py"
+        "scripts/odysseus-scheduler-acceptance.py",
+        "scripts/local_lifecycle_record.py",
+        "scripts/local_lifecycle_tools.py",
+        "scripts/homelab-lifecycle-local.py",
+        "scripts/tests/test_local_lifecycle.py"
       ]
     }
   ]

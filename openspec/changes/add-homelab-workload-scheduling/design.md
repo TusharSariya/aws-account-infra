@@ -65,3 +65,7 @@ Configuration rollback cannot recover erased application data. Record failed att
 
 - [Kubernetes project-quota reliability and user namespaces](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/).
 - [Talos user-namespace prerequisite](https://docs.siderolabs.com/kubernetes-guides/security/usernamespace).
+
+## Explicit local execution fallback
+
+On 2026-09-14 the user authorized local execution while GitHub billing blocks runners. `scripts/homelab-lifecycle-local.py` provides separate plan/apply/maintenance/idle operations. It keeps the existing Kubernetes backend and locking, verifies Ready upstream nodes and observed Off, remotely verifies immutable image receipts, checks every release and rejects destructive plans or unreviewed drift. Apply uses the exact hashed saved plan and recorded source-tree hash. It references existing Kubernetes credentials without rewriting them. Private local records and encrypted restore artifacts remain distinct from CI evidence; GitHub merge requirements remain intact. `GITHUB_ACTIONS` is never fabricated. The idle-only operation narrows the diagnostic feedback loop without claiming the omitted full maintenance checks. The one-time migration cannot run through this entry point.

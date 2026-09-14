@@ -5,6 +5,7 @@ import importlib.util
 import io
 import json
 import os
+import platform
 from pathlib import Path
 import subprocess
 import tarfile
@@ -17,8 +18,10 @@ def age_tools(directory):
     spec = importlib.util.spec_from_file_location('homelab_backup', ROOT / 'scripts/homelab-backup.py')
     backup = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(backup)
-    payload = backup.verified_download('https://dl.filippo.io/age/v1.3.2?for=linux/amd64',
-        'cbe24006683f8eb669266162894b9a522a1af52f2665fbc63a4bb032ed26ac10')
+    assets = {('Linux', 'x86_64'): ('linux/amd64', 'cbe24006683f8eb669266162894b9a522a1af52f2665fbc63a4bb032ed26ac10'),
+              ('Darwin', 'arm64'): ('darwin/arm64', 'e2020b073c44f692685a24d6abc378817eb81ffaaf49fd0531ef8565f767f2f5')}
+    target, digest = assets[(platform.system(), platform.machine())]
+    payload = backup.verified_download('https://dl.filippo.io/age/v1.3.2?for=' + target, digest)
     with tarfile.open(fileobj=io.BytesIO(payload), mode='r:gz') as archive:
         for name in ('age', 'age-keygen'):
             target = directory / name
@@ -88,10 +91,11 @@ def backup_restore(session, output):
             session.unchanged_off(revision)
         with artifact.open('rb') as source:
             checksum = hashlib.file_digest(source, 'sha256').hexdigest()
-        evidence = {'run_id': os.environ['GITHUB_RUN_ID'], 'source_commit': apps.run(['git', 'rev-parse', 'HEAD']).decode().strip(),
+        evidence = {'execution': 'local' if os.environ.get('HOMELAB_LOCAL_RECEIPT') else 'github-actions',
+                    'run_id': os.environ.get('GITHUB_RUN_ID', Path(os.environ.get('HOMELAB_LOCAL_RECEIPT', '')).parent.name), 'source_commit': apps.run(['git', 'rev-parse', 'HEAD']).decode().strip(),
                     'lifecycle_revision': revision, 'archive_sha256': checksum, 'source_inventory': inventory,
                     'isolated_restore': proof, 'scope': ['models', 'workspace', 'vector'],
-                    'artifact_retention_days': 90, 'durable_copy_verified': False}
+                    'artifact_retention_days': None if os.environ.get('HOMELAB_LOCAL_RECEIPT') else 90, 'durable_copy_verified': False}
         (output / 'restore-proof.json').write_text(json.dumps(evidence, indent=2) + '\n')
         print('PASS: encrypted full three-volume capture and isolated restore hashes/SQLite integrity', flush=True)
     except BaseException:
