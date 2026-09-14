@@ -73,10 +73,14 @@ service, not a hardened multi-tenant execution platform.
 
 | Component | CPU request / limit | RAM request / limit | Retained storage |
 | --- | --- | --- | --- |
-| Ollama | 8 / 24 | 32 / 64 GiB | 300 GiB models |
+| Ollama | 8 / 36 | 32 / 64 GiB | 300 GiB models |
 | Odysseus | 1 / 4 | 2 / 8 GiB | 20 GiB workspace |
 | ChromaDB | 0.5 / 2 | 1 / 4 GiB | 10 GiB vectors |
 | SearxNG | 0.25 / 1 | 256 MiB / 1 GiB | Reconstructed config |
+
+The worker remains at 38 vCPUs. Ollama's 36-vCPU ceiling leaves two vCPUs of
+nominal headroom; CPU limits are shared scheduling ceilings, not exclusive core
+reservations. No VM resize or restart is required for this limit change.
 
 Ollama permits one loaded model and one parallel inference request, with a bounded
 queue of 16, default 4096-token context and five-minute idle keep-alive. This does
