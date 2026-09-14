@@ -165,7 +165,7 @@ def reviewed_failed_drift(drift, reviews):
     changed = {key for key in set(before) | set(after) if before.get(key) != after.get(key)}
     fingerprint = hashlib.sha256(json.dumps(drift, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
     return (drift.get('address') == 'helm_release.capacity' and change.get('actions') == ['update']
-            and before.get('status') == 'deployed' and after.get('status') == 'failed'
+            and before.get('status') in {'deployed', 'failed'} and after.get('status') == 'failed'
             and changed <= {'metadata', 'status'}
             and any(review.get('address') == drift['address'] and review.get('fingerprint') == fingerprint
                     for review in reviews))

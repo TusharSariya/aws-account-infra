@@ -7,6 +7,14 @@
       "failed_revision": 2,
       "source_commit": "f7adc49b623892f26d89e4bfc6f2b7b1a78c72be",
       "verified_configuration_sha256": "2272116e8d304415cb6a8e887550243f41352915631e78c8b08c93656dab31df"
+    },
+    {
+      "address": "helm_release.capacity",
+      "fingerprint": "a265bd5941ab104bac956ccd1fae194a12153896ee8e787c7ad2b6fa97cb6338",
+      "failed_run": "https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/34815396497",
+      "failed_revision": 3,
+      "source_commit": "a5a4de0c03c05d0b11f98d47a0a0074d2781b681",
+      "verified_configuration_sha256": "754e103c22ee20f54df1794c2f655c3e91f7edc5eb1491e1a1ec93d7c51b8baf"
     }
   ]
 }

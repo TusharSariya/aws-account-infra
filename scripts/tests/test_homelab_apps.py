@@ -68,6 +68,24 @@ class GuardTests(unittest.TestCase):
             changed['change']['actions'] = actions
             self.assertFalse(apps.reviewed_failed_drift(changed, reviews))
 
+    def test_failed_revision_metadata_recovery_remains_exact(self):
+        drift = {'address': 'helm_release.capacity', 'change': {'actions': ['update'],
+                 'before': {'status': 'failed', 'metadata': {'revision': 2}, 'values': 'unchanged'},
+                 'after': {'status': 'failed', 'metadata': {'revision': 3}, 'values': 'unchanged'}}}
+        def review(value):
+            return [{'address': value['address'], 'fingerprint': hashlib.sha256(
+                json.dumps(value, sort_keys=True, separators=(',', ':')).encode()).hexdigest()}]
+        self.assertTrue(apps.reviewed_failed_drift(drift, review(drift)))
+        self.assertFalse(apps.reviewed_failed_drift(drift, []))
+        changed = deepcopy(drift)
+        changed['change']['after']['metadata']['revision'] = 4
+        self.assertFalse(apps.reviewed_failed_drift(changed, review(drift)))
+        changed['change']['after']['values'] = 'configuration drift'
+        self.assertFalse(apps.reviewed_failed_drift(changed, review(changed)))
+        changed = deepcopy(drift)
+        changed['change']['before']['status'] = 'pending-upgrade'
+        self.assertFalse(apps.reviewed_failed_drift(changed, review(changed)))
+
     def test_missing_credentials_prevent_any_cluster_mutation(self):
         with patch.dict(apps.os.environ, {'GITHUB_ACTIONS': 'true', **dict.fromkeys(apps.SECRET_NAMES, '')}), patch.object(apps, 'run') as run:
             with self.assertRaises(apps.AppError):
