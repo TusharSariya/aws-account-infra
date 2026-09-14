@@ -21,7 +21,7 @@
 - [x] 2.6 Verify data persists across stop/start and full Pod stays Pending with insufficient resources while Pi-hole answers UDP/TCP DNS; record explicit acceptance evidence.
 - [x] 2.7 Run rendering, unit/integration, OpenTofu, lint/security and strict OpenSpec checks; deliver and review packaging PR after storage PR succeeds.
 
-## 3. Lifecycle and scheduling PR
+## 3. Lifecycle and scheduling review stack
 
 - [x] 3.1 Implement durable desired state/revision, optimistic concurrency and Lease leadership; race/recovery tests prove no stale command reversal.
 - [x] 3.2 Implement authenticated Start, Stop, Force Stop and Status with admission closure, graceful drain and observed termination; pending-start cancellation and repeated/concurrent operation tests pass.
@@ -32,7 +32,7 @@
 - [x] 3.7 Install pinned checksum-verified Argo chart, private Tailscale HTTPS client-token authentication and namespace RBAC; render and unauthorized-access tests pass.
 - [x] 3.8 Publish reviewed operation/job templates and suspended UTC smoke schedule with Forbid and shared per-job mutexes; test manual/API/scheduled execution, cancellation, overlap and independent concurrency.
 - [x] 3.9 Extend manifest watch paths and required acceptance for all charts/code/images/config/tests; cancellations and unexpected skips demonstrably fail the gate.
-- [ ] 3.10 Run local validation and explicit lifecycle/scheduling acceptance; deliver and review final PR after packaging PR succeeds, preserving all deployment safeguards.
+- [ ] 3.10 Run local validation and explicit lifecycle/scheduling acceptance; deliver, review and merge the lifecycle PR stack after packaging PR succeeds, preserving all deployment safeguards.
 
 ## 4. Operational evidence
 
@@ -52,4 +52,4 @@ Independent read-only verification after reset found the original Pi-hole PVC UI
 
 ## Current completion boundary
 
-Local records e/f provide the retained isolated restore and successful five-minute configured idle proof described in the implementation log. Tasks 4.2 and 4.3 are complete. Task 3.10 remains open only for final required GitHub checks and reviewed merge of draft PR #69; local execution does not waive that gate. Earlier paragraphs above are historical snapshots, not current unchecked-task claims.
+Local records e/f provide the retained isolated restore and successful five-minute configured idle proof described in the implementation log. Tasks 4.2 and 4.3 are complete. Task 3.10 remains open only for final required GitHub checks and bottom-up merges of #70 → #71 → #72 → #73 → #74 → #75 → #76 → #69; local execution does not waive that gate. Earlier paragraphs above are historical snapshots, not current unchecked-task claims.

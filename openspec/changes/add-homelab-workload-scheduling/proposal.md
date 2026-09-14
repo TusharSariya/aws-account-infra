@@ -25,4 +25,4 @@ These two capabilities currently exist in active changes, not archived main spec
 
 ## Impact
 
-Talos quota configuration and existing Proxmox disk safeguards, application Helm releases, deployment health checks, private credentials, lifecycle instrumentation and job acceptance. Deliver storage foundation, AI packaging/resource controls, then scheduler/lifecycle integration in dependency order. Queue autoscaling and advanced fairness remain deferred.
+Talos quota configuration and existing Proxmox disk safeguards, application Helm releases, deployment health checks, private credentials, lifecycle instrumentation and job acceptance. Deliver storage foundation, AI packaging/resource controls, then scheduler/lifecycle integration in dependency order. The lifecycle delivery is reviewed as the eight-layer stack #70, #71, #72, #73, #74, #75, #76 and #69; earlier storage and packaging PRs #67 and #68 are already merged. Queue autoscaling and advanced fairness remain deferred.
