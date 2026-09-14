@@ -61,6 +61,9 @@ def restore(root, stream):
     if root.exists() and any(root.iterdir()):
         raise ValueError('Isolated restore requires an empty target')
     root.mkdir(parents=True, exist_ok=True)
+    capacity = os.statvfs(root)
+    if capacity.f_bavail * capacity.f_frsize < MAX_BYTES + 512 * 1024 ** 2 or capacity.f_favail < MAX_FILES + 100:
+        raise ValueError('Isolated restore filesystem lacks reviewed byte/inode headroom')
     for volume in VOLUMES:
         (root / volume).mkdir()
     total = 0

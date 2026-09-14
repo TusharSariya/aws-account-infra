@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 import importlib.util
 import json
 import os
+import signal
 from pathlib import Path
 import time
 import uuid
@@ -289,6 +290,9 @@ def main():
 
 if __name__ == '__main__':
     os.umask(0o077)
+    def interrupted(_signal, _frame):
+        raise KeyboardInterrupt()
+    signal.signal(signal.SIGTERM, interrupted)
     try:
         main()
     except Exception as error:

@@ -56,6 +56,9 @@ def backup_restore(session, output):
         raise apps.AppError('Backup output must be a new private directory')
     output.mkdir(mode=0o700)
     revision = session.off()
+    state = session.status()
+    if state['blocking_reasons'] or state['storage_warning']:
+        raise apps.AppError('Backup rehearsal requires fresh healthy capacity below warning thresholds')
     snapshot = session.fixture('snapshot')
     try:
         inventory = json.loads(session.kube('-n', 'homelab-models', 'exec', snapshot, '--',
@@ -74,6 +77,10 @@ def backup_restore(session, output):
                  [age, '-r', recipient, '-r', ephemeral, '-o', artifact])
             session.unchanged_off(revision)
             session.remove(snapshot)
+            session.unchanged_off(revision)
+            state = session.status()
+            if state['blocking_reasons'] or state['storage_warning']:
+                raise apps.AppError('Capacity changed before isolated restore')
             restore = session.fixture('restore')
             proof = json.loads(pipe([age, '-d', '-i', key, artifact],
                 [KUBECTL, '-n', 'homelab-models', 'exec', '-i', restore, '--', 'python', '-B', '/code/archive.py', 'restore']))
