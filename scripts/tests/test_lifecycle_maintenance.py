@@ -29,6 +29,15 @@ class MaintenanceTests(unittest.TestCase):
             maintenance.force_running(session, future)
         session.command.assert_not_called()
 
+    def test_explicit_maintenance_is_not_suppressed_by_skipped_reboot_ancestor(self):
+        import yaml
+        workflow = yaml.safe_load((ROOT / '.github/workflows/tofu-apply.yml').read_text())
+        condition = workflow['jobs']['lifecycle-maintenance']['if']
+        self.assertIn('always()', condition)
+        self.assertIn("needs.apply.result == 'success'", condition)
+        self.assertIn("needs.acceptance.result == 'success'", condition)
+        self.assertIn("'lifecycle-maintenance'", condition)
+
     def test_no_response_timeout_does_not_prove_interruption(self):
         future = Mock()
         future.result.side_effect = TimeoutError()
