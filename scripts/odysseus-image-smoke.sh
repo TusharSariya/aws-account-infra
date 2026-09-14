@@ -37,7 +37,7 @@ docker run -d --name odysseus-smoke --network "$network" --user 1000:1000 \
   --tmpfs /workspace:uid=1000,gid=1000 --tmpfs /tmp:uid=1000,gid=1000 \
   -p 127.0.0.1:17000:7000 -e AUTH_ENABLED=true -e LOCALHOST_BYPASS=false -e SECURE_COOKIES=false \
   -e ODYSSEUS_ADMIN_USER=admin -e ODYSSEUS_ADMIN_PASSWORD=disposable-ci-fixture-only-password \
-  -e ODYSSEUS_DATA_DIR=/workspace/data -e CHROMADB_HOST=chromadb \
+  -e ODYSSEUS_DATA_DIR=/workspace/data -e CHROMADB_HOST=chromadb -e CHROMADB_PORT=8000 \
   -e FASTEMBED_CACHE_PATH=/workspace/cache/fastembed "$image" >/dev/null
 ready=false
 for _ in $(seq 1 90); do

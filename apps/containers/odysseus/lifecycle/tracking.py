@@ -162,7 +162,8 @@ def install_thread_hooks():
     def start(thread):
         work, context = CURRENT.get(), copy_context()
         target = getattr(thread, '_target', None)
-        pool_worker = getattr(target, '__module__', '') == 'concurrent.futures.thread'
+        pool_worker = (getattr(target, '__module__', '') == 'concurrent.futures.thread' or
+                       (type(thread).__module__ == 'anyio._backends._asyncio' and type(thread).__name__ == 'WorkerThread'))
         if not work or pool_worker:
             return original_start(thread)
         work.retain()
@@ -182,3 +183,43 @@ def install_thread_hooks():
     ThreadPoolExecutor.submit = submit
     threading.Thread.start = start
     return original_submit, original_start
+
+
+def install_anyio_hook():
+    """Track individual sync calls, including workers abandoned by their caller."""
+    import anyio.to_thread
+    original = anyio.to_thread.run_sync
+
+    async def run_sync(function, *args, abandon_on_cancel=False, cancellable=None, limiter=None):
+        work = CURRENT.get()
+        if not work:
+            return await original(function, *args, abandon_on_cancel=abandon_on_cancel,
+                                  cancellable=cancellable, limiter=limiter)
+        work.retain()
+        progress = {'started': False}
+        def invoke():
+            progress['started'] = True
+            try:
+                return function(*args)
+            finally:
+                work.release()
+        # Keep an observer independent of request cancellation. The actual sync
+        # function, not the caller or pooled thread lifetime, retires its work.
+        try:
+            pending = asyncio.create_task(original(invoke, abandon_on_cancel=False, limiter=limiter))
+        except BaseException:
+            work.release()
+            raise
+        def completed(future):
+            if not progress['started']:
+                if future.cancelled():
+                    work.tracker.known = False  # Dispatch outcome is unverified.
+                else:
+                    work.release()  # Rejected before dispatch.
+            if not future.cancelled():
+                future.exception()
+        pending.add_done_callback(completed)
+        return await asyncio.shield(pending)
+
+    anyio.to_thread.run_sync = run_sync
+    return original

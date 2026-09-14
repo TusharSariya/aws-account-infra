@@ -10,7 +10,7 @@ from .http_clients import install_http_hooks
 from .identity import serve as serve_identity
 from .middleware import ActivityMiddleware
 from .processes import install_process_hook
-from .tracking import Tracker, scheduled, task_factory, install_thread_hooks
+from .tracking import Tracker, scheduled, task_factory, install_thread_hooks, install_anyio_hook
 
 tracker = None
 
@@ -29,6 +29,7 @@ def configure(app, internal_token):
     tracker = Tracker(endpoint, source, os.environ['POD_UID'])
     serve_identity(tracker)
     install_thread_hooks()
+    install_anyio_hook()
     install_process_hook()
     install_http_hooks(model)
     app.add_middleware(ActivityMiddleware, tracker=tracker, internal_token=internal_token)

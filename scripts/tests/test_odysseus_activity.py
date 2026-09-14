@@ -148,3 +148,57 @@ class LifespanTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(events, ['startup', 'shutdown'])
         self.assertFalse(tracker.known)
         self.assertIsNone(asyncio.get_running_loop().get_task_factory())
+
+class AnyIOTests(unittest.IsolatedAsyncioTestCase):
+    async def test_sync_work_retires_while_anyio_worker_remains_alive(self):
+        import anyio.to_thread
+        from concurrent.futures import ThreadPoolExecutor
+        from lifecycle.tracking import install_anyio_hook
+        tracker = Tracker('fixture', 'fixture', 'fixture', transport=lambda *args: {})
+        submit, start = install_thread_hooks()
+        original = install_anyio_hook()
+        self.addCleanup(setattr, ThreadPoolExecutor, 'submit', submit)
+        self.addCleanup(setattr, threading.Thread, 'start', start)
+        self.addCleanup(setattr, anyio.to_thread, 'run_sync', original)
+        work = tracker.begin()
+        token = CURRENT.set(work)
+        try:
+            worker = await anyio.to_thread.run_sync(threading.current_thread)
+        finally:
+            CURRENT.reset(token)
+            work.release()
+        tracker.report()
+        self.assertTrue(worker.is_alive())
+        self.assertFalse(tracker.tickets)
+
+    async def test_cancelled_sync_caller_remains_tracked_until_thread_finishes(self):
+        import anyio.to_thread
+        from lifecycle.tracking import install_anyio_hook
+        original = install_anyio_hook()
+        self.addCleanup(setattr, anyio.to_thread, 'run_sync', original)
+        tracker = Tracker('fixture', 'fixture', 'fixture', transport=lambda *args: {})
+        entered, release = threading.Event(), threading.Event()
+        def function():
+            entered.set()
+            release.wait(3)
+        work = tracker.begin()
+        token = CURRENT.set(work)
+        try:
+            caller = asyncio.create_task(anyio.to_thread.run_sync(function, abandon_on_cancel=True))
+        finally:
+            CURRENT.reset(token)
+        while not entered.is_set():
+            await asyncio.sleep(.01)
+        caller.cancel()
+        with self.assertRaises(asyncio.CancelledError):
+            await caller
+        work.release()
+        tracker.report()
+        self.assertTrue(tracker.tickets)
+        release.set()
+        for _ in range(100):
+            tracker.report()
+            if not tracker.tickets:
+                break
+            await asyncio.sleep(.01)
+        self.assertFalse(tracker.tickets)

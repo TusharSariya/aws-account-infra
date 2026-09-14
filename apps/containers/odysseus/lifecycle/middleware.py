@@ -1,6 +1,7 @@
 """Pure ASGI tracking lasts through the final streamed body and cancellation."""
 import asyncio
 import json
+import re
 import secrets
 
 from .tracking import AdmissionClosed, CURRENT, admit
@@ -15,11 +16,13 @@ PASSIVE = {
 
 def passive(scope):
     path = scope.get('path', '')
+    if scope.get('method') == 'POST' and re.fullmatch('/api/chat/stop/[^/]+', path):
+        return True  # Cancellation cannot create new work and must remain usable while draining.
     if path in PASSIVE:
         return True
     return scope.get('method') in ('GET', 'HEAD') and (
         path in ('/', '/health', '/healthz', '/favicon.ico') or
-        path.startswith(('/static/', '/api/health/', '/api/chat/stream_status', '/api/prefs/')))
+        path.startswith(('/static/', '/api/health/', '/api/chat/stream_status', '/api/chat/resume/', '/api/prefs/')))
 
 
 class ActivityMiddleware:

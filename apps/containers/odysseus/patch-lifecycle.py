@@ -39,6 +39,27 @@ def patch(source):
         '            if lifecycle_context is not None:\n                CURRENT.reset(lifecycle_context)\n'
         '            if lifecycle_work is not None:\n                lifecycle_work.release()\n'
         '            handle = self._task_handles.get(task_id)')
+    replace('src/bg_monitor.py', 'async def _run_followup(rec: dict) -> bool:',
+        'from lifecycle.bootstrap import scheduled_work\n\n@scheduled_work\nasync def _run_followup(rec: dict) -> bool:')
+    replace('src/bg_monitor.py', '_monitor_task = asyncio.create_task(_loop())',
+        'from contextvars import Context\n    _monitor_task = asyncio.create_task(_loop(), context=Context())')
+    replace('routes/email_pollers.py', '_poller_task = loop.create_task(_scheduled_email_poller())',
+        'from contextvars import Context\n            _poller_task = loop.create_task(_scheduled_email_poller(), context=Context())')
+    replace('routes/email_pollers.py', '        for r in rows:\n            sid = r[0]\n            try:',
+        '        from lifecycle.tracking import CURRENT, AdmissionClosed\n'
+        '        from lifecycle.bootstrap import tracker\n'
+        '        for r in rows:\n'
+        '            sid = r[0]\n'
+        '            if tracker is None:\n'
+        '                raise AdmissionClosed("Scheduled delivery requires the instrumented server")\n'
+        '            lifecycle_work = tracker.begin()\n'
+        '            lifecycle_context = CURRENT.set(lifecycle_work)\n'
+        '            try:')
+    replace('routes/email_pollers.py', '                failed.append({"id": sid, "error": str(e)})',
+        '                failed.append({"id": sid, "error": str(e)})\n'
+        '            finally:\n'
+        '                CURRENT.reset(lifecycle_context)\n'
+        '                lifecycle_work.release()')
     replace('routes/skills_routes.py', 'async def run_scheduled_skill_audit(',
         'from lifecycle.bootstrap import scheduled_work\n\n@scheduled_work\nasync def run_scheduled_skill_audit(')
 
