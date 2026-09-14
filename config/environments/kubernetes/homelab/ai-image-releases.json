@@ -7,10 +7,10 @@
     "artifact_id": 10343058758
   },
   "odysseus": {
-    "commit": "0ffb1ca5ec0f2273b128c8b9071672f2060ba4a0",
-    "image": "ghcr.io/tusharsariyaorg/homelab-odysseus@sha256:93de1142b0d108e62bdf5c5eeba354862ee5d0fadd8c98e549c489c72dba623e",
-    "input_sha256": "e68f794d237b6dcbe528439cf4e538596d530ff39624679d65f060c0e206bbfe",
-    "run_id": 34835452558,
-    "artifact_id": 10344685618
+    "commit": "561f095a48d9df41f20c66fcfe90e5cae04ee4f3",
+    "image": "ghcr.io/tusharsariyaorg/homelab-odysseus@sha256:4ae0f903e3356de0602e7612034c5bd5e61730d17f8c85ebf37d3d4f3a6906c3",
+    "input_sha256": "74d844049d37a36eabd606cf4050cdbf1fba1fad95c675ad0afc7e48b795b942",
+    "run_id": 34839086882,
+    "artifact_id": 10345796519
   }
 }

@@ -1,7 +1,7 @@
 node: talos-worker-01
 images:
   ollama: ghcr.io/tusharsariyaorg/homelab-ollama@sha256:a3b48fa9b9055a2274d1596ffa6e671535d140198768a43745b69e2c8065608f
-  odysseus: ghcr.io/tusharsariyaorg/homelab-odysseus@sha256:93de1142b0d108e62bdf5c5eeba354862ee5d0fadd8c98e549c489c72dba623e
+  odysseus: ghcr.io/tusharsariyaorg/homelab-odysseus@sha256:4ae0f903e3356de0602e7612034c5bd5e61730d17f8c85ebf37d3d4f3a6906c3
   chroma: chromadb/chroma:1.5.5@sha256:0771874eaffc80fb4a66ba4de41a8fadf0447240b08d92353450e26ee43c9355
   searx: searxng/searxng:2026.5.31-7159b8aed@sha256:35b089054ac9b4257976107e71673d9e30ac17c9b50bbf8b4783f2f6d1d1981f
   configure: python:3.14-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6
