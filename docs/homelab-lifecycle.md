@@ -1,6 +1,6 @@
 # AI lifecycle and reviewed jobs
 
-The third scheduling PR is still under implementation. Configuration and local tests are not deployment or recovery evidence. See `openspec/changes/add-homelab-workload-scheduling/implementation-log.md` for successful runs and retained failures. Keep the change unarchived until its unchecked tasks are complete.
+The third scheduling PR is deployed through explicitly authorized local execution and remains draft pending required GitHub merge checks. Local live acceptance verified scheduling, runtime controls, three-volume persistence, isolated restore and the configured five-minute idle shutdown. Configuration and unit tests alone are not deployment or recovery evidence. See `openspec/changes/add-homelab-workload-scheduling/implementation-log.md` for successful runs and retained failures. Keep the change unarchived until its unchecked tasks are complete.
 
 ## Ownership and reconstruction
 
@@ -63,3 +63,5 @@ GitHub Actions provides the normal protected execution and merge gates, but is n
 Records identify execution as local and include timestamps, source/plan hashes and outcomes. Successful full maintenance retains encrypted recovery data and `restore-proof.json` under the private record directory; this has no GitHub retention policy or automatic durable off-machine copy. A focused idle run does not establish backup recovery. Do not export kubeconfig, credential files or private plan/state files as public evidence. Local success cannot satisfy the GitHub merge gate. Source changes require a new plan/record. Normal Stop remains the only automatic cleanup operation.
 
 Local operations reject OpenTofu argument/data-directory overrides, verify the default workspace and actual backend metadata, and hold a private host-wide process lock across each operation. Every reused record rechecks the saved plan as well as the source tree and recorded kubeconfig. The Mac runner pins kubectl 1.36.3 and OpenTofu 1.11.5 to verified release checksums.
+
+Local record `homelab-local-lifecycle-20260914-f` at source `e3c75aa` passed controller recovery, fresh capacity hysteresis, 300 continuous verified idle seconds with authenticated browser probes, observed normal shutdown and Pi-hole UDP/TCP DNS. AI was left Off. The default 1800-second boundary is unit-tested; the interrupted longer live attempts are not reported as successes.

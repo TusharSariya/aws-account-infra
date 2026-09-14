@@ -38,7 +38,7 @@
 
 - [x] 4.1 Document pinned reconstruction and separate credential issuance/recovery, with no credentials in plans/state/logs; review documented commands and credential scopes.
 - [x] 4.2 Document application data backup/restore and run an isolated restore before claiming recovery; record exact artifact/run and verified data.
-- [ ] 4.3 Record local checks, CI deployment, live behavior, benchmarks and recovery separately; unfinished scenarios remain unchecked and change stays unarchived.
+- [x] 4.3 Record local checks, CI deployment, live behavior, benchmarks and recovery separately; unfinished scenarios remain unchecked and change stays unarchived.
 
 ## Local implementation record, 2026-09-14
 
@@ -49,3 +49,7 @@ Storage foundation code and isolated tests are present. Run 34810327867 successf
 Packaging PR #68 merged as f4708346f3e3e170226cced36a1240eee341bcb0 after guarded apply 34819433687 and all required PVC/network/capacity acceptance succeeded. Both collectors are Ready and every legacy AI Deployment remains zero. Quota run 34820173760 passed pre-reboot application enforcement and completed worker maintenance, then failed downloading verified tools before post-reboot verification. Verification-only resume 34820541091 succeeded with the same durable fixture identity and observed changed boot. Reset 34820827996 completed exactly the three-volume migration and retained its immutable receipt. Independent unrelated-data verification and AI stop/start behavior remain unfinished, so task 2.5 and 2.6 remain unchecked. The earlier local implementation paragraph is historical, not the current live state.
 
 Independent read-only verification after reset found the original Pi-hole PVC UID `7738ef98-4f83-4e86-89ac-119b6676ad62` (created 2026-09-13T22:02:46Z) and 26,714 persistent query rows. The oldest timestamp, 1789337206.3400781, predates the reset completion timestamp 1789373078.6698902. This verifies surviving unrelated data without claiming a pre/post byte-for-byte comparison. Task 2.5 is complete; stop/start and isolated restore remain unchecked.
+
+## Current completion boundary
+
+Local records e/f provide the retained isolated restore and successful five-minute configured idle proof described in the implementation log. Tasks 4.2 and 4.3 are complete. Task 3.10 remains open only for final required GitHub checks and reviewed merge of draft PR #69; local execution does not waive that gate. Earlier paragraphs above are historical snapshots, not current unchecked-task claims.
