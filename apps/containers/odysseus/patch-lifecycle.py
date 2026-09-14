@@ -11,6 +11,38 @@ def patch(source):
         if text.count(old) != 1:
             raise ValueError('Pinned activity hook changed: ' + path)
         file.write_text(text.replace(old, new))
+    # Status refreshes must not turn retained terminal history into new work.
+    # Keep explicit one-shot recovery and general shell execution admitted.
+    replace('static/js/cookbookRunning.js',
+        'function _hasLiveTasks(tasks = null) {',
+        "function _lifecycleTerminal(task) {\n  return ['done', 'completed', 'stopped', 'error', 'crashed', 'failed', 'ended', 'killed'].includes(String(task.status || '').toLowerCase());\n}\n\nfunction _hasLiveTasks(tasks = null) {")
+    replace('static/js/cookbookRunning.js',
+        "    || _downloadOutputLooksActive(t)\n  );",
+        "    || (!_lifecycleTerminal(t) && _downloadOutputLooksActive(t))\n  );")
+    replace('static/js/cookbookRunning.js',
+        'export function _startBackgroundMonitor() {\n  if (_bgMonitorInterval) return;',
+        'export function _startBackgroundMonitor() {\n  if (!_hasLiveTasks()) return;\n  if (_bgMonitorInterval) return;')
+    replace('static/js/cookbookRunning.js',
+        '  _bgMonitorInterval = setInterval(() => {\n    if (!_canBackgroundPoll()) return;',
+        '  _bgMonitorInterval = setInterval(() => {\n    if (!_hasLiveTasks()) { _stopBackgroundMonitor(); return; }\n    if (!_canBackgroundPoll()) return;')
+    replace('static/js/cookbookRunning.js',
+        'if (_hasLiveTasks() || _isRunningTabVisible()) {',
+        'if (_hasLiveTasks()) {')
+    replace('static/js/cookbookRunning.js',
+        'async function _pollBackgroundStatus() {\n  if (!_canBackgroundPoll() || _bgPollInFlight) return;',
+        'async function _pollBackgroundStatus() {\n  if (!_hasLiveTasks()) { _stopBackgroundMonitor(); return; }\n  if (!_canBackgroundPoll() || _bgPollInFlight) return;')
+    replace('static/js/cookbookRunning.js',
+        '    if (errorTasks.length > 0) {\n      _showCookbookNotif(true);',
+        '    if (activeTasks.length === 0) _stopBackgroundMonitor();\n    if (errorTasks.length > 0) {\n      _showCookbookNotif(true);')
+    replace('static/js/cookbookRunning.js',
+        "    document.dispatchEvent(new CustomEvent('cookbook:state-synced', { detail: state }));",
+        "    _startBackgroundMonitor();\n    document.dispatchEvent(new CustomEvent('cookbook:state-synced', { detail: state }));")
+    replace('static/js/cookbookRunning.js',
+        'async function _reconnectTask(el, task) {\n  if (!el || !task) return;',
+        "async function _reconnectTask(el, task) {\n  if (!el || !task || _lifecycleTerminal(task)) return;")
+    replace('static/js/cookbookRunning.js',
+        '  while (!controller.signal.aborted) {\n    const liveWrap',
+        "  while (!controller.signal.aborted) {\n    const current = _loadTasks().find(t => t.sessionId === task.sessionId);\n    if (!current || _lifecycleTerminal(current)) { controller.abort(); break; }\n    const liveWrap")
     replace('app.py', 'app.add_middleware(_RequestTimeoutMiddleware)',
         'from lifecycle.bootstrap import configure as configure_lifecycle\n'
         'from core.middleware import INTERNAL_TOOL_TOKEN as lifecycle_internal_token\n'

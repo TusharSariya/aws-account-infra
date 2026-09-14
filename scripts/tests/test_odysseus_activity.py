@@ -68,6 +68,22 @@ class ActivityTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result, 'passive')
         self.assertFalse(self.calls)
 
+    async def test_idle_cookbook_reads_are_passive_but_mutations_require_admission(self):
+        async def app(*args):
+            return 'read'
+        middleware = ActivityMiddleware(app, self.tracker)
+        self.tracker.transport = lambda *args: (_ for _ in ()).throw(AdmissionClosed())
+        messages = []
+        async def send(message):
+            messages.append(message)
+        for path in ('/api/cookbook/state', '/api/cookbook/gpus'):
+            for method in ('GET', 'HEAD'):
+                self.assertEqual(await middleware({'type': 'http', 'path': path, 'method': method}, None, send), 'read')
+            await middleware({'type': 'http', 'path': path, 'method': 'POST'}, None, send)
+        for path in ('/api/shell/exec', '/api/cookbook/tasks/status'):
+            await middleware({'type': 'http', 'path': path, 'method': 'POST'}, None, send)
+        self.assertEqual([m['status'] for m in messages if m['type'] == 'http.response.start'], [503] * 4)
+
     async def test_scheduled_execution_requires_fresh_root_admission(self):
         work = self.tracker.begin()
         token = CURRENT.set(work)

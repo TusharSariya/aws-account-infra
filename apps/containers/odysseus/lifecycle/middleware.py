@@ -21,7 +21,8 @@ def passive(scope):
     if path in PASSIVE:
         return True
     return scope.get('method') in ('GET', 'HEAD') and (
-        path in ('/', '/health', '/healthz', '/favicon.ico') or
+        path in ('/', '/health', '/healthz', '/favicon.ico',
+                 '/api/cookbook/state', '/api/cookbook/gpus') or
         path.startswith(('/static/', '/api/health/', '/api/chat/stream_status', '/api/chat/resume/', '/api/prefs/')))
 
 
