@@ -86,6 +86,7 @@ spec:
               {{- end }}
           ports: [{name: health, containerPort: 8081}]
           readinessProbe:
+            exec: null
             httpGet: {path: /ready, port: health}
             periodSeconds: 10
             timeoutSeconds: 3

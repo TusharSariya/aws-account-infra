@@ -37,6 +37,10 @@ class CapacityChartTests(unittest.TestCase):
         self.assertNotIn('add', physical['containers'][0]['securityContext']['capabilities'])
         self.assertTrue(physical['containers'][0]['securityContext']['runAsNonRoot'])
         for pod in pods.values():
+            probe = pod['containers'][0]['readinessProbe']
+            self.assertIn('exec', probe)
+            self.assertIsNone(probe['exec'])
+            self.assertEqual(probe['httpGet'], {'path': '/ready', 'port': 'health'})
             self.assertNotIn('hostPID', pod)
             self.assertNotIn('hostNetwork', pod)
         self.assertFalse(any('secret' in volume for volume in guest['volumes']))
