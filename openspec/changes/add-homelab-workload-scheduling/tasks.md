@@ -18,20 +18,20 @@
 - [x] 2.3 Add one-time migration recording exact old PVC/PV UIDs and stopped writers, narrowly scoped plan allowances and replay rejection; adversarial migration tests pass.
 - [x] 2.4 Disable old writers and default migrated AI to zero without disturbing Pi-hole; CI health verifies intentional-off without starting AI.
 - [x] 2.5 Perform authorized reset only through explicit reviewed CI migration; prove unrelated data survives and runtime remains off.
-- [ ] 2.6 Verify data persists across stop/start and full Pod stays Pending with insufficient resources while Pi-hole answers UDP/TCP DNS; record explicit acceptance evidence.
+- [x] 2.6 Verify data persists across stop/start and full Pod stays Pending with insufficient resources while Pi-hole answers UDP/TCP DNS; record explicit acceptance evidence.
 - [x] 2.7 Run rendering, unit/integration, OpenTofu, lint/security and strict OpenSpec checks; deliver and review packaging PR after storage PR succeeds.
 
 ## 3. Lifecycle and scheduling PR
 
 - [x] 3.1 Implement durable desired state/revision, optimistic concurrency and Lease leadership; race/recovery tests prove no stale command reversal.
 - [x] 3.2 Implement authenticated Start, Stop, Force Stop and Status with admission closure, graceful drain and observed termination; pending-start cancellation and repeated/concurrent operation tests pass.
-- [ ] 3.3 Instrument pinned Odysseus streams, documents, agents, schedules and subprocesses including cancellation/error paths; each activity-source integration test passes.
-- [ ] 3.4 Implement authenticated Ollama admission gateway and prevent network and same-Pod bypass; direct inference/download and unauthorized/bypass tests pass.
+- [x] 3.3 Instrument pinned Odysseus streams, documents, agents, schedules and subprocesses including cancellation/error paths; each activity-source integration test passes.
+- [x] 3.4 Implement authenticated Ollama admission gateway and prevent network and same-Pod bypass; direct inference/download and unauthorized/bypass tests pass.
 - [x] 3.5 Implement verified 30-minute idle interval, unknown-source handling and recovery reset; fake-clock tests cover all interval boundaries and excluded probes/connections.
 - [x] 3.6 Connect storage pressure to startup/work admission, alerting and graceful drain without force/delete; integration tests prove five-minute recovery leaves AI off.
-- [ ] 3.7 Install pinned checksum-verified Argo chart, private Tailscale HTTPS client-token authentication and namespace RBAC; render and unauthorized-access tests pass.
-- [ ] 3.8 Publish reviewed operation/job templates and suspended UTC smoke schedule with Forbid and shared per-job mutexes; test manual/API/scheduled execution, cancellation, overlap and independent concurrency.
-- [ ] 3.9 Extend manifest watch paths and required acceptance for all charts/code/images/config/tests; cancellations and unexpected skips demonstrably fail the gate.
+- [x] 3.7 Install pinned checksum-verified Argo chart, private Tailscale HTTPS client-token authentication and namespace RBAC; render and unauthorized-access tests pass.
+- [x] 3.8 Publish reviewed operation/job templates and suspended UTC smoke schedule with Forbid and shared per-job mutexes; test manual/API/scheduled execution, cancellation, overlap and independent concurrency.
+- [x] 3.9 Extend manifest watch paths and required acceptance for all charts/code/images/config/tests; cancellations and unexpected skips demonstrably fail the gate.
 - [ ] 3.10 Run local validation and explicit lifecycle/scheduling acceptance; deliver and review final PR after packaging PR succeeds, preserving all deployment safeguards.
 
 ## 4. Operational evidence
