@@ -85,3 +85,7 @@ The `storage-foundation` reusable CI workflow repeats isolated Linux checks. Sel
 Project quotas, retained PVs, Git history and OpenTofu state are not application backups. Before the later authorized reset, record exact old claim/PV UIDs and paths, stop and verify all writers, and capture any separately desired application backup using the existing Odysseus backup procedure. The reset record must be durable and single-use, and must name only the three authorized application volumes. This foundation contains no reset code.
 
 Reconstruct quota configuration before restoring data to fresh isolated claims. Restore workspace and vector data with ownership compatible with the user-namespaced Pod, verify representative records and model inventory, and document external credentials separately. Do not mark recovery complete until an isolated restore actually succeeds. Configuration rollback cannot recover data erased by the authorized reset.
+
+## API publication policy
+
+The collectors and reset helper use a narrowly selected `CiliumNetworkPolicy` allowing only the `kube-apiserver` identity on TCP 6443. Disposable quota consumers receive no API access. Cilium's default CIDR selectors exclude cluster nodes, so an IP-block rule for the control-plane address does not permit this traffic. See [Cilium node and API-server selectors](https://docs.cilium.io/en/stable/security/policy/layer3/). Default ingress and other egress remain denied, with a separate fixed physical-exporter exception for its collector.

@@ -132,3 +132,13 @@ class ProofTests(unittest.TestCase):
              patch.object(quota_ci.subprocess, 'run', side_effect=api), self.assertRaisesRegex(ValueError, 'boot or readiness changed'):
             quota_ci.main('prepare')
         self.assertEqual(saves, ['preparing'])
+
+    def test_api_access_uses_cilium_identity_and_excludes_disposable_consumers(self):
+        rendered = subprocess.check_output(['helm', 'template', 'homelab-capacity', str(ROOT / 'charts/homelab-capacity'),
+            '-f', str(ROOT / 'config/environments/kubernetes/homelab/capacity-values.yaml')], text=True)
+        docs = [doc for doc in yaml.safe_load_all(rendered) if doc]
+        policy = next(doc for doc in docs if doc['kind'] == 'CiliumNetworkPolicy')['spec']
+        self.assertEqual(policy['endpointSelector']['matchExpressions'],
+                         [{'key': 'app', 'operator': 'In', 'values': ['guest-capacity', 'physical-capacity', 'ai-volume-reset']}])
+        self.assertEqual(policy['egress'], [{'toEntities': ['kube-apiserver'],
+                         'toPorts': [{'ports': [{'port': '6443', 'protocol': 'TCP'}]}]}])

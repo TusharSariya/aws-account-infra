@@ -125,13 +125,24 @@ spec:
   podSelector: {}
   policyTypes: [Ingress, Egress]
   ingress: []
+  egress: []
+---
+# Cilium excludes cluster nodes from CIDR peers by default. Select only the
+# API-server identity, never all nodes or the whole cluster.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata: {name: capacity-api-access, namespace: homelab-platform}
+spec:
+  endpointSelector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values: [guest-capacity, physical-capacity, ai-volume-reset]
   egress:
-    - to:
-        - ipBlock: {cidr: 10.42.0.220/32}
-        - ipBlock: {cidr: 10.96.0.1/32}
-      ports:
-        - {protocol: TCP, port: 443}
-        - {protocol: TCP, port: 6443}
+    - toEntities: [kube-apiserver]
+      toPorts:
+        - ports:
+            - {port: '6443', protocol: TCP}
 ---
 {{- if .Values.enabled }}
 apiVersion: networking.k8s.io/v1
