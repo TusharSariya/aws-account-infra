@@ -7,6 +7,7 @@ on:
       - 'scripts/odysseus-image-smoke.sh'
       - 'scripts/odysseus-smoke-controller.py'
       - 'scripts/odysseus-source-tests.py'
+      - 'scripts/verify-ai-images.py'
       - '.github/workflows/odysseus-image.yml'
   push:
     branches: [main]
@@ -16,6 +17,7 @@ on:
       - 'scripts/odysseus-image-smoke.sh'
       - 'scripts/odysseus-smoke-controller.py'
       - 'scripts/odysseus-source-tests.py'
+      - 'scripts/verify-ai-images.py'
       - '.github/workflows/odysseus-image.yml'
   workflow_dispatch:
 permissions:
@@ -82,3 +84,14 @@ jobs:
         env:
           IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
         run: bash scripts/odysseus-image-smoke.sh "ghcr.io/tusharsariyaorg/homelab-odysseus@$IMAGE_DIGEST"
+      - name: Record verified build output
+        env:
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+          SOURCE_COMMIT: ${{ steps.source.outputs.revision }}
+        run: python3 scripts/verify-ai-images.py odysseus "ghcr.io/tusharsariyaorg/homelab-odysseus@$IMAGE_DIGEST" "$SOURCE_COMMIT" "$RUNNER_TEMP/receipt.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: odysseus-image-receipt
+          path: ${{ runner.temp }}/receipt.json
+          retention-days: 90
+          if-no-files-found: error
