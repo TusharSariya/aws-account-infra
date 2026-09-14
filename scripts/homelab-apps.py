@@ -161,6 +161,18 @@ def bootstrap(kubectl):
 
 def guard_plan(plan):
     if plan.get('resource_drift'):
+        for drift in plan['resource_drift']:
+            if drift.get('address') not in ADDRESSES:
+                continue
+            change = drift.get('change', {})
+            before, after = change.get('before') or {}, change.get('after') or {}
+            statuses = {'deployed', 'failed', 'pending-install', 'pending-upgrade', 'superseded', 'uninstalled'}
+            print(json.dumps({'application_drift_review': {
+                'address': drift['address'],
+                'fingerprint': hashlib.sha256(json.dumps(drift, sort_keys=True, separators=(',', ':')).encode()).hexdigest(),
+                'changed_fields': sorted(key for key in set(before) | set(after) if before.get(key) != after.get(key)),
+                'before_status': before.get('status') if before.get('status') in statuses else 'other',
+                'after_status': after.get('status') if after.get('status') in statuses else 'other'}}))
         raise AppError('Review application drift before deployment')
     summary = []
     for resource in plan.get('resource_changes', []):
