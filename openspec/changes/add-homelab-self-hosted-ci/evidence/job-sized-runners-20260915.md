@@ -87,3 +87,18 @@ Pod creation dry run failed calling the unavailable admission webhook. Restored
 exactly one controller replica in `finally` and observed rollout success. No
 compute fixture was created and AI remained Off. Controller restart during an
 active reservation and node restart remain separate acceptance requirements.
+
+### First mixed-size ARC observation
+
+`mixed-runners-20260915.json` captures simultaneous Running checks (2 CPU/4 GiB/
+4 GiB scratch) and Docker (4 CPU/16 GiB/30 GiB scratch) Pods, plus correctly gated
+followers. Two Docker runners subsequently ran together, filling the shared
+60-GiB scratch quota and leaving smaller followers gated under StrictFIFO.
+
+The first light/checks probes on `a339017` failed because they assumed
+`/sys/fs/cgroup/cpu.max` represented the container. Privileged containerd Pods
+expose the hierarchy root; the corrected probe resolves `/proc/self/cgroup` and
+reads the process's own limit files. Direct inspection of a running Docker
+runner observed container `cpu.max=200000 100000`, memory 8589934592 bytes, and
+parent Pod `cpu.max=400000 100000`, memory 17179869184 bytes. The failed probes
+are preserved and are not claimed as successful job-sized acceptance.
