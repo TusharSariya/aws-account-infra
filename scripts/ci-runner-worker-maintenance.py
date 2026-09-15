@@ -20,11 +20,13 @@ def host(command):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument('--restore-for-kueue', action='store_true')
     p.add_argument('--record-dir', type=Path, required=True)
     p.add_argument('--bootstrap-record', type=Path, required=True)
     p.add_argument('--kubeconfig', type=Path, required=True)
     p.add_argument('--talosconfig', type=Path, required=True)
     args = p.parse_args()
+    target_gib = 172 if args.restore_for_kueue else 156
     directory = private_dir(args.record_dir)
     receipt = directory / 'worker-maintenance.json'
     if receipt.exists():
@@ -40,12 +42,17 @@ def main():
             raise ValueError('Successful recorded bootstrap apply required')
         old_worker = get('get', 'node', 'talos-worker-01')
         old_boot = old_worker['status']['nodeInfo']['bootID']
-        manager = status(103)
-        if manager['status'] != 'stopped':
+        if args.restore_for_kueue:
+            inventory = json.loads(host('pvesh get /nodes/pve/qemu --output-format json'))
+            if any(int(vm['vmid']) == 103 for vm in inventory):
+                raise ValueError('Retire VM 103 before restoring worker RAM')
+            if bootstrap.get('stage') != 'retirement':
+                raise ValueError('Successful guarded retirement receipt required')
+        elif not args.restore_for_kueue and status(103)['status'] != 'stopped':
             raise ValueError('CI manager must remain stopped during worker resize')
         config = json.loads(host('pvesh get /nodes/pve/qemu/102/config --output-format json'))
-        if int(config['memory']) != 159744 or int(config['cores']) != 38:
-            raise ValueError('Expected pending 156-GiB worker configuration')
+        if int(config['memory']) != target_gib * 1024 or int(config['cores']) != 38:
+            raise ValueError('Expected pending worker memory configuration')
         if get('get', 'deployment', '-n', 'homelab-models', 'ai-runtime')['spec']['replicas'] != 0:
             raise ValueError('AI must be intentionally off before maintenance')
         cp = get('get', 'node', 'talos-cp-01')
@@ -75,13 +82,13 @@ def main():
             if fresh and any(c['type'] == 'Ready' and c['status'] == 'True' for c in worker['status']['conditions']):
                 memory = worker['status']['capacity']['memory']
                 # Kernel-reserved RAM means Kubernetes reports somewhat less than 156 GiB.
-                if memory.endswith('Ki') and 150 * 1024**2 < int(memory[:-2]) < 156 * 1024**2:
+                if memory.endswith('Ki') and (target_gib - 2) * 1024**2 < int(memory[:-2]) <= target_gib * 1024**2:
                     break
             if time.monotonic() >= deadline:
                 raise ValueError('Worker readiness and effective memory not observed')
             time.sleep(5)
         final_worker = status(102)
-        if final_worker['status'] != 'running' or int(final_worker['maxmem']) != 156 * 1024**3:
+        if final_worker['status'] != 'running' or int(final_worker['maxmem']) != target_gib * 1024**3:
             raise ValueError('Hypervisor effective worker memory differs')
         run(kube + ['-n', 'homelab-services', 'rollout', 'status', 'deployment/pihole', '--timeout=300s'])
         run(kube + ['-n', 'homelab-services', 'wait', 'service/pihole-dns',
@@ -90,12 +97,12 @@ def main():
             answer = run(['dig', '@pihole-dns.tail2f646b.ts.net', 'example.com', 'A', '+short', '+time=5', '+tries=2', transport])
             if not answer.strip() or '0.0.0.0' in answer:
                 raise ValueError('Pi-hole DNS recovery failed')
-        if status(103)['status'] != 'stopped':
+        if not args.restore_for_kueue and status(103)['status'] != 'stopped':
             raise ValueError('CI manager unexpectedly started during maintenance')
-        evidence.update(boot_id=worker['status']['nodeInfo']['bootID'], phase='success', completed_at=time.time(), worker_memory_bytes=156 * 1024**3,
-                        kubernetes_memory=memory, dns_transports=['udp', 'tcp'], manager='stopped')
+        evidence.update(boot_id=worker['status']['nodeInfo']['bootID'], phase='success', completed_at=time.time(), worker_memory_bytes=target_gib * 1024**3,
+                        kubernetes_memory=memory, dns_transports=['udp', 'tcp'], manager='retired' if args.restore_for_kueue else 'stopped')
         receipt.write_text(json.dumps(evidence, indent=2) + '\n')
-        print('PASS: worker Ready at 156 GiB, Pi-hole UDP/TCP recovered, CI manager still stopped')
+        print(f'PASS: worker Ready at {target_gib} GiB and Pi-hole UDP/TCP recovered')
 
 
 if __name__ == '__main__':

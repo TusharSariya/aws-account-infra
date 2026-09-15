@@ -22,8 +22,8 @@ run "ci_disabled_by_default" {
 run "ci_requires_admin_key" {
   command = plan
   variables {
-    vm_creation_approved = true
-    ci_runner_enabled    = true
+    vm_creation_approved     = true
+    ci_runner_enabled        = true
     ci_runner_ssh_public_key = ""
   }
   expect_failures = [proxmox_virtual_environment_vm.ci_runner]
@@ -45,7 +45,7 @@ run "ci_capacity" {
     error_message = "Only worker RAM may change."
   }
   assert {
-    condition = !proxmox_virtual_environment_vm.ci_runner[0].started && !proxmox_virtual_environment_vm.ci_runner[0].on_boot
+    condition     = !proxmox_virtual_environment_vm.ci_runner[0].started && !proxmox_virtual_environment_vm.ci_runner[0].on_boot
     error_message = "Runner must stay off until worker capacity is verified."
   }
 }

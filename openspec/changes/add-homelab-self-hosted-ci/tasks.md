@@ -1,17 +1,21 @@
-## 1. Storage and VM foundation
-- [x] 1.1 Record approved requirements and pass strict OpenSpec validation before implementation.
-- [x] 1.2 Add opt-in runner hardware and exact worker resize budgets; mocked OpenTofu tests and plan-guard adversarial tests pass.
-- [ ] 1.3 Add idempotent network, identity and Ubuntu bootstrap recipes; validate syntax and unchanged Talos identities/backends.
-- [ ] 1.4 Bootstrap through a guarded local saved plan and verify worker, DNS and nested KVM recovery; record live evidence.
+## 1. Foundation
+- [x] 1.1 Revise OpenSpec and preserve superseded evidence; strict validation passes.
+- [x] 1.2 Implement independent hosted and Mac bootstrap/recovery with saved-plan guards and existing approval gates.
+- [x] 1.3 Implement exact VM 103 retirement guard, DHCP/permission cleanup and graceful 172-GiB worker maintenance.
+- [ ] 1.4 Verify worker allocatable, platform reservations and Pi-hole recovery before enabling the 36 CPU / 160 GiB pool.
 
-## 2. Disposable runner management
-- [ ] 2.1 Implement pinned image construction and private GitHub registration; verify checksums and credential isolation.
-- [ ] 2.2 Implement serial guest lifecycle, pause/resume/status and fail-closed recovery; unit tests cover failure, cancellation and restart.
-- [ ] 2.3 Enforce guest network isolation and bounded storage/logging; live isolation and cleanup tests pass.
-- [ ] 2.4 Complete one self-hosted GitHub job with hosted allowance exhausted and record its runner identity.
+## 2. Admission and runners
+- [ ] 2.1 Pin and verify Kueue 0.19.4 and ARC 0.14.2 Helm artifacts in the independent homelab-ci state root.
+- [ ] 2.2 Implement shared StrictFIFO quota, equal priorities, no borrowing/preemption and oversized-request rejection.
+- [ ] 2.3 Integrate lifecycle-owned AI Pods and queue status while preserving Stop, Force Stop, idle and storage behavior.
+- [ ] 2.4 Integrate Argo execution Pods with execution-only deadlines and exempt operational Pods.
+- [ ] 2.5 Configure disposable 4 CPU / 16 GiB / 30 GiB ARC runners and privately enroll the existing repository GitHub App.
+- [ ] 2.6 Verify admission enforcement and platform/operational availability during Kueue outage.
 
-## 3. Workflow migration
-- [ ] 3.1 Route every job to the reviewed runner without altering gates; static workflow contract tests pass.
-- [ ] 3.2 Preserve ARM image and Lambda artifacts using emulation; actual ARM packaging and import tests pass.
-- [ ] 3.3 Exercise all job families, private deployment and intentional-off drift checks; required acceptance succeeds.
-- [ ] 3.4 Deliver three reviewed PRs and document bootstrap, recovery and measured limitations; strict specs and local lint/security checks pass.
+## 3. Cutover and acceptance
+- [ ] 3.1 Implement explicit CI_EXECUTOR routing while keeping bootstrap/recovery hosted and forks disabled.
+- [ ] 3.2 Verify real checkout, Docker, ARM packaging, privileged disposable quotas and private deployments on ARC.
+- [ ] 3.3 Verify AI-first/CI-first, strict FIFO, CPU/RAM exhaustion and observed reservation release.
+- [ ] 3.4 Verify queued cancellation, GitHub expiry, controller/node restart and cleanup without leaks.
+- [ ] 3.5 Prove hosted recovery with ARC absent and Stop/Status/Pi-hole during queue exhaustion/outage.
+- [ ] 3.6 Record fresh empty post-deployment plans, successful required GitHub checks and three reviewed PRs; enable Talos routing only after acceptance.

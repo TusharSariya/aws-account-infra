@@ -29,7 +29,7 @@ vms = {
   }
 }
 
-# CI foundation is created stopped until worker capacity maintenance completes.
-ci_runner_enabled        = true
+# Retired CI VM: restore worker RAM to 172 GiB through guarded maintenance.
+ci_runner_enabled        = false
 ci_runner_started        = false
 ci_runner_ssh_public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB1o8n6cw3NhDQ9uCuQzUqtm/ZfcU6zGH9LVgZvUNzz8 macbook"

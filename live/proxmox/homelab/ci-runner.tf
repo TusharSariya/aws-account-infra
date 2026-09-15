@@ -96,7 +96,7 @@ resource "proxmox_virtual_environment_vm" "ci_runner" {
     type = "l26"
   }
   lifecycle {
-    prevent_destroy = true
+    # Retirement is allowed only by scripts/ci_retirement_plan.py; normal CI rejects deletes.
     precondition {
       condition     = var.vm_creation_approved && var.ci_runner_ssh_public_key != ""
       error_message = "CI activation requires reviewed VM creation and an administrator public key."

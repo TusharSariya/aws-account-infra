@@ -8,6 +8,7 @@ from pathlib import Path
 import subprocess
 import time
 from ci_runner_plan import guard, guard_start
+from ci_retirement_plan import guard as guard_retirement, guard_ai_off
 from local_lifecycle_tools import setup
 from local_lifecycle_record import execution_lock, guard_environment, tree_digest
 
@@ -28,11 +29,12 @@ def private(path):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('operation', choices=['plan', 'apply'])
-    parser.add_argument('--stage', choices=['foundation', 'start'], default='foundation')
+    parser.add_argument('--stage', choices=['foundation', 'start', 'retirement'], default='foundation')
+    parser.add_argument('--kubeconfig', type=Path)
     parser.add_argument('--maintenance-record', type=Path)
     parser.add_argument('--record-dir', type=Path, required=True)
     args = parser.parse_args()
-    plan_guard = guard if args.stage == 'foundation' else guard_start
+    plan_guard = {'foundation': guard, 'start': guard_start, 'retirement': guard_retirement}[args.stage]
     os.umask(0o077)
     guard_environment()
     if any(k.startswith('AWS_ENDPOINT_URL') for k in os.environ):
@@ -65,6 +67,16 @@ def main():
     record_path = record_dir / 'record.json'
     with execution_lock():
         maintenance_sha = None
+        if args.stage == 'retirement':
+            if (not args.kubeconfig or args.kubeconfig.is_symlink()
+                    or args.kubeconfig.stat().st_mode & 0o077 or args.kubeconfig.stat().st_uid != os.getuid()):
+                raise ValueError('Retirement requires a private owned kubeconfig to verify AI Off')
+            kube = ['kubectl', '--kubeconfig', str(args.kubeconfig), '--request-timeout=30s']
+            deployment = json.loads(subprocess.check_output(kube + ['get', 'deployment', 'ai-runtime',
+                '-n', 'homelab-models', '-o', 'json'], env=env, timeout=35))
+            pods = json.loads(subprocess.check_output(kube + ['get', 'pods', '-n', 'homelab-models',
+                '-l', 'app=ai-runtime', '-o', 'json'], env=env, timeout=35))
+            guard_ai_off(deployment, pods)
         if args.stage == 'start':
             if not args.maintenance_record:
                 raise ValueError('Worker recovery record is required before starting the manager')
