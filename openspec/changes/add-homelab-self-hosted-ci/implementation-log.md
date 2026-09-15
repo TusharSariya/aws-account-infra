@@ -78,3 +78,19 @@
 
 - Argo independent-smoke entered the argo LocalQueue, was admitted alongside CI, completed, and its Workflow/Pod/Workload cleanup was observed. Private admission/completion evidence: ci-20260915-06/argo-proof.json.
 - ARC attempt 2 built the ARM image but Docker execution failed with exec format error. QEMU's temporary container mounted and unmounted binfmt_misc; without a lasting mount, its registrations disappeared. CI attempt 07 updates only the disposable DinD startup to keep that filesystem mounted for the Pod lifetime, preserving all resources and no host mounts. Fresh CI post-plan is empty. Added early actual ARM execution to acceptance and disabled unnecessary pip bytecode compilation during emulated image construction.
+
+## 008 - Queued GitHub cancellation and full-pool operations, 2026-09-15
+
+- A bounded sleeping Pod reserved all 36 compute CPUs. Real GitHub run 34959513074 created a 4-CPU ARC runner Pod/Workload that stayed SchedulingGated with no reservation. GitHub cancellation then removed its EphemeralRunner, Pod and Workload while the blocker continued.
+- During full quota reservation, the ai-status operational Argo Workflow completed and Pi-hole answered UDP/TCP. After recording results, the blocker and operational Workflow were deleted normally; all fixture Pods/Workloads disappeared. Receipt: ci-20260915-07/cancel-proof.json. This proves cancellation, not GitHub request expiry.
+- Reran run 34959513074, attempt 2, with full pool capacity and the persistent DinD binfmt mount. No routine routing or required GitHub gate was changed.
+
+- Current-source CI/admission plan `ci-final-plan-20260915-01` reports no changes and revalidates the 8-GiB reserve against observed platform requests. ARC run 34959513074 attempt 2 passed actual ARM execution, the full ARM image build and tests; private networking is the remaining step in that run at this checkpoint.
+
+## 009 - Successful real ARC acceptance, 2026-09-15
+
+- GitHub run [34959513074, attempt 2](https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/34959513074/attempts/2), head 8aa992cf83515300609dea8de7a8282ac5f9edbe, completed successfully on runner homelab-talos-9b257-runner-p8hbr. Checkout, tools, QEMU, actual ARM execution, Buildx, privileged bounded Docker fixture, ARM build and all 32 Lambda tests passed.
+- Tailscale authentication and private cluster acceptance passed: both nodes/platform controllers ready, internal/external DNS, same-node and cross-node Pod/Service connectivity. This is private networking acceptance, not a private infrastructure deployment or artifact publishing proof.
+- ARC automatically removed the completed runner Pod and Workload. Final cluster Workload listing is empty. Receipt: ci-20260915-07/arc-success.json.
+- Automatic boot is enabled for both Talos VMs; Pi-hole automatically recovered during the observed worker reboot and remains outside Kueue. Fresh hardware, Talos and CI/admission post-plans are empty.
+- Routine CI_EXECUTOR remains unchanged. Hosted required checks, human PR reviews, private deployment/publishing, full AI contention and GitHub expiry acceptance remain incomplete; corresponding task boxes stay unchecked.
