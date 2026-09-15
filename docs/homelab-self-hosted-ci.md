@@ -1,6 +1,6 @@
 # Homelab GitHub execution
 
-Status: implementation in progress. No CI manager VM, live worker resize, isolated runner job or workflow migration has been verified. The GitHub App registration is separate from activation. Unchecked OpenSpec tasks remain authoritative.
+Status: implementation in progress. The guarded foundation apply created VM 103 powered off and configured worker RAM at 156 GiB. Worker maintenance is being verified before manager startup. No isolated runner job or workflow migration has been verified. Unchecked OpenSpec tasks remain authoritative.
 
 GitHub retains repositories, Actions orchestration, protected environments, artifacts and merge checks. A dedicated Ubuntu 24.04 VM runs one fresh nested KVM guest per job. It is independent of Talos, but shares Proxmox hardware and the upstream network. No physical high availability is claimed.
 
@@ -8,7 +8,7 @@ GitHub retains repositories, Actions orchestration, protected environments, arti
 
 The opt-in `ci_runner_enabled` variable creates VM 103, `ci-runner-01`, with 4 vCPU, 16 GiB RAM and a 100 GiB disk, and reduces `talos-worker-01` RAM from 172 to 156 GiB. Worker CPU, both worker disks and control-plane resources remain unchanged. Total assigned RAM remains 176 GiB; vCPU and primary disk budgets become 44 and 1500 GiB. `ci_runner_ssh_public_key` accepts only the administrator's public key.
 
-Keep the original Proxmox S3 backend, DynamoDB locking and provider lockfile. Before activation, verify VM 103, MAC `02:42:00:00:01:03` and DHCP address `10.42.0.223` are unused, review the exact saved plan, stop AI and arrange worker maintenance. Pi-hole may be unavailable during that worker restart. Verify actual post-restart memory, Talos readiness, retained data and UDP/TCP DNS before starting CI.
+Keep the original Proxmox S3 backend, DynamoDB locking and provider lockfile. Before activation, verify VM 103, MAC `02:42:00:00:01:05` and DHCP address `10.42.0.225` are unused, review the exact saved plan, stop AI and arrange worker maintenance. Pi-hole may be unavailable during that worker restart. Verify actual post-restart memory, Talos readiness, retained data and UDP/TCP DNS before starting CI.
 
 `scripts/ci-runner-host-prepare.sh` grants the existing plan/apply identities access to VM 103 and grants only the apply identity permission to download the pinned Ubuntu image. Run through verified root SSH to pve. `scripts/ci-runner-network-prepare.py` adds the CI reservation on the existing NetworkManager DHCP router; activate it through the existing network maintenance procedure. Neither recipe changes existing disks.
 
@@ -37,3 +37,13 @@ Every executable job uses `[self-hosted, Linux, X64, homelab-linux-x64]`. GitHub
 Bootstrap and repair remain available from the administration machine, independent of the runner. Pause admission before image or manager maintenance. Restore configuration and independently reissued credentials; never restore old job disks. Removing the runner from service leaves GitHub jobs queued or failed, never falsely successful. Returning to paid hosted labels requires an explicit operator decision.
 
 Deliver foundation, manager and routing as separate review PRs. A locally applied assembled tip requires a fresh CI drift check. Never apply an intermediate review branch against the already upgraded cluster or claim the tip's check result belongs to another commit.
+
+## Bootstrap evidence: 2026-09-15 UTC
+
+GitHub App 4947272 was installed as installation 161775207 with selected access to only `TusharSariyaOrg/aws-account-infra`. Its downloaded signing key was moved into the administration machine's private credentials directory (0600 file, 0700 directory), outside Git. A signed App JWT successfully obtained a repository-scoped installation token; the installation repository listing and disabled fork-workflow policy were verified. No runner was registered in this check. Tokens and key contents were not logged.
+
+Live read-only inspection confirmed only VM 100 and VM 102 exist, and local Proxmox storage already permits `import` content. It also found an identity conflict: the router's existing `homelab-guests.conf` reserves `10.42.0.223` and `02:42:00:00:01:03` for `talos-sandbox-01`. The original runner identity must not be activated. `10.42.0.224` is the Kubernetes API VIP and must not be used. No matching reservation, repository reference or current neighbor entry was found for proposed alternative `10.42.0.225` / `02:42:00:00:01:05`; this is not proof against an offline unmanaged device. Router writes also require interactive sudo authentication. No router, VM or worker resource mutation was performed. The operator subsequently approved `10.42.0.225` / `02:42:00:00:01:05`; configuration, guard and tests now use that identity. Router authentication remains a prerequisite to live bootstrap.
+
+The operator executed the updated DHCP preparation recipe successfully. A subsequent read-only check verified the exact `.225` / `01:05` reservation on the router. Activation still requires interactive router sudo; the checked `scripts/ci-runner-network-activate.sh` is staged there as `~/.local/share/aws-account-infra/bootstrap/activate-ci.sh`. It validates the existing Ethernet configuration and dnsmasq syntax before reactivating only `server-link`, then verifies the DHCP process and Proxmox reachability. Bash syntax and ShellCheck passed. Live activation and VM bootstrap remain unverified.
+
+DHCP activation succeeded on the router; its dnsmasq process uses the reservation directory and Proxmox answered all three ICMP probes. Proxmox bootstrap permissions were installed and verified for VM 103 and local image downloads, while VM 101 allocation remained denied. The first live plan contained exactly the image creation, manager creation and worker RAM update. Review rejected starting the manager before the worker's effective RAM reduction. That plan was not applied. Bootstrap now requires the manager stopped with on-boot disabled; worker restart and effective RAM verification must precede a separate start plan.

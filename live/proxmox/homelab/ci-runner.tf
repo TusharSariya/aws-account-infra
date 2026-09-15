@@ -4,6 +4,12 @@ variable "ci_runner_enabled" {
   default = false
 }
 
+variable "ci_runner_started" {
+  type        = bool
+  default     = false
+  description = "Start only after worker memory maintenance and effective capacity verification."
+}
+
 variable "ci_runner_ssh_public_key" {
   type        = string
   default     = ""
@@ -36,8 +42,8 @@ resource "proxmox_virtual_environment_vm" "ci_runner" {
   scsi_hardware       = "virtio-scsi-pci"
   boot_order          = ["scsi0"]
   hotplug             = "0"
-  started             = true
-  on_boot             = true
+  started             = var.ci_runner_started
+  on_boot             = var.ci_runner_started
   reboot_after_update = false
   cpu {
     type    = "host"
@@ -78,7 +84,7 @@ resource "proxmox_virtual_environment_vm" "ci_runner" {
   network_device {
     bridge      = "vmbr0"
     model       = "virtio"
-    mac_address = "02:42:00:00:01:03"
+    mac_address = "02:42:00:00:01:05"
   }
   agent {
     enabled = false # Ansible installs the agent after cloud-init; no bootstrap wait.

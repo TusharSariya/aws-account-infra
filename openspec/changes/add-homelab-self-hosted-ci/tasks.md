@@ -1,6 +1,6 @@
 ## 1. Storage and VM foundation
 - [x] 1.1 Record approved requirements and pass strict OpenSpec validation before implementation.
-- [ ] 1.2 Add opt-in runner hardware and exact worker resize budgets; mocked OpenTofu tests and plan-guard adversarial tests pass.
+- [x] 1.2 Add opt-in runner hardware and exact worker resize budgets; mocked OpenTofu tests and plan-guard adversarial tests pass.
 - [ ] 1.3 Add idempotent network, identity and Ubuntu bootstrap recipes; validate syntax and unchanged Talos identities/backends.
 - [ ] 1.4 Bootstrap through a guarded local saved plan and verify worker, DNS and nested KVM recovery; record live evidence.
 
