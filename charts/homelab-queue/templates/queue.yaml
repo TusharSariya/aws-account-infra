@@ -32,18 +32,13 @@ spec:
           resources:
             - name: cpu
               nominalQuota: {{ .Values.cpu | quote }}
-              borrowingLimit: '0'
-              lendingLimit: '0'
             - name: memory
               nominalQuota: {{ .Values.memory }}
-              borrowingLimit: '0'
-              lendingLimit: '0'
 ---
 apiVersion: kueue.x-k8s.io/v1beta2
 kind: WorkloadPriorityClass
 metadata: {name: homelab-compute}
 value: 0
-globalDefault: false
 description: Equal priority for homelab application compute
 {{ range .Values.queues }}
 ---

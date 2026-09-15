@@ -29,6 +29,17 @@ class Contracts(unittest.TestCase):
         if values: args += ['-f',str(ROOT/values)]
         return [d for d in yaml.safe_load_all(subprocess.check_output(args)) if d]
 
+    def test_standalone_queue_has_no_cohort_only_fields(self):
+        docs = self.render('charts/homelab-queue')
+        queue = next(d for d in docs if d['kind'] == 'ClusterQueue')['spec']
+        self.assertNotIn('cohort', queue)
+        for quota in queue['resourceGroups'][0]['flavors'][0]['resources']:
+            self.assertNotIn('borrowingLimit', quota)
+            self.assertNotIn('lendingLimit', quota)
+        priority = next(d for d in docs if d['kind'] == 'WorkloadPriorityClass')
+        self.assertEqual(priority['value'], 0)
+        self.assertNotIn('globalDefault', priority)
+
     def test_runner_entire_pod_resources_and_no_host_mounts(self):
         documents = self.render('live/kubernetes/homelab-ci/.terraform/gha-runner-scale-set-0.14.2.tgz',
             name='homelab-talos',namespace='arc-runners',values='config/environments/kubernetes/homelab-ci/arc-runner-values.yaml')

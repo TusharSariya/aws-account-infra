@@ -57,11 +57,11 @@ spec:
     - expression: >-
         variables.operational ||
         ((object.spec.containers + variables.sidecars).map(c, quantity(c.resources.requests['{{ $resource }}']).asApproximateFloat()).sum() +
-        (has(object.spec.overhead) && '{{ $resource }}' in object.spec.overhead ? quantity(object.spec.overhead['{{ $resource }}']).asApproximateFloat() : 0.0) <= quantity('{{ $quota }}').asApproximateFloat() &&
+        (has(dyn(object.spec).overhead) && '{{ $resource }}' in dyn(object.spec).overhead ? quantity(dyn(object.spec).overhead['{{ $resource }}']).asApproximateFloat() : 0.0) <= quantity('{{ $quota }}').asApproximateFloat() &&
         variables.init.all(c,
           quantity(c.resources.requests['{{ $resource }}']).asApproximateFloat() +
           variables.init.filter(s, has(s.restartPolicy) && s.restartPolicy == 'Always' && variables.init.indexOf(s) < variables.init.indexOf(c)).map(s, quantity(s.resources.requests['{{ $resource }}']).asApproximateFloat()).sum() +
-          (has(object.spec.overhead) && '{{ $resource }}' in object.spec.overhead ? quantity(object.spec.overhead['{{ $resource }}']).asApproximateFloat() : 0.0) <= quantity('{{ $quota }}').asApproximateFloat()))
+          (has(dyn(object.spec).overhead) && '{{ $resource }}' in dyn(object.spec).overhead ? quantity(dyn(object.spec).overhead['{{ $resource }}']).asApproximateFloat() : 0.0) <= quantity('{{ $quota }}').asApproximateFloat()))
       message: Pod {{ $resource }} requests exceed the entire {{ $quota }} pool; reduce requests or have an operator review the pool budget.
 {{ end }}
 ---

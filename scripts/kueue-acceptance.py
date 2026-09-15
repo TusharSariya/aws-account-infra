@@ -54,6 +54,8 @@ def main():
         wait(blocker,True)
         older=create('older','35.75' if args.scenario=='cpu' else '100m','77Gi' if args.scenario=='cpu' else '150Gi')
         wait(older,False)
+        # Kubernetes creationTimestamp has second resolution; avoid an ordering tie.
+        time.sleep(2)
         later=create('later','100m','64Mi');wait(later,False)
         # Observe head-of-line blocking across several reconciliation cycles.
         for _ in range(10):

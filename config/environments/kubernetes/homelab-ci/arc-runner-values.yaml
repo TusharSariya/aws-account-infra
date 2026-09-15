@@ -12,6 +12,11 @@ listenerTemplate:
   spec:
     containers:
       - name: listener
+        securityContext:
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          capabilities: {drop: [ALL]}
+          seccompProfile: {type: RuntimeDefault}
         resources:
           requests: {cpu: 50m, memory: 64Mi}
           limits: {cpu: 250m, memory: 128Mi}

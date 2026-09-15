@@ -88,8 +88,11 @@ def preflight(kube):
     report = verify(get('get', 'node', 'talos-worker-01'), pods,
                     yaml.safe_load((CONFIG / 'pool-values.yaml').read_text())['platformReserve'])
     run(kube + ['-n', 'homelab-services', 'rollout', 'status', 'deployment/pihole', '--timeout=60s'])
+    # Resolve the exact peer through Tailscale, independent of Mac MagicDNS.
+    from lifecycle_session import apps
+    dns_address = apps.tailnet_ip('pihole-dns.tail2f646b.ts.net')
     for transport in ['+tcp', '+notcp']:
-        answer = run(['dig', '@pihole-dns.tail2f646b.ts.net', 'example.com', 'A', '+short', '+time=5', '+tries=2', transport]).decode()
+        answer = run(['dig', '@' + dns_address, 'example.com', 'A', '+short', '+time=5', '+tries=2', transport]).decode()
         if not answer.strip() or '0.0.0.0' in answer or 'timed out' in answer:
             raise ValueError('Pi-hole TCP/UDP DNS verification failed')
     return report
