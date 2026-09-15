@@ -120,3 +120,17 @@ forward the console expression on stdin. Console-based contracts now disable
 that wrapper and have a 30-second subprocess timeout. The prerequisite action
 now installs only missing requested packages; detection and merge helpers no
 longer request unrelated networking or build packages.
+
+### Lightweight workflow results and expiry monitor
+
+On `4c64635`, actual ARC catalog validation, Gitleaks, shell checks, SDK spec lint
+and backup contracts passed at the declared lightweight size. The identity check
+failed because the OpenTofu wrapper invokes `node` from PATH, unlike the runner's
+embedded action runtime. All CLI setup steps now use native OpenTofu; none consume
+wrapper outputs. This avoids installing an otherwise unnecessary Node dependency.
+
+The independent expiry observer and dispatch-only fixture are implemented with
+unit tests for premature cancellation, runner acquisition, reason-review gating
+and UID-preconditioned cleanup. A live disposable Pod also verified the raw DELETE
+UID precondition path. The 24-hour observation has NOT started and remains unchecked
+until other proofs are quiesced. Its 26-hour Pod deadline bounds a lost observer.

@@ -69,9 +69,26 @@ def validate_workflows():
     for path in (ROOT / '.github/workflows').glob('*.yml'):
         workflow = yaml.load(path.read_text(), Loader=yaml.BaseLoader)
         for name, job in workflow.get('jobs', {}).items():
-            for runner in re.findall(r'homelab-talos(?:-[a-z0-9]+)*', str(job.get('runs-on', '')) + json.dumps(job.get('strategy', {}))):
+            selection = str(job.get('runs-on', ''))
+            names = set(re.findall(r'homelab-talos(?:-[a-z0-9]+)*', selection))
+            # Inspect the Talos value even when a typo no longer matches our
+            # naming prefix. Hosted fallback values remain outside the catalog.
+            for encoded in re.findall(r"fromJSON\('([^']+)'\)", selection):
+                mapping = json.loads(encoded)
+                if isinstance(mapping, dict) and 'talos' in mapping:
+                    names.add(mapping['talos'])
+            matrix = job.get('strategy', {}).get('matrix', {})
+            if 'matrix.runner' in selection:
+                names.update(entry['runner'] for entry in matrix.get('include', []) if 'runner' in entry)
+                names.update(matrix.get('runner', []))
+            for runner in names:
                 if runner not in configurations:
                     raise ValueError(f'{path.name}/{name}: unknown runner {runner}; deploy a reviewed catalog entry first')
+            requires_docker = job.get('container') or job.get('services') or any(
+                step.get('uses', '').startswith(('docker/', 'bridgecrewio/checkov-action@'))
+                or step.get('with', {}).get('docker') == 'true' for step in job.get('steps', []))
+            if requires_docker and any(not configurations[runner]['docker'] for runner in names):
+                raise ValueError(f'{path.name}/{name}: Docker job requires a Docker-enabled catalog configuration')
 
 
 if __name__ == '__main__':

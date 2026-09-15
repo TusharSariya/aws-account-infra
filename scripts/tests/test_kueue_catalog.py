@@ -30,6 +30,18 @@ class CatalogTests(unittest.TestCase):
         with patch('runner_catalog.catalog', return_value={}):
             with self.assertRaisesRegex(ValueError, 'unknown runner'): validate_workflows()
 
+    def test_typo_outside_catalog_prefix_and_docker_mismatch_fail(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            workflows = root / '.github/workflows'
+            workflows.mkdir(parents=True)
+            for runner in ['typo-runner', 'homelab-talos-light']:
+                selector = "${{ fromJSON('" + json.dumps({'github-hosted':'ubuntu-latest', 'talos':runner}) + "')[vars.CI_EXECUTOR] }}"
+                job = {'runs-on': selector, 'steps': [{'uses':'docker/setup-buildx-action@v3'}]}
+                (workflows / 'fixture.yml').write_text(json.dumps({'jobs': {'fixture': job}}))
+                with patch('runner_catalog.ROOT', root), self.assertRaises(ValueError):
+                    validate_workflows()
+
     def test_guard_accepts_catalog_entries_and_rejects_other_names_or_destroy(self):
         spec = importlib.util.spec_from_file_location('ci', ROOT / 'scripts/homelab-ci.py')
         ci = importlib.util.module_from_spec(spec); spec.loader.exec_module(ci)

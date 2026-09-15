@@ -1,10 +1,22 @@
 name: homelab-arc-acceptance
+run-name: ${{ inputs.scenario == 'expiry' && format('ARC expiry {0}', inputs.fixture_id) || 'ARC compatibility' }}
 on:
   workflow_dispatch:
+    inputs:
+      scenario:
+        type: choice
+        options: [compatibility, expiry]
+        default: compatibility
+      fixture_id:
+        type: string
+        required: false
+      confirm:
+        type: string
+        required: false
   pull_request:
     types: [labeled, synchronize]
 concurrency:
-  group: arc-acceptance-${{ github.ref }}
+  group: arc-acceptance-${{ inputs.scenario == 'expiry' && inputs.fixture_id || github.ref }}
   cancel-in-progress: true
 permissions:
   contents: read
@@ -12,7 +24,7 @@ permissions:
 jobs:
   runner:
     if: >-
-      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && inputs.scenario != 'expiry' && github.ref == 'refs/heads/main') ||
       (github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       contains(github.event.pull_request.labels.*.name, 'arc-acceptance'))
@@ -65,7 +77,7 @@ jobs:
           secrets-b64: ${{ secrets.TALOS_SECRETS_B64 }}
   sized-runners:
     if: >-
-      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && inputs.scenario != 'expiry' && github.ref == 'refs/heads/main') ||
       (github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       contains(github.event.pull_request.labels.*.name, 'arc-acceptance'))
@@ -104,3 +116,14 @@ jobs:
           time.sleep(120)
           print(json.dumps({'runner': os.environ['RUNNER_NAME'], 'finished': time.time()}))
           PYTHON
+  expiry:
+    # This controlled fixture must stay queued until GitHub expires the request.
+    # The external monitor holds and removes its own Kueue blocker; no secrets
+    # or checkout are needed here, and execution means the proof has failed.
+    if: github.event_name == 'workflow_dispatch' && inputs.scenario == 'expiry' && inputs.confirm == 'observe-24h-expiry'
+    runs-on: homelab-talos-light
+    timeout-minutes: 1
+    steps:
+      - run: |
+          echo '::error::Expiry fixture executed instead of expiring in the GitHub queue.'
+          exit 1

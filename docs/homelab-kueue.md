@@ -149,3 +149,27 @@ requires an independent full-duration expiry observation, external monitoring an
 cleanup; cancelling a job proves only cancellation. Keep CI_EXECUTOR unset until
 acceptance passes, and retain the temporary Actions budget until ordinary workflow
 execution has been verified on Talos.
+
+### Independent 24-hour expiry observation
+
+After other proofs finish and all AI/CI/Argo workloads are quiesced, prepare a new
+owned mode-0700 directory containing the existing mode-0600 kubeconfig, then run:
+
+```sh
+python3 scripts/arc-expiry.py start --private "$PRIVATE" --ref feat/job-sized-kueue-runners
+```
+
+This intentionally holds the entire compute CPU pool with a sleeping disposable
+Pod, while leaving platform/Pi-hole/operator controls outside Kueue. It dispatches
+one uniquely named expiry-only GitHub job to the existing light scale set. The
+job must never execute. A detached Mac observer records GitHub job state every
+minute, preserves reason annotations for review, and removes only its UID-matched
+blocker. The Pod has a 26-hour active deadline as an independent fail-safe.
+
+Keep the Mac connected during the observation. Observer source and logs are copied
+into the private directory, independent of checkout edits. Gaps longer than ten
+minutes, early cancellation or any runner acquisition invalidate the proof.
+`expiry-record.json` records its process ID, run ID, timestamps, conclusion and
+observed Pod/Workload cleanup. Review GitHub's actual reason after 24 hours; elapsed
+time plus a cancelled conclusion alone is not credited as verified expiry.
+Unobserved expiry stays unchecked and CI_EXECUTOR remains unset.

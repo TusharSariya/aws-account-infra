@@ -59,6 +59,7 @@ jobs:
       - uses: opentofu/setup-opentofu@v1
         with:
           tofu_version: 1.11.5
+          tofu_wrapper: false
       - name: format
         run: tofu fmt -check -recursive
       - name: initialize
@@ -122,6 +123,7 @@ jobs:
       - uses: opentofu/setup-opentofu@v1
         with:
           tofu_version: 1.11.5
+          tofu_wrapper: false
       - name: Verify authenticated HTTPS and plan token scope
         run: python3 ../../../scripts/proxmox-ci-check.py plan
       - name: Initialize and validate

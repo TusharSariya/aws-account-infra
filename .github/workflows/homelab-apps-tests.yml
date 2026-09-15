@@ -61,6 +61,7 @@ jobs:
       - uses: opentofu/setup-opentofu@v1
         with:
           tofu_version: 1.11.5
+          tofu_wrapper: false
       - name: Verify charts and application contracts
         run: |
           python3 scripts/homelab-apps.py setup

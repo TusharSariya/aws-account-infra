@@ -201,9 +201,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/talos-runner-setup
-        with:
-          aws: 'true'
-          packages: dnsutils openssh-client rsync gh
       - name: Require requested deployment and all selected acceptance
         env:
           NEEDS_JSON: ${{ toJSON(needs) }}
