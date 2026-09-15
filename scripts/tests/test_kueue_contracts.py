@@ -112,14 +112,15 @@ class Contracts(unittest.TestCase):
         cron = next(d for d in docs if d['kind']=='CronWorkflow')['spec']
         self.assertEqual((cron['timezone'],cron['concurrencyPolicy']),('UTC','Forbid'))
 
-    def test_bootstrap_and_merge_gates_remain_hosted(self):
+    def test_bootstrap_stays_hosted_and_routine_gates_allow_cancellation(self):
         for name in ['homelab-ci-admission','homelab-worker-maintenance','homelab-lifecycle-maintenance']:
             workflow=yaml.load((ROOT/'.github/workflows'/f'{name}.yml').read_text(),Loader=yaml.BaseLoader)
             for job in workflow['jobs'].values():
                 if 'runs-on' in job: self.assertNotIn('CI_EXECUTOR',job['runs-on'])
         for name,key in [('tofu-plan','plan-gate'),('tofu-apply','apply-gate'),('sdk-publish-stable','publish-gate')]:
             workflow=yaml.load((ROOT/'.github/workflows'/f'{name}.yml').read_text(),Loader=yaml.BaseLoader)
-            self.assertIn('always()', workflow['jobs'][key]['if'])
+            self.assertIn('!cancelled()', workflow['jobs'][key]['if'])
+            self.assertNotIn('always()', workflow['jobs'][key]['if'])
         for p in (ROOT/'.github/workflows').glob('*.yml'):
             for job in yaml.load(p.read_text(),Loader=yaml.BaseLoader)['jobs'].values():
                 if 'CI_EXECUTOR' in str(job.get('runs-on','')):

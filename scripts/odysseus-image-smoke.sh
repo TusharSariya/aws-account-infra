@@ -20,17 +20,18 @@ cleanup() {
   exit "$result"
 }
 trap cleanup EXIT
+# Resolve fixture aliases before inherited Kubernetes search domains.
 docker network create "$network" >/dev/null
-docker run -d --name odysseus-smoke-controller --network "$network" \
+docker run -d --dns-option ndots:0 --name odysseus-smoke-controller --network "$network" \
   --network-alias ai-lifecycle.homelab-platform.svc --user 1000:1000 --cap-drop ALL \
   --security-opt no-new-privileges --read-only --memory 128m -v "$fixture:/fixture:ro" \
   python:3.14-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6 \
   python /fixture/server.py >/dev/null
-docker run -d --name chromadb --network "$network" --user 1000:1000 \
+docker run -d --dns-option ndots:0 --name chromadb --network "$network" --user 1000:1000 \
   --read-only --tmpfs /data:uid=1000,gid=1000 --tmpfs /tmp:uid=1000,gid=1000 \
   -e CHROMA_PERSIST_PATH=/data \
   chromadb/chroma:1.5.5@sha256:0771874eaffc80fb4a66ba4de41a8fadf0447240b08d92353450e26ee43c9355 run --path /data --host 0.0.0.0 --port 8000 >/dev/null
-docker run -d --name odysseus-smoke --network "$network" --user 1000:1000 \
+docker run -d --dns-option ndots:0 --name odysseus-smoke --network "$network" --user 1000:1000 \
   --cap-drop ALL --security-opt no-new-privileges --memory 4g \
   -v "$fixture:/credentials:ro" -e POD_UID=disposable-workspace \
   -e HOMELAB_LIFECYCLE_URL=http://ai-lifecycle.homelab-platform.svc:8080 \

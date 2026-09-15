@@ -218,3 +218,53 @@ keeping bind-mounted temporary files in the existing shared disposable volume.
 The ARC acceptance workflow includes this actual mount-read regression check.
 No host mounts or resource increases were introduced. The complete image workflow
 must still pass with this correction before its receipt can be selected.
+
+### Revised gate cancellation passed on GitHub
+
+On source `40808a6`, run `34998704455` was normally cancelled while `detect` was
+queued behind AI. GitHub completed `detect`, `publish-stable`, `enable-auto-merge`
+and `publish-gate` as cancelled at 17:02:40 UTC; no result gate remained queued
+and no force cancellation was used. This reproduces the original stuck-gate
+scenario against the revised condition. The run was then rerun for its normal
+current-revision check result.
+
+On `40808a6`, ARC compatibility (including shared temporary bind mounts), ARM
+packaging/upload, ECR build/publication, LocalStack, all scanners, configuration
+and recovery contracts passed. Storage acceptance identified a missing explicit
+Helm prerequisite, now added. The hosted admission contract still asserted the
+superseded `always()` condition; the corrected suite passes all 24 tests and 15
+CEL cases locally. SDK generation/smoke progressed, but Python candidate publishing
+hit a Docker registry connection failure and was rerun independently.
+
+The first AI observation captured admission after CI cleanup and later verified
+idle shutdown, but an observation gap prevents crediting full On-state contention.
+Its raw record is retained privately and the complete contention task stays open.
+
+### Actual AI-first blocking and Stop release
+
+The second bounded observation reached AI On at revision 64 with verified Ollama
+and Odysseus identities. Rerunning the real SDK candidate workflow created an ARC
+runner behind AI. For over one minute AI held 35.75 CPU/77 GiB while the runner
+remained gated and CI held no reservation. The observer issued Stop revision 64;
+revision 65 reached Off, the AI workload disappeared and the SDK runner entered
+initialization. No observation gap was recorded in this successful interval.
+
+### Image fixture DNS isolation
+
+Both image smoke callbacks failed after publishing. A direct Docker-network probe
+on ARC showed inherited `ndots:5` resolving `ai-lifecycle.homelab-platform.svc` to
+the real Kubernetes service `10.110.7.252`, while the disposable controller was
+`172.18.0.2`. The identical lookup with `--dns-option ndots:0` returned the fixture
+address. Smoke containers now use this explicit option; production endpoints,
+authentication and resource budgets are unchanged. The bounded probe network and
+containers were removed. Full image workflow re-verification remains required.
+
+### CI-first On-state proof and complete SDK run
+
+The third bounded observation started while the real Python SDK candidate job held
+CI capacity. AI was first gated with no idle accrual, then admitted after publication
+finished. It reached On for a full minute while the later SDK comment runner waited.
+Stop moved revision 66 to 67; Off and an empty Kueue workload list were subsequently
+observed. Both AI-first and CI-first complete observations are now retained privately.
+SDK run `34998704606` completed successfully after retry: both generated SDKs,
+both smoke tests, both candidate publications and the final comment passed on ARC.
