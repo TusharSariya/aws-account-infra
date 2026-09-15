@@ -143,3 +143,30 @@ label-driven proofs and later global routing. Odysseus upstream browser-source
 tests explicitly install Node 22; both image-publication jobs explicitly request
 the GitHub CLI used to verify private package visibility. Resource budgets were
 not increased in response to these prerequisite failures.
+
+### Expanded actual ARC compatibility
+
+On `dcd1064`, the full ARC acceptance workflow `34985213037` passed: both
+1-CPU/2-GiB and 2-CPU/4-GiB cgroup probes, checkout, privileged disposable fixture,
+ARM Linux tests and private cluster networking. Actual ARC runs also passed
+Checkov (`34985212903`), recovery identity/contracts (`34985212918`), Gitleaks
+(`34985212849`), Ansible (`34985212846`), application contracts (`34985213183`),
+config validation (`34985212953`), TFLint (`34985212963`), Trivy (`34985212788`)
+and catalog validation (`34985212894`). These retain their exact source revision.
+
+LocalStack run `34985212825` exposed an initialization race: S3 bootstrap completed
+at 15:45:56 UTC, while smoke queried the not-yet-created SQS queue at 15:45:58 UTC.
+Compose health now requires successful ready-hook completion, including the named
+bootstrap script. The isolated Mac verification passed smoke and three integration
+tests; three tests requiring private external booking credentials/SDK inputs were
+skipped. The disposable local Compose project was removed. ARC re-verification is
+still required for this correction.
+
+### Actual queued AI Start/Stop with CI active
+
+Start revision 59 was acknowledged as revision 60 with real CI running. AI's Pod
+`ai-runtime-b9c9c8b58-9dqlt` remained SchedulingGated, requested 35.75 CPU/77 GiB,
+reported no reservation and idle_seconds=0, and appeared at queue position 17 in
+a later sample. Stop revision 60 was acknowledged and Pod deletion was observed.
+This proves queued Start/Stop without idle accrual; full AI-running contention
+and admission after CI completion remain separate unchecked tasks.
