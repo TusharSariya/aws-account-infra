@@ -10,7 +10,17 @@ runs:
         set -euo pipefail
         test "$RUNNER_OS" = Linux
         sudo apt-get update
-        sudo apt-get install -y --no-install-recommends python3 python3-venv python3-pip jq git curl unzip zip make build-essential dnsutils openssh-client rsync awscli
+        sudo apt-get install -y --no-install-recommends python3 python3-venv python3-pip jq git curl unzip zip make build-essential dnsutils openssh-client rsync groff less
+        test "$(uname -m)" = x86_64
+        aws_install_dir=$(mktemp -d "$RUNNER_TEMP/aws-cli.XXXXXXXX")
+        trap 'rm -rf "$aws_install_dir"' EXIT
+        curl --fail --silent --show-error --location --retry 3 \
+          https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.36.45.zip \
+          --output "$aws_install_dir/aws.zip"
+        printf '%s  %s\n' 0f02381483b0a5ca127a4cb379e656a73007b346561a5e41d3249d3bc1861226 "$aws_install_dir/aws.zip" | sha256sum --check --strict
+        unzip -q "$aws_install_dir/aws.zip" -d "$aws_install_dir"
+        sudo "$aws_install_dir/aws/install" --update
+        aws --version
         sudo mkdir -p /dev/net
         if [[ ! -c /dev/net/tun ]]; then sudo mknod /dev/net/tun c 10 200; fi
         docker info > /dev/null
