@@ -43,11 +43,10 @@ def ordered(units):
 
 
 def select_units(files, units):
-    global_change = any(
-        path in {"deploy-units.json", "scripts/deploy-units.py", "scripts/infra.sh"}
-        or path.startswith(".github/workflows/tofu-") for path in files)
+    # CI plumbing changes are validated offline; they do not change every state.
+    # Shared infrastructure inputs belong in each consuming root's watch list.
     return [unit for unit in units if unit["ci"] and
-            (global_change or any(path.startswith(prefix) for path in files for prefix in unit["watch"]))]
+            any(path.startswith(prefix) for path in files for prefix in unit["watch"])]
 
 
 def acceptance_suite(files, selected):

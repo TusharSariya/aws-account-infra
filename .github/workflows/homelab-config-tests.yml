@@ -11,6 +11,7 @@ on:
       - '.github/actions/talos-*/**'
       - '.github/workflows/homelab-acceptance.yml'
       - '.github/workflows/homelab-worker-maintenance.yml'
+      - 'deploy-units.json'
       - 'scripts/deploy-units.py'
       - 'scripts/tests/test_deploy_units.py'
       - 'scripts/tests/test_talos*.py'

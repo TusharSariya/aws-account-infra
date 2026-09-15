@@ -12,8 +12,10 @@
       "ci": true,
       "watch": [
         "live/aws/staging/account/",
-        "modules/aws/",
-        "config/environments/aws/staging/account.tfvars"
+        "config/environments/aws/staging/account.tfvars",
+        "modules/aws/account_artifacts/",
+        "modules/aws/account_identity/",
+        "modules/aws/account_governance/"
       ]
     },
     {
@@ -29,8 +31,9 @@
       "ci": true,
       "watch": [
         "live/aws/staging/workloads/rag/",
-        "modules/aws/",
-        "config/environments/aws/staging/rag.tfvars"
+        "config/environments/aws/staging/rag.tfvars",
+        "modules/aws/encrypted_s3_bucket/",
+        "modules/aws/ecr_repository/"
       ]
     },
     {
@@ -46,9 +49,9 @@
       "ci": true,
       "watch": [
         "live/aws/staging/workloads/court-booker/",
-        "modules/aws/",
         "apps/ecr/court-booker/bookings.yaml",
-        "config/environments/aws/staging/court-booker.tfvars"
+        "config/environments/aws/staging/court-booker.tfvars",
+        "modules/aws/ecr_repository/"
       ]
     },
     {
@@ -65,7 +68,6 @@
       "ci": true,
       "watch": [
         "live/aws/staging/workloads/lambda/python/court-booker/",
-        "modules/aws/",
         "apps/ecr/court-booker/bookings.yaml",
         "apps/lambda/python/3.14/court-booker/",
         "config/environments/aws/staging/court-booker-api.tfvars"

@@ -10,6 +10,22 @@ spec.loader.exec_module(units)
 
 
 class SelectionTests(unittest.TestCase):
+    def test_ci_plumbing_does_not_select_every_state(self):
+        for path in ['.github/workflows/tofu-plan.yml', '.github/workflows/tofu-apply.yml',
+                     'scripts/deploy-units.py', 'scripts/infra.sh', 'deploy-units.json']:
+            self.assertEqual(units.select_units([path], units.load_units()), [], path)
+
+    def test_shared_module_selects_only_consumers(self):
+        selected = units.select_units(['modules/aws/ecr_repository/main.tf'], units.load_units())
+        self.assertEqual({u['id'] for u in selected}, {'aws-staging-rag', 'aws-staging-court-booker'})
+        selected = units.select_units(['modules/aws/encrypted_s3_bucket/main.tf'], units.load_units())
+        self.assertEqual({u['id'] for u in selected}, {'aws-staging-rag', 'aws-staging-homelab-recovery'})
+
+    def test_root_change_does_not_select_unchanged_prerequisites(self):
+        selected = units.select_units(['config/environments/aws/staging/court-booker-api.tfvars'],
+                                      units.ordered(units.load_units()))
+        self.assertEqual([u['id'] for u in selected], ['aws-staging-court-booker-api'])
+
     def test_migration_helper_alone_selects_guarded_kubernetes_deployment(self):
         files = ['apps/platform/migration/reset.py']
         selected = units.select_units(files, units.load_units())
@@ -27,7 +43,7 @@ class SelectionTests(unittest.TestCase):
 
     def test_shared_helpers_and_workflows_select_both_suites(self):
         for path in ['scripts/homelab-readiness.sh', 'scripts/talos-ci.py',
-                     '.github/actions/talos-check/action.yml', '.github/workflows/tofu-apply.yml',
+                     '.github/actions/talos-check/action.yml',
                      '.github/workflows/homelab-acceptance.yml', 'live/proxmox/homelab/main.tf']:
             with self.subTest(path=path):
                 selected = units.select_units([path], units.load_units())
