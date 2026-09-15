@@ -15,6 +15,13 @@ class SelectionTests(unittest.TestCase):
                      'scripts/deploy-units.py', 'scripts/infra.sh', 'deploy-units.json']:
             self.assertEqual(units.select_units([path], units.load_units()), [], path)
 
+    def test_every_workflow_and_runner_setup_select_no_infrastructure(self):
+        root = Path(__file__).resolve().parents[2]
+        paths = [str(p.relative_to(root)) for p in (root / '.github/workflows').glob('*.yml')]
+        paths.append('.github/actions/talos-runner-setup/action.yml')
+        for path in paths:
+            self.assertEqual(units.select_units([path], units.load_units()), [], path)
+
     def test_shared_module_selects_only_consumers(self):
         selected = units.select_units(['modules/aws/ecr_repository/main.tf'], units.load_units())
         self.assertEqual({u['id'] for u in selected}, {'aws-staging-rag', 'aws-staging-court-booker'})
@@ -63,7 +70,7 @@ class ApplicationSelectionTests(unittest.TestCase):
     def test_lifecycle_and_image_inputs_select_required_application_acceptance(self):
         for path in ['apps/platform/lifecycle/runtime.py', 'apps/containers/ollama/lifecycle/gateway.go',
                      'apps/containers/odysseus/lifecycle/tracking.py', 'scripts/ollama-image-context.py',
-                     '.github/workflows/ollama-image.yml', 'scripts/tests/test_lifecycle_state.py',
+                     'scripts/tests/test_lifecycle_state.py',
                      'scripts/odysseus-scheduler-acceptance.py']:
             with self.subTest(path=path):
                 selected = units.select_units([path], units.load_units())
@@ -147,7 +154,7 @@ class GateTests(unittest.TestCase):
 class StorageSelectionTests(unittest.TestCase):
     def test_credential_recipes_select_deployment_and_full_checks(self):
         for path in ('scripts/issue-capacity-credentials.py', 'scripts/enroll-capacity-host-key.sh',
-                     'scripts/quota-acceptance.py', '.github/workflows/homelab-quota-acceptance.yml'):
+                     'scripts/quota-acceptance.py'):
             selected = units.select_units([path], units.load_units())
             self.assertEqual([unit['cloud'] for unit in selected], ['kubernetes'])
             self.assertEqual(units.acceptance_suite([path], selected), 'all')

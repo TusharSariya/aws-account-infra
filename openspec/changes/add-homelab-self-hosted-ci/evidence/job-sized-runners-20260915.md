@@ -47,3 +47,24 @@ Runtime scenarios are recorded below only after observation. Deployment and loca
 contracts do not prove mixed-size GitHub execution, full application compatibility,
 GitHub queue expiry, recovery or global routing completion. Unobserved OpenSpec
 tasks remain unchecked.
+
+### Live contention and operational commands
+
+- Combined CPU/RAM/scratch exhaustion: PASS, fixture `ba7f9342c22b`.
+- CPU exhaustion: PASS, fixture `09862fadd6aa`.
+- Each observed StrictFIFO head blocking, pending cancellation, admission after
+  successful completion and complete fixture Pod/Workload cleanup.
+- During CPU contention, authenticated lifecycle Status returned Off with two
+  pending workloads. Stop acknowledged revision 58; Pi-hole TCP and UDP DNS
+  queries succeeded. This proves operator reachability during queued work; it
+  does not replace AI-running contention or outage tests.
+
+### First GitHub check run
+
+Draft PR #80 contains the implementation. Initial hosted application-plan failed
+because workflow-only image edits selected the application root and required a
+separate reviewed image build. The correction excludes workflow files and the
+runner prerequisite action from infrastructure selection, retains deployment
+helper/shared-module consumer selection, and adds coverage for every workflow.
+The corrected selector returns an empty general infrastructure matrix for this
+PR; the dedicated guarded CI-root workflow still handles admission configuration.

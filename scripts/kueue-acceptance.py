@@ -28,7 +28,7 @@ def main():
         name = 'queue-proof-' + run_id + '-' + suffix
         pod = {'apiVersion':'v1','kind':'Pod','metadata':{'name':name,'namespace':'homelab-jobs','labels':{
             'homelab/acceptance-run':run_id,'kueue.x-k8s.io/queue-name':'argo','kueue.x-k8s.io/workload-priority-class':'homelab-compute'}},
-            'spec':{'restartPolicy':'Never','automountServiceAccountToken':False,'serviceAccountName':'homelab-job',
+            'spec':{'restartPolicy':'Never','terminationGracePeriodSeconds':1,'automountServiceAccountToken':False,'serviceAccountName':'homelab-job',
                     'schedulingGates':[{'name':'kueue.x-k8s.io/admission'}],
                     'securityContext':{'runAsNonRoot':True,'runAsUser':8737,'seccompProfile':{'type':'RuntimeDefault'}},
                     'containers':[{'name':'proof','image':IMAGE,'command':['python','-B','-c',f'import time; time.sleep({seconds})'],
