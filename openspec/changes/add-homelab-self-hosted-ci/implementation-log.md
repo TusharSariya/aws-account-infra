@@ -20,3 +20,5 @@
 - Retirement now checks that AI is explicitly Off with zero runtime Pods before either planning or applying; a regression covers desired state, replica and Pod rejection. The combined test invocation initially omitted `PYTHONPATH=scripts`; rerunning with the repository script path passed.
 
 - Pre-push caught inherited OpenTofu test formatting and a root-default ARM packaging image. Corrected formatting, added a non-root image user and run-time caller UID/GID mapping, then repeated ARM execution and the push checks.
+
+- The Docker gitleaks hook could not resolve linked-worktree metadata and misleadingly reported zero commits scanned. Added a read-only shared Git metadata mount so the hook scans actual history; the separate native scan already passed.
