@@ -33,7 +33,7 @@ template:
     restartPolicy: Never
     initContainers:
       - name: init-dind-externals
-        image: ghcr.io/actions/actions-runner:2.333.0@sha256:1ad983536759ceec39ed75a2c8f007ca8c37b66eee35ed86f13623b29a4db97d
+        image: ghcr.io/actions/actions-runner:2.337.0@sha256:e5496277be5d09bc968b3d64911b74e219ac4a3f2edce956a3ecf9271bea1ef4
         command: [cp, -r, /home/runner/externals/., /home/runner/tmpDir/]
         resources:
           requests: {cpu: 100m, memory: 128Mi, ephemeral-storage: 1Gi}
@@ -60,7 +60,7 @@ template:
       - name: runner
         # Required for job-specific Tailscale TUN; isolated from host namespaces/mounts.
         securityContext: {privileged: true}
-        image: ghcr.io/actions/actions-runner:2.333.0@sha256:1ad983536759ceec39ed75a2c8f007ca8c37b66eee35ed86f13623b29a4db97d
+        image: ghcr.io/actions/actions-runner:2.337.0@sha256:e5496277be5d09bc968b3d64911b74e219ac4a3f2edce956a3ecf9271bea1ef4
         command: [/home/runner/run.sh]
         env:
           - {name: DOCKER_HOST, value: 'unix:///var/run/docker.sock'}

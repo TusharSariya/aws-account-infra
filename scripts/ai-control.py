@@ -3,17 +3,9 @@
 import argparse
 import json
 from pathlib import Path
-import urllib.error
-import urllib.request
+import re
+from lifecycle_session import apps
 import uuid
-
-BASE = 'https://ai-lifecycle.tail2f646b.ts.net'
-
-
-class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, *args, **kwargs):
-        return None
-
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -34,11 +26,18 @@ def main():
             parser.error('Canonical UUID command ID required')
         payload = {'command_id': command, 'revision': args.revision}
         print(json.dumps({'operation': args.operation, **payload}), flush=True)
-    request = urllib.request.Request(BASE + '/' + args.operation,
-        headers={'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
-        data=None if payload is None else json.dumps(payload).encode())
-    with urllib.request.build_opener(NoRedirect).open(request, timeout=30) as response:
-        print(json.dumps(json.load(response), indent=2))
+    if not re.fullmatch(r'[A-Za-z0-9_-]{43}', token):
+        raise ValueError('Invalid operator credential')
+    config = 'header = "Authorization: Bearer ' + token + '"\n'
+    options = ['--fail-with-body', '--config', '-']
+    if payload is not None:
+        config += 'header = "Content-Type: application/json"\n'
+        options += ['--data-binary', json.dumps(payload)]
+    # Resolve the exact Tailscale peer while retaining hostname/SNI and TLS checks.
+    # Credentials travel on stdin; curl follows no redirects by default.
+    response = apps.tailnet_https('ai-lifecycle.tail2f646b.ts.net', '/' + args.operation,
+                                 options, config.encode())
+    print(json.dumps(json.loads(response), indent=2))
 
 
 if __name__ == '__main__':

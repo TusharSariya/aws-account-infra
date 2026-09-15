@@ -10,7 +10,7 @@
 - [x] 2.3 Integrate lifecycle-owned AI Pods and queue status while preserving Stop, Force Stop, idle and storage behavior.
 - [x] 2.4 Integrate Argo execution Pods with execution-only deadlines and exempt operational Pods.
 - [x] 2.5 Configure disposable 4 CPU / 16 GiB / 30 GiB ARC runners and privately enroll the existing repository GitHub App.
-- [ ] 2.6 Verify admission enforcement and platform/operational availability during Kueue outage.
+- [x] 2.6 Verify admission enforcement and platform/operational availability during Kueue outage.
 
 ## 3. Cutover and acceptance
 - [x] 3.1 Implement explicit CI_EXECUTOR routing while keeping bootstrap/recovery hosted and forks disabled.

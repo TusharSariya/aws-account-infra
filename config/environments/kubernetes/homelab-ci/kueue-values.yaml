@@ -20,6 +20,8 @@ managerConfig:
       leaderElect: true
       resourceName: c1f6bfd2.kueue.x-k8s.io
     manageJobsWithoutQueueName: false
+    resources:
+      excludeResourcePrefixes: [ephemeral-storage]
     managedJobsNamespaceSelector:
       matchExpressions:
         - key: kubernetes.io/metadata.name

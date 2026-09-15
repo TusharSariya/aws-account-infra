@@ -66,6 +66,7 @@ class Contracts(unittest.TestCase):
         manager = yaml.safe_load(config['data']['controller_manager_config.yaml'])
         self.assertEqual(manager['integrations']['frameworks'],['pod','deployment'])
         self.assertFalse(manager['manageJobsWithoutQueueName'])
+        self.assertEqual(manager['resources']['excludeResourcePrefixes'], ['ephemeral-storage'])
         render = module('postrender','scripts/kueue-postrender.py').render
         hooks = [h for d in render(raw) if d['kind'].endswith('WebhookConfiguration') for h in d['webhooks']]
         for name in ['mpod.kb.io','vpod.kb.io','mdeployment.kb.io','vdeployment.kb.io']:
@@ -118,6 +119,22 @@ class Contracts(unittest.TestCase):
                     patch.object(helper, 'artifacts') as fetch, redirect_stdout(io.StringIO()):
                 helper.main()
             fetch.assert_not_called()
+
+    def test_operator_status_resolves_exact_peer_without_token_in_arguments(self):
+        helper = module('ai_control', 'scripts/ai-control.py')
+        with TemporaryDirectory() as directory:
+            credentials = Path(directory) / 'credentials.json'
+            token = 'q' * 43
+            credentials.write_text(json.dumps({'operator': token}))
+            credentials.chmod(0o600)
+            with patch.object(sys, 'argv', ['ai-control.py', 'status', '--credentials', str(credentials)]), \
+                    patch.object(helper.apps, 'tailnet_https', return_value=b'{"observed":"Off"}') as request, \
+                    redirect_stdout(io.StringIO()):
+                helper.main()
+            host, path, options, stdin = request.call_args.args
+            self.assertEqual((host, path), ('ai-lifecycle.tail2f646b.ts.net', '/status'))
+            self.assertNotIn(token, ' '.join(options))
+            self.assertIn(token.encode(), stdin)
 
     def test_ci_plan_cannot_destroy_or_switch_namespaces(self):
         guard=module('homelab_ci','scripts/homelab-ci.py').guard
