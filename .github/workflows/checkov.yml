@@ -1,7 +1,7 @@
 name: checkov
 
 # Policy-as-code scan of the Terraform/OpenTofu with Checkov's AWS ruleset.
-# Pure file scan — no AWS creds, no OIDC. Always runs on every PR, so the single
+# Pure file scan — no AWS creds, no OIDC. Reports on every PR; expensive steps run only for affected inputs, so the single
 # `checkov` job is itself a stable required-check context. Suppressions live in
 # /.checkov.yaml (skip-check) or inline `# checkov:skip=<id>:<reason>` comments.
 on:
@@ -20,9 +20,17 @@ jobs:
     runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/relevant-changes
+        id: changes
+        with:
+          scope: checkov
 
       - uses: ./.github/actions/talos-runner-setup
+        if: steps.changes.outputs.run == 'true'
       - uses: bridgecrewio/checkov-action@v12
+        if: steps.changes.outputs.run == 'true'
         with:
           directory: .
           framework: terraform

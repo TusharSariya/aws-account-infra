@@ -12,20 +12,32 @@ jobs:
     runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/relevant-changes
+        id: changes
+        with:
+          scope: localstack
       - uses: ./.github/actions/talos-runner-setup
+        if: steps.changes.outputs.run == 'true'
       - uses: actions/setup-python@v5
+        if: steps.changes.outputs.run == 'true'
         with:
           python-version: "3.12"
       - name: Court-booker unit tests
+        if: steps.changes.outputs.run == 'true'
         working-directory: apps/ecr/court-booker
         run: |
           python -m pip install --quiet pytest pyyaml
           python -m pytest tests --ignore=tests/integration
       - name: Start sandbox
+        if: steps.changes.outputs.run == 'true'
         run: ./scripts/localstack.sh up
       - name: Smoke test
+        if: steps.changes.outputs.run == 'true'
         run: ./scripts/localstack.sh smoke
       - name: Court-booker LocalStack integration
+        if: steps.changes.outputs.run == 'true'
         working-directory: apps/ecr/court-booker
         env:
           LOCALSTACK_ENDPOINT: http://localhost:4566
@@ -36,5 +48,5 @@ jobs:
           python -m pip install --quiet pytest pyyaml boto3
           python -m pytest tests/integration
       - name: Logs on failure
-        if: failure()
+        if: steps.changes.outputs.run == 'true' && (failure())
         run: docker compose -f mocks/localstack/compose.yml logs
