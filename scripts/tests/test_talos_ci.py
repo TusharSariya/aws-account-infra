@@ -19,6 +19,11 @@ class PlanGuardTests(unittest.TestCase):
         self.cp = resource('talos_machine_configuration_apply.control_plane', ['create'], apply_mode='no_reboot')
         self.plan = {'resource_changes': [self.bootstrap, self.cp]}
 
+    def test_partial_or_failed_plan_is_rejected(self):
+        for field, value in [('errored', True), ('complete', False), ('deferred_changes', [{'reason': 'unknown'}])]:
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, 'Complete successful'):
+                ci.guard_plan({**self.plan, field: value})
+
     def test_existing_bootstrap_import_and_configuration_adoption(self):
         result = ci.guard_plan(self.plan)
         self.assertTrue(result[0]['import'])

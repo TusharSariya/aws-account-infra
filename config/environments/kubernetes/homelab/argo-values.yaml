@@ -1,0 +1,110 @@
+fullnameOverride: argo-workflows
+singleNamespace: true
+createAggregateRoles: false
+images:
+  tag: v4.1.3
+  pullPolicy: IfNotPresent
+crds:
+  install: true
+  keep: true
+  full: true
+  upgradeJob:
+    image:
+      tag: v4.1.3@sha256:94a031823f2ac72e89865f83909984004e2ecdbe266f7ad34872bc566d969571
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+        ephemeral-storage: 16Mi
+      limits:
+        cpu: 250m
+        memory: 128Mi
+        ephemeral-storage: 32Mi
+workflow:
+  serviceAccount:
+    create: false
+  rbac:
+    create: false
+controller:
+  image:
+    tag: v4.1.3@sha256:3f8e77840d1f372859314175e78b03c7ce0954fc444171b4aebe3777e33a6d74
+  workflowNamespaces: []
+  workflowRestrictions:
+    templateReferencing: Secure
+  serviceAccount:
+    name: argo-controller
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+      ephemeral-storage: 16Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+      ephemeral-storage: 32Mi
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 8737
+    runAsGroup: 8737
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - ALL
+    seccompProfile:
+      type: RuntimeDefault
+  clusterWorkflowTemplates:
+    enabled: false
+executor:
+  image:
+    tag: v4.1.3-nonroot@sha256:df528d33f76bf0598193e1a967d79d3c51e1e86501e128d1e4e9228b40666fab
+    nonroot: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+      ephemeral-storage: 192Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+      ephemeral-storage: 256Mi
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 8737
+    runAsGroup: 8737
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - ALL
+    seccompProfile:
+      type: RuntimeDefault
+server:
+  image:
+    tag: v4.1.3@sha256:fe3b85fcfaf8092e8c1537318dd508a752f9040dc751daf630d383f7117bb11e
+  authModes:
+  - client
+  secure: false
+  serviceAccount:
+    name: argo-server
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+      ephemeral-storage: 16Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+      ephemeral-storage: 32Mi
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 8737
+    runAsGroup: 8737
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - ALL
+    seccompProfile:
+      type: RuntimeDefault
+  clusterWorkflowTemplates:
+    enabled: false

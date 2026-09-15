@@ -1,0 +1,50 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: ai-runtime-access, namespace: homelab-models}
+spec:
+  podSelector:
+    matchLabels: {app: ai-runtime}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: tailscale}
+          podSelector:
+            matchLabels: {tailscale.com/parent-resource: odysseus}
+      ports: [{protocol: TCP, port: 7000}]
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: tailscale}
+          podSelector:
+            matchLabels: {tailscale.com/parent-resource: ollama}
+      ports: [{protocol: TCP, port: 11434}]
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: homelab-platform}
+          podSelector:
+            matchLabels: {app: ai-lifecycle}
+      ports: [{protocol: TCP, port: 7001}, {protocol: TCP, port: 11434}]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: kube-system}
+          podSelector:
+            matchLabels: {k8s-app: kube-dns}
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+    - to:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: homelab-platform}
+          podSelector:
+            matchLabels: {app: ai-lifecycle}
+      ports: [{protocol: TCP, port: 8080}]
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata: {name: ai-runtime-internet, namespace: homelab-models}
+spec:
+  endpointSelector:
+    matchLabels: {app: ai-runtime}
+  egress:
+    - toEntities: [world]
+      toPorts:
+        - ports: [{port: '80', protocol: TCP}, {port: '443', protocol: TCP}]

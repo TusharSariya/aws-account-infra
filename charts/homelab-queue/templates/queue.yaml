@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: arc-runners
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ResourceFlavor
+metadata: {name: homelab-worker}
+spec:
+  nodeLabels:
+    kubernetes.io/hostname: {{ .Values.worker }}
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ClusterQueue
+metadata: {name: homelab-compute}
+spec:
+  queueingStrategy: {{ .Values.strategy }}
+  namespaceSelector:
+    matchExpressions:
+      - key: kubernetes.io/metadata.name
+        operator: In
+        values: [homelab-models, homelab-jobs, arc-runners]
+  preemption:
+    withinClusterQueue: Never
+    reclaimWithinCohort: Never
+  resourceGroups:
+    - coveredResources: [cpu, memory]
+      flavors:
+        - name: homelab-worker
+          resources:
+            - name: cpu
+              nominalQuota: {{ .Values.cpu | quote }}
+            - name: memory
+              nominalQuota: {{ .Values.memory }}
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: WorkloadPriorityClass
+metadata: {name: homelab-compute}
+value: 0
+description: Equal priority for homelab application compute
+{{ range .Values.queues }}
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: LocalQueue
+metadata: {name: {{ .name }}, namespace: {{ .namespace }}}
+spec: {clusterQueue: homelab-compute}
+{{ end }}

@@ -1,0 +1,74 @@
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: ai-maintenance, namespace: homelab-models}
+data:
+  archive.py: {{ .Values.recoveryCode | default "" | quote }}
+  snapshot.json: |
+    {
+      "apiVersion": "v1", "kind": "Pod",
+      "metadata": {"name": "ai-snapshot", "namespace": "homelab-models", "labels": {"app": "ai-maintenance"}},
+      "spec": {
+        "hostUsers": false, "automountServiceAccountToken": false,
+        "nodeSelector": {"kubernetes.io/hostname": {{ .Values.node | quote }}},
+        "restartPolicy": "Never", "activeDeadlineSeconds": 1800,
+        "securityContext": {"runAsNonRoot": true, "runAsUser": 1000, "runAsGroup": 1000, "fsGroup": 1000, "seccompProfile": {"type": "RuntimeDefault"}},
+        "containers": [{"name": "snapshot", "image": {{ .Values.images.configure | quote }},
+          "command": ["python", "-B", "-c", "import time; time.sleep(1800)"],
+          "securityContext": {"readOnlyRootFilesystem": true, "allowPrivilegeEscalation": false, "capabilities": {"drop": ["ALL"]}},
+          "resources": {"requests": {"cpu": "100m", "memory": "128Mi", "ephemeral-storage": "16Mi"}, "limits": {"cpu": "1", "memory": "512Mi", "ephemeral-storage": "32Mi"}},
+          "volumeMounts": [{"name": "code", "mountPath": "/code", "readOnly": true},
+            {"name": "models", "mountPath": "/snapshot/models", "readOnly": true},
+            {"name": "workspace", "mountPath": "/snapshot/workspace", "readOnly": true},
+            {"name": "vector", "mountPath": "/snapshot/vector", "readOnly": true}]}],
+        "volumes": [{"name": "code", "configMap": {"name": "ai-maintenance", "defaultMode": 292}},
+          {"name": "models", "persistentVolumeClaim": {"claimName": "ai-models", "readOnly": true}},
+          {"name": "workspace", "persistentVolumeClaim": {"claimName": "ai-workspace", "readOnly": true}},
+          {"name": "vector", "persistentVolumeClaim": {"claimName": "ai-vector", "readOnly": true}}]
+      }
+    }
+  restore.json: |
+    {
+      "apiVersion": "v1", "kind": "Pod",
+      "metadata": {"name": "ai-isolated-restore", "namespace": "homelab-models", "labels": {"app": "ai-maintenance"}},
+      "spec": {
+        "hostUsers": false, "automountServiceAccountToken": false,
+        "nodeSelector": {"kubernetes.io/hostname": {{ .Values.node | quote }}},
+        "restartPolicy": "Never", "activeDeadlineSeconds": 1800,
+        "securityContext": {"runAsNonRoot": true, "runAsUser": 1000, "runAsGroup": 1000, "fsGroup": 1000, "seccompProfile": {"type": "RuntimeDefault"}},
+        "containers": [{"name": "restore", "image": {{ .Values.images.configure | quote }},
+          "command": ["python", "-B", "-c", "import time; time.sleep(1800)"],
+          "securityContext": {"readOnlyRootFilesystem": true, "allowPrivilegeEscalation": false, "capabilities": {"drop": ["ALL"]}},
+          "resources": {"requests": {"cpu": "100m", "memory": "128Mi", "ephemeral-storage": "3Gi"}, "limits": {"cpu": "1", "memory": "512Mi", "ephemeral-storage": "4Gi"}},
+          "volumeMounts": [{"name": "code", "mountPath": "/code", "readOnly": true}, {"name": "restore", "mountPath": "/restore"}]}],
+        "volumes": [{"name": "code", "configMap": {"name": "ai-maintenance", "defaultMode": 292}}, {"name": "restore", "emptyDir": {"sizeLimit": "4Gi"}}]
+      }
+    }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: ai-maintenance-isolation, namespace: homelab-models}
+spec:
+  podSelector: {matchLabels: {app: ai-maintenance}}
+  policyTypes: [Ingress, Egress]
+  ingress: []
+  egress: []
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: ai-scheduling-proof, namespace: homelab-models}
+data:
+  pod.json: |
+    {
+      "apiVersion": "v1", "kind": "Pod",
+      "metadata": {"name": "ai-resource-filler", "namespace": "homelab-models", "labels": {"app": "ai-maintenance"}},
+      "spec": {
+        "hostUsers": false, "automountServiceAccountToken": false,
+        "nodeSelector": {"kubernetes.io/hostname": {{ .Values.node | quote }}},
+        "restartPolicy": "Never", "activeDeadlineSeconds": 600,
+        "securityContext": {"runAsNonRoot": true, "runAsUser": 1000, "runAsGroup": 1000, "seccompProfile": {"type": "RuntimeDefault"}},
+        "containers": [{"name": "reserve", "image": {{ .Values.images.configure | quote }},
+          "command": ["python", "-B", "-c", "import time; time.sleep(600)"],
+          "securityContext": {"readOnlyRootFilesystem": true, "allowPrivilegeEscalation": false, "capabilities": {"drop": ["ALL"]}},
+          "resources": {"requests": {"cpu": "3", "memory": "32Mi", "ephemeral-storage": "16Mi"}, "limits": {"cpu": "3", "memory": "64Mi", "ephemeral-storage": "32Mi"}}}]
+      }
+    }

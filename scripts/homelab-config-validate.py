@@ -22,7 +22,7 @@ CONFIG = ROOT / 'config/environments/proxmox/homelab/talos'
 CP, WORKER = 'talos-cp-01', 'talos-worker-01'
 SCHEMATICS = {
     CP: 'ce4c980550dd2ab1b17bbf2b08801c7eb59418eafe8f279833297925d67c7515',
-    WORKER: '8e8827b5b91420728f8415f3dc200fbf23b425ec07bf27cdc92a676367ee9edf',
+    WORKER: '3b7472aeaf4f801ab6c24b777111445a0dcbb77b2be8e36e8d712cc2f9dc3dc9',
 }
 
 
@@ -56,6 +56,8 @@ def check(vms, inventory, documents):
         expected = f"factory.talos.dev/metal-installer/{SCHEMATICS[name]}:v1.13.9@sha256:"
         image = machine['install']['image']
         require(image == node['installer'] and image.startswith(expected) and len(image.removeprefix(expected)) == 64, name + ': schematic/version/digest drift')
+        if not cp:
+            require(machine.get('kernel', {}).get('modules') == [{'name': 'binfmt_misc'}], name + ': ARM kernel module drift')
         require(machine['kubelet']['image'].endswith(':v1.36.3'), name + ': kubelet version drift')
         require(cluster['network']['cni']['name'] == 'none' and not cluster['proxy'].get('disabled', False), name + ': bootstrap CNI/proxy drift')
         require(cluster['controlPlane']['endpoint'] == inventory['endpoint'], name + ': API endpoint drift')

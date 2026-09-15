@@ -2,7 +2,7 @@ name: tflint
 
 # Provider-aware lint (deprecated args, invalid instance types, naming, unused decls)
 # that `tofu validate` doesn't catch. AWS ruleset runs in static mode (no deep_check),
-# so no AWS creds. Always runs on every PR — the single `tflint` job is a stable
+# so no AWS creds. Reports on every PR; expensive steps run only for affected inputs — the single `tflint` job is a stable
 # required-check context. Config + plugin pins live in /.tflint.hcl.
 on:
   pull_request:
@@ -16,7 +16,8 @@ permissions:
 
 jobs:
   tflint:
-    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
     # Absolute path so EVERY directory visited by `--recursive` uses this single root
     # config — in recursive mode tflint resolves config per-directory and would otherwise
     # ignore the root .tflint.hcl (plugins + rule overrides) inside the stack subdirs.
@@ -24,16 +25,27 @@ jobs:
       TFLINT_CONFIG_FILE: ${{ github.workspace }}/.tflint.hcl
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/relevant-changes
+        id: changes
+        with:
+          scope: tflint
 
+      - uses: ./.github/actions/talos-runner-setup
+        if: steps.changes.outputs.run == 'true'
       - uses: terraform-linters/setup-tflint@v4
+        if: steps.changes.outputs.run == 'true'
         with:
           tflint_version: v0.54.0
 
       - name: init plugins
+        if: steps.changes.outputs.run == 'true'
         # GITHUB_TOKEN lifts the anonymous rate limit on plugin downloads.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: tflint --init
 
       - name: lint
+        if: steps.changes.outputs.run == 'true'
         run: tflint --recursive --format compact

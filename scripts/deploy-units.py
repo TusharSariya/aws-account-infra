@@ -43,11 +43,10 @@ def ordered(units):
 
 
 def select_units(files, units):
-    global_change = any(
-        path in {"deploy-units.json", "scripts/deploy-units.py", "scripts/infra.sh"}
-        or path.startswith(".github/workflows/tofu-") for path in files)
+    # CI plumbing changes are validated offline; they do not change every state.
+    # Shared infrastructure inputs belong in each consuming root's watch list.
     return [unit for unit in units if unit["ci"] and
-            (global_change or any(path.startswith(prefix) for path in files for prefix in unit["watch"]))]
+            any(path.startswith(prefix) for path in files for prefix in unit["watch"])]
 
 
 def acceptance_suite(files, selected):
@@ -74,7 +73,7 @@ def storage_checks_required(files, selected):
                     '.github/workflows/storage-foundation.yml') for path in files)
 
 
-def acceptance_gate(needs, apply_requested, reboot_requested):
+def acceptance_gate(needs, apply_requested, reboot_requested, lifecycle_requested=False):
     if needs['detect']['result'] != 'success':
         raise ValueError('Deployment/acceptance selection failed')
     outputs = needs['detect']['outputs']
@@ -88,6 +87,11 @@ def acceptance_gate(needs, apply_requested, reboot_requested):
         raise ValueError('Requested apply must succeed')
     if needs['apply']['result'] not in ('success', 'skipped'):
         raise ValueError('Apply failed or was cancelled')
+    maintenance = needs.get('lifecycle-maintenance', {}).get('result', 'skipped')
+    if lifecycle_requested and (not apply_expected or maintenance != 'success'):
+        raise ValueError('Explicit lifecycle maintenance must succeed before merge')
+    if maintenance not in ('success', 'skipped'):
+        raise ValueError('Lifecycle maintenance failed or was cancelled')
     first = needs['apply'].get('outputs', {}).get('needs_worker_reboot') == 'true'
     reboot_expected = first or (apply_expected and reboot_requested and
                                any(u['id'] == 'talos-homelab' for u in units))
@@ -116,7 +120,8 @@ def main():
         try:
             acceptance_gate(json.loads(os.environ['NEEDS_JSON']),
                             os.environ['APPLY_REQUESTED'] == 'true',
-                            os.environ['REBOOT_REQUESTED'] == 'true')
+                            os.environ['REBOOT_REQUESTED'] == 'true',
+                            os.environ.get('LIFECYCLE_MAINTENANCE_REQUESTED') == 'true')
         except ValueError as error:
             raise SystemExit(str(error))
         return

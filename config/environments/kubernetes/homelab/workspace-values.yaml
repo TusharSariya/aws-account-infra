@@ -1,3 +1,4 @@
+aggregateRuntime: true
 replicas: 0
 ingressEnabled: true
 # Replace BUILD_REQUIRED with the reviewed private GHCR digest emitted by odysseus-image.

@@ -88,6 +88,7 @@ resource "helm_release" "ai" {
   namespace = "homelab-models"
   chart     = "${path.module}/../../../charts/homelab-ai"
   values = [file("${local.config}/ai-values.yaml"), yamlencode({
+    recoveryCode = file("${path.module}/../../../apps/platform/recovery/archive.py")
     migrationCode = merge(
       { for f in fileset("${path.module}/../../../apps/platform/storage", "*.py") : f => file("${path.module}/../../../apps/platform/storage/${f}") },
       { "reset.py" = file("${path.module}/../../../apps/platform/migration/reset.py") }
@@ -98,6 +99,59 @@ resource "helm_release" "ai" {
   timeout     = 300
   max_history = 5
   depends_on  = [helm_release.capacity, helm_release.ollama, helm_release.odysseus]
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "helm_release" "lifecycle" {
+  name      = "homelab-lifecycle"
+  namespace = "homelab-platform"
+  chart     = "${path.module}/../../../charts/homelab-lifecycle"
+  values = [file("${local.config}/lifecycle-values.yaml"), yamlencode({
+    code = merge(
+      { for f in fileset("${path.module}/../../../apps/platform/storage", "*.py") : f => file("${path.module}/../../../apps/platform/storage/${f}") },
+      { for f in fileset("${path.module}/../../../apps/platform/lifecycle", "*.py") : f => file("${path.module}/../../../apps/platform/lifecycle/${f}") }
+    )
+    chartRevision = sha256(join("", [for f in sort(tolist(fileset("${path.module}/../../../charts/homelab-lifecycle", "**"))) : filesha256("${path.module}/../../../charts/homelab-lifecycle/${f}")]))
+  })]
+  wait        = true
+  timeout     = 300
+  max_history = 5
+  depends_on  = [helm_release.ai]
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "helm_release" "argo" {
+  name             = "argo-workflows"
+  namespace        = "homelab-jobs"
+  create_namespace = true
+  chart            = "${path.module}/.terraform/argo-workflows-2.0.5.tgz"
+  version          = "2.0.5"
+  values           = [file("${local.config}/argo-values.yaml")]
+  wait             = true
+  timeout          = 600
+  max_history      = 5
+  depends_on       = [helm_release.lifecycle]
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "helm_release" "jobs" {
+  name      = "homelab-jobs"
+  namespace = "homelab-jobs"
+  chart     = "${path.module}/../../../charts/homelab-jobs"
+  values = [yamlencode({
+    code          = { for f in fileset("${path.module}/../../../apps/platform/jobs", "*.py") : f => file("${path.module}/../../../apps/platform/jobs/${f}") }
+    chartRevision = sha256(join("", [for f in sort(tolist(fileset("${path.module}/../../../charts/homelab-jobs", "**"))) : filesha256("${path.module}/../../../charts/homelab-jobs/${f}")]))
+  })]
+  wait        = true
+  timeout     = 300
+  max_history = 5
+  depends_on  = [helm_release.argo]
   lifecycle {
     prevent_destroy = true
   }

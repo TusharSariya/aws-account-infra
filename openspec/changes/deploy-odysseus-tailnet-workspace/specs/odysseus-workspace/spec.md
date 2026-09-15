@@ -28,10 +28,10 @@ The initial service MUST operate on the existing x86 worker without GPU resource
 - **THEN** a small-model inference test precedes sequential Qwen3.8 27B and Gemma4 31B tests, with speed and memory observations recorded
 
 ### Requirement: Reproducible private deployment
-Images and upstream source MUST be pinned immutably. Infrastructure changes SHALL follow reviewed GitHub CI plans and applies. Credentials MUST not be embedded in Git, image layers, plan output or Terraform state. Workspace agents MUST not receive host mounts, container runtime sockets or cluster administrator credentials.
+Images and upstream source MUST be pinned immutably. Infrastructure changes SHALL follow reviewed OpenTofu/Helm plans and applies, normally through GitHub CI. Explicitly authorized local execution during a CI outage MUST retain the same backend and saved-plan safeguards, identify its evidence as local and preserve required GitHub merge checks. Credentials MUST not be embedded in Git, image layers, plan output or Terraform state. Workspace agents MUST not receive host mounts, container runtime sockets or cluster administrator credentials.
 #### Scenario: Clean rebuild
 - **WHEN** the operator deploys from the recorded revision and restores separately held credentials
-- **THEN** CI installs the same declared service images, resource limits, storage and private endpoints
+- **THEN** the reviewed execution path installs the same declared service images, resource limits, storage and private endpoints
 
 ### Requirement: Persistent data and honest recovery
 The system SHALL retain models and workspace data across pod replacement and provide an encrypted application-consistent backup and isolated restore procedure. Model inventory SHALL include names and digests; reconstruction MUST reject changed or missing upstream models rather than silently substituting them. Persistent storage alone MUST not be claimed as a backup.
@@ -52,3 +52,8 @@ The workspace SHALL follow the shared homelab workload lifecycle contract. The m
 #### Scenario: Graceful shutdown
 - **WHEN** the operator stops AI
 - **THEN** admission closes and active streams, downloads, document processing and background work drain before shutdown; unknown activity blocks normal shutdown
+
+#### Scenario: Configured automatic shutdown
+- **WHEN** every activity source confirms continuous inactivity for the configured service idle timeout
+- **THEN** the aggregate AI Pod shuts down normally; the default is 1800 seconds and the current reviewed homelab setting is 300 seconds
+- **AND** model-memory unload alone does not satisfy service shutdown, and unknown activity or controller recovery resets the verified interval

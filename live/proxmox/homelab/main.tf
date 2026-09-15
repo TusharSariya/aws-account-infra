@@ -1,7 +1,7 @@
 locals {
-  total_vcpus           = sum([for vm in var.vms : vm.vcpus])
-  total_memory_gib      = sum([for vm in var.vms : vm.memory_gib])
-  total_guest_disks_gib = sum(flatten([for vm in var.vms : vm.disks_gib]))
+  total_vcpus           = sum([for vm in var.vms : vm.vcpus]) + (var.ci_runner_enabled ? 4 : 0)
+  total_memory_gib      = sum([for name, vm in var.vms : var.ci_runner_enabled && name == "talos-worker-01" ? 156 : vm.memory_gib]) + (var.ci_runner_enabled ? 16 : 0)
+  total_guest_disks_gib = sum(flatten([for vm in var.vms : vm.disks_gib])) + (var.ci_runner_enabled ? 100 : 0)
 }
 
 resource "proxmox_virtual_environment_vm" "guest" {
@@ -31,7 +31,7 @@ resource "proxmox_virtual_environment_vm" "guest" {
   }
 
   memory {
-    dedicated = each.value.memory_gib * 1024
+    dedicated = (var.ci_runner_enabled && each.key == "talos-worker-01" ? 156 : each.value.memory_gib) * 1024
     floating  = 0
   }
 
@@ -89,7 +89,7 @@ resource "proxmox_virtual_environment_vm" "guest" {
       error_message = "VM creation requires explicit approval after reviewing the live plan and outstanding readiness checks."
     }
     precondition {
-      condition     = local.total_vcpus <= 40 && local.total_memory_gib <= 176 && local.total_guest_disks_gib <= 1400
+      condition     = local.total_vcpus <= (var.ci_runner_enabled ? 44 : 40) && local.total_memory_gib <= 176 && local.total_guest_disks_gib <= (var.ci_runner_enabled ? 1500 : 1400)
       error_message = "Guest allocations exceed the approved host capacity budget."
     }
   }

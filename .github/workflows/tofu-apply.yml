@@ -9,13 +9,15 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
+  actions: read
   id-token: write
   contents: read
   pull-requests: read
 
 jobs:
   detect:
-    runs-on: ubuntu-latest
+    if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
     outputs:
       units: ${{ steps.units.outputs.units }}
       suite: ${{ steps.units.outputs.suite }}
@@ -24,6 +26,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - uses: ./.github/actions/talos-runner-setup
       - id: units
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -38,12 +41,13 @@ jobs:
   apply:
     needs: detect
     if: needs.detect.outputs.units != '[]' && contains(github.event.pull_request.labels.*.name, 'apply') && github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
+    runs-on: ${{ (contains(needs.detect.outputs.units, 'proxmox-homelab') || contains(needs.detect.outputs.units, 'talos-homelab')) && 'ubuntu-latest' || fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
     environment: prod
     outputs:
       needs_worker_reboot: ${{ steps.talos.outputs.needs-worker-reboot }}
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/talos-runner-setup
       - name: Check application credentials before any deployment
         if: contains(needs.detect.outputs.units, 'kubernetes-homelab')
         env:
@@ -54,6 +58,7 @@ jobs:
           GHCR_READ_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
           ODYSSEUS_ADMIN_PASSWORD: ${{ secrets.ODYSSEUS_ADMIN_PASSWORD }}
           SEARXNG_SECRET: ${{ secrets.SEARXNG_SECRET }}
+          AI_LIFECYCLE_CREDENTIALS_B64: ${{ secrets.AI_LIFECYCLE_CREDENTIALS_B64 }}
         run: python3 scripts/homelab-apps.py credentials
       - uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -149,6 +154,7 @@ jobs:
           ghcr-token: ${{ secrets.GHCR_READ_TOKEN }}
           odysseus-password: ${{ secrets.ODYSSEUS_ADMIN_PASSWORD }}
           searxng-secret: ${{ secrets.SEARXNG_SECRET }}
+          lifecycle-credentials-b64: ${{ secrets.AI_LIFECYCLE_CREDENTIALS_B64 }}
 
   worker-maintenance:
     needs: [detect, apply]
@@ -171,32 +177,44 @@ jobs:
       suite: ${{ needs.detect.outputs.suite }}
     secrets: inherit
 
+  lifecycle-maintenance:
+    needs: [detect, apply, acceptance]
+    if: ${{ !cancelled() && needs.detect.result == 'success' && needs.apply.result == 'success' && needs.acceptance.result == 'success' && contains(github.event.pull_request.labels.*.name, 'lifecycle-maintenance') }}
+    uses: ./.github/workflows/homelab-lifecycle-maintenance.yml
+    with:
+      confirm: verify-ai-lifecycle-and-restore
+    secrets: inherit
+
   storage-foundation:
     needs: detect
     if: needs.detect.outputs.storage == 'true'
     uses: ./.github/workflows/storage-foundation.yml
 
   apply-gate:
-    needs: [detect, apply, worker-maintenance, acceptance, storage-foundation]
-    if: always()
-    runs-on: ubuntu-latest
+    needs: [detect, apply, worker-maintenance, acceptance, storage-foundation, lifecycle-maintenance]
+    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/talos-runner-setup
       - name: Require requested deployment and all selected acceptance
         env:
           NEEDS_JSON: ${{ toJSON(needs) }}
           APPLY_REQUESTED: ${{ contains(github.event.pull_request.labels.*.name, 'apply') }}
+          LIFECYCLE_MAINTENANCE_REQUESTED: ${{ contains(github.event.pull_request.labels.*.name, 'lifecycle-maintenance') }}
           REBOOT_REQUESTED: ${{ contains(github.event.pull_request.labels.*.name, 'worker-reboot') }}
         run: python3 scripts/deploy-units.py acceptance-gate
 
   enable-auto-merge:
     needs: [apply, apply-gate, acceptance, worker-maintenance]
-    if: always() && needs.apply.result == 'success' && needs.apply-gate.result == 'success'
-    runs-on: ubuntu-latest
+    if: always() && needs.apply.result == 'success' && needs.apply-gate.result == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
     permissions:
       contents: write
       pull-requests: write
     steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/talos-runner-setup
       - name: enable auto-merge
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

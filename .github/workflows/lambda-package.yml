@@ -10,6 +10,8 @@ on:
       - "apps/lambda/**"
       - "apps/ecr/court-booker/bookings.yaml"
       - "scripts/lambda-package.sh"
+      - "scripts/lambda-package-arm.sh"
+      - "apps/platform/ci_runner/arm-package/**"
       - ".github/workflows/lambda-package.yml"
   push:
     branches: [main]
@@ -17,6 +19,8 @@ on:
       - "apps/lambda/**"
       - "apps/ecr/court-booker/bookings.yaml"
       - "scripts/lambda-package.sh"
+      - "scripts/lambda-package-arm.sh"
+      - "apps/platform/ci_runner/arm-package/**"
       - ".github/workflows/lambda-package.yml"
   workflow_dispatch:
 
@@ -38,15 +42,30 @@ env:
 
 jobs:
   package:
-    runs-on: ubuntu-24.04-arm
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-24.04-arm","talos":"homelab-talos"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/talos-runner-setup
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.14"
+      - uses: docker/setup-qemu-action@v3
+        if: vars.CI_EXECUTOR == 'talos'
+        with:
+          platforms: arm64
+      - uses: docker/setup-buildx-action@v3
+        if: vars.CI_EXECUTOR == 'talos'
       - name: Test
-        run: uv run --directory apps/lambda/python/3.14/court-booker pytest
+        env:
+          CI_EXECUTOR: ${{ vars.CI_EXECUTOR }}
+        run: |
+          if [[ "$CI_EXECUTOR" == talos ]]; then
+            bash scripts/lambda-package-arm.sh test
+          else
+            uv run --directory apps/lambda/python/3.14/court-booker pytest
+          fi
       - id: aws
         continue-on-error: true
         uses: aws-actions/configure-aws-credentials@v4
@@ -56,11 +75,16 @@ jobs:
       - name: Package and upload
         if: steps.aws.outcome == 'success'
         env:
+          CI_EXECUTOR: ${{ vars.CI_EXECUTOR }}
           TAG: ${{ github.sha }}
           LAMBDA_ZIP_PREFIX: ${{ github.event_name == 'pull_request' && 'candidate/court-booker' || 'stable/court-booker' }}
         run: |
           chmod +x scripts/lambda-package.sh
-          ./scripts/lambda-package.sh python/3.14/court-booker "$TAG"
+          if [[ "$CI_EXECUTOR" == talos ]]; then
+            bash scripts/lambda-package-arm.sh package "$TAG"
+          else
+            ./scripts/lambda-package.sh python/3.14/court-booker "$TAG"
+          fi
       - name: Skip until account apply
         if: steps.aws.outcome != 'success'
         run: echo "lambda-releases OIDC role not applied yet; skipping upload."

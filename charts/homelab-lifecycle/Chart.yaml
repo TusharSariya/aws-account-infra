@@ -1,0 +1,5 @@
+apiVersion: v2
+name: homelab-lifecycle
+version: 0.1.0
+type: application
+description: Authenticated lifecycle control for the retained homelab AI runtime

@@ -1,0 +1,73 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata: {name: homelab-compute-admission}
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values: [homelab-models, homelab-jobs, arc-runners]
+    resourceRules:
+      - apiGroups: ['']
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [pods]
+  variables:
+    - name: operational
+      expression: >-
+        request.namespace == 'homelab-jobs' && object.spec.serviceAccountName in
+        ['ai-operator-job', 'argo-controller', 'argo-server'] ||
+        request.namespace == 'arc-runners' && has(object.metadata.ownerReferences) &&
+        object.metadata.ownerReferences.exists(o, o.apiVersion == 'actions.github.com/v1alpha1' && o.kind == 'AutoscalingListener')
+    - name: queue
+      expression: "request.namespace == 'homelab-models' ? 'ai' : request.namespace == 'homelab-jobs' ? 'argo' : 'ci'"
+    - name: init
+      expression: "has(object.spec.initContainers) ? object.spec.initContainers : []"
+    - name: sidecars
+      expression: "variables.init.filter(c, has(c.restartPolicy) && c.restartPolicy == 'Always')"
+  validations:
+    - expression: >-
+        variables.operational ? (!has(object.metadata.labels) || !('kueue.x-k8s.io/queue-name' in object.metadata.labels)) :
+        has(object.metadata.labels) && 'kueue.x-k8s.io/queue-name' in object.metadata.labels &&
+        object.metadata.labels['kueue.x-k8s.io/queue-name'] == variables.queue &&
+        'kueue.x-k8s.io/workload-priority-class' in object.metadata.labels &&
+        object.metadata.labels['kueue.x-k8s.io/workload-priority-class'] == 'homelab-compute'
+      message: Application compute must use its namespace LocalQueue and equal homelab-compute priority; operational Pods must stay outside Kueue.
+    - expression: >-
+        variables.operational || request.operation != 'CREATE' ||
+        ((!has(object.spec.nodeName) || object.spec.nodeName == '') &&
+        has(object.spec.schedulingGates) && object.spec.schedulingGates.exists(g, g.name == 'kueue.x-k8s.io/admission'))
+      message: Compute Pods must enter through Kueue with its admission scheduling gate; direct node binding is forbidden.
+    - expression: >-
+        variables.operational || request.operation != 'UPDATE' ||
+        request.userInfo.username == 'system:serviceaccount:kueue-system:kueue-controller-manager' ||
+        !has(oldObject.spec.schedulingGates) ||
+        !oldObject.spec.schedulingGates.exists(g, g.name == 'kueue.x-k8s.io/admission') ||
+        (has(object.spec.schedulingGates) && object.spec.schedulingGates.exists(g, g.name == 'kueue.x-k8s.io/admission'))
+      message: Only Kueue may remove its admission gate.
+    - expression: >-
+        variables.operational || ((!has(object.spec.priorityClassName) || object.spec.priorityClassName == '') &&
+        (!has(object.spec.resources)) &&
+        (object.spec.containers + variables.init).all(c, has(c.resources) && has(c.resources.requests) &&
+        'cpu' in c.resources.requests && 'memory' in c.resources.requests))
+      message: Compute requires explicit container CPU/RAM requests and default Pod priority; Pod-level resource overrides are forbidden.
+{{ range $resource, $quota := dict "cpu" .Values.cpu "memory" .Values.memory }}
+    - expression: >-
+        variables.operational ||
+        ((object.spec.containers + variables.sidecars).map(c, quantity(c.resources.requests['{{ $resource }}']).asApproximateFloat()).sum() +
+        (has(dyn(object.spec).overhead) && '{{ $resource }}' in dyn(object.spec).overhead ? quantity(dyn(object.spec).overhead['{{ $resource }}']).asApproximateFloat() : 0.0) <= quantity('{{ $quota }}').asApproximateFloat() &&
+        variables.init.all(c,
+          quantity(c.resources.requests['{{ $resource }}']).asApproximateFloat() +
+          variables.init.filter(s, has(s.restartPolicy) && s.restartPolicy == 'Always' && variables.init.indexOf(s) < variables.init.indexOf(c)).map(s, quantity(s.resources.requests['{{ $resource }}']).asApproximateFloat()).sum() +
+          (has(dyn(object.spec).overhead) && '{{ $resource }}' in dyn(object.spec).overhead ? quantity(dyn(object.spec).overhead['{{ $resource }}']).asApproximateFloat() : 0.0) <= quantity('{{ $quota }}').asApproximateFloat()))
+      message: Pod {{ $resource }} requests exceed the entire {{ $quota }} pool; reduce requests or have an operator review the pool budget.
+{{ end }}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata: {name: homelab-compute-admission}
+spec:
+  policyName: homelab-compute-admission
+  validationActions: [Deny]

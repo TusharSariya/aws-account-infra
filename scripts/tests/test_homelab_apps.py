@@ -144,7 +144,7 @@ class GuardTests(unittest.TestCase):
                 return b'{}'  # ClusterIP services have no loadBalancer.ingress.
             return b''
         with patch.object(apps, 'run', side_effect=command) as run, \
-             patch.object(apps, 'verify_ai_off') as off, \
+             patch.object(apps, 'verify_lifecycle') as off, \
              patch.object(apps, 'tailnet_ip', return_value='100.101.182.10') as resolve, \
              patch.object(apps, 'tailnet_https', side_effect=[b'OK', b'401', b'{"version":"test"}', b'OK', b'401']):
             apps.endpoints('kubectl')
@@ -236,6 +236,7 @@ class GuardTests(unittest.TestCase):
 
     def test_new_credentials_are_external_and_registry_secret_has_correct_type(self):
         values = dict.fromkeys(apps.SECRET_NAMES, 'a-fixture-only-value-that-is-long-enough')
+        values['AI_LIFECYCLE_CREDENTIALS_B64'] = base64.b64encode(json.dumps({name: character * 43 for name, character in zip(('operator', 'odysseus', 'ollama', 'model-user', 'model-workspace'), 'abcde')}).encode()).decode()
         with patch.dict(apps.os.environ, {**values, 'GITHUB_ACTIONS': 'true'}), patch.object(apps, 'run', return_value=b'') as run:
             apps.bootstrap('kubectl')
         manifests = [json.loads(call.args[1]) for call in run.call_args_list if len(call.args) == 2]
@@ -244,7 +245,7 @@ class GuardTests(unittest.TestCase):
         config = json.loads(base64.b64decode(registry['data']['.dockerconfigjson']))
         self.assertEqual(base64.b64decode(config['auths']['ghcr.io']['auth']).decode(), values['GHCR_READ_USER'] + ':' + values['GHCR_READ_TOKEN'])
         self.assertFalse(any('stringData' in m for m in manifests))
-        for missing in ['GHCR_READ_TOKEN', 'ODYSSEUS_ADMIN_PASSWORD', 'SEARXNG_SECRET']:
+        for missing in ['GHCR_READ_TOKEN', 'ODYSSEUS_ADMIN_PASSWORD', 'SEARXNG_SECRET', 'AI_LIFECYCLE_CREDENTIALS_B64']:
             with patch.dict(apps.os.environ, {**values, 'GITHUB_ACTIONS': 'true', missing: ''}), patch.object(apps, 'run') as run:
                 with self.assertRaises(apps.AppError):
                     apps.bootstrap('kubectl')
@@ -353,3 +354,33 @@ class ChartTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+class LifecycleHealthTests(unittest.TestCase):
+    def test_off_health_uses_only_authenticated_status_without_starting_ai(self):
+        values = {name: character * 43 for name, character in zip(('operator', 'odysseus', 'ollama', 'model-user', 'model-workspace'), 'abcde')}
+        encoded = base64.b64encode(json.dumps(values).encode()).decode()
+        status = {'desired': 'off', 'observed': 'Off', 'revision': 17}
+        with patch.dict(apps.os.environ, {'AI_LIFECYCLE_CREDENTIALS_B64': encoded}), \
+             patch.object(apps, 'run') as run, patch.object(apps, 'verify_ai_off') as off, \
+             patch.object(apps, 'tailnet_https', side_effect=[b'401', json.dumps(status).encode()]) as https:
+            self.assertEqual(apps.verify_lifecycle('kubectl'), status)
+        off.assert_called_once_with('kubectl')
+        self.assertTrue(all(call.args[1] == '/status' for call in https.call_args_list))
+        request = https.call_args_list[1].args
+        self.assertNotIn(values['operator'], str(request[:3]))
+        self.assertIn(values['operator'].encode(), request[3])
+        for call in run.call_args_list:
+            self.assertFalse(set(call.args[0]) & {'scale', 'create', 'apply', 'patch', 'delete'})
+
+    def test_running_runtime_is_not_forced_off_by_ci(self):
+        values = {name: character * 43 for name, character in zip(('operator', 'odysseus', 'ollama', 'model-user', 'model-workspace'), 'abcde')}
+        encoded = base64.b64encode(json.dumps(values).encode()).decode()
+        status = {'desired': 'on', 'observed': 'Starting/Pending', 'revision': 18}
+        legacy = {'items': [{'spec': {'replicas': 0}} for _ in range(4)]}
+        with patch.dict(apps.os.environ, {'AI_LIFECYCLE_CREDENTIALS_B64': encoded}), \
+             patch.object(apps, 'run', return_value=json.dumps(legacy).encode()) as run, \
+             patch.object(apps, 'verify_ai_off') as off, \
+             patch.object(apps, 'tailnet_https', side_effect=[b'401', json.dumps(status).encode()]):
+            self.assertEqual(apps.verify_lifecycle('kubectl'), status)
+        off.assert_not_called()
+        self.assertTrue(all(not (set(call.args[0]) & {'scale', 'patch', 'apply', 'create', 'delete'}) for call in run.call_args_list))

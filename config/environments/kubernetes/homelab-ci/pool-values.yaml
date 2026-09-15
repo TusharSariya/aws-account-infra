@@ -1,0 +1,11 @@
+worker: talos-worker-01
+cpu: '36'
+memory: 160Gi
+strategy: StrictFIFO
+platformReserve:
+  cpu: 1500m
+  memory: 8Gi
+queues:
+  - {namespace: homelab-models, name: ai}
+  - {namespace: arc-runners, name: ci}
+  - {namespace: homelab-jobs, name: argo}

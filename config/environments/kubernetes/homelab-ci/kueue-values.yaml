@@ -1,0 +1,31 @@
+controllerManager:
+  manager:
+    image:
+      repository: registry.k8s.io/kueue/kueue
+      tag: v0.19.4@sha256:cc980ec83c698369d55f3b9105fb602ba85a558cb1bf3cafa02ce38a6a695c26
+    resources:
+      requests: {cpu: 100m, memory: 256Mi}
+      limits: {cpu: '1', memory: 512Mi}
+managerConfig:
+  controllerManagerConfigYaml: |
+    apiVersion: config.kueue.x-k8s.io/v1beta2
+    kind: Configuration
+    health:
+      healthProbeBindAddress: :8081
+    metrics:
+      bindAddress: :8443
+    webhook:
+      port: 9443
+    leaderElection:
+      leaderElect: true
+      resourceName: c1f6bfd2.kueue.x-k8s.io
+    manageJobsWithoutQueueName: false
+    resources:
+      excludeResourcePrefixes: [ephemeral-storage]
+    managedJobsNamespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values: [homelab-models, homelab-jobs, arc-runners]
+    integrations:
+      frameworks: [pod, deployment]

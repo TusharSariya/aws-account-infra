@@ -1,0 +1,62 @@
+# Explicit fields from the pinned full Workflow CRD; schema changes require re-review.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: homelab-reviewed-workflows
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+    - apiGroups:
+      - argoproj.io
+      apiVersions:
+      - v1alpha1
+      operations:
+      - CREATE
+      - UPDATE
+      resources:
+      - workflows
+  matchConditions:
+  - name: jobs-namespace
+    expression: request.namespace == 'homelab-jobs'
+  validations:
+  - expression: has(object.spec.workflowTemplateRef) && object.spec.workflowTemplateRef.name
+      in ['ai-start','ai-stop','ai-force-stop','ai-status','smoke','independent-smoke']
+      && (!has(object.spec.workflowTemplateRef.clusterScope) || !object.spec.workflowTemplateRef.clusterScope)
+    message: Submit only a reviewed namespace WorkflowTemplate.
+  - expression: '!has(object.spec.activeDeadlineSeconds) && !has(object.spec.affinity)
+      && !has(object.spec.archiveLogs) && !has(object.spec.artifactGC) && !has(object.spec.artifactRepositoryRef)
+      && !has(object.spec.automountServiceAccountToken) && !has(object.spec.dnsConfig)
+      && !has(object.spec.dnsPolicy) && !has(object.spec.entrypoint) && !has(object.spec.executor)
+      && !has(object.spec.executorPlugins) && !has(object.spec.hooks) && !has(object.spec.hostAliases)
+      && !has(object.spec.hostNetwork) && !has(object.spec.imagePullSecrets) && !has(object.spec.metrics)
+      && !has(object.spec.nodeSelector) && !has(object.spec.onExit) && !has(object.spec.parallelism)
+      && !has(object.spec.podDisruptionBudget) && !has(object.spec.podGC) && !has(object.spec.podMetadata)
+      && !has(object.spec.podPriorityClassName) && !has(object.spec.podResources)
+      && !has(object.spec.podSpecPatch) && !has(object.spec.priority) && !has(object.spec.resourceClaims)
+      && !has(object.spec.retryStrategy) && !has(object.spec.schedulerName) && !has(object.spec.securityContext)
+      && !has(object.spec.serviceAccountName) && !has(object.spec.synchronization)
+      && !has(object.spec.templateDefaults) && !has(object.spec.templates) && !has(object.spec.tolerations)
+      && !has(object.spec.ttlStrategy) && !has(object.spec.volumeClaimGC) && !has(object.spec.volumeClaimTemplates)
+      && !has(object.spec.volumes) && !has(object.spec.workflowMetadata)'
+    message: Runtime, privilege, entrypoint and Pod overrides are forbidden.
+  - expression: '!has(object.spec.arguments) || ((!has(object.spec.arguments.artifacts)
+      || size(object.spec.arguments.artifacts) == 0) && (!has(object.spec.arguments.parameters)
+      || (size(object.spec.arguments.parameters) <= 2 && object.spec.arguments.parameters.all(p,
+      p.name in [''command-id'',''revision''] && has(p.value) && !has(p.valueFrom)
+      && !has(p.default) && !has(p.enum)))))'
+    message: Only bounded lifecycle command arguments are accepted.
+  - expression: '!has(object.spec.arguments) || !has(object.spec.arguments.parameters)
+      || object.spec.arguments.parameters.all(p, size(p.value) <= 36)'
+    message: Command arguments exceed their reviewed bounds.
+  - expression: oldObject == null || object.spec.workflowTemplateRef == oldObject.spec.workflowTemplateRef
+    message: A submitted job cannot change its reviewed template.
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: homelab-reviewed-workflows
+spec:
+  policyName: homelab-reviewed-workflows
+  validationActions:
+  - Deny

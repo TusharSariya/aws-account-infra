@@ -39,10 +39,10 @@ The system SHALL provide Start AI, Stop AI, Force Stop AI and Status. Runtime st
 - **THEN** the recorded command order determines one consistent desired state without stale reconciliation undoing the newer command
 
 ### Requirement: Verified inactivity
-The system SHALL shut AI down after 30 continuous minutes of verified inactivity. Chat streams, inference, model downloads, document processing and background agents MUST count as work. Missing, stale or unknown activity MUST prevent automatic shutdown and completion of graceful draining.
+The system SHALL shut AI down after a configurable continuous interval of verified inactivity, defaulting to 30 minutes. Chat streams, inference, model downloads, document processing and background agents MUST count as work. Missing, stale or unknown activity MUST prevent automatic shutdown and completion of graceful draining.
 
 #### Scenario: Idle timeout
-- **WHEN** all activity sources continuously confirm no work for 30 minutes
+- **WHEN** all activity sources continuously confirm no work for the configured interval
 - **THEN** the service closes admission, rechecks activity and shuts down
 
 #### Scenario: Activity becomes unknown
@@ -97,8 +97,26 @@ The existing worker XFS filesystem SHALL enforce project hard limits using stabl
 - **THEN** configuration remains valid and startup depends on actual fresh capacity evidence
 
 ### Requirement: Ordered protected rollout
-The platform SHALL deliver storage, aggregate default-off packaging and lifecycle/scheduling in three reviewed PRs in order through existing OpenTofu/Helm CI. Backend keys, dependency ordering, apply label, protected environment and destructive-change guards MUST remain intact. The authorized AI reset MUST stop writers, verify exact identities and record a durable one-time migration that routine CI cannot replay.
+The platform SHALL deliver storage, aggregate default-off packaging and lifecycle/scheduling as three ordered delivery stages through existing OpenTofu/Helm infrastructure, with lifecycle/scheduling reviewed as a dependency-ordered stack of PRs. Explicitly authorized local execution MAY use the same backend and saved-plan guards when CI is unavailable; its evidence MUST be labeled local and MUST NOT satisfy or bypass GitHub merge checks. Backend keys, dependency ordering, apply label, protected environment and destructive-change guards MUST remain intact. The authorized AI reset MUST stop writers, verify exact identities and record a durable one-time migration that routine CI cannot replay.
 
 #### Scenario: Selected check does not succeed
 - **WHEN** a required acceptance job fails, is cancelled or unexpectedly skips
 - **THEN** the merge gate fails even if apply succeeded
+
+#### Scenario: Explicit local execution during CI outage
+- **WHEN** the user explicitly authorizes local deployment and lifecycle maintenance
+- **THEN** the repository runner verifies existing Ready prerequisites, retained Off state, pinned images and the complete non-destructive saved plan
+- **AND** it records source and plan hashes, local results and encrypted recovery artifacts independently from GitHub Actions
+- **AND** changed source or plan bytes prevent applying or reusing an earlier execution record, and the reset is never replayed
+
+#### Scenario: Dependency-ordered review stack
+- **WHEN** an already deployed lifecycle delivery is split into smaller review PRs
+- **THEN** each PR targets its immediate predecessor, the combined implementation is preserved, and merges proceed bottom-up into the main branch
+- **AND** intermediate source branches are not applied as rollbacks to the already upgraded cluster; deployment uses the assembled reviewed tip and required merge checks remain enforced
+
+### Requirement: Reviewed idle configuration
+The controller SHALL accept an integer idleTimeoutSeconds between 60 and 86400 from repository-managed Helm configuration, defaulting to 1800. Status SHALL report the effective timeout. Invalid values MUST prevent startup. Configuration changes and controller recovery MUST begin a fresh verified interval; they MUST NOT weaken activity verification or graceful Stop.
+
+#### Scenario: Convenient five-minute interval
+- **WHEN** the reviewed homelab configuration selects idleTimeoutSeconds 300
+- **THEN** 300 continuous seconds of verified inactivity request normal Stop, and acceptance verifies that configured interval

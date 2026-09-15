@@ -10,6 +10,22 @@ spec.loader.exec_module(units)
 
 
 class SelectionTests(unittest.TestCase):
+    def test_ci_plumbing_does_not_select_every_state(self):
+        for path in ['.github/workflows/tofu-plan.yml', '.github/workflows/tofu-apply.yml',
+                     'scripts/deploy-units.py', 'scripts/infra.sh', 'deploy-units.json']:
+            self.assertEqual(units.select_units([path], units.load_units()), [], path)
+
+    def test_shared_module_selects_only_consumers(self):
+        selected = units.select_units(['modules/aws/ecr_repository/main.tf'], units.load_units())
+        self.assertEqual({u['id'] for u in selected}, {'aws-staging-rag', 'aws-staging-court-booker'})
+        selected = units.select_units(['modules/aws/encrypted_s3_bucket/main.tf'], units.load_units())
+        self.assertEqual({u['id'] for u in selected}, {'aws-staging-rag', 'aws-staging-homelab-recovery'})
+
+    def test_root_change_does_not_select_unchanged_prerequisites(self):
+        selected = units.select_units(['config/environments/aws/staging/court-booker-api.tfvars'],
+                                      units.ordered(units.load_units()))
+        self.assertEqual([u['id'] for u in selected], ['aws-staging-court-booker-api'])
+
     def test_migration_helper_alone_selects_guarded_kubernetes_deployment(self):
         files = ['apps/platform/migration/reset.py']
         selected = units.select_units(files, units.load_units())
@@ -27,7 +43,7 @@ class SelectionTests(unittest.TestCase):
 
     def test_shared_helpers_and_workflows_select_both_suites(self):
         for path in ['scripts/homelab-readiness.sh', 'scripts/talos-ci.py',
-                     '.github/actions/talos-check/action.yml', '.github/workflows/tofu-apply.yml',
+                     '.github/actions/talos-check/action.yml',
                      '.github/workflows/homelab-acceptance.yml', 'live/proxmox/homelab/main.tf']:
             with self.subTest(path=path):
                 selected = units.select_units([path], units.load_units())
@@ -43,6 +59,17 @@ class ApplicationSelectionTests(unittest.TestCase):
     def test_application_edit_selects_only_application_root(self):
         for path in ['live/kubernetes/homelab/main.tf', 'config/environments/kubernetes/homelab/pihole-values.yaml', '.github/actions/kubernetes-deploy/action.yml']:
             self.assertEqual([u['id'] for u in units.select_units([path], units.ordered(units.load_units()))], ['kubernetes-homelab'])
+
+    def test_lifecycle_and_image_inputs_select_required_application_acceptance(self):
+        for path in ['apps/platform/lifecycle/runtime.py', 'apps/containers/ollama/lifecycle/gateway.go',
+                     'apps/containers/odysseus/lifecycle/tracking.py', 'scripts/ollama-image-context.py',
+                     '.github/workflows/ollama-image.yml', 'scripts/tests/test_lifecycle_state.py',
+                     'scripts/odysseus-scheduler-acceptance.py']:
+            with self.subTest(path=path):
+                selected = units.select_units([path], units.load_units())
+                self.assertEqual([unit['id'] for unit in selected], ['kubernetes-homelab'])
+                self.assertEqual(units.acceptance_suite([path], selected), 'all')
+                self.assertTrue(units.storage_checks_required([path], selected))
 
     def test_order_places_applications_after_foundation(self):
         ordered = [u['id'] for u in units.ordered(units.load_units())]
@@ -61,6 +88,14 @@ class GateTests(unittest.TestCase):
         self.needs['apply']['result'] = 'skipped'
         with self.assertRaises(ValueError):
             units.acceptance_gate(self.needs, True, False)
+
+    def test_requested_lifecycle_maintenance_cannot_skip_fail_or_cancel(self):
+        for result in ('skipped', 'failure', 'cancelled'):
+            self.needs['lifecycle-maintenance'] = {'result': result}
+            with self.subTest(result=result), self.assertRaises(ValueError):
+                units.acceptance_gate(self.needs, True, False, True)
+        self.needs['lifecycle-maintenance']['result'] = 'success'
+        units.acceptance_gate(self.needs, True, False, True)
 
     def test_successful_apply_and_acceptance_pass(self):
         units.acceptance_gate(self.needs, True, False)

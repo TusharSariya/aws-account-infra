@@ -45,7 +45,10 @@ docker run --rm -v "$REPO_ROOT:/src" "$CHECKOV_IMAGE" \
   || fail "checkov found policy violations."
 
 echo "▶ gitleaks (secret scan)"
-docker run --rm -v "$REPO_ROOT:/repo" "$GITLEAKS_IMAGE" \
+# Linked worktrees point .git at the shared metadata outside the checkout.
+# Mount it at its original path so the scanner actually reads commit history.
+GIT_COMMON_DIR="$(git rev-parse --path-format=absolute --git-common-dir)"
+docker run --rm -v "$REPO_ROOT:/repo" -v "$GIT_COMMON_DIR:$GIT_COMMON_DIR:ro" "$GITLEAKS_IMAGE" \
   detect --source /repo --redact --no-banner --exit-code 1 \
   || fail "gitleaks found secrets."
 
