@@ -27,8 +27,6 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/talos-runner-setup
-        with:
-          packages: dnsutils openssh-client rsync gh
       - id: units
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -225,7 +223,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/talos-runner-setup
         with:
-          packages: dnsutils openssh-client rsync gh
+          packages: gh
       - name: enable auto-merge
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

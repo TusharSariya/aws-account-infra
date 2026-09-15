@@ -27,14 +27,21 @@ runs:
       run: |
         set -euo pipefail
         test "$RUNNER_OS" = Linux
-        sudo apt-get update
-        read -r -a packages <<< "$EXTRA_PACKAGES"
-        for package in "${packages[@]}"; do
+        read -r -a extras <<< "$EXTRA_PACKAGES"
+        requested=(python3 jq curl git unzip "${extras[@]}")
+        if [[ "$NEED_DOCKER" == true ]]; then requested+=(docker-compose-v2); fi
+        packages=()
+        for package in "${requested[@]}"; do
           [[ "$package" =~ ^[a-z0-9][a-z0-9+.-]*$ ]] || exit 1
+          if [[ "$(dpkg-query -W -f='${Status}' "$package" 2>/dev/null || true)" != 'install ok installed' ]]; then
+            packages+=("$package")
+          fi
         done
-        if [[ "$NEED_DOCKER" == true ]]; then packages+=(docker-compose-v2); fi
-        sudo apt-get install -y --no-install-recommends python3 jq curl git unzip "${packages[@]}"
-        sudo rm -rf /var/lib/apt/lists/*
+        if (( ${#packages[@]} )); then
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends "${packages[@]}"
+          sudo rm -rf /var/lib/apt/lists/*
+        fi
         if [[ "$NEED_AWS" == true ]]; then
           test "$(uname -m)" = x86_64
           aws_install_dir=$(mktemp -d "$RUNNER_TEMP/aws-cli.XXXXXXXX")

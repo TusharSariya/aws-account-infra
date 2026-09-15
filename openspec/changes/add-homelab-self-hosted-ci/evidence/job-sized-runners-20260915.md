@@ -102,3 +102,21 @@ reads the process's own limit files. Direct inspection of a running Docker
 runner observed container `cpu.max=200000 100000`, memory 8589934592 bytes, and
 parent Pod `cpu.max=400000 100000`, memory 17179869184 bytes. The failed probes
 are preserved and are not claimed as successful job-sized acceptance.
+
+### Cancellation and active controller restarts
+
+GitHub run `34982398521` was cancelled; its assigned runner
+`homelab-talos-mgpqp-runner-6gfqs` and matching Kueue Workload were subsequently
+absent. Superseded queued proof runs were cancelled to avoid duplicate work.
+
+Restarted Kueue and then ARC through their existing Deployments while five
+workloads were reserved and 23 were waiting. Both rollouts succeeded and all
+five still-live workload reservations remained admitted after each restart.
+No workload finalizers were removed. Node restart remains unobserved in this
+migration revision.
+
+The hosted contract check exposed the OpenTofu action wrapper's inability to
+forward the console expression on stdin. Console-based contracts now disable
+that wrapper and have a 30-second subprocess timeout. The prerequisite action
+now installs only missing requested packages; detection and merge helpers no
+longer request unrelated networking or build packages.

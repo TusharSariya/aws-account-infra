@@ -45,6 +45,7 @@ jobs:
       - uses: opentofu/setup-opentofu@v1
         with:
           tofu_version: 1.11.5
+          tofu_wrapper: false
       - name: Verify admission artifacts, contracts and CEL behavior
         run: |
           uv run --with PyYAML==6.0.3 python scripts/homelab-ci.py setup

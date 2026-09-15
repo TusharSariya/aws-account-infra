@@ -39,7 +39,7 @@ def rendered_values(config_path=CONFIG):
         path = Path(directory)
         source = (ROOT / 'live/kubernetes/homelab-ci/runners.tf').read_text().split('# Preserve')[0]
         (path / 'main.tf').write_text('locals { config = ' + json.dumps(str(config_path)) + ' }\n' + source)
-        output = subprocess.check_output(['tofu', '-chdir=' + directory, 'console'], input=b'jsonencode(local.runner_values)\n')
+        output = subprocess.check_output(['tofu', '-chdir=' + directory, 'console'], input=b'jsonencode(local.runner_values)\n', timeout=30)
         return json.loads(json.loads(output))
 
 

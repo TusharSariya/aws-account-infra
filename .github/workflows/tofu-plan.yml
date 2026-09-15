@@ -25,8 +25,6 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/talos-runner-setup
-        with:
-          packages: dnsutils openssh-client rsync
       - id: units
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
