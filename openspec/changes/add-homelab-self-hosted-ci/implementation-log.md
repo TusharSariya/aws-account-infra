@@ -22,3 +22,11 @@
 - Pre-push caught inherited OpenTofu test formatting and a root-default ARM packaging image. Corrected formatting, added a non-root image user and run-time caller UID/GID mapping, then repeated ARM execution and the push checks.
 
 - The Docker gitleaks hook could not resolve linked-worktree metadata and misleadingly reported zero commits scanned. Added a read-only shared Git metadata mount so the hook scans actual history; the separate native scan already passed.
+
+## 003 - Authorized Mac rollout, 2026-09-15
+
+- User explicitly authorized the staged Mac rollout. Existing credentials, cluster identity and App/key reused; AI remains Off and the ordinary schedule suspended.
+- VM 103 passed identity checks and was gracefully stopped. Guarded retirement applied its deletion and worker configuration 156 -> 172 GiB, then failed deleting the exact pinned image with HTTP 403 `Datastore.Allocate`. Failed receipt/log retained under `~/.config/aws-account-infra/kueue/retirement-20260915-01/`.
+- Added narrowly scoped recovery: verify failed original saved plan, check VM absence and worker configuration, verify exact image path/checksum, delete only that image via the existing root SSH connection, require an empty hardware plan. No provider privileges were widened. First recovery post-plan omitted the existing approval variable and failed its precondition; preserved that attempt, corrected it and verified the second post-plan empty. Dedicated CI ACL grants removed; shared identities retained.
+- Worker gracefully restarted with a new boot, Proxmox confirms 172 GiB, Kubernetes Ready. Pi-hole rollout and UDP/TCP queries recovered. Kubernetes reports capacity 168.92 GiB and allocatable 168.44 GiB, below the planned 160 + 10 GiB budget. Pool installation held for an explicit budget decision. Observed platform requests 0.70 GiB, Pod working set 1.81 GiB, node working set 1.99 GiB.
+- Router sudo requires interactive authentication. Prepared a private one-stage cleanup wizard; DHCP removal not credited until verified.
