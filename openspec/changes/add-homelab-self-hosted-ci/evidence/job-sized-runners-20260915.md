@@ -306,3 +306,18 @@ run `35021631460` also passed all three runner configurations.
 ECR re-verification `35021631329` hit a prerequisite download connection reset
 before publication; only its failed job was retried. The prior successful ECR
 publication proof remains retained. Application-only deployment is still pending.
+
+### Application routing defect found by runner metadata
+
+Run `35029554726`, apply job `104586253307`, successfully applied the selected AI
+image pins and verified secret-free state, AI Off and private endpoints. The fresh
+post-plan was empty for all nine application releases. However, GitHub's job
+metadata identified `ubuntu-latest`, so this run does **not** satisfy the ARC
+application deployment proof.
+
+The workflow searched the serialized unit objects for `talos-homelab`; this
+matched the application unit's dependency metadata and selected hosted routing
+and unrelated foundation stages. Plan/apply membership checks now use the actual
+selected ID array (`fromJSON(...).*.id`). A regression contract failed before the
+change and passed afterwards. The guarded ARC apply must be repeated, and its
+runner metadata checked before acceptance is credited.

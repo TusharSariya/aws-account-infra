@@ -22,6 +22,21 @@ class SelectionTests(unittest.TestCase):
         for path in paths:
             self.assertEqual(units.select_units([path], units.load_units()), [], path)
 
+    def test_workflow_routing_and_stages_use_selected_ids_not_dependency_metadata(self):
+        selected = units.select_units(['config/environments/kubernetes/homelab/ai-values.yaml'],
+                                      units.load_units())
+        self.assertEqual([u['id'] for u in selected], ['kubernetes-homelab'])
+        self.assertIn('talos-homelab', selected[0]['dependencies'])
+        # A serialized-object substring check also matches dependency/watch fields.
+        # Every workflow membership check must project only actual selected IDs.
+        root = Path(__file__).resolve().parents[2]
+        for name in ('tofu-plan.yml', 'tofu-apply.yml'):
+            workflow = (root / '.github/workflows' / name).read_text()
+            self.assertNotIn('contains(needs.detect.outputs.units,', workflow, name)
+            for unit in ('proxmox-homelab', 'talos-homelab', 'kubernetes-homelab'):
+                self.assertIn("contains(fromJSON(needs.detect.outputs.units).*.id, '" + unit + "')",
+                              workflow, name)
+
     def test_shared_module_selects_only_consumers(self):
         selected = units.select_units(['modules/aws/ecr_repository/main.tf'], units.load_units())
         self.assertEqual({u['id'] for u in selected}, {'aws-staging-rag', 'aws-staging-court-booker'})

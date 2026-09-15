@@ -91,7 +91,7 @@ jobs:
 
   proxmox-plan:
     needs: detect
-    if: contains(needs.detect.outputs.units, 'proxmox-homelab') && github.event.pull_request.head.repo.full_name == github.repository
+    if: contains(fromJSON(needs.detect.outputs.units).*.id, 'proxmox-homelab') && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: prod
@@ -153,7 +153,7 @@ jobs:
 
   talos-plan:
     needs: detect
-    if: contains(needs.detect.outputs.units, 'talos-homelab') && github.event.pull_request.head.repo.full_name == github.repository
+    if: contains(fromJSON(needs.detect.outputs.units).*.id, 'talos-homelab') && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: prod
@@ -197,7 +197,7 @@ jobs:
 
   applications-plan:
     needs: detect
-    if: contains(needs.detect.outputs.units, 'kubernetes-homelab') && github.event.pull_request.head.repo.full_name == github.repository
+    if: contains(fromJSON(needs.detect.outputs.units).*.id, 'kubernetes-homelab') && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-checks"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
     timeout-minutes: 20
     environment: prod
@@ -252,17 +252,17 @@ jobs:
         run: |
           [[ "${{ needs.detect.result }}" == "success" ]] || exit 1
           [[ "${{ needs.plan.result }}" != "failure" && "${{ needs.plan.result }}" != "cancelled" ]] || exit 1
-          if [[ '${{ contains(needs.detect.outputs.units, 'proxmox-homelab') }}' == true ]]; then
+          if [[ '${{ contains(fromJSON(needs.detect.outputs.units).*.id, 'proxmox-homelab') }}' == true ]]; then
             [[ "${{ needs.proxmox-plan.result }}" == success ]] || {
               echo '::error::Proxmox plan must succeed from a trusted repository branch.'; exit 1;
             }
           fi
-          if [[ '${{ contains(needs.detect.outputs.units, 'talos-homelab') }}' == true ]]; then
+          if [[ '${{ contains(fromJSON(needs.detect.outputs.units).*.id, 'talos-homelab') }}' == true ]]; then
             [[ "${{ needs.talos-plan.result }}" == success ]] || {
               echo '::error::Talos plan must succeed from a trusted repository branch.'; exit 1;
             }
           fi
-          if [[ '${{ contains(needs.detect.outputs.units, 'kubernetes-homelab') }}' == true ]]; then
+          if [[ '${{ contains(fromJSON(needs.detect.outputs.units).*.id, 'kubernetes-homelab') }}' == true ]]; then
             [[ "${{ needs.applications-plan.result }}" == success ]] || {
               echo '::error::Application plan must succeed from a trusted branch.'; exit 1;
             }

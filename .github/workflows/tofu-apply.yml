@@ -41,7 +41,7 @@ jobs:
   apply:
     needs: detect
     if: needs.detect.outputs.units != '[]' && contains(github.event.pull_request.labels.*.name, 'apply') && github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ${{ (contains(needs.detect.outputs.units, 'proxmox-homelab') || contains(needs.detect.outputs.units, 'talos-homelab')) && 'ubuntu-latest' || fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-checks"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
+    runs-on: ${{ (contains(fromJSON(needs.detect.outputs.units).*.id, 'proxmox-homelab') || contains(fromJSON(needs.detect.outputs.units).*.id, 'talos-homelab')) && 'ubuntu-latest' || fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-checks"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
     environment: prod
     outputs:
       needs_worker_reboot: ${{ steps.talos.outputs.needs-worker-reboot }}
@@ -53,7 +53,7 @@ jobs:
           tailscale: 'true'
           packages: dnsutils openssh-client rsync gh
       - name: Check application credentials before any deployment
-        if: contains(needs.detect.outputs.units, 'kubernetes-homelab')
+        if: contains(fromJSON(needs.detect.outputs.units).*.id, 'kubernetes-homelab')
         env:
           TS_OPERATOR_CLIENT_ID: ${{ secrets.TS_OPERATOR_CLIENT_ID }}
           TS_OPERATOR_CLIENT_SECRET: ${{ secrets.TS_OPERATOR_CLIENT_SECRET }}
@@ -73,7 +73,7 @@ jobs:
           tofu_version: 1.11.5
           tofu_wrapper: false
       - name: Connect to Proxmox tailnet
-        if: contains(needs.detect.outputs.units, 'proxmox-homelab') || contains(needs.detect.outputs.units, 'talos-homelab') || contains(needs.detect.outputs.units, 'kubernetes-homelab')
+        if: contains(fromJSON(needs.detect.outputs.units).*.id, 'proxmox-homelab') || contains(fromJSON(needs.detect.outputs.units).*.id, 'talos-homelab') || contains(fromJSON(needs.detect.outputs.units).*.id, 'kubernetes-homelab')
         uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4
         with:
           oauth-client-id: ${{ vars.TS_OIDC_CLIENT_ID }}
@@ -82,18 +82,18 @@ jobs:
           version: 1.102.4
           hostname: gh-proxmox-apply-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Accept homelab subnet route
-        if: contains(needs.detect.outputs.units, 'talos-homelab') || contains(needs.detect.outputs.units, 'kubernetes-homelab')
+        if: contains(fromJSON(needs.detect.outputs.units).*.id, 'talos-homelab') || contains(fromJSON(needs.detect.outputs.units).*.id, 'kubernetes-homelab')
         run: |
           # Resolve from the tailnet map, not the OS resolver which we opt out below.
-          if [[ '${{ contains(needs.detect.outputs.units, 'proxmox-homelab') }}' == true ]]; then
+          if [[ '${{ contains(fromJSON(needs.detect.outputs.units).*.id, 'proxmox-homelab') }}' == true ]]; then
             pve_ip=$(python3 scripts/homelab-apps.py resolve --hostname pve.tail2f646b.ts.net)
             printf '%s pve.tail2f646b.ts.net\n' "$pve_ip" | sudo tee -a /etc/hosts > /dev/null
           fi
           sudo tailscale set --accept-routes=true --accept-dns=false
       - uses: astral-sh/setup-uv@v6
-        if: contains(needs.detect.outputs.units, 'talos-homelab') || contains(needs.detect.outputs.units, 'kubernetes-homelab')
+        if: contains(fromJSON(needs.detect.outputs.units).*.id, 'talos-homelab') || contains(fromJSON(needs.detect.outputs.units).*.id, 'kubernetes-homelab')
       - name: Verify Proxmox apply identity
-        if: contains(needs.detect.outputs.units, 'proxmox-homelab')
+        if: contains(fromJSON(needs.detect.outputs.units).*.id, 'proxmox-homelab')
         env:
           PROXMOX_VE_ENDPOINT: https://pve.tail2f646b.ts.net/
           PROXMOX_VE_API_TOKEN: ${{ secrets.PROXMOX_APPLY_API_TOKEN }}
@@ -139,14 +139,14 @@ jobs:
 
       - name: Deploy Talos through visible guarded stages
         id: talos
-        if: contains(needs.detect.outputs.units, 'talos-homelab')
+        if: contains(fromJSON(needs.detect.outputs.units).*.id, 'talos-homelab')
         uses: ./.github/actions/talos-deploy
         with:
           mode: apply
           secrets-b64: ${{ secrets.TALOS_SECRETS_B64 }}
 
       - name: Deploy Kubernetes applications
-        if: contains(needs.detect.outputs.units, 'kubernetes-homelab')
+        if: contains(fromJSON(needs.detect.outputs.units).*.id, 'kubernetes-homelab')
         uses: ./.github/actions/kubernetes-deploy
         with:
           mode: apply
@@ -162,7 +162,7 @@ jobs:
 
   worker-maintenance:
     needs: [detect, apply]
-    if: needs.apply.result == 'success' && contains(needs.detect.outputs.units, 'talos-homelab') && contains(github.event.pull_request.labels.*.name, 'worker-reboot')
+    if: needs.apply.result == 'success' && contains(fromJSON(needs.detect.outputs.units).*.id, 'talos-homelab') && contains(github.event.pull_request.labels.*.name, 'worker-reboot')
     uses: ./.github/workflows/homelab-worker-maintenance.yml
     with:
       confirm: talos-worker-01
