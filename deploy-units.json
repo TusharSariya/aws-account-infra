@@ -185,6 +185,26 @@
         "scripts/homelab-lifecycle-local.py",
         "scripts/tests/test_local_lifecycle.py"
       ]
+    },
+    {
+      "id": "kubernetes-homelab-ci",
+      "cloud": "kubernetes",
+      "environment": "homelab",
+      "path": "live/kubernetes/homelab-ci",
+      "var_file": "config/environments/kubernetes/homelab-ci/ci.tfvars",
+      "dependencies": [
+        "talos-homelab"
+      ],
+      "ci": false,
+      "watch": [
+        "live/kubernetes/homelab-ci/",
+        "config/environments/kubernetes/homelab-ci/",
+        "charts/homelab-queue/",
+        "scripts/homelab-ci.py",
+        "scripts/kueue-postrender.py",
+        "scripts/kueue_capacity.py",
+        ".github/workflows/homelab-ci-admission.yml"
+      ]
     }
   ]
 }

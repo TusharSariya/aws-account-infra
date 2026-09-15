@@ -1,0 +1,148 @@
+name: homelab-ci-admission
+on:
+  pull_request:
+    paths:
+      - 'live/kubernetes/homelab-ci/**'
+      - 'config/environments/kubernetes/homelab-ci/**'
+      - 'charts/homelab-queue/**'
+      - 'scripts/homelab-ci.py'
+      - 'scripts/kueue*'
+      - 'scripts/tests/test_kueue_*.py'
+      - 'scripts/tests/kueue_cel/**'
+      - '.github/workflows/homelab-ci-admission.yml'
+  workflow_dispatch:
+    inputs:
+      mode:
+        type: choice
+        options: [plan, apply]
+        default: plan
+      confirm:
+        description: Type homelab-ci to authorize an exact saved-plan apply
+        type: string
+        required: false
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: tofu-apply
+  cancel-in-progress: false
+jobs:
+  contracts:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.19.0
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.1'
+          cache-dependency-path: scripts/tests/kueue_cel/go.sum
+      - uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: 1.11.5
+      - name: Verify admission artifacts, contracts and CEL behavior
+        run: |
+          uv run --with PyYAML==6.0.3 python scripts/homelab-ci.py setup
+          PYTHONPATH=scripts uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p 'test_kueue_*.py'
+          uv run --with PyYAML==6.0.3 python scripts/tests/kueue_cel/generate.py "$RUNNER_TEMP/cel-cases.json"
+          (cd scripts/tests/kueue_cel && CGO_ENABLED=0 go run . "$RUNNER_TEMP/cel-cases.json")
+          tofu -chdir=live/kubernetes/homelab-ci init -backend=false -input=false -lockfile=readonly
+          tofu -chdir=live/kubernetes/homelab-ci validate
+  admission:
+    needs: contracts
+    if: (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    # Bootstrap, upgrade and recovery cannot depend on ARC or CI_EXECUTOR.
+    runs-on: ubuntu-latest
+    environment: prod
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check apply confirmation
+        env:
+          MODE: ${{ inputs.mode }}
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          if [[ "$MODE" == apply ]]; then test "$CONFIRM" = homelab-ci; fi
+      - uses: astral-sh/setup-uv@v6
+      - uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: 1.11.5
+          tofu_wrapper: false
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.19.0
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ inputs.mode == 'apply' && vars.TOFU_APPLY_ROLE_ARN || vars.TOFU_PLAN_ROLE_ARN }}
+          aws-region: us-east-1
+      - uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8
+        with:
+          oauth-client-id: ${{ vars.TS_OIDC_CLIENT_ID }}
+          audience: ${{ vars.TS_OIDC_AUDIENCE }}
+          tags: tag:github-ci
+          version: 1.102.4
+          hostname: gh-ci-admission-${{ github.run_id }}-${{ github.run_attempt }}
+      - run: sudo tailscale set --accept-routes=true
+      - id: private
+        run: |
+          umask 077
+          echo "path=$(mktemp -d "$RUNNER_TEMP/homelab-ci.XXXXXXXX")" >> "$GITHUB_OUTPUT"
+      - name: Prepare independent cluster access and verified artifacts
+        env:
+          PRIVATE: ${{ steps.private.outputs.path }}
+          TALOS_SECRETS_B64: ${{ secrets.TALOS_SECRETS_B64 }}
+        run: |
+          uv run scripts/talos-ci.py setup --acceptance --checks-only
+          uv run scripts/talos-ci.py prepare --private "$PRIVATE"
+          uv run scripts/talos-ci.py connect --private "$PRIVATE"
+          echo "$HOME/.cache/aws-account-infra/talos" >> "$GITHUB_PATH"
+          install -m 700 "$HOME/.cache/aws-account-infra/talos/kubectl-v1.36.3" "$PRIVATE/kubectl"
+          echo "$PRIVATE" >> "$GITHUB_PATH"
+          uv run --with PyYAML==6.0.3 python scripts/homelab-ci.py setup
+          tofu -chdir=live/kubernetes/homelab-ci init -input=false -lockfile=readonly
+          tofu -chdir=live/kubernetes/homelab-ci validate
+      - name: Guard exact plan and capacity
+        env:
+          PRIVATE: ${{ steps.private.outputs.path }}
+        run: uv run --with PyYAML==6.0.3 python scripts/homelab-ci.py plan --private "$PRIVATE"
+      - name: Enroll existing repository GitHub App privately
+        if: inputs.mode == 'apply'
+        env:
+          PRIVATE: ${{ steps.private.outputs.path }}
+          ARC_GITHUB_APP_JSON_B64: ${{ secrets.ARC_GITHUB_APP_JSON_B64 }}
+        run: |
+          umask 077
+          python3 - <<'PY'
+          import base64, os, pathlib
+          pathlib.Path(os.environ['PRIVATE'], 'github-app.json').write_bytes(base64.b64decode(os.environ['ARC_GITHUB_APP_JSON_B64'], validate=True))
+          PY
+          uv run --with PyYAML==6.0.3 python scripts/homelab-ci.py enroll --private "$PRIVATE" --app-json "$PRIVATE/github-app.json"
+          rm "$PRIVATE/github-app.json"
+      - name: Apply saved plan and require fresh empty post-plan
+        if: inputs.mode == 'apply'
+        env:
+          PRIVATE: ${{ steps.private.outputs.path }}
+        run: uv run --with PyYAML==6.0.3 python scripts/homelab-ci.py apply --private "$PRIVATE"
+      - name: Preserve non-secret execution receipt
+        if: always() && steps.private.outputs.path != ''
+        env:
+          PRIVATE: ${{ steps.private.outputs.path }}
+        run: |
+          if [[ -f "$PRIVATE/ci-record.json" ]]; then cp "$PRIVATE/ci-record.json" ci-record.json; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: homelab-ci-receipt-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ci-record.json
+          if-no-files-found: ignore
+      - name: Remove ephemeral credentials and saved plans
+        if: always() && steps.private.outputs.path != ''
+        env:
+          PRIVATE: ${{ steps.private.outputs.path }}
+        run: rm -rf -- "$PRIVATE"

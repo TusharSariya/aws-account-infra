@@ -1,5 +1,7 @@
 from copy import deepcopy
 import json
+import subprocess
+import yaml
 import sys
 from pathlib import Path
 import unittest
@@ -68,6 +70,47 @@ class RuntimeTests(unittest.TestCase):
 
     def operate(self, operation, revision, runtime=None):
         return (runtime or self.runtime).operate(operation, {'command_id': str(uuid.uuid4()), 'revision': revision})
+
+    def test_rendered_parent_metadata_survives_repeated_lifecycle_commands(self):
+        documents = yaml.safe_load_all(subprocess.check_output([
+            'helm', 'template', 'homelab-ai', str(ROOT / 'charts/homelab-ai'),
+            '-f', str(ROOT / 'config/environments/kubernetes/homelab/ai-values.yaml')]))
+        approved = next(d for d in documents if d and d['kind'] == 'ConfigMap' and
+                        d['metadata']['name'] == 'ai-approved-template')
+        self.api.template = json.loads(approved['data']['deployment.json'])
+        self.api.revision = 'kueue-parent-integration'
+        def check_metadata():
+            metadata = self.api.objects[RUNTIME]['spec']['template']['metadata']
+            self.assertEqual(metadata['annotations']['kueue.x-k8s.io/pod-suspending-parent'], 'deployment')
+            self.assertEqual(metadata['labels']['kueue.x-k8s.io/managed'], 'true')
+            self.assertEqual(metadata['labels']['kueue.x-k8s.io/queue-name'], 'ai')
+        self.runtime.tick()  # Off-state adoption used to erase parent integration metadata.
+        check_metadata()
+        for revision, operation in enumerate(['start', 'stop', 'start', 'stop']):
+            self.operate(operation, revision)
+            check_metadata()
+            self.runtime.tick()
+            check_metadata()
+
+    def test_queue_outage_does_not_block_stop_or_status(self):
+        self.runtime.config['queueStatus'] = True
+        started = self.operate('start', 0)
+        self.assertTrue(started['queue']['unavailable'])
+        stopped = self.operate('stop', 1)
+        self.assertEqual(stopped['desired'], 'off')
+        self.assertEqual(self.api.objects[RUNTIME]['spec']['replicas'], 0)
+        self.assertEqual(self.runtime.current_status()['desired'], 'off')
+
+    def test_pending_queue_does_not_accrue_idle_time(self):
+        self.runtime.config['queueStatus'] = True
+        self.operate('start', 0)
+        self.api.pods = [{'metadata': {'uid': 'pending'}, 'status': {'phase': 'Pending'}}]
+        self.runtime.observer.idle_since = 1
+        self.runtime.tick()
+        self.assertEqual(self.runtime.current_status()['idle_seconds'], 0)
+        stopped = self.operate('stop', 1)
+        self.assertEqual(stopped['observed'], 'Stopping')
+        self.assertEqual(self.api.objects[RUNTIME]['spec']['replicas'], 0)
 
     def test_configured_timeout_survives_leadership_recovery(self):
         second = Runtime(self.api, 'second-leader', {**self.runtime.config, 'idleTimeoutSeconds': 300})

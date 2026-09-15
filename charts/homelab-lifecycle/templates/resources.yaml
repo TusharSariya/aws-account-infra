@@ -45,6 +45,9 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata: {name: ai-lifecycle, namespace: homelab-models}
 rules:
+  - apiGroups: [kueue.x-k8s.io]
+    resources: [workloads]
+    verbs: [get, list]
   - apiGroups: ['']
     resources: [configmaps]
     resourceNames: [ai-approved-template]
@@ -217,3 +220,18 @@ spec:
     - toEntities: [kube-apiserver]
       toPorts:
         - ports: [{port: '6443', protocol: TCP}]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata: {name: ai-lifecycle-queue-status}
+rules:
+  - apiGroups: [visibility.kueue.x-k8s.io]
+    resources: [clusterqueues/pendingworkloads]
+    resourceNames: [homelab-compute]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata: {name: ai-lifecycle-queue-status}
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: ai-lifecycle-queue-status}
+subjects: [{kind: ServiceAccount, name: ai-lifecycle, namespace: homelab-platform}]

@@ -1,0 +1,71 @@
+githubConfigUrl: https://github.com/TusharSariyaOrg/aws-account-infra
+githubConfigSecret: github-app
+runnerScaleSetName: homelab-talos
+minRunners: 0
+maxRunners: 1
+controllerServiceAccount:
+  namespace: arc-systems
+  name: arc-gha-rs-controller
+# Explicit spec avoids chart-injected unbudgeted Docker resources.
+containerMode: {}
+listenerTemplate:
+  spec:
+    containers:
+      - name: listener
+        resources:
+          requests: {cpu: 50m, memory: 64Mi}
+          limits: {cpu: 250m, memory: 128Mi}
+template:
+  metadata:
+    labels:
+      kueue.x-k8s.io/queue-name: ci
+      kueue.x-k8s.io/workload-priority-class: homelab-compute
+  spec:
+    schedulingGates: [{name: kueue.x-k8s.io/admission}]
+    nodeSelector: {kubernetes.io/hostname: talos-worker-01}
+    automountServiceAccountToken: false
+    terminationGracePeriodSeconds: 30
+    restartPolicy: Never
+    initContainers:
+      - name: init-dind-externals
+        image: ghcr.io/actions/actions-runner:2.333.0@sha256:1ad983536759ceec39ed75a2c8f007ca8c37b66eee35ed86f13623b29a4db97d
+        command: [cp, -r, /home/runner/externals/., /home/runner/tmpDir/]
+        resources:
+          requests: {cpu: 100m, memory: 128Mi, ephemeral-storage: 1Gi}
+          limits: {cpu: 100m, memory: 128Mi, ephemeral-storage: 1Gi}
+        volumeMounts: [{name: scratch, mountPath: /home/runner/tmpDir, subPath: externals}]
+      - name: dind
+        image: docker:28.5.2-dind@sha256:2a232a42256f70d78e3cc5d2b5d6b3276710a0de0596c145f627ecfae90282ac
+        args: [dockerd, '--host=unix:///var/run/docker.sock', '--group=123', '--data-root=/scratch/docker']
+        securityContext: {privileged: true}
+        restartPolicy: Always
+        startupProbe:
+          exec: {command: [docker, info]}
+          failureThreshold: 24
+          periodSeconds: 5
+        resources:
+          requests: {cpu: '2', memory: 8Gi, ephemeral-storage: 15Gi}
+          limits: {cpu: '2', memory: 8Gi, ephemeral-storage: 15Gi}
+        volumeMounts:
+          - {name: scratch, mountPath: /scratch}
+          - {name: scratch, mountPath: /home/runner/_work, subPath: work}
+          - {name: scratch, mountPath: /home/runner/externals, subPath: externals, readOnly: true}
+          - {name: scratch, mountPath: /var/run, subPath: run}
+    containers:
+      - name: runner
+        # Required for job-specific Tailscale TUN; isolated from host namespaces/mounts.
+        securityContext: {privileged: true}
+        image: ghcr.io/actions/actions-runner:2.333.0@sha256:1ad983536759ceec39ed75a2c8f007ca8c37b66eee35ed86f13623b29a4db97d
+        command: [/home/runner/run.sh]
+        env:
+          - {name: DOCKER_HOST, value: 'unix:///var/run/docker.sock'}
+          - {name: RUNNER_WAIT_FOR_DOCKER_IN_SECONDS, value: '120'}
+        resources:
+          requests: {cpu: '2', memory: 8Gi, ephemeral-storage: 15Gi}
+          limits: {cpu: '2', memory: 8Gi, ephemeral-storage: 15Gi}
+        volumeMounts:
+          - {name: scratch, mountPath: /home/runner/_work, subPath: work}
+          - {name: scratch, mountPath: /var/run, subPath: run}
+    volumes:
+      - name: scratch
+        emptyDir: {sizeLimit: 30Gi}

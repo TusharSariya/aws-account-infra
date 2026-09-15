@@ -8,6 +8,7 @@ kind: Deployment
 metadata:
   name: ai-runtime
   namespace: homelab-models
+  labels: {kueue.x-k8s.io/queue-name: ai}
   annotations:
     homelab/desired-state: 'off'
     homelab/command-revision: '0'
@@ -18,8 +19,11 @@ spec:
     matchLabels: {app: ai-runtime}
   template:
     metadata:
-      labels: {app: ai-runtime}
+      # Required by the pinned Deployment/Pod integration, including after off-state adoption.
+      annotations: {kueue.x-k8s.io/pod-suspending-parent: deployment}
+      labels: {kueue.x-k8s.io/managed: 'true', app: ai-runtime, kueue.x-k8s.io/queue-name: ai, kueue.x-k8s.io/workload-priority-class: homelab-compute}
     spec:
+      schedulingGates: [{name: kueue.x-k8s.io/admission}]
       hostUsers: false
       automountServiceAccountToken: false
       nodeSelector: {kubernetes.io/hostname: {{ .Values.node }}}

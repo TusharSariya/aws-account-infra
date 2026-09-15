@@ -11,6 +11,7 @@ from leadership import Leadership
 from state import Observation, Rejected, initial, command, begin, finish, heartbeat
 from workload_state import is_terminated
 from identity import probe
+from queue_status import observe as observe_queue
 
 PLATFORM = '/api/v1/namespaces/homelab-platform'
 MODELS = '/api/v1/namespaces/homelab-models'
@@ -177,10 +178,15 @@ class Runtime:
         state, replicas, status = self.observer.reconcile(state, now=time.monotonic(), wall_time=time.time(), capacity=capacity,
             pods_present=bool(pods), ready=ready, instances=instances, unstarted=unstarted)
         if not pods and state['desired'] == 'off':
+            obj['metadata'].setdefault('labels', {}).update(approved['metadata'].get('labels', {}))
             obj['spec'] = deepcopy(approved['spec'])
             obj['metadata']['annotations']['homelab/approved-revision'] = revision
         elif obj['metadata']['annotations'].get('homelab/approved-revision') != revision:
             status['blocking_reasons'].append('Approved template update waits for AI to be off')
+        if self.config.get('queueStatus', False):
+            status['queue'] = observe_queue(self.api, pods)
+            if unstarted and state['desired'] == 'on':
+                status['blocking_reasons'].append('Waiting for Kueue admission or Pod startup; inspect queue conditions')
         return obj, state, replicas, status
 
     def alert(self, obj, status):
@@ -226,6 +232,7 @@ class Runtime:
                 if pods and obj['metadata']['annotations'].get('homelab/approved-revision') != revision:
                     raise Rejected('Stop AI before adopting the approved template update')
             if not pods and state['desired'] == 'off':
+                obj['metadata'].setdefault('labels', {}).update(approved['metadata'].get('labels', {}))
                 obj['spec'] = deepcopy(approved['spec'])
                 obj['metadata']['annotations']['homelab/approved-revision'] = revision
             state, acknowledged = command(state, action, payload.get('command_id'), payload.get('revision'), capacity)
