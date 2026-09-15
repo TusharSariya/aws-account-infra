@@ -56,16 +56,14 @@ jobs:
         with:
           python-version: "3.14"
       - uses: docker/setup-qemu-action@v3
-        if: vars.CI_EXECUTOR == 'talos'
+        if: runner.arch == 'X64'
         with:
           platforms: arm64
       - uses: docker/setup-buildx-action@v3
-        if: vars.CI_EXECUTOR == 'talos'
+        if: runner.arch == 'X64'
       - name: Test
-        env:
-          CI_EXECUTOR: ${{ vars.CI_EXECUTOR }}
         run: |
-          if [[ "$CI_EXECUTOR" == talos ]]; then
+          if [[ "$RUNNER_ARCH" == X64 ]]; then
             bash scripts/lambda-package-arm.sh test
           else
             uv run --directory apps/lambda/python/3.14/court-booker pytest
@@ -79,12 +77,11 @@ jobs:
       - name: Package and upload
         if: steps.aws.outcome == 'success'
         env:
-          CI_EXECUTOR: ${{ vars.CI_EXECUTOR }}
           TAG: ${{ github.sha }}
           LAMBDA_ZIP_PREFIX: ${{ github.event_name == 'pull_request' && 'candidate/court-booker' || 'stable/court-booker' }}
         run: |
           chmod +x scripts/lambda-package.sh
-          if [[ "$CI_EXECUTOR" == talos ]]; then
+          if [[ "$RUNNER_ARCH" == X64 ]]; then
             bash scripts/lambda-package-arm.sh package "$TAG"
           else
             ./scripts/lambda-package.sh python/3.14/court-booker "$TAG"

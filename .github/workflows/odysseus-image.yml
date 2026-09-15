@@ -42,9 +42,13 @@ jobs:
       - uses: ./.github/actions/talos-runner-setup
         with:
           docker: 'true'
+          packages: gh
       - uses: actions/setup-python@v5
         with:
           python-version: '3.14'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - name: Prepare checksum-verified upstream context
         id: source
         shell: bash

@@ -134,3 +134,12 @@ unit tests for premature cancellation, runner acquisition, reason-review gating
 and UID-preconditioned cleanup. A live disposable Pod also verified the raw DELETE
 UID precondition path. The 24-hour observation has NOT started and remains unchecked
 until other proofs are quiesced. Its 26-hour Pod deadline bounds a lost observer.
+
+The corrected lightweight cgroup probe passed on ARC. SDK Python generation also
+passed in the Docker configuration. ARM packaging then exposed a selector bug:
+its steps still tested global CI_EXECUTOR while the PR label selected Talos.
+QEMU and packaging now follow the actual runner architecture, covering both
+label-driven proofs and later global routing. Odysseus upstream browser-source
+tests explicitly install Node 22; both image-publication jobs explicitly request
+the GitHub CLI used to verify private package visibility. Resource budgets were
+not increased in response to these prerequisite failures.

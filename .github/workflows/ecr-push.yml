@@ -107,7 +107,7 @@ jobs:
               --image-tag-mutability IMMUTABLE \
               --image-scanning-configuration scanOnPush=true
       - uses: docker/setup-qemu-action@v3
-        if: vars.CI_EXECUTOR == 'talos'
+        if: runner.arch == 'X64'
         with:
           platforms: arm64
       - uses: docker/setup-buildx-action@v3
