@@ -1,16 +1,16 @@
 {
   "ollama": {
-    "commit": "e0ce4f7adbe5cfbf01d01bd653555ccd885d04dc",
-    "image": "ghcr.io/tusharsariyaorg/homelab-ollama@sha256:a3b48fa9b9055a2274d1596ffa6e671535d140198768a43745b69e2c8065608f",
-    "input_sha256": "cd10c3bceb4643cc5ff7eff0f9d1890d3ad719b64543f9bc7c5023f579e3c6ac",
-    "run_id": 34834567378,
-    "artifact_id": 10343058758
+    "commit": "b1efbaf60d2a0dce6182c08c2bca9fbb50aae996",
+    "image": "ghcr.io/tusharsariyaorg/homelab-ollama@sha256:8f040668b09623103f5bfe31149b0238df0083236f16bf73005a20bdce83c084",
+    "input_sha256": "8fa60cd39e9382c98512280800e24a67979d127d8c9c0421d845e9c0ff3b23dc",
+    "run_id": 34964479287,
+    "artifact_id": 10394923498
   },
   "odysseus": {
-    "commit": "561f095a48d9df41f20c66fcfe90e5cae04ee4f3",
-    "image": "ghcr.io/tusharsariyaorg/homelab-odysseus@sha256:4ae0f903e3356de0602e7612034c5bd5e61730d17f8c85ebf37d3d4f3a6906c3",
-    "input_sha256": "74d844049d37a36eabd606cf4050cdbf1fba1fad95c675ad0afc7e48b795b942",
-    "run_id": 34839086882,
-    "artifact_id": 10345796519
+    "commit": "b1efbaf60d2a0dce6182c08c2bca9fbb50aae996",
+    "image": "ghcr.io/tusharsariyaorg/homelab-odysseus@sha256:3699514c9cb1b5ef61c8127bcebcb19fcc053bc54110dcd33a93b28d55e03cd9",
+    "input_sha256": "64ce4c6bd88ed0513b2b828c7204d86bf4c44daeea64797506083174009dfbcf",
+    "run_id": 34964479339,
+    "artifact_id": 10394691850
   }
 }
