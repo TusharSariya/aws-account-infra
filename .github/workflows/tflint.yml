@@ -17,7 +17,7 @@ permissions:
 jobs:
   tflint:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-checks"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-checks"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
     # Absolute path so EVERY directory visited by `--recursive` uses this single root
     # config — in recursive mode tflint resolves config per-directory and would otherwise
     # ignore the root .tflint.hcl (plugins + rule overrides) inside the stack subdirs.

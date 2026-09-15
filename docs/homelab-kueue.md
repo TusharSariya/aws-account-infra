@@ -137,7 +137,10 @@ The prerequisite action takes explicit `packages`, `aws`, `docker` and `tailscal
 inputs. Non-Docker jobs never wait for a Docker daemon. Workflow-only changes keep
 the existing affected-state selector and cannot select unrelated infrastructure.
 
-Run the explicit ARC acceptance matrix before cutover. Preserve timestamps and
+The trusted PR label `arc-acceptance` explicitly selects Talos for routine jobs
+without changing CI_EXECUTOR. Add the label, then synchronize the PR to run all
+applicable workflows with its updated event payload. Hosted recovery exceptions
+remain independent. Run the explicit ARC acceptance matrix before cutover. Preserve timestamps and
 actual identities to prove overlapping light/checks jobs and inspect simultaneous
 Kueue reservations including scratch. Completion requires all remaining OpenSpec
 runtime scenarios, not only these probes. GitHub's [24-hour self-hosted queue

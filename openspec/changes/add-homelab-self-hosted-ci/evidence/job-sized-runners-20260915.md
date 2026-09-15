@@ -68,3 +68,22 @@ runner prerequisite action from infrastructure selection, retains deployment
 helper/shared-module consumer selection, and adds coverage for every workflow.
 The corrected selector returns an empty general infrastructure matrix for this
 PR; the dedicated guarded CI-root workflow still handles admission configuration.
+
+- Memory exhaustion: PASS, fixture `e5bded09c172`.
+- Ephemeral-storage exhaustion: PASS, fixture `1a5c397b2934`.
+- Both observed FIFO, cancellation, successful-completion release and complete
+  Pod/Workload cleanup. Fixture termination grace is now one second because the
+  disposable sleepers hold no durable data; reservation cleanup is still observed.
+- Corrected affected-state coverage: 24 tests pass, including every workflow file.
+- A subsequent hosted config-validation attempt failed on an upstream HTTP 500
+  fetching the signed bpg/proxmox provider checksum. Signature checks were retained.
+
+### Controlled Kueue outage
+
+With compute quiesced, scaled the Kueue controller from its observed one replica
+to zero and waited for Pod deletion. Status returned AI Off and queue unavailable;
+Stop acknowledged revision 59. Pi-hole UDP/TCP DNS succeeded. A server-side compute
+Pod creation dry run failed calling the unavailable admission webhook. Restored
+exactly one controller replica in `finally` and observed rollout success. No
+compute fixture was created and AI remained Off. Controller restart during an
+active reservation and node restart remain separate acceptance requirements.

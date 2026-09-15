@@ -78,6 +78,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - uses: ./.github/actions/talos-runner-setup
       - name: Verify declared cgroup limits and allow concurrency observation
         env:
           EXPECTED_CPU: ${{ matrix.cpu }}
