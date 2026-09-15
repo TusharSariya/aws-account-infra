@@ -1,0 +1,36 @@
+{
+  "source_sha": "03401f44e94e36da50fa7755056144d5abd4c1cc",
+  "arc_unavailable_at": 1789505129.944352,
+  "admission_run": 35021631427,
+  "hosted_recovery_passed": true,
+  "worker_run": 35021891054,
+  "worker_restart_passed": true,
+  "arc_restored": true,
+  "finished_at": 1789505450.4523368,
+  "capacity": {
+    "cpu": {
+      "allocatable": "37.950",
+      "platform_observed": "0.956",
+      "platform_reserved": "1.500",
+      "pool": "36"
+    },
+    "memory": {
+      "allocatable": "180865327104",
+      "platform_observed": "1224736768",
+      "platform_reserved": "8589934592",
+      "pool": "160Gi"
+    },
+    "storage_and_slots": {
+      "pool": "64424509440",
+      "measured_used_with_images": "21181878272",
+      "platform_requests": "83886080",
+      "headroom": "8589934592",
+      "allocatable": "94227975217",
+      "projected_platform_pods": 21,
+      "runner_slots": 30,
+      "pod_headroom": 10
+    }
+  },
+  "changes": [],
+  "execution": "github"
+}

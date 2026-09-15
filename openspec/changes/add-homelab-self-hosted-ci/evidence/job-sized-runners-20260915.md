@@ -268,3 +268,41 @@ Stop moved revision 66 to 67; Off and an empty Kueue workload list were subseque
 observed. Both AI-first and CI-first complete observations are now retained privately.
 SDK run `34998704606` completed successfully after retry: both generated SDKs,
 both smoke tests, both candidate publications and the final comment passed on ARC.
+
+### Independent hosted recovery and worker restart
+
+With AI Off and no Kueue workloads or runner Pods, ARC's controller was scaled from
+one replica to zero. Hosted run `35021631427` at source `03401f4` passed contracts,
+private cluster access, measured capacity and a fresh empty guarded CI-root plan
+while ARC remained unavailable. Its receipt records `changes: []` and the reviewed
+60-GiB scratch pool fitting measured image/platform use plus 8-GiB headroom.
+
+Hosted worker-maintenance run `35021891054` then passed the explicit worker reboot,
+partition identity preservation, XFS quota activation and readiness checks. This
+node test ran with compute quiesced; the earlier controller restarts exercised
+five reserved and 23 waiting workloads. ARC was restored to its original one
+replica and queued CI resumed. Pi-hole TCP/UDP checks passed and AI was Off at
+revision 67. The lifecycle capacity observer's normal five-minute recovery window
+was visible after restart. A subsequent Status check reported Off at revision 67
+with no blockers after that recovery window elapsed.
+
+### Latest prerequisite checks on 03401f4
+
+LocalStack (`35021631278`), ARM packaging/upload (`35021631137`), Checkov
+(`35021631404`), Trivy (`35021631450`), Ansible (`35021631293`), TFLint
+(`35021631139`), catalog validation (`35021631285`), application contracts
+(`35021631213`) and configuration validation (`35021631276`) passed. Image
+publication/authentication and application deployment are recorded separately
+only after their complete workflows succeed.
+
+### Complete image proofs
+
+Odysseus run `35021631409` and Ollama run `35021631149` both passed publication,
+packaged startup/authentication and receipt upload on ARC at source `03401f4`.
+The existing verifier confirmed current input hashes, successful run identity
+and artifact checksums before selecting their immutable digests. ARC compatibility
+run `35021631460` also passed all three runner configurations.
+
+ECR re-verification `35021631329` hit a prerequisite download connection reset
+before publication; only its failed job was retried. The prior successful ECR
+publication proof remains retained. Application-only deployment is still pending.

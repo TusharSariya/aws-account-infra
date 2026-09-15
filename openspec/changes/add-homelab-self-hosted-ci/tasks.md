@@ -15,9 +15,9 @@
 ## 3. Cutover and acceptance
 - [x] 3.1 Implement explicit CI_EXECUTOR routing while keeping bootstrap/recovery hosted and forks disabled.
 - [ ] 3.2 Verify real checkout, Docker, ARM packaging, privileged disposable quotas and private deployments on ARC.
-- [ ] 3.3 Verify AI-first/CI-first, strict FIFO, CPU/RAM exhaustion and observed reservation release.
+- [x] 3.3 Verify AI-first/CI-first, strict FIFO, CPU/RAM exhaustion and observed reservation release.
 - [ ] 3.4 Verify queued cancellation, GitHub expiry, controller/node restart and cleanup without leaks.
-- [ ] 3.5 Prove hosted recovery with ARC absent and Stop/Status/Pi-hole during queue exhaustion/outage.
+- [x] 3.5 Prove hosted recovery with ARC absent and Stop/Status/Pi-hole during queue exhaustion/outage.
 - [ ] 3.6 Record fresh empty post-deployment plans, successful required GitHub checks and three reviewed PRs; enable Talos routing only after acceptance.
 
 ## 4. Multiple job-sized runners (supersedes the one-runner restriction)
@@ -27,7 +27,7 @@
 - [x] 4.4 Deploy catalog and storage admission through the guarded CI root after runners become idle; record fresh empty plan.
 - [x] 4.5 Observe simultaneous mixed-size ARC runners, CPU/RAM/scratch exhaustion, StrictFIFO and release after completion/cancellation.
 - [ ] 4.6 Complete actual checkout, scanners, LocalStack, Docker publication, ARM packaging/upload, SDK and guarded application-only private deployment proofs on ARC.
-- [ ] 4.7 Complete AI-first/CI-first contention, controller/node restart and cleanup, full-queue/outage Stop/Status/Pi-hole and independent hosted recovery proofs.
+- [x] 4.7 Complete AI-first/CI-first contention, controller/node restart and cleanup, full-queue/outage Stop/Status/Pi-hole and independent hosted recovery proofs.
 - [ ] 4.8 Observe the full GitHub 24-hour request expiry separately from cancellation with external monitoring and fixture cleanup.
 - [ ] 4.9 Merge validated routing, set CI_EXECUTOR=talos and verify representative routine workflows at declared sizes without leaked reservations.
 - [ ] 4.10 Record final empty plans, autostart recovery, Pi-hole health and AI Off; verify ordinary workflows need no paid hosted compute before restoring the temporary Actions budget to $0.
