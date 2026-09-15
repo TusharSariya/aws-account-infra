@@ -4,7 +4,7 @@ memory: 160Gi
 strategy: StrictFIFO
 platformReserve:
   cpu: 1500m
-  memory: 10Gi
+  memory: 8Gi
 queues:
   - {namespace: homelab-models, name: ai}
   - {namespace: arc-runners, name: ci}

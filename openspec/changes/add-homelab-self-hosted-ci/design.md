@@ -24,3 +24,6 @@ The single worker remains a shared failure domain. Trusted privileged Docker run
 
 ## Validation
 Verify pinned artifacts, rendered Helm, OpenTofu plans, workflow contracts, admission/security policies and strict OpenSpec. Exercise AI-first/CI-first contention, FIFO head blocking, CPU/RAM exhaustion, cancellation, expiry, controller/node restart and reservation cleanup. Prove Stop/Status and Pi-hole during exhaustion and Kueue outage. Run actual ARC checkout/build/ARM/private deployment/quota jobs and hosted recovery with ARC absent. Require fresh empty post-deployment plans and existing merge gates; leave unobserved acceptance unchecked.
+
+## Observed capacity adjustment, 2026-09-15
+The restored 172-GiB guest exposes 168.44 GiB allocatable. The user approved an 8-GiB platform reserve after observing 1.81 GiB Pod working set and 448 MiB additional controller requests, preserving the 160-GiB pool and 172-GiB worker. Admission still requires the complete pool plus reserve to fit observed allocatable.

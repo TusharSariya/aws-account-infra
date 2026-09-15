@@ -22,6 +22,10 @@ RELEASES = {'kueue': ('kueue-system', '0.19.4'), 'queue': ('kueue-system', None)
 
 def run(args, data=None):
     result = subprocess.run(list(map(str, args)), input=data, capture_output=True, timeout=1800)
+    if os.environ.get('HOMELAB_CI_LOG_DIR') and (result.returncode or 'apply' in args):
+        destination = Path(os.environ['HOMELAB_CI_LOG_DIR']) / (str(time.time_ns()) + '-command.log')
+        destination.write_bytes(result.stdout + b'\n' + result.stderr)
+        destination.chmod(0o600)
     if result.returncode:
         raise ValueError('Command failed: ' + Path(str(args[0])).name + '; private output suppressed')
     return result.stdout
@@ -127,6 +131,7 @@ def main():
     private = args.private.resolve()
     if private.stat().st_mode & 0o077 or private.stat().st_uid != os.getuid():
         raise ValueError('Use a private owned workspace')
+    os.environ['HOMELAB_CI_LOG_DIR'] = str(private)
     kubeconfig = private / 'kubeconfig'
     if kubeconfig.is_symlink() or kubeconfig.stat().st_mode & 0o077:
         raise ValueError('Private regular kubeconfig required')

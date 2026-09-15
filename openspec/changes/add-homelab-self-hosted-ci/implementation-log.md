@@ -33,3 +33,9 @@
 
 - The maintenance helper timed out because its >=170-GiB capacity assumption rejects the actual 168.92-GiB capacity. Proxmox effective RAM is exactly 172 GiB, boot ID changed, Ready and DNS were independently verified in private `rollout-20260915-01/recovery-observation.json`; the helper receipt remains unsuccessful.
 - Application planning from the cutover revision correctly failed image-input provenance because routine image workflow routing changed. Planning from the exact admission PR revision in `/private/tmp/aws-account-infra-kueue-admission-deploy` passed existing remote image receipts and saved-plan guards: only AI, lifecycle and jobs releases update. No application apply occurred. This respects the ordered rollout and does not weaken image provenance.
+
+## 004 - Resume CI rollout, 2026-09-15
+
+- User approved the 8-GiB platform reserve after checks. Updated the reserve and the maintenance capacity assumption; regression covers actual 168.44-GiB allocatable accepting 160+8 and rejecting 160+10. Eleven queue/foundation tests pass.
+- Router CI reservation is confirmed absent and existing Talos DHCP reservations preserved. During recheck the Proxmox host had just rebooted and both Talos VMs were stopped (autostart disabled). Verified exact VM identities and started existing control-plane and worker VMs. User explicitly requested autostart after CI is fixed; leave that ordered follow-up pending.
+- CI bootstrap now retains failed command output and apply logs privately to preserve real rollout failure evidence.

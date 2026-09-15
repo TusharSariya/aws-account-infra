@@ -81,8 +81,9 @@ def main():
             fresh = worker['status']['nodeInfo']['bootID'] != old_boot and renewed > started_at
             if fresh and any(c['type'] == 'Ready' and c['status'] == 'True' for c in worker['status']['conditions']):
                 memory = worker['status']['capacity']['memory']
-                # Kernel-reserved RAM means Kubernetes reports somewhat less than 156 GiB.
-                if memory.endswith('Ki') and (target_gib - 2) * 1024**2 < int(memory[:-2]) <= target_gib * 1024**2:
+                # Kernel/firmware reservations consume about 3.1 GiB on this guest.
+                # Hypervisor effective RAM is checked exactly below.
+                if memory.endswith('Ki') and (target_gib - 4) * 1024**2 < int(memory[:-2]) <= target_gib * 1024**2:
                     break
             if time.monotonic() >= deadline:
                 raise ValueError('Worker readiness and effective memory not observed')

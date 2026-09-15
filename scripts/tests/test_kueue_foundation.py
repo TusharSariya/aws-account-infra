@@ -12,6 +12,14 @@ class CapacityTests(unittest.TestCase):
         pod = {'spec': {'containers': [c('2')], 'initContainers': [c('1', restartPolicy='Always'), c('4')]}}
         self.assertEqual(requests(pod, 'cpu'), 5)
 
+    def test_observed_restored_worker_capacity(self):
+        node = {'metadata': {'name': 'talos-worker-01'}, 'status': {
+            'conditions': [{'type': 'Ready', 'status': 'True'}], 'capacity': {'memory': '177121916Ki'},
+            'allocatable': {'cpu': '37950m', 'memory': '176626300Ki'}}}
+        verify(node, [], {'cpu': '1500m', 'memory': '8Gi'})
+        with self.assertRaisesRegex(ValueError, 'allocatable'):
+            verify(node, [], {'cpu': '1500m', 'memory': '10Gi'})
+
     def test_pool_and_platform_must_fit(self):
         node = {'metadata': {'name': 'talos-worker-01'}, 'status': {
             'conditions': [{'type': 'Ready', 'status': 'True'}], 'capacity': {'memory': '172Gi'},

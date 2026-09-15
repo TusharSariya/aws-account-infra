@@ -31,7 +31,7 @@ The only retirement targets are `proxmox_virtual_environment_vm.ci_runner[0]`, i
 
 If retirement applies VM deletion/RAM configuration but fails only the pinned image deletion with `Datastore.Allocate`, use `scripts/ci-runner-retirement-recover.py --failed-record PRIVATE/record.json --record-dir NEW_PRIVATE --kubeconfig KUBECONFIG`. It checks the original guarded plan and exact live identities, removes only the checksum-verified image through existing root SSH and requires a fresh empty hardware plan. Retain the failed receipt; use the new recovery receipt for maintenance.
 
-Do not enable the pool on a 156-GiB worker. `scripts/kueue_capacity.py` checks actual allocatable against the 36 CPU / 160 GiB pool plus a reviewed 1.5 CPU / 10 GiB platform reserve. It includes restartable init containers and Pod overhead in observed platform requests. If the check fails, inspect and review the budget; do not silently shrink it or disregard platform reservations.
+Do not enable the pool on a 156-GiB worker. `scripts/kueue_capacity.py` checks actual allocatable against the 36 CPU / 160 GiB pool plus a reviewed 1.5 CPU / 8 GiB platform reserve. It includes restartable init containers and Pod overhead in observed platform requests. If the check fails, inspect and review the budget; do not silently shrink it or disregard platform reservations.
 
 ## Independent bootstrap and recovery
 
