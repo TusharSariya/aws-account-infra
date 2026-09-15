@@ -1,0 +1,4 @@
+apiVersion: v2
+name: homelab-queue
+version: 0.1.0
+type: application

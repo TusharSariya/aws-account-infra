@@ -62,8 +62,12 @@ spec:
   serviceAccountName: homelab-job
   automountServiceAccountToken: true
   # Pinned Argo stages its 159 MiB executor binary in this injected volume.
-  podSpecPatch: '{"volumes":[{"name":"var-run-argo","emptyDir":{"sizeLimit":"192Mi"}},{"name":"tmp-dir-argo","emptyDir":{"sizeLimit":"16Mi"}}]}'
-  activeDeadlineSeconds: 300
+  podSpecPatch: '{"schedulingGates":[{"name":"kueue.x-k8s.io/admission"}],"volumes":[{"name":"var-run-argo","emptyDir":{"sizeLimit":"192Mi"}},{"name":"tmp-dir-argo","emptyDir":{"sizeLimit":"16Mi"}}]}'
+  # Execution deadline is inside the container; scheduling-gated waiting is unbounded.
+  podMetadata:
+    labels:
+      kueue.x-k8s.io/queue-name: argo
+      kueue.x-k8s.io/workload-priority-class: homelab-compute
   ttlStrategy: {secondsAfterCompletion: 604800}
   podGC: {strategy: OnPodCompletion}
   synchronization:
@@ -82,7 +86,7 @@ spec:
       container:
         image: {{ $.Values.image | quote }}
         command: [python, -B, -c]
-        args: ['import time; print("reviewed smoke started", flush=True); time.sleep(90); print("reviewed smoke completed")']
+        args: ['import signal, time; signal.alarm(300); print("reviewed smoke started", flush=True); time.sleep(90); print("reviewed smoke completed")']
         resources:
           requests: {cpu: 50m, memory: 32Mi, ephemeral-storage: 16Mi}
           limits: {cpu: 100m, memory: 64Mi, ephemeral-storage: 32Mi}

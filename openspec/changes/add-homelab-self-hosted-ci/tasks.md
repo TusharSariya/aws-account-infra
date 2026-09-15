@@ -5,10 +5,10 @@
 - [ ] 1.4 Verify worker allocatable, platform reservations and Pi-hole recovery before enabling the 36 CPU / 160 GiB pool.
 
 ## 2. Admission and runners
-- [ ] 2.1 Pin and verify Kueue 0.19.4 and ARC 0.14.2 Helm artifacts in the independent homelab-ci state root.
-- [ ] 2.2 Implement shared StrictFIFO quota, equal priorities, no borrowing/preemption and oversized-request rejection.
-- [ ] 2.3 Integrate lifecycle-owned AI Pods and queue status while preserving Stop, Force Stop, idle and storage behavior.
-- [ ] 2.4 Integrate Argo execution Pods with execution-only deadlines and exempt operational Pods.
+- [x] 2.1 Pin and verify Kueue 0.19.4 and ARC 0.14.2 Helm artifacts in the independent homelab-ci state root.
+- [x] 2.2 Implement shared StrictFIFO quota, equal priorities, no borrowing/preemption and oversized-request rejection.
+- [x] 2.3 Integrate lifecycle-owned AI Pods and queue status while preserving Stop, Force Stop, idle and storage behavior.
+- [x] 2.4 Integrate Argo execution Pods with execution-only deadlines and exempt operational Pods.
 - [ ] 2.5 Configure disposable 4 CPU / 16 GiB / 30 GiB ARC runners and privately enroll the existing repository GitHub App.
 - [ ] 2.6 Verify admission enforcement and platform/operational availability during Kueue outage.
 
