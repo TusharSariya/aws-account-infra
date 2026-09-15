@@ -48,6 +48,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/talos-runner-setup
+        with:
+          docker: 'true'
+          aws: 'true'
+          packages: python3-venv python3-pip zip
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.14"

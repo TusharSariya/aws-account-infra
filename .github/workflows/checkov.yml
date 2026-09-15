@@ -29,6 +29,8 @@ jobs:
 
       - uses: ./.github/actions/talos-runner-setup
         if: steps.changes.outputs.run == 'true'
+        with:
+          docker: 'true'
       - uses: bridgecrewio/checkov-action@v12
         if: steps.changes.outputs.run == 'true'
         with:

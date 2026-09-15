@@ -20,7 +20,7 @@ permissions:
 jobs:
   backup-contracts:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-light"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/talos-runner-setup
@@ -29,7 +29,7 @@ jobs:
 
   identity:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-light"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/talos-runner-setup

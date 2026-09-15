@@ -6,12 +6,17 @@ permissions:
   contents: read
 jobs:
   isolated:
-    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - uses: ./.github/actions/talos-runner-setup
+        with:
+          docker: 'true'
+          packages: shellcheck
       - uses: actions/setup-python@v5
         with:
           python-version: '3.14'

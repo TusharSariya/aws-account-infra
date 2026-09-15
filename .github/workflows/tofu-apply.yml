@@ -17,7 +17,7 @@ permissions:
 jobs:
   detect:
     if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-light"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
     outputs:
       units: ${{ steps.units.outputs.units }}
       suite: ${{ steps.units.outputs.suite }}
@@ -27,6 +27,8 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/talos-runner-setup
+        with:
+          packages: dnsutils openssh-client rsync gh
       - id: units
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -41,13 +43,17 @@ jobs:
   apply:
     needs: detect
     if: needs.detect.outputs.units != '[]' && contains(github.event.pull_request.labels.*.name, 'apply') && github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ${{ (contains(needs.detect.outputs.units, 'proxmox-homelab') || contains(needs.detect.outputs.units, 'talos-homelab')) && 'ubuntu-latest' || fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
+    runs-on: ${{ (contains(needs.detect.outputs.units, 'proxmox-homelab') || contains(needs.detect.outputs.units, 'talos-homelab')) && 'ubuntu-latest' || fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-checks"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
     environment: prod
     outputs:
       needs_worker_reboot: ${{ steps.talos.outputs.needs-worker-reboot }}
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/talos-runner-setup
+        with:
+          aws: 'true'
+          tailscale: 'true'
+          packages: dnsutils openssh-client rsync gh
       - name: Check application credentials before any deployment
         if: contains(needs.detect.outputs.units, 'kubernetes-homelab')
         env:
@@ -193,10 +199,13 @@ jobs:
   apply-gate:
     needs: [detect, apply, worker-maintenance, acceptance, storage-foundation, lifecycle-maintenance]
     if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-light"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/talos-runner-setup
+        with:
+          aws: 'true'
+          packages: dnsutils openssh-client rsync gh
       - name: Require requested deployment and all selected acceptance
         env:
           NEEDS_JSON: ${{ toJSON(needs) }}
@@ -208,13 +217,15 @@ jobs:
   enable-auto-merge:
     needs: [apply, apply-gate, acceptance, worker-maintenance]
     if: always() && needs.apply.result == 'success' && needs.apply-gate.result == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-light"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
     permissions:
       contents: write
       pull-requests: write
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/talos-runner-setup
+        with:
+          packages: dnsutils openssh-client rsync gh
       - name: enable auto-merge
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

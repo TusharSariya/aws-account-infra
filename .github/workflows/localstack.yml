@@ -20,6 +20,9 @@ jobs:
           scope: localstack
       - uses: ./.github/actions/talos-runner-setup
         if: steps.changes.outputs.run == 'true'
+        with:
+          docker: 'true'
+          aws: 'true'
       - uses: actions/setup-python@v5
         if: steps.changes.outputs.run == 'true'
         with:

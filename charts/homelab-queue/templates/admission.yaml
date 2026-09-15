@@ -51,16 +51,16 @@ spec:
         variables.operational || ((!has(object.spec.priorityClassName) || object.spec.priorityClassName == '') &&
         (!has(object.spec.resources)) &&
         (object.spec.containers + variables.init).all(c, has(c.resources) && has(c.resources.requests) &&
-        'cpu' in c.resources.requests && 'memory' in c.resources.requests))
-      message: Compute requires explicit container CPU/RAM requests and default Pod priority; Pod-level resource overrides are forbidden.
-{{ range $resource, $quota := dict "cpu" .Values.cpu "memory" .Values.memory }}
+        'cpu' in c.resources.requests && 'memory' in c.resources.requests && 'ephemeral-storage' in c.resources.requests))
+      message: Compute requires explicit container CPU/RAM/ephemeral-storage requests and default Pod priority; Pod-level resource overrides are forbidden.
+{{ range $resource, $quota := dict "cpu" .Values.cpu "memory" .Values.memory "ephemeral-storage" .Values.scratch }}
     - expression: >-
         variables.operational ||
-        ((object.spec.containers + variables.sidecars).map(c, quantity(c.resources.requests['{{ $resource }}']).asApproximateFloat()).sum() +
+        ((object.spec.containers + variables.sidecars).map(c, ('{{ $resource }}' in c.resources.requests ? quantity(c.resources.requests['{{ $resource }}']).asApproximateFloat() : 0.0)).sum() +
         (has(dyn(object.spec).overhead) && '{{ $resource }}' in dyn(object.spec).overhead ? quantity(dyn(object.spec).overhead['{{ $resource }}']).asApproximateFloat() : 0.0) <= quantity('{{ $quota }}').asApproximateFloat() &&
         variables.init.all(c,
-          quantity(c.resources.requests['{{ $resource }}']).asApproximateFloat() +
-          variables.init.filter(s, has(s.restartPolicy) && s.restartPolicy == 'Always' && variables.init.indexOf(s) < variables.init.indexOf(c)).map(s, quantity(s.resources.requests['{{ $resource }}']).asApproximateFloat()).sum() +
+          ('{{ $resource }}' in c.resources.requests ? quantity(c.resources.requests['{{ $resource }}']).asApproximateFloat() : 0.0) +
+          variables.init.filter(s, has(s.restartPolicy) && s.restartPolicy == 'Always' && variables.init.indexOf(s) < variables.init.indexOf(c)).map(s, ('{{ $resource }}' in s.resources.requests ? quantity(s.resources.requests['{{ $resource }}']).asApproximateFloat() : 0.0)).sum() +
           (has(dyn(object.spec).overhead) && '{{ $resource }}' in dyn(object.spec).overhead ? quantity(dyn(object.spec).overhead['{{ $resource }}']).asApproximateFloat() : 0.0) <= quantity('{{ $quota }}').asApproximateFloat()))
       message: Pod {{ $resource }} requests exceed the entire {{ $quota }} pool; reduce requests or have an operator review the pool budget.
 {{ end }}

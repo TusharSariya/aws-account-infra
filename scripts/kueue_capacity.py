@@ -55,3 +55,41 @@ def verify(node, pods, reserve):
         result[resource] = dict(allocatable=str(available), platform_observed=str(observed),
                                 platform_reserved=str(budget), pool=pool)
     return result
+
+
+def verify_storage(node, pods, summary, config, catalog):
+    """Fail closed on missing/stale kubelet measurements; never use AI data disks."""
+    from datetime import datetime, timezone
+    if summary['node']['nodeName'] != node['metadata']['name']:
+        raise ValueError('Storage sample belongs to another node')
+    fs = summary['node']['fs']
+    image_fs = summary['node']['runtime']['imageFs']
+    for sample in [fs, image_fs]:
+        age = (datetime.now(timezone.utc) - datetime.fromisoformat(sample['time'].replace('Z', '+00:00'))).total_seconds()
+        if not 0 <= age <= 300:
+            raise ValueError('Fresh root and image filesystem measurements required')
+    pool = quantity(config['scratch'])
+    headroom = quantity(config['storageHeadroom'])
+    allocatable = quantity(node['status']['allocatable']['ephemeral-storage'])
+    # Images share nodefs on Talos: root used already includes image storage.
+    # Check both filesystems independently, also covering split imagefs.
+    used = max(quantity(fs['usedBytes']), quantity(image_fs['usedBytes']))
+    platform = sum((requests(p, 'ephemeral-storage') for p in pods
+                    if p['spec'].get('nodeName') == node['metadata']['name']
+                    and p.get('status', {}).get('phase') not in ('Succeeded', 'Failed')
+                    and 'kueue.x-k8s.io/queue-name' not in p['metadata'].get('labels', {})), Decimal(0))
+    if (pool + max(used, platform) + headroom > allocatable
+            or pool + headroom > min(quantity(fs['availableBytes']), quantity(image_fs['availableBytes']))):
+        raise ValueError('60-GiB compute scratch plus measured platform/images and eviction headroom do not fit; review storage budget')
+    live = sum(p['spec'].get('nodeName') == node['metadata']['name'] and
+               p.get('status', {}).get('phase') not in ('Succeeded', 'Failed') for p in pods)
+    # Upper bound across any mixture of catalog runners; allow ordinary Argo
+    # and node services the explicitly reviewed additional Pod headroom.
+    slots = min(int(quantity(config['cpu']) / min(quantity(c['cpu']) for c in catalog.values())),
+                int(quantity(config['memory']) / min(c['memory'] * 1024**2 for c in catalog.values())),
+                int(pool / min(c['scratch'] * 1024**2 for c in catalog.values())))
+    if live + slots + config['podHeadroom'] > int(node['status']['allocatable']['pods']):
+        raise ValueError('Insufficient Pod slots for catalog concurrency and platform headroom')
+    return dict(pool=str(pool), measured_used_with_images=str(used), platform_requests=str(platform),
+                headroom=str(headroom), allocatable=str(allocatable), projected_platform_pods=live,
+                runner_slots=slots, pod_headroom=config['podHeadroom'])

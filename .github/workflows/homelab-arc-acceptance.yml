@@ -22,6 +22,11 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/talos-runner-setup
+        with:
+          docker: 'true'
+          aws: 'true'
+          tailscale: 'true'
+          packages: dnsutils openssh-client rsync
       - uses: astral-sh/setup-uv@v6
       - uses: docker/setup-qemu-action@v3
         with:
@@ -55,3 +60,37 @@ jobs:
         with:
           operation: network
           secrets-b64: ${{ secrets.TALOS_SECRETS_B64 }}
+  sized-runners:
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      contains(github.event.pull_request.labels.*.name, 'arc-acceptance'))
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {runner: homelab-talos-light, cpu: '1', memory: '2147483648'}
+          - {runner: homelab-talos-checks, cpu: '2', memory: '4294967296'}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify declared cgroup limits and allow concurrency observation
+        env:
+          EXPECTED_CPU: ${{ matrix.cpu }}
+          EXPECTED_MEMORY: ${{ matrix.memory }}
+        run: |
+          python3 - <<'PYTHON'
+          import json, os, pathlib, time
+          quota, period = pathlib.Path('/sys/fs/cgroup/cpu.max').read_text().split()
+          assert int(quota) / int(period) == int(os.environ['EXPECTED_CPU'])
+          assert pathlib.Path('/sys/fs/cgroup/memory.max').read_text().strip() == os.environ['EXPECTED_MEMORY']
+          assert 'DOCKER_HOST' not in os.environ
+          print(json.dumps({'runner': os.environ['RUNNER_NAME'], 'started': time.time(),
+                            'cpu': os.environ['EXPECTED_CPU'], 'memory': os.environ['EXPECTED_MEMORY']}), flush=True)
+          time.sleep(120)
+          print(json.dumps({'runner': os.environ['RUNNER_NAME'], 'finished': time.time()}))
+          PYTHON

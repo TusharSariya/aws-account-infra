@@ -31,7 +31,7 @@ env:
 jobs:
   lint:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-light"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/talos-runner-setup
@@ -59,6 +59,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/talos-runner-setup
+        with:
+          docker: 'true'
+          packages: python3-venv python3-pip zip
       - name: generate
         run: ./scripts/sdk-generate.sh "${{ matrix.spec }}" "${{ matrix.target }}"
       - uses: actions/upload-artifact@v4
@@ -70,7 +73,7 @@ jobs:
   smoke:
     needs: generate
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-checks"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
     strategy:
       fail-fast: false
       matrix:
@@ -84,6 +87,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/talos-runner-setup
+        with:
+          packages: python3-venv python3-pip zip
       - uses: actions/download-artifact@v4
         with:
           name: sdk-${{ matrix.spec }}-${{ matrix.target }}
@@ -116,6 +121,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/talos-runner-setup
+        with:
+          docker: 'true'
+          aws: 'true'
+          packages: python3-venv python3-pip zip
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -166,7 +175,7 @@ jobs:
   comment-candidate:
     needs: publish-candidate
     if: (always() && github.event_name == 'pull_request' && needs.publish-candidate.result != 'cancelled') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-light"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
     steps:
       - uses: actions/download-artifact@v4
         continue-on-error: true

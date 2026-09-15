@@ -17,8 +17,8 @@ permissions:
   id-token: write
 jobs:
   acceptance:
-    if: github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    if: (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-checks"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
     timeout-minutes: 20
     environment: prod
     strategy:
@@ -27,6 +27,10 @@ jobs:
         suite: ${{ fromJSON(inputs.suite == 'all' && '["network","pvc","capacity","lifecycle"]' || inputs.suite == 'network' && '["network"]' || inputs.suite == 'pvc' && '["pvc"]' || inputs.suite == 'capacity' && '["capacity"]' || inputs.suite == 'lifecycle' && '["lifecycle"]' || '["invalid"]') }}
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/talos-runner-setup
+        with:
+          tailscale: 'true'
+          packages: dnsutils openssh-client rsync
       - uses: astral-sh/setup-uv@v6
       - uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4
         with:

@@ -4,10 +4,10 @@ Share bounded Talos application compute while preserving independent recovery an
 ## ADDED Requirements
 
 ### Requirement: Shared admission pool
-AI, CI and ordinary Argo execution Pods SHALL share one worker-bound Kueue 0.19.4 ClusterQueue with 36 CPU and 160 GiB RAM. It SHALL use StrictFIFO, equal priorities, no preemption, borrowing or fairness policy. LocalQueues SHALL not partition quota. Oversized submissions MUST be rejected with an actionable error.
+AI, CI and ordinary Argo execution Pods SHALL share one worker-bound Kueue 0.19.4 ClusterQueue with 36 CPU, 160 GiB RAM and 60 GiB ephemeral storage. It SHALL use StrictFIFO, equal priorities, no preemption, borrowing or fairness policy. LocalQueues SHALL not partition quota. Oversized submissions MUST be rejected with an actionable error.
 
 #### Scenario: Contention
-- **WHEN** an older queued workload cannot fit remaining CPU or RAM
+- **WHEN** an older queued workload cannot fit remaining CPU, RAM or ephemeral storage
 - **THEN** newer work waits, existing work continues and reservations release after observed termination
 
 ### Requirement: Lifecycle ownership
@@ -18,7 +18,7 @@ AI SHALL retain 35.75 CPU / 77 GiB, retained storage, lifecycle-owned desired st
 - **THEN** the pending Pod is cancelled and its reservation is released after observed termination
 
 ### Requirement: Disposable CI execution
-ARC 0.14.2 SHALL use the existing repository-scoped GitHub App via a private Secret, separate controller/runner namespaces and minRunners=0/maxRunners=1. Trusted Docker-in-Docker Pods SHALL request and limit 4 CPU / 16 GiB including Docker, with bounded 30 GiB disposable scratch and no host filesystem or Docker socket mounts. Fork execution MUST be disabled.
+ARC 0.14.2 SHALL use the existing repository-scoped GitHub App via a private Secret, separate controller/runner namespaces and minRunners=0 and no ARC maximum. One scale set per reviewed catalog configuration SHALL permit arbitrary whole-millicore CPU and MiB memory/scratch budgets within the shared pool. Jobs SHALL select deployed names through runs-on; unknown and oversized configurations MUST fail pre-merge validation. Whole-Pod effective requests and limits SHALL match the catalog including initialization and Docker overhead. The compatible homelab-talos SHALL retain 4 CPU / 16 GiB / 30 GiB with Docker; lightweight and checks configurations SHALL start at 1 CPU / 2 GiB / 2 GiB and 2 CPU / 4 GiB / 4 GiB without Docker. Each SHALL use bounded disposable volumes and no host filesystem or Docker socket mounts. Fork execution MUST be disabled.
 
 #### Scenario: Cancellation or expiry
 - **WHEN** GitHub cancels or expires a waiting runner request
@@ -44,3 +44,22 @@ Routine workflows SHALL select github-hosted or talos via CI_EXECUTOR, without a
 #### Scenario: Unobserved acceptance
 - **WHEN** runtime verification has not succeeded
 - **THEN** its task remains unchecked and Talos cutover stays disabled
+
+### Requirement: Measured storage and listener capacity
+Deployment SHALL fail unless fresh measured root/image storage, platform requests,
+the 60-GiB compute quota and 8-GiB additional storage headroom fit the worker.
+It SHALL account for desired ARC listeners and available Pod slots, preserve the
+8-GiB RAM platform reserve, wait for runners to become idle, and never consume
+retained AI storage. Jobs SHALL install only their required prerequisites.
+
+#### Scenario: Insufficient disk headroom
+- **WHEN** measured storage or listener/Pod capacity cannot support the catalog
+- **THEN** deployment fails before changing admission and routing remains disabled
+
+#### Scenario: Mixed runner concurrency
+- **WHEN** simultaneous differently sized runners fit shared CPU, RAM and scratch
+- **THEN** Kueue admits them concurrently and releases reservations after termination
+
+#### Scenario: Independent expiry observation
+- **WHEN** a GitHub job remains queued for the documented 24-hour timeout
+- **THEN** external monitoring records actual expiry separately from cancellation and verifies fixture cleanup

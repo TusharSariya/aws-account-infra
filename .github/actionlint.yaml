@@ -1,2 +1,2 @@
 self-hosted-runner:
-  labels: [homelab-talos]
+  labels: [homelab-talos, homelab-talos-light, homelab-talos-checks]

@@ -44,7 +44,8 @@ class Contracts(unittest.TestCase):
         documents = self.render('live/kubernetes/homelab-ci/.terraform/gha-runner-scale-set-0.14.2.tgz',
             name='homelab-talos',namespace='arc-runners',values='config/environments/kubernetes/homelab-ci/arc-runner-values.yaml')
         scale = next(d for d in documents if d['kind'] == 'AutoscalingRunnerSet')['spec']
-        self.assertEqual((scale['minRunners'],scale['maxRunners']), (0,1))
+        self.assertEqual(scale['minRunners'], 0)
+        self.assertNotIn('maxRunners', scale)
         self.assertEqual(scale['githubConfigSecret'],'github-app')
         pod = scale['template']
         self.assertEqual(requests(pod,'cpu'),4)
@@ -62,6 +63,21 @@ class Contracts(unittest.TestCase):
         for key in ['hostPID','hostIPC','hostNetwork']:
             self.assertFalse(pod['spec'].get(key,False))
 
+    def test_every_catalog_entry_matches_actual_helm_pod(self):
+        from runner_catalog import rendered_values, validate_rendered, validate_workflows
+        values = rendered_values()
+        validate_rendered(values)
+        validate_workflows()
+        rendered = {}
+        for name, value in values.items():
+            with TemporaryDirectory() as directory:
+                path = Path(directory) / 'values.yaml'
+                path.write_text(yaml.safe_dump(value))
+                docs = self.render('live/kubernetes/homelab-ci/.terraform/gha-runner-scale-set-0.14.2.tgz',
+                                   name=name, namespace='arc-runners', values=path)
+                rendered[name] = next(d for d in docs if d['kind'] == 'AutoscalingRunnerSet')['spec']
+        validate_rendered(rendered)
+
     def test_workload_webhooks_are_filtered_and_stop_updates_bypass(self):
         raw = self.render('live/kubernetes/homelab-ci/.terraform/kueue-0.19.4.tgz',name='kueue',
                           namespace='kueue-system',values='config/environments/kubernetes/homelab-ci/kueue-values.yaml')
@@ -69,7 +85,7 @@ class Contracts(unittest.TestCase):
         manager = yaml.safe_load(config['data']['controller_manager_config.yaml'])
         self.assertEqual(manager['integrations']['frameworks'],['pod','deployment'])
         self.assertFalse(manager['manageJobsWithoutQueueName'])
-        self.assertEqual(manager['resources']['excludeResourcePrefixes'], ['ephemeral-storage'])
+        self.assertEqual(manager['resources']['excludeResourcePrefixes'], [])
         render = module('postrender','scripts/kueue-postrender.py').render
         hooks = [h for d in render(raw) if d['kind'].endswith('WebhookConfiguration') for h in d['webhooks']]
         for name in ['mpod.kb.io','vpod.kb.io','mdeployment.kb.io','vdeployment.kb.io']:

@@ -1,28 +1,57 @@
 name: Talos runner prerequisites
 description: Install job tools inside the disposable trusted runner only
+inputs:
+  packages:
+    description: Additional apt packages required by this job
+    default: ''
+  docker:
+    description: Require the Docker-enabled catalog configuration and Compose
+    default: 'false'
+  aws:
+    description: Install the pinned AWS CLI for jobs that invoke it
+    default: 'false'
+  tailscale:
+    description: Prepare a disposable TUN device for private cluster access
+    default: 'false'
 runs:
   using: composite
   steps:
     - name: Prepare disposable runner tools
       if: runner.environment == 'self-hosted'
       shell: bash
+      env:
+        EXTRA_PACKAGES: ${{ inputs.packages }}
+        NEED_DOCKER: ${{ inputs.docker }}
+        NEED_AWS: ${{ inputs.aws }}
+        NEED_TAILSCALE: ${{ inputs.tailscale }}
       run: |
         set -euo pipefail
         test "$RUNNER_OS" = Linux
         sudo apt-get update
-        sudo apt-get install -y --no-install-recommends python3 python3-venv python3-pip jq git curl unzip zip make build-essential dnsutils openssh-client rsync groff less gh docker-compose-v2
-        test "$(uname -m)" = x86_64
-        aws_install_dir=$(mktemp -d "$RUNNER_TEMP/aws-cli.XXXXXXXX")
-        trap 'rm -rf "$aws_install_dir"' EXIT
-        curl --fail --silent --show-error --location --retry 3 \
-          https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.36.45.zip \
-          --output "$aws_install_dir/aws.zip"
-        printf '%s  %s\n' 0f02381483b0a5ca127a4cb379e656a73007b346561a5e41d3249d3bc1861226 "$aws_install_dir/aws.zip" | sha256sum --check --strict
-        unzip -q "$aws_install_dir/aws.zip" -d "$aws_install_dir"
-        sudo "$aws_install_dir/aws/install" --update
-        aws --version
-        sudo mkdir -p /dev/net
-        if [[ ! -c /dev/net/tun ]]; then sudo mknod /dev/net/tun c 10 200; fi
-        gh --version
-        docker compose version
-        docker info > /dev/null
+        read -r -a packages <<< "$EXTRA_PACKAGES"
+        for package in "${packages[@]}"; do
+          [[ "$package" =~ ^[a-z0-9][a-z0-9+.-]*$ ]] || exit 1
+        done
+        if [[ "$NEED_DOCKER" == true ]]; then packages+=(docker-compose-v2); fi
+        sudo apt-get install -y --no-install-recommends python3 jq curl git unzip "${packages[@]}"
+        sudo rm -rf /var/lib/apt/lists/*
+        if [[ "$NEED_AWS" == true ]]; then
+          test "$(uname -m)" = x86_64
+          aws_install_dir=$(mktemp -d "$RUNNER_TEMP/aws-cli.XXXXXXXX")
+          trap 'rm -rf "$aws_install_dir"' EXIT
+          curl --fail --silent --show-error --location --retry 3 \
+            https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.36.45.zip \
+            --output "$aws_install_dir/aws.zip"
+          printf '%s  %s\n' 0f02381483b0a5ca127a4cb379e656a73007b346561a5e41d3249d3bc1861226 "$aws_install_dir/aws.zip" | sha256sum --check --strict
+          unzip -q "$aws_install_dir/aws.zip" -d "$aws_install_dir"
+          sudo "$aws_install_dir/aws/install" --update
+          aws --version
+        fi
+        if [[ "$NEED_TAILSCALE" == true ]]; then
+          sudo mkdir -p /dev/net
+          if [[ ! -c /dev/net/tun ]]; then sudo mknod /dev/net/tun c 10 200; fi
+        fi
+        if [[ "$NEED_DOCKER" == true ]]; then
+          docker compose version
+          docker info > /dev/null
+        fi

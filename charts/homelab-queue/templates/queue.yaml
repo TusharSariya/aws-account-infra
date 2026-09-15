@@ -26,7 +26,7 @@ spec:
     withinClusterQueue: Never
     reclaimWithinCohort: Never
   resourceGroups:
-    - coveredResources: [cpu, memory]
+    - coveredResources: [cpu, memory, ephemeral-storage]
       flavors:
         - name: homelab-worker
           resources:
@@ -34,6 +34,8 @@ spec:
               nominalQuota: {{ .Values.cpu | quote }}
             - name: memory
               nominalQuota: {{ .Values.memory }}
+            - name: ephemeral-storage
+              nominalQuota: {{ .Values.scratch }}
 ---
 apiVersion: kueue.x-k8s.io/v1beta2
 kind: WorkloadPriorityClass
