@@ -1,3 +1,7 @@
+variables {
+  ci_runner_enabled = false
+}
+
 # Local plans only. Mocked provider never calls the Proxmox API.
 mock_provider "proxmox" {}
 
