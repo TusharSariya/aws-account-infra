@@ -103,7 +103,7 @@ class Contracts(unittest.TestCase):
                 if 'runs-on' in job: self.assertNotIn('CI_EXECUTOR',job['runs-on'])
         for name,key in [('tofu-plan','plan-gate'),('tofu-apply','apply-gate'),('sdk-publish-stable','publish-gate')]:
             workflow=yaml.load((ROOT/'.github/workflows'/f'{name}.yml').read_text(),Loader=yaml.BaseLoader)
-            self.assertEqual(workflow['jobs'][key]['if'],'always()')
+            self.assertIn('always()', workflow['jobs'][key]['if'])
         for p in (ROOT/'.github/workflows').glob('*.yml'):
             for job in yaml.load(p.read_text(),Loader=yaml.BaseLoader)['jobs'].values():
                 if 'CI_EXECUTOR' in str(job.get('runs-on','')):

@@ -15,7 +15,8 @@ permissions:
 
 jobs:
   detect:
-    runs-on: ubuntu-latest
+    if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
     outputs:
       units: ${{ steps.units.outputs.units }}
       aws_units: ${{ steps.units.outputs.aws_units }}
@@ -23,6 +24,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - uses: ./.github/actions/talos-runner-setup
       - id: units
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -236,8 +238,8 @@ jobs:
 
   plan-gate:
     needs: [detect, plan, proxmox-plan, talos-plan, applications-plan]
-    if: always()
-    runs-on: ubuntu-latest
+    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
     steps:
       - name: gate
         run: |
