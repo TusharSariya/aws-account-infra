@@ -28,12 +28,12 @@ run "approved_vm_plan" {
       vm.bios == "ovmf" && vm.machine == "q35" &&
       vm.scsi_hardware == "virtio-scsi-pci" && vm.hotplug == "0" &&
       vm.cpu[0].type == "host" && vm.cpu[0].sockets == 1 &&
-      vm.memory[0].floating == 0 && vm.started && !vm.on_boot &&
+      vm.memory[0].floating == 0 && vm.started && vm.on_boot &&
       !vm.reboot_after_update && !vm.agent[0].trim &&
       vm.network_device[0].bridge == "vmbr0" && vm.network_device[0].model == "virtio" &&
       alltrue([for d in vm.disk : d.datastore_id == "local-lvm" && d.file_format == "raw" && d.discard == "ignore"])
     ])
-    error_message = "VMs must preserve fixed memory, host CPU, no hotplug/discard and reviewed maintenance-boot lifecycle settings."
+    error_message = "VMs must preserve fixed memory, host CPU, no hotplug/discard and reviewed automatic-boot lifecycle settings."
   }
   assert {
     condition = (

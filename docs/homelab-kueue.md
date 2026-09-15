@@ -8,6 +8,10 @@ Kubernetes schedules admitted Pods and enforces limits. The AI lifecycle control
 
 AI retains 35.75 CPU / 77 GiB and its existing volumes. Each complete runner Pod reserves/limits 4 CPU / 16 GiB, including Docker. One runner at most, zero idle runners. Shared disposable scratch is limited to 30 GiB. Trusted privileged runner/Docker containers use no host filesystem, host socket or host namespace mounts. GitHub fork PRs never run on Talos. The existing App registration key is not mounted into runner Pods; the runner service account has no Kubernetes API token.
 
+## Automatic platform recovery
+
+Both Talos VMs have `on_boot=true` in reviewed Proxmox configuration, with control-plane startup order 1 and worker order 2. The flags were applied after runner startup, checkout and tool setup passed; full CI acceptance remains gated. Essential Kubernetes services, including Pi-hole, retain their controller-managed replicas and start when their nodes return; their Pods stay outside Kueue. AI startup remains governed by lifecycle desired state, and ARC retains zero idle runners.
+
 ## Ordered rollout
 
 Review three PRs in order: foundation; admission/runners; routing/acceptance. Keep AI off during migration and do not credit intermediate branch checks to a different source revision. Previous VM design/checkmarks are retained under the OpenSpec change's `evidence/pre-kueue-plan/`. Preserve all existing deployment logs and failed attempts.

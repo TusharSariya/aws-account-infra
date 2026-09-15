@@ -56,3 +56,9 @@
 - User also requires automatic startup of essential Kubernetes services, including Pi-hole, and Talos VMs after CI repair. Existing platform Deployments recovered automatically during the observed host recovery and remain outside workload admission. VM boot flags are still pending that ordered follow-up.
 
 - Real run 34954804042 accepted on the updated Talos runner and checkout passed, then tool setup failed: Ubuntu noble has no apt installation candidate for awscli. Replaced that dependency with AWS CLI 2.36.45's official x86_64 archive and its verified SHA-256. Failed job Pod and all queue reservations cleaned up normally. Retain this run as failure evidence; rerun must prove the remaining steps.
+
+## 006 - Automatic platform startup and remaining ARM issue, 2026-09-15
+
+- Updated both Talos VM boot flags through the exact saved OpenTofu plan. Only on_boot false -> true changed for VM 100 and VM 102; fresh hardware plan is empty. Proxmox readback confirms onboot=1 and startup orders 1/2. No VM reboot occurred. Private receipt: autostart-20260915-02/receipt.json. First plan failed Mac MagicDNS and is retained; retry used an exact-peer local CONNECT tunnel preserving the original hostname and TLS verification.
+- Pi-hole remains one desired/available replica without queue labels. Its automatic controller recovery after the earlier host restart and availability through the Kueue outage are observed.
+- Retry 34956404522 passed runner startup, checkout, pinned AWS CLI installation and uv setup. QEMU setup failed because the Talos worker lacks binfmt_misc: cannot mount filesystem, no such device. No ARM or private-deployment acceptance is credited. The supported Talos extension requires an explicit OS maintenance path; ordinary Talos changes retain no_reboot.
