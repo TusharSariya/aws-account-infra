@@ -30,6 +30,8 @@ class StageError(ValueError):
 
 
 def guard_plan(plan):
+    if plan.get('errored') or plan.get('complete') is False or plan.get('deferred_changes'):
+        raise StageError('Complete successful Talos plan required')
     allowed = {'talos_machine_configuration_apply.control_plane',
                'talos_machine_bootstrap.cluster',
                'talos_machine_configuration_apply.worker[0]', 'helm_release.cilium',

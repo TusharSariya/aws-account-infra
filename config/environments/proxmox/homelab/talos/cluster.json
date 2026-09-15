@@ -12,7 +12,7 @@
     {
       "name": "talos-worker-01",
       "type": "worker",
-      "installer": "factory.talos.dev/metal-installer/8e8827b5b91420728f8415f3dc200fbf23b425ec07bf27cdc92a676367ee9edf:v1.13.9@sha256:d44d70c735408a1e51d2899da72276d7f5cf3b6f071becbcb72a1d0252ea190c"
+      "installer": "factory.talos.dev/metal-installer/3b7472aeaf4f801ab6c24b777111445a0dcbb77b2be8e36e8d712cc2f9dc3dc9:v1.13.9@sha256:e5e30232d1069b02db72e5b0e9d502cad7dc13b7af2cb3e087a244550291be10"
     }
   ]
 }

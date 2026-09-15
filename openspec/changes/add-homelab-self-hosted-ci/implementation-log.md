@@ -64,3 +64,11 @@
 - Retry 34956404522 passed runner startup, checkout, pinned AWS CLI installation and uv setup. QEMU setup failed because the Talos worker lacks binfmt_misc: cannot mount filesystem, no such device. No ARM or private-deployment acceptance is credited. The supported Talos extension requires an explicit OS maintenance path; ordinary Talos changes retain no_reboot.
 
 - Prepared `docs/homelab-ci-arm-maintenance.md` with the exact three-extension schematic and worker-only maintenance/recovery scope. Image Factory accepted the schematic, but installer manifest retrieval has not completed; a separate 20-second HEAD request timed out. The new installer digest is not verified and no extension/configuration/OS upgrade has been applied.
+
+## 007 - ARM worker extension recovery, 2026-09-15
+
+- Image Factory eventually returned the verified installer index e5e30232d1069b02db72e5b0e9d502cad7dc13b7af2cb3e087a244550291be10. Updated only the worker recovery installer/module configuration, keeping Talos v1.13.9, original bootstrap ISO and all retained storage. Generated private configuration passed strict validation and drift self-tests.
+- Added a dedicated saved-maintenance helper. Standards/Spec reviews identified diagnostic retention and storage identity checks; corrected them, including rejecting changed identities before mutation. Four identity regression tests pass; both reviewers report no remaining blocking findings.
+- Attempt 03 staged the exact worker-only patch but upgrade failed before reboot: Talos pulled the digest-only image reference then looked up the tag-plus-digest reference. Failed receipt/log retained. Attempt 04 used the same immutable digest in canonical form and completed a graceful worker power cycle.
+- Successful receipt verifies new boot, all three extensions, binfmt_misc loaded, both boot flags enabled, unchanged effective 172-GiB RAM, exact Proxmox data disk, PV identities/specs, data filesystem/partition UUIDs, mounted XFS project quotas, Kueue/ARC readiness and Pi-hole UDP/TCP. AI stayed Off; compute was quiescent with no leaked reservations. Ordinary no_reboot OpenTofu resources remain unchanged.
+- Reran real ARC acceptance 34956404522, attempt 2, after extension recovery. Remaining steps receive credit only when observed.

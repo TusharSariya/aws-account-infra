@@ -1,4 +1,7 @@
 machine:
+  kernel:
+    modules:
+      - name: binfmt_misc
   sysctls:
     user.max_user_namespaces: "11255"
   nodeLabels:

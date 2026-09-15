@@ -45,7 +45,7 @@ Settings:
   `.220`, `.222`. The laptop must provide the documented DHCP/NAT/DNS.
 - All install targets `/dev/sda`, corresponding to scsi0 on
   each Talos VM; the worker data disk is scsi1 (/dev/sdb). Verify this mapping in maintenance mode before applying.
-- Installer schematic matches the node's ISO. OCI index digests are pinned in
+- Bootstrap ISOs retain their original pins. The worker installer adds binfmt-misc to gVisor and QEMU guest agent for ARM CI; its dedicated maintenance is documented in `docs/homelab-ci-arm-maintenance.md`. OCI index digests are pinned in
   addition to version tags: the control plane gets QEMU Guest Agent; the shared worker gets
   QEMU Guest Agent plus gVisor.
 - Explicit hostnames, trusted control-plane/shared-worker labels, no sandbox registration taint, and
