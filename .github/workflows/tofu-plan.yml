@@ -35,8 +35,8 @@ jobs:
 
   plan:
     needs: detect
-    if: needs.detect.outputs.aws_units != '[]'
-    runs-on: ubuntu-latest
+    if: needs.detect.outputs.aws_units != '[]' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
     strategy:
       fail-fast: false
       matrix:
@@ -46,6 +46,7 @@ jobs:
         working-directory: ${{ matrix.unit.path }}
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/talos-runner-setup
       - uses: aws-actions/configure-aws-credentials@v4
         if: matrix.unit.cloud == 'aws'
         with:
@@ -191,11 +192,12 @@ jobs:
   applications-plan:
     needs: detect
     if: contains(needs.detect.outputs.units, 'kubernetes-homelab') && github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
     timeout-minutes: 20
     environment: prod
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/talos-runner-setup
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.TOFU_PLAN_ROLE_ARN }}

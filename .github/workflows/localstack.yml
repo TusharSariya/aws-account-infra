@@ -8,9 +8,11 @@ permissions:
 
 jobs:
   smoke:
-    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/talos-runner-setup
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

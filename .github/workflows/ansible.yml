@@ -12,9 +12,11 @@ jobs:
   # bats suite covers the greeter-UID guards, which are what stand between a
   # normal run and stopping the invoking user's own session manager.
   shell:
-    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/talos-runner-setup
       - name: Install shellcheck and bats
         run: |
           sudo apt-get update
@@ -25,11 +27,13 @@ jobs:
       - run: bats tests/
 
   lint:
-    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
     env:
       ANSIBLE_CONFIG: ansible/ansible.cfg
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/talos-runner-setup
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"

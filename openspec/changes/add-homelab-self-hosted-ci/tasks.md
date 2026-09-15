@@ -13,7 +13,7 @@
 - [ ] 2.6 Verify admission enforcement and platform/operational availability during Kueue outage.
 
 ## 3. Cutover and acceptance
-- [ ] 3.1 Implement explicit CI_EXECUTOR routing while keeping bootstrap/recovery hosted and forks disabled.
+- [x] 3.1 Implement explicit CI_EXECUTOR routing while keeping bootstrap/recovery hosted and forks disabled.
 - [ ] 3.2 Verify real checkout, Docker, ARM packaging, privileged disposable quotas and private deployments on ARC.
 - [ ] 3.3 Verify AI-first/CI-first, strict FIFO, CPU/RAM exhaustion and observed reservation release.
 - [ ] 3.4 Verify queued cancellation, GitHub expiry, controller/node restart and cleanup without leaks.

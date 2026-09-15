@@ -1,0 +1,16 @@
+name: Talos runner prerequisites
+description: Install job tools inside the disposable trusted runner only
+runs:
+  using: composite
+  steps:
+    - name: Prepare disposable runner tools
+      if: runner.environment == 'self-hosted'
+      shell: bash
+      run: |
+        set -euo pipefail
+        test "$RUNNER_OS" = Linux
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends python3 python3-venv python3-pip jq git curl unzip zip make build-essential dnsutils openssh-client rsync awscli
+        sudo mkdir -p /dev/net
+        if [[ ! -c /dev/net/tun ]]; then sudo mknod /dev/net/tun c 10 200; fi
+        docker info > /dev/null
