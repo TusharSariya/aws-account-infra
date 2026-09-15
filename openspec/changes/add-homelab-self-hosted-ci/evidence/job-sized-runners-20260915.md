@@ -321,3 +321,25 @@ and unrelated foundation stages. Plan/apply membership checks now use the actual
 selected ID array (`fromJSON(...).*.id`). A regression contract failed before the
 change and passed afterwards. The guarded ARC apply must be repeated, and its
 runner metadata checked before acceptance is credited.
+
+### Guarded application apply on the declared ARC configuration
+
+After a pinned-tool download timed out before planning, the targeted retry in
+run `35030825070`, job `104596169845`, passed on
+`homelab-talos-checks-hbj8m-runner-rxbj9`. GitHub labels confirmed
+`homelab-talos-checks`; the catalog budgets this single non-Docker container at
+2 CPU, 4 GiB memory and 4 GiB scratch, with matching requests and limits.
+The same configuration's live Pod budgets were inspected on the first attempt.
+
+The guarded apply was an empty-plan repeat, because the earlier hosted run had
+already updated the AI images. It passed protected Secret reconciliation, exact
+saved-plan apply, credential-free state inspection, private DNS/HTTPS and AI Off
+checks. This proves the ARC deployment path, not a second Helm resource update.
+The corrected plan workflow skipped Talos/Proxmox and passed its required gate.
+Storage acceptance, including actual disposable XFS enforcement, also passed.
+
+Post-deployment network, capacity and PVC suites passed. Lifecycle setup hit a
+second transport timeout before accessing the cluster. Tool acquisition now
+retries read-only transport failures up to three times, resets partial CLI files
+and preserves pinned-checksum rejection; six focused tests passed. Cluster writes
+are not retried by this helper. The lifecycle check remains to be rerun.
