@@ -171,11 +171,11 @@ jobs:
   acceptance:
     needs: [detect, apply, worker-maintenance]
     if: >-
-      always() && needs.detect.result == 'success' && needs.detect.outputs.suite != 'none' &&
+      ${{ !cancelled() && needs.detect.result == 'success' && needs.detect.outputs.suite != 'none' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       (needs.apply.result == 'success' ||
        (needs.apply.result == 'skipped' && (!contains(github.event.pull_request.labels.*.name, 'apply') || needs.detect.outputs.units == '[]'))) &&
-      (needs.worker-maintenance.result == 'success' || needs.worker-maintenance.result == 'skipped')
+      (needs.worker-maintenance.result == 'success' || needs.worker-maintenance.result == 'skipped') }}
     uses: ./.github/workflows/homelab-acceptance.yml
     with:
       suite: ${{ needs.detect.outputs.suite }}
@@ -196,7 +196,7 @@ jobs:
 
   apply-gate:
     needs: [detect, apply, worker-maintenance, acceptance, storage-foundation, lifecycle-maintenance]
-    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
     runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-light"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
     steps:
       - uses: actions/checkout@v4
@@ -211,7 +211,7 @@ jobs:
 
   enable-auto-merge:
     needs: [apply, apply-gate, acceptance, worker-maintenance]
-    if: always() && needs.apply.result == 'success' && needs.apply-gate.result == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    if: ${{ !cancelled() && needs.apply.result == 'success' && needs.apply-gate.result == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
     runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-light"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
     permissions:
       contents: write

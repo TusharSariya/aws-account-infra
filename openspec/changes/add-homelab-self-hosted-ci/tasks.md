@@ -25,7 +25,7 @@
 - [x] 4.2 Add shared scratch admission and fail-closed measured storage/listener/Pod-slot checks; verify CEL storage exhaustion and preserved operational bypass.
 - [x] 4.3 Audit and implement job-specific routine routing, reusable jobs and supporting gates with only required prerequisites; preserve hosted exceptions and affected-state selection.
 - [x] 4.4 Deploy catalog and storage admission through the guarded CI root after runners become idle; record fresh empty plan.
-- [ ] 4.5 Observe simultaneous mixed-size ARC runners, CPU/RAM/scratch exhaustion, StrictFIFO and release after completion/cancellation.
+- [x] 4.5 Observe simultaneous mixed-size ARC runners, CPU/RAM/scratch exhaustion, StrictFIFO and release after completion/cancellation.
 - [ ] 4.6 Complete actual checkout, scanners, LocalStack, Docker publication, ARM packaging/upload, SDK and guarded application-only private deployment proofs on ARC.
 - [ ] 4.7 Complete AI-first/CI-first contention, controller/node restart and cleanup, full-queue/outage Stop/Status/Pi-hole and independent hosted recovery proofs.
 - [ ] 4.8 Observe the full GitHub 24-hour request expiry separately from cancellation with external monitoring and fixture cleanup.

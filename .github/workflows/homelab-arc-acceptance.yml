@@ -61,6 +61,15 @@ jobs:
             mount -t tmpfs -o size=4m tmpfs /quota
             if dd if=/dev/zero of=/quota/proof bs=1M count=8; then exit 1; fi
             umount /quota'
+      - name: Verify temporary bind mounts reach the Docker sidecar
+        run: |
+          test "$TMPDIR" = "$RUNNER_TEMP"
+          fixture=$(mktemp -d)
+          trap 'rm -rf "$fixture"' EXIT
+          printf proof > "$fixture/proof"
+          docker run --rm --network none --mount "type=bind,src=$fixture,dst=/fixture,readonly" \
+            python:3.14-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6 \
+            python -c 'from pathlib import Path; assert Path("/fixture/proof").read_text() == "proof"'
       - name: ARM Linux build and tests
         run: bash scripts/lambda-package-arm.sh test
       - uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8

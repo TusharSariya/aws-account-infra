@@ -24,8 +24,13 @@ class ExpiryTests(unittest.TestCase):
             with patch.object(expiry.time, 'time', return_value=started + elapsed), \
                     patch.object(expiry, 'api', side_effect=api), \
                     patch.object(expiry, 'objects', return_value=[]), \
-                    patch.object(expiry, 'remove_blocker') as remove, patch('builtins.print'):
+                    patch.object(expiry, 'remove_blocker') as remove, \
+                    patch.object(expiry, 'command') as command, patch('builtins.print'):
                 expiry.watch(private)
+            if job['status'] == 'completed':
+                command.assert_not_called()
+            else:
+                command.assert_called_once_with(['gh', 'run', 'cancel', '123', '--repo', expiry.REPO])
             remove.assert_called_once()
             self.assertEqual(remove.call_args.args[1]['blocker_uid'], 'owned-uid')
             return json.loads((private / 'expiry-record.json').read_text())
@@ -45,6 +50,17 @@ class ExpiryTests(unittest.TestCase):
         result = self.observe(120, dict(name='expiry', status='in_progress', runner_id=999, steps=[]))
         self.assertEqual(result['state'], 'failed-or-interrupted')
         self.assertIn('acquired a runner', result['error'])
+
+    def test_recreated_runner_uids_are_included_in_cleanup(self):
+        record = {'candidates': []}
+        def pod(uid):
+            return {'metadata': {'uid': uid, 'namespace': 'arc-runners',
+                                 'name': 'homelab-talos-light-' + uid}}
+        expiry.observe_runner_ownership(record, [pod('first')])
+        expiry.observe_runner_ownership(record, [pod('replacement')])
+        self.assertEqual(record['candidates'], ['first', 'replacement'])
+        with self.assertRaisesRegex(ValueError, 'Ambiguous'):
+            expiry.observe_runner_ownership(record, [pod('one'), pod('two')])
 
     def test_delete_uses_uid_precondition_and_never_a_replacement(self):
         record = dict(blocker='owned', blocker_uid='owned-uid')

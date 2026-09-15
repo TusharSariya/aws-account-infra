@@ -59,6 +59,8 @@ runs:
           if [[ ! -c /dev/net/tun ]]; then sudo mknod /dev/net/tun c 10 200; fi
         fi
         if [[ "$NEED_DOCKER" == true ]]; then
+          # Bind-mounted temporary fixtures must exist in both Pod containers.
+          printf 'TMPDIR=%s\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
           docker compose version
           docker info > /dev/null
         fi

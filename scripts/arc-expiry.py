@@ -115,12 +115,28 @@ def start(private, ref):
                                        cwd=private, stdin=subprocess.DEVNULL, stdout=log, stderr=log,
                                        start_new_session=True)
         record['monitor_pid'] = process.pid
+        if sys.platform == 'darwin':
+            # Keep the independent Mac observer awake only for its own lifetime.
+            subprocess.Popen(['/usr/bin/caffeinate', '-i', '-w', str(process.pid)],
+                             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL, start_new_session=True)
         save(private, record)
         print(json.dumps(record, indent=2))
     except Exception:
         remove_blocker(private, record)
         record['state'] = 'start-failed'; save(private, record)
         raise
+
+
+def observe_runner_ownership(record, pods):
+    # Isolated initial quiescence identifies the fixture's scale set. Retain
+    # replacement UIDs too so a recreated runner cannot escape cleanup checks.
+    candidates = [p for p in pods if p['metadata']['namespace'] == 'arc-runners'
+                  and p['metadata']['name'].startswith('homelab-talos-light-')]
+    if len(candidates) > 1:
+        raise ValueError('Ambiguous expiry runner ownership; preserve evidence and retry in isolation')
+    if candidates and candidates[0]['metadata']['uid'] not in record['candidates']:
+        record['candidates'].append(candidates[0]['metadata']['uid'])
 
 
 def watch(private):
@@ -137,17 +153,11 @@ def watch(private):
             previous = sampled
             jobs = api(f"actions/runs/{record['github_run']}/jobs?per_page=100")['jobs']
             job = next((j for j in jobs if j['name'] == 'expiry'), None)
+            record['job_status'] = job['status'] if job else 'unknown'
             sample = dict(observed_at=now(), job=job)
             with (private / 'expiry-observations.jsonl').open('a') as output:
                 output.write(json.dumps(sample) + '\n')
-            # Initial quiescence makes the new light runner an identifiable fixture.
-            if not record['candidates']:
-                pods = [p for p in objects(private, 'pods') if p['metadata']['namespace'] == 'arc-runners'
-                        and p['metadata']['name'].startswith('homelab-talos-light-')]
-                if len(pods) == 1:
-                    record['candidates'] = [pods[0]['metadata']['uid']]
-                elif len(pods) > 1:
-                    raise ValueError('Ambiguous expiry runner ownership; preserve evidence and retry in isolation')
+            observe_runner_ownership(record, objects(private, 'pods'))
             record['last_observed_at'] = now()
             save(private, record)
             if job and (job.get('runner_id') or job.get('steps')):
@@ -170,6 +180,14 @@ def watch(private):
         record['state'] = 'failed-or-interrupted'
         record['error'] = str(error)
     finally:
+        # Stop only this dispatched fixture before releasing capacity on an
+        # interrupted observation. Cancellation is never recorded as expiry.
+        if record.get('job_status') != 'completed':
+            try:
+                command(['gh', 'run', 'cancel', str(record['github_run']), '--repo', REPO])
+                record['fixture_cancel_requested'] = True
+            except (ValueError, subprocess.TimeoutExpired):
+                record['fixture_cancel_requested'] = False
         remove_blocker(private, record)
         owned = {record['blocker_uid'], *record['candidates']}
         for _ in range(60):

@@ -170,3 +170,51 @@ reported no reservation and idle_seconds=0, and appeared at queue position 17 in
 a later sample. Stop revision 60 was acknowledged and Pod deletion was observed.
 This proves queued Start/Stop without idle accrual; full AI-running contention
 and admission after CI completion remain separate unchecked tasks.
+
+### Real ARM packaging and candidate upload
+
+Run `34993774678` on source `b59af9a` completed successfully on ARC. The ARM Linux
+fixture reported 32 tests passed. The authenticated packaging step uploaded
+`s3://lambda-releases-992382747916-us-east-1/candidate/court-booker/d63523379925f29e921fbe05302bb26b5f7ad21a.zip`
+at 16:36:23 UTC. The artifact key is the PR merge revision used by that workflow.
+This is an actual candidate upload, not only a local/emulated test. Lambda was
+not retargeted by this proof.
+
+The expiry observer now cancels its own unfinished GitHub fixture before releasing
+the blocker on an interrupted observation, tracks replacement runner Pod UIDs in
+cleanup checks, and holds a Mac idle-sleep assertion for the observer lifetime.
+Five focused observer tests pass. The full-duration observation is still pending.
+
+### Cancellation-aware result gates
+
+Normal cancellation of superseded runs `34992935278` and `34992935066` left their
+`always()` publish/plan gate jobs queued after other jobs were cancelled. Repeated
+GitHub API observations reproduced the symptom; force cancellation completed both
+runs through GitHub without removing Kubernetes finalizers. GitHub documents that
+`always()` job conditions remain true during cancellation:
+https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-cancellation
+
+Job-level result, acceptance and comment gates now use `!cancelled()` so they can
+still report ordinary dependency failures but do not keep a cancelled workflow
+queued. Step-level credential and artifact cleanup conditions are retained.
+Actionlint and 24 affected-state selection tests pass. A live normal-cancellation
+recheck of the revised workflow remains required; local syntax checks do not
+simulate GitHub's cancellation engine.
+
+### LocalStack correction verified on ARC
+
+Run `34993774685` on `b59af9a` passed 35 unit tests, sandbox readiness, the actual
+LocalStack smoke test, and three integration tests. Three external credential/SDK
+fixture tests remained skipped. The integration phase completed at 16:52:28 UTC.
+
+### Shared temporary Docker fixtures
+
+The actual Ollama smoke controller exited while its `/tmp` bind source existed
+only in the runner container. A bounded read-only bind fixture reproduced the
+failure in one second: Docker reported that the `/tmp` source path did not exist.
+The identical fixture passed with TMPDIR under `/home/runner/_work/_temp`.
+Docker-enabled setup now exports RUNNER_TEMP as TMPDIR for subsequent steps,
+keeping bind-mounted temporary files in the existing shared disposable volume.
+The ARC acceptance workflow includes this actual mount-read regression check.
+No host mounts or resource increases were introduced. The complete image workflow
+must still pass with this correction before its receipt can be selected.
