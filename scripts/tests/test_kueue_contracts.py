@@ -53,6 +53,9 @@ class Contracts(unittest.TestCase):
         for c in pod['spec']['containers']+pod['spec']['initContainers']:
             self.assertEqual(c['resources']['requests'],c['resources']['limits'])
             self.assertIn('@sha256:',c['image'])
+        docker = next(c for c in pod['spec']['initContainers'] if c['name']=='dind')
+        self.assertIn('mount -t binfmt_misc', docker['args'][0])
+        self.assertIn('exec dockerd-entrypoint.sh dockerd', docker['args'][0])
         self.assertTrue(all('hostPath' not in v for v in pod['spec']['volumes']))
         self.assertEqual(pod['spec']['volumes'],[dict(name='scratch',emptyDir=dict(sizeLimit='30Gi'))])
         self.assertFalse(pod['spec']['automountServiceAccountToken'])

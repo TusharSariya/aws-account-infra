@@ -41,7 +41,13 @@ template:
         volumeMounts: [{name: scratch, mountPath: /home/runner/tmpDir, subPath: externals}]
       - name: dind
         image: docker:28.5.2-dind@sha256:2a232a42256f70d78e3cc5d2b5d6b3276710a0de0596c145f627ecfae90282ac
-        args: [dockerd, '--host=unix:///var/run/docker.sock', '--group=123', '--data-root=/scratch/docker']
+        # Keep the binfmt filesystem alive after the temporary QEMU installer exits.
+        # This mount belongs to the disposable Pod; no host filesystem is mounted.
+        command: [/bin/sh, -ec]
+        args:
+          - |
+            mount -t binfmt_misc binfmt_misc /proc/sys/fs/binfmt_misc
+            exec dockerd-entrypoint.sh dockerd --host=unix:///var/run/docker.sock --group=123 --data-root=/scratch/docker
         securityContext: {privileged: true}
         restartPolicy: Always
         startupProbe:
