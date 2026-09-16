@@ -10,8 +10,9 @@ request=dict(namespace='homelab-jobs',operation='CREATE',userInfo=dict(username=
 cases=[]
 def case(name,obj,allowed,req=None,old=None): cases.append(dict(name=name,object=obj,allowed=allowed,request=req or request,oldObject=old))
 case('ordinary queued Pod',base,True)
-for resource,value in [('cpu','33.501'),('memory','151Gi'),('ephemeral-storage','61Gi')]:
+for resource,value in [('cpu','33.501'),('memory','151Gi'),('ephemeral-storage','121Gi')]:
  obj=copy.deepcopy(base);obj['spec']['containers'][0]['resources']['requests'][resource]=value;case('oversized '+resource,obj,False)
+obj=copy.deepcopy(base);obj['spec']['containers'][0]['resources']['requests']['ephemeral-storage']='120Gi';case('exact scratch pool fits',obj,True)
 obj=copy.deepcopy(base);obj['spec']['containers']=[container('16.75'),container('16.751')];case('aggregate exceeds pool',obj,False)
 obj=copy.deepcopy(base);obj['spec']['initContainers']=[container('34')];case('init peak exceeds pool',obj,False)
 obj=copy.deepcopy(base);obj['spec']['containers']=[container('32.5')];obj['spec']['initContainers']=[container('2',restartPolicy='Always')];case('sidecar aggregate exceeds pool',obj,False)
