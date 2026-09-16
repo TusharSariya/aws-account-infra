@@ -178,3 +178,7 @@ reserve. No cache service or queue update was applied in this remediation.
 
 Focused regression tests passed before pushing. Hosted PR reruns remain the
 merge authority; local success is not substituted for their results.
+
+### Talos CI guard follow-up
+
+The PR rerun passed the application plan but rejected the worker at the Talos storage preflight: its guard still expected the original 100-GiB OS disk. Updated that exact guard to the approved and deployed 128-GiB disk. A regression run first reproduced rejection of 128 GiB and erroneous acceptance of 100 GiB; all 17 Talos CI tests passed after the fix, including explicit rejection of 100/129-GiB OS disks and existing data-disk identity/content checks. Read-only queries of the live worker's disks and discovered volumes passed the production guard with result `existing`. No disk mutation was performed for this follow-up.

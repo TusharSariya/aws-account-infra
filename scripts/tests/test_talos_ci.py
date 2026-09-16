@@ -99,7 +99,7 @@ class PlanGuardTests(unittest.TestCase):
 class StorageGuardTests(unittest.TestCase):
     def setUp(self):
         self.disks = [
-            {'metadata': {'id': 'sda'}, 'spec': {'size': 100 * 1024**3}},
+            {'metadata': {'id': 'sda'}, 'spec': {'size': 128 * 1024**3}},
             {'metadata': {'id': 'sdb'}, 'spec': {'size': 1200 * 1024**3,
              'dev_path': '/dev/sdb', 'readonly': False, 'cdrom': False, 'symlinks': [ci.DATA_ID]}}]
         self.volumes = [{'spec': {'dev_path': '/dev/sdb', 'type': 'disk', 'name': ''}}]
@@ -107,7 +107,14 @@ class StorageGuardTests(unittest.TestCase):
     def test_blank_verified_data_disk_is_allowed(self):
         self.assertEqual(ci.guard_storage_disks(self.disks, self.volumes), 'blank')
 
-    def test_os_disk_wrong_size_or_device_identity_rejected(self):
+    def test_unapproved_os_disk_sizes_rejected(self):
+        for size_gib in (100, 129):
+            with self.subTest(size_gib=size_gib):
+                self.disks[0]["spec"]["size"] = size_gib * 1024**3
+                with self.assertRaisesRegex(ValueError, "Worker OS disk"):
+                    ci.guard_storage_disks(self.disks, self.volumes)
+
+    def test_data_disk_wrong_size_or_device_identity_rejected(self):
         for field, value in [('size', 100 * 1024**3), ('dev_path', '/dev/sda'),
                              ('symlinks', []), ('readonly', True)]:
             with self.subTest(field=field):
