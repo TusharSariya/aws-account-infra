@@ -65,9 +65,55 @@ def main():
     print('PASS: reviewed host recipe reconciled and sampler/exporter services verified')
 
 
+
+def local_existing_credentials(record_dir):
+    """Reconcile the same fixed host recipe using its already enrolled credentials."""
+    from talos_tools import private_dir
+    from local_lifecycle_record import execution_lock, tree_digest
+    import hashlib
+    import time
+    directory = private_dir(Path(record_dir))
+    receipt = directory / 'capacity-host.json'
+    if receipt.exists():
+        raise ValueError('Use a fresh local capacity record directory')
+    ssh = ['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', 'server-10-42']
+    def run(command, data=None):
+        result = subprocess.run(ssh + [command], input=data, capture_output=True, timeout=180)
+        (directory / 'last-command.log').write_bytes(result.stdout + b'\n' + result.stderr)
+        if result.returncode:
+            raise ValueError('Local capacity reconciliation failed; private diagnostics retained')
+        return result.stdout
+    with execution_lock():
+        remote = run('umask 077 && mktemp -d /var/tmp/homelab-capacity.XXXXXXXX').decode().strip()
+        if not re.fullmatch(r'/var/tmp/homelab-capacity\.[A-Za-z0-9]{8}', remote):
+            raise ValueError('Unexpected host workspace')
+        record = {'execution':'local', 'source_tree_sha256':tree_digest(), 'started_at':time.time(), 'apply':'running'}
+        receipt.write_text(json.dumps(record, indent=2))
+        try:
+            archive = io.BytesIO()
+            with tarfile.open(fileobj=archive, mode='w:gz') as tar:
+                files = ['scripts/install-homelab-capacity.sh', 'apps/platform/storage/physical.py',
+                         'apps/platform/storage/physical_server.py']
+                files += [str(p.relative_to(ROOT)) for p in sorted((ROOT / 'config/environments/proxmox/homelab/capacity').glob('*'))]
+                for name in files: tar.add(ROOT / name, arcname=name, recursive=False)
+            run('tar -xzf - -C ' + remote, archive.getvalue())
+            run('mkdir -m 700 ' + remote + '/credentials && cp /etc/homelab-capacity/config.json /etc/homelab-capacity/server.crt /etc/homelab-capacity/server.key /etc/homelab-capacity/client-ca.crt ' + remote + '/credentials/')
+            run('bash ' + remote + '/scripts/install-homelab-capacity.sh ' + remote + '/credentials')
+            observed = run('sha256sum /usr/local/lib/homelab-capacity/physical.py').decode().split()[0]
+            if observed != hashlib.sha256((ROOT / 'apps/platform/storage/physical.py').read_bytes()).hexdigest():
+                raise ValueError('Installed physical sampler differs from reviewed source')
+            record.update(apply='success', sampler_sha256=observed, completed_at=time.time())
+        finally:
+            run('rm -rf -- ' + remote)
+            receipt.write_text(json.dumps(record, indent=2))
+    print('PASS: local fixed capacity recipe reconciled using existing host credentials')
+
 if __name__ == '__main__':
     try:
-        main()
+        if len(sys.argv) == 3 and sys.argv[1] == '--local-existing-credentials':
+            local_existing_credentials(sys.argv[2])
+        else:
+            main()
     except Exception:
         print('Capacity host reconciliation failed; credentials and private diagnostics suppressed', file=sys.stderr)
         sys.exit(1)

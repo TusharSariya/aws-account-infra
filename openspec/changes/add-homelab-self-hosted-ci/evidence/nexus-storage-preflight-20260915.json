@@ -1,0 +1,36 @@
+{
+  "node": "talos-worker-01",
+  "sampled_at": "2026-09-16T00:13:21Z",
+  "allocatable_bytes": 94227975217,
+  "root": {
+    "time": "2026-09-16T00:13:21Z",
+    "availableBytes": 83157336064,
+    "capacityBytes": 104996012032,
+    "usedBytes": 21838675968,
+    "inodesFree": 50984878,
+    "inodes": 51300352,
+    "inodesUsed": 315474
+  },
+  "image_fs": {
+    "time": "2026-09-16T00:13:20Z",
+    "availableBytes": 83157336064,
+    "capacityBytes": 104996012032,
+    "usedBytes": 19232182272,
+    "inodesFree": 50984878,
+    "inodes": 51300352,
+    "inodesUsed": 308240
+  },
+  "scratch_bytes": 64424509440,
+  "headroom_bytes": 8589934592,
+  "cache_images": [
+    {
+      "names": [
+        "docker.io/library/postgres@sha256:f3bd19c606e442c3d7bdfa8002e03fe260a1023351e0ea4598032022b68dd6e3"
+      ],
+      "sizeBytes": 156043705
+    }
+  ],
+  "required_bytes": 94853120000,
+  "shortfall_bytes": 625144783,
+  "passes": false
+}

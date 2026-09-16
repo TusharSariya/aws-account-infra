@@ -1,0 +1,48 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: default-deny, namespace: homelab-cache}
+spec: {podSelector: {}, policyTypes: [Ingress, Egress]}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: nexus, namespace: homelab-cache}
+spec:
+  podSelector: {matchLabels: {app: nexus}}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: arc-runners}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: homelab-cache}}
+      ports: [{port: 8081}, {port: 5000}, {port: 5001}, {port: 5002}, {port: 5003}, {port: 5004}]
+  egress:
+    - to: [{podSelector: {matchLabels: {app: nexus-postgres}}}]
+      ports: [{port: 5432}]
+    - to: [{namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}}]
+      ports: [{port: 53, protocol: UDP}, {port: 53, protocol: TCP}]
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, 100.64.0.0/10, 127.0.0.0/8]
+      ports: [{port: 443}, {port: 80}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: postgres, namespace: homelab-cache}
+spec:
+  podSelector: {matchLabels: {app: nexus-postgres}}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from: [{podSelector: {matchLabels: {app: nexus}}}]
+      ports: [{port: 5432}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: configure, namespace: homelab-cache}
+spec:
+  podSelector: {matchLabels: {app: nexus-configure}}
+  policyTypes: [Egress]
+  egress:
+    - to: [{podSelector: {matchLabels: {app: nexus}}}]
+      ports: [{port: 8081}]
+    - to: [{namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}}]
+      ports: [{port: 53, protocol: UDP}, {port: 53, protocol: TCP}]

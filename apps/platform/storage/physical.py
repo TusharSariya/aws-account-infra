@@ -23,12 +23,18 @@ def parse_lvs(document, pool, measured_at):
         if not math.isfinite(value) or not 0 <= value <= 100:
             raise ValueError('Invalid thin-pool percentage')
         result[name] = {'identity': pool, 'healthy': True, 'measured_at': measured_at, 'used_percent': value}
+    if 'lv_size' in row:
+        size = float(row['lv_size'])
+        if not math.isfinite(size) or size <= 0:
+            raise ValueError('Invalid physical pool size')
+        result['pool.data']['available_bytes'] = int(size * (100 - result['pool.data']['used_percent']) / 100)
     return result
 
 
 def collect(pool):
     result = subprocess.run(['/usr/sbin/lvs', '--reportformat', 'json',
-                             '--options', 'vg_name,lv_name,segtype,lv_attr,data_percent,metadata_percent'],
+                             '--units', 'b', '--nosuffix',
+                             '--options', 'vg_name,lv_name,segtype,lv_attr,data_percent,metadata_percent,lv_size'],
                             capture_output=True, text=True, timeout=10, check=True,
                             env={'PATH': '/usr/sbin:/usr/bin', 'LC_ALL': 'C'})
     return parse_lvs(json.loads(result.stdout), pool, time.time())

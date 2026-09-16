@@ -28,6 +28,15 @@ def filesystem_uuid(fd):
     return str(uuid.UUID(bytes=geometry[64:80]))
 
 
+def projects(config):
+    result = dict(PROJECTS)
+    for name, volume in config.get('cacheProjects', {}).items():
+        if name not in ('blobs', 'database', 'configuration', 'temporary'):
+            raise ValueError('Unknown cache project')
+        result['cache.' + name] = (volume['path'], volume['project'], int(volume['size'].removesuffix('Gi')) * 1024**3)
+    return result
+
+
 def guest(config):
     expected = str(uuid.UUID(config['filesystemUUID']))  # no automatic trust enrollment
     fd = open_mount('/var/mnt/local-path-provisioner', '/dev/sdb1')
@@ -35,7 +44,7 @@ def guest(config):
         if filesystem_uuid(fd) != expected:
             raise ValueError('Filesystem UUID mismatch')
         sample = {}
-        for name, (directory, project, limit) in PROJECTS.items():
+        for name, (directory, project, limit) in projects(config).items():
             project_fd = open_project(fd, directory)
             try:
                 assign_empty_directory(project_fd, project)
@@ -57,7 +66,8 @@ def guest(config):
         for name, used, total in [('filesystem.bytes', stats.f_blocks - stats.f_bavail, stats.f_blocks),
                                   ('filesystem.inodes', stats.f_files - stats.f_favail, stats.f_files)]:
             sample[name] = {'identity': expected, 'healthy': True, 'measured_at': time.time(),
-                            'used_percent': 100 * used / total}
+                            'used_percent': 100 * used / total,
+                            'available_bytes': (total - used) * stats.f_frsize if name == 'filesystem.bytes' else 0}
         return sample
     finally:
         os.close(fd)
@@ -104,7 +114,7 @@ def publish(mode, sample):
 
 
 def healthy_sample(mode, config, sample, now):
-    expected = ({**{name: str(project) for name, (_, project, _) in PROJECTS.items()},
+    expected = ({**{name: str(project) for name, (_, project, _) in projects(config).items()},
                  "filesystem.bytes": config["filesystemUUID"],
                  "filesystem.inodes": config["filesystemUUID"]} if mode == "guest" else
                 {name: config["physicalPool"] for name in ("pool.data", "pool.metadata")})

@@ -1,0 +1,13 @@
+node: talos-worker-01
+images:
+  nexus: sonatype/nexus3:3.96.1@sha256:56142f13432cf072e017aebb2025f201e42ae36ff40bb82618c702504c61f7dd
+  postgres: postgres:17.6-bookworm@sha256:f3bd19c606e442c3d7bdfa8002e03fe260a1023351e0ea4598032022b68dd6e3
+volumes: {}
+# Credentials are independently enrolled; never embedded in Helm or state.
+credentialsSecret: nexus-database
+adminSecret: nexus-administrator
+configurationImage: python:3.14-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6
+configure: false
+repositories: {}
+configurationCode: ''
+monitorCode: ''

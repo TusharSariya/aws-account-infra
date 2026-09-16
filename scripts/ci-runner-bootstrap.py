@@ -8,6 +8,7 @@ from pathlib import Path
 import subprocess
 import time
 from ci_runner_plan import guard, guard_start
+from worker_disk_plan import guard as guard_disk
 from ci_retirement_plan import guard as guard_retirement, guard_ai_off
 from local_lifecycle_tools import setup
 from local_lifecycle_record import execution_lock, guard_environment, tree_digest
@@ -29,12 +30,12 @@ def private(path):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('operation', choices=['plan', 'apply'])
-    parser.add_argument('--stage', choices=['foundation', 'start', 'retirement'], default='foundation')
+    parser.add_argument('--stage', choices=['foundation', 'start', 'retirement', 'worker-disk'], default='foundation')
     parser.add_argument('--kubeconfig', type=Path)
     parser.add_argument('--maintenance-record', type=Path)
     parser.add_argument('--record-dir', type=Path, required=True)
     args = parser.parse_args()
-    plan_guard = {'foundation': guard, 'start': guard_start, 'retirement': guard_retirement}[args.stage]
+    plan_guard = {'foundation': guard, 'start': guard_start, 'retirement': guard_retirement, 'worker-disk': guard_disk}[args.stage]
     os.umask(0o077)
     guard_environment()
     if any(k.startswith('AWS_ENDPOINT_URL') for k in os.environ):
@@ -50,6 +51,9 @@ def main():
     env = {k: v for k, v in os.environ.items() if not k.startswith(('TF_', 'TOFU_', 'PROXMOX_VE_'))}
     env.update(AWS_PROFILE='admin', AWS_IGNORE_CONFIGURED_ENDPOINT_URLS='true', PROXMOX_VE_ENDPOINT=credentials['endpoint'],
                PROXMOX_VE_API_TOKEN=credentials['api_token'])
+    # Preserve certificate/hostname validation even when Mac MagicDNS is unavailable.
+    from proxmox_peer_proxy import configure
+    configure(env)
     command = ['tofu', '-chdir=' + str(DIRECTORY)]
     backend = json.loads((DIRECTORY / '.terraform/terraform.tfstate').read_text())['backend']
     expected = {'bucket': 'tofu-state-992382747916-us-east-1', 'key': 'proxmox/homelab/terraform.tfstate',
@@ -67,16 +71,20 @@ def main():
     record_path = record_dir / 'record.json'
     with execution_lock():
         maintenance_sha = None
-        if args.stage == 'retirement':
+        if args.stage in ('retirement', 'worker-disk'):
             if (not args.kubeconfig or args.kubeconfig.is_symlink()
                     or args.kubeconfig.stat().st_mode & 0o077 or args.kubeconfig.stat().st_uid != os.getuid()):
                 raise ValueError('Retirement requires a private owned kubeconfig to verify AI Off')
             kube = ['kubectl', '--kubeconfig', str(args.kubeconfig), '--request-timeout=30s']
             deployment = json.loads(subprocess.check_output(kube + ['get', 'deployment', 'ai-runtime',
-                '-n', 'homelab-models', '-o', 'json'], env=env, timeout=35))
+                '-n', 'homelab-models', '-o', 'json'], timeout=35))
             pods = json.loads(subprocess.check_output(kube + ['get', 'pods', '-n', 'homelab-models',
-                '-l', 'app=ai-runtime', '-o', 'json'], env=env, timeout=35))
+                '-l', 'app=ai-runtime', '-o', 'json'], timeout=35))
             guard_ai_off(deployment, pods)
+        if args.stage == 'worker-disk':
+            from worker_disk_preflight import verify_host
+            capacity = verify_host()
+            (record_dir / ('preflight-' + args.operation + '.json')).write_text(json.dumps(capacity, indent=2))
         if args.stage == 'start':
             if not args.maintenance_record:
                 raise ValueError('Worker recovery record is required before starting the manager')
@@ -122,6 +130,8 @@ def main():
         plan_guard(value)
         # Worker restart is a separate maintenance step. The provider is explicitly
         # configured not to reboot automatically; this operation never powers off a VM.
+        if args.stage == 'worker-disk':
+            (record_dir / 'pre-apply-state.json').write_bytes(subprocess.check_output(command + ['state', 'pull'], env=env))
         record['apply'] = 'running'
         record_path.write_text(json.dumps(record, indent=2) + '\n')
         with (record_dir / 'apply.log').open('wb') as log:

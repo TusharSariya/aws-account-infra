@@ -43,6 +43,8 @@ jobs:
           tailscale: 'true'
           packages: dnsutils openssh-client rsync
       - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: false
       - uses: docker/setup-qemu-action@v3
         with:
           platforms: arm64

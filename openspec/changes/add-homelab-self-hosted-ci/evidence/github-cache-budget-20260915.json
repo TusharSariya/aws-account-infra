@@ -1,0 +1,16 @@
+{
+  "observed_at": "2026-09-16T00:57:38.059383+00:00",
+  "repository": "TusharSariyaOrg/aws-account-infra",
+  "storage_limit": {
+    "max_cache_size_gb": 10
+  },
+  "budget": {
+    "id": "9acefd2e-31d9-474f-82e7-be3edeb44c22",
+    "budget_type": "SkuPricing",
+    "budget_product_sku": "actions_cache_storage",
+    "budget_scope": "repository",
+    "budget_amount": 0,
+    "prevent_further_usage": true,
+    "budget_entity_name": "TusharSariyaOrg/aws-account-infra"
+  }
+}

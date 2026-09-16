@@ -1,0 +1,94 @@
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: nexus-postgres-init, namespace: homelab-cache}
+data:
+  10-nexus.sql: |
+    CREATE EXTENSION IF NOT EXISTS pg_trgm;
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: nexus-postgres, namespace: homelab-cache}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector: {matchLabels: {app: nexus-postgres}}
+  template:
+    metadata: {labels: {app: nexus-postgres}}
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector: {kubernetes.io/hostname: {{ .Values.node }}}
+      securityContext: {runAsNonRoot: true, runAsUser: 999, runAsGroup: 1000, fsGroup: 1000, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: postgres
+          image: {{ .Values.images.postgres | quote }}
+          args: ["-c", "shared_buffers=256MB", "-c", "max_connections=100", "-c", "max_wal_size=512MB"]
+          env:
+            - {name: PGDATA, value: /data/pgdata}
+            - {name: POSTGRES_DB, value: nexus}
+            - {name: POSTGRES_USER, value: nexus}
+            - name: POSTGRES_PASSWORD
+              valueFrom: {secretKeyRef: {name: {{ .Values.credentialsSecret }}, key: password}}
+          resources:
+            requests: {cpu: 500m, memory: 2Gi, ephemeral-storage: 128Mi}
+            limits: {cpu: 500m, memory: 2Gi, ephemeral-storage: 128Mi}
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          readinessProbe: {exec: {command: [pg_isready, -U, nexus, -d, nexus]}, periodSeconds: 10}
+          volumeMounts:
+            - {name: data, mountPath: /data}
+            - {name: runtime, mountPath: /var/run/postgresql}
+            - {name: runtime, mountPath: /tmp}
+            - {name: initialization, mountPath: /docker-entrypoint-initdb.d, readOnly: true}
+      volumes:
+        - {name: data, persistentVolumeClaim: {claimName: database}}
+        - {name: initialization, configMap: {name: nexus-postgres-init}}
+        - {name: runtime, emptyDir: {medium: Memory, sizeLimit: 32Mi}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: nexus, namespace: homelab-cache}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector: {matchLabels: {app: nexus}}
+  template:
+    metadata: {labels: {app: nexus}}
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector: {kubernetes.io/hostname: {{ .Values.node }}}
+      terminationGracePeriodSeconds: 120
+      securityContext: {runAsNonRoot: true, runAsUser: 200, runAsGroup: 1000, fsGroup: 1000, seccompProfile: {type: RuntimeDefault}}
+      initContainers:
+        - name: directories
+          image: {{ .Values.images.nexus | quote }}
+          command: [sh, -ec, "mkdir -p /temporary/log /temporary/tmp"]
+          resources:
+            requests: {cpu: 100m, memory: 128Mi, ephemeral-storage: 16Mi}
+            limits: {cpu: 100m, memory: 128Mi, ephemeral-storage: 16Mi}
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          volumeMounts: [{name: temporary, mountPath: /temporary}]
+      containers:
+        - name: nexus
+          image: {{ .Values.images.nexus | quote }}
+          env:
+            - {name: INSTALL4J_ADD_VM_PARAMS, value: "-Xms2g -Xmx3g -XX:MaxDirectMemorySize=2g -Djava.util.prefs.userRoot=/nexus-data/javaprefs -Djava.io.tmpdir=/nexus-data/tmp"}
+            - {name: NEXUS_DATASTORE_NEXUS_JDBCURL, value: "jdbc:postgresql://postgres.homelab-cache.svc.cluster.local:5432/nexus"}
+            - {name: NEXUS_DATASTORE_NEXUS_USERNAME, value: nexus}
+            - {name: NEXUS_DATASTORE_NEXUS_ADVANCED, value: "maximumPoolSize=50"}
+            - name: NEXUS_DATASTORE_NEXUS_PASSWORD
+              valueFrom: {secretKeyRef: {name: {{ .Values.credentialsSecret }}, key: password}}
+          resources:
+            requests: {cpu: '2', memory: 8Gi, ephemeral-storage: 256Mi}
+            limits: {cpu: '2', memory: 8Gi, ephemeral-storage: 256Mi}
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          startupProbe: {httpGet: {path: /service/rest/v1/status, port: 8081}, periodSeconds: 10, failureThreshold: 90}
+          readinessProbe: {httpGet: {path: /service/rest/v1/status, port: 8081}, periodSeconds: 10}
+          volumeMounts:
+            - {name: configuration, mountPath: /nexus-data}
+            - {name: blobs, mountPath: /nexus-data/blobs}
+            - {name: temporary, mountPath: /nexus-data/log, subPath: log}
+            - {name: temporary, mountPath: /nexus-data/tmp, subPath: tmp}
+            - {name: temporary, mountPath: /tmp, subPath: tmp}
+      volumes:
+        - {name: configuration, persistentVolumeClaim: {claimName: configuration}}
+        - {name: blobs, persistentVolumeClaim: {claimName: blobs}}
+        - {name: temporary, persistentVolumeClaim: {claimName: temporary}}

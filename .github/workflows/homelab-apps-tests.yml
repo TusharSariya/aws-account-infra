@@ -55,6 +55,8 @@ jobs:
         with:
           docker: 'true'
       - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: false
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.19.0

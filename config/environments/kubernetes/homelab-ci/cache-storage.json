@@ -1,0 +1,22 @@
+{
+  "blobs": {
+    "path": "ci-cache-blobs",
+    "project": 31101,
+    "size": "48Gi"
+  },
+  "database": {
+    "path": "ci-cache-database",
+    "project": 31102,
+    "size": "6Gi"
+  },
+  "configuration": {
+    "path": "ci-cache-configuration",
+    "project": 31103,
+    "size": "2Gi"
+  },
+  "temporary": {
+    "path": "ci-cache-temporary",
+    "project": 31104,
+    "size": "8Gi"
+  }
+}

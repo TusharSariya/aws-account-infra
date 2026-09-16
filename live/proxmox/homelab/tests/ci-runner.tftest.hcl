@@ -37,7 +37,7 @@ run "ci_capacity" {
     ci_runner_ssh_public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITestFixtureOnly"
   }
   assert {
-    condition     = output.capacity.vcpus == 44 && output.capacity.memory_gib == 176 && output.capacity.primary_disks_gib == 1500
+    condition     = output.capacity.vcpus == 44 && output.capacity.memory_gib == 176 && output.capacity.primary_disks_gib == 1528
     error_message = "Runner must fit the revised CPU/disk and unchanged RAM budget."
   }
   assert {

@@ -78,8 +78,8 @@ spec:
             - {name: OLLAMA_MAX_QUEUE, value: '16'}
             - {name: OLLAMA_NO_CLOUD, value: 'true'}
           resources:
-            requests: {cpu: '34', memory: 64Gi, ephemeral-storage: 256Mi}
-            limits: {cpu: '34', memory: 64Gi, ephemeral-storage: 2Gi}
+            requests: {cpu: {{ .Values.ollamaCpu | quote }}, memory: 64Gi, ephemeral-storage: 256Mi}
+            limits: {cpu: {{ .Values.ollamaCpu | quote }}, memory: 64Gi, ephemeral-storage: 2Gi}
           securityContext:
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false

@@ -102,7 +102,7 @@ resource "proxmox_virtual_environment_vm" "ci_runner" {
       error_message = "CI activation requires reviewed VM creation and an administrator public key."
     }
     precondition {
-      condition     = local.total_memory_gib == 176 && local.total_vcpus == 44 && local.total_guest_disks_gib == 1500
+      condition     = local.total_memory_gib == 176 && local.total_vcpus == 44 && local.total_guest_disks_gib == 1528
       error_message = "CI activation must preserve the approved host capacity budget."
     }
   }
