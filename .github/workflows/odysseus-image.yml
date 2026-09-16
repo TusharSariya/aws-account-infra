@@ -20,6 +20,11 @@ on:
       - 'scripts/verify-ai-images.py'
       - '.github/workflows/odysseus-image.yml'
   workflow_dispatch:
+    inputs:
+      talos_acceptance:
+        description: Run the explicit acceptance build on the deployed Talos compatibility runner
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -28,7 +33,7 @@ concurrency:
 jobs:
   build:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos"}')[(inputs.talos_acceptance || contains(github.event.pull_request.labels.*.name, 'arc-acceptance')) && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
     timeout-minutes: 60
     environment: prod
     permissions:
@@ -76,8 +81,6 @@ jobs:
             org.opencontainers.image.revision=${{ steps.source.outputs.revision }}
           provenance: mode=max
           sbom: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
       - name: Verify package remains private and report immutable reference
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
