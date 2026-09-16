@@ -19,16 +19,18 @@ for attempt in {1..20}; do
   sleep 0.1
 done
 curl --silent --fail --max-time 1 "$base/health" >/dev/null
+# The proxy buffers complete artifacts before replying, so cold large downloads
+# need a longer client read timeout. Retry counts remain unchanged.
 # A user configuration allows a later CodeArtifact login to replace the registry
 # for private reads/publication. Never force a registry through npm's environment.
-printf 'registry=%s/npm/\nfetch-retries=0\naudit=false\n' "$base" > "$cache_dir/npmrc"
+printf 'registry=%s/npm/\nfetch-retries=0\nfetch-timeout=300000\naudit=false\n' "$base" > "$cache_dir/npmrc"
 mkdir -p "$HOME/.config/pip"
 # These are fresh disposable runners; a pre-existing config needs explicit review.
 test ! -e "$HOME/.config/pip/pip.conf"
-printf '[global]\nindex-url = %s/pypi/simple/\nretries = 0\n' "$base" > "$HOME/.config/pip/pip.conf"
+printf '[global]\nindex-url = %s/pypi/simple/\nretries = 0\ntimeout = 300\n' "$base" > "$HOME/.config/pip/pip.conf"
 {
   printf 'NPM_CONFIG_USERCONFIG=%s/npmrc\n' "$cache_dir"
-  printf 'UV_INDEX_URL=%s/pypi/simple/\nUV_HTTP_RETRIES=0\n' "$base"
+  printf 'UV_INDEX_URL=%s/pypi/simple/\nUV_HTTP_RETRIES=0\nUV_HTTP_TIMEOUT=300\n' "$base"
   printf 'GOPROXY=%s/go/\n' "$base"
 } >> "$GITHUB_ENV"
 # Keep every suite, component and Signed-By field intact. Nexus serves the
@@ -54,5 +56,5 @@ for path in paths:
         for scheme in ('https', 'http'):
             text = text.replace(scheme + '://' + origin, base + '/' + repository)
     path.write_text(text)
-Path('/etc/apt/apt.conf.d/99-homelab-cache').write_text('Acquire::Retries "0";\n')
+Path('/etc/apt/apt.conf.d/99-homelab-cache').write_text('Acquire::Retries "0";\nAcquire::http::Timeout "300";\n')
 PY

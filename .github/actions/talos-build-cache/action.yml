@@ -55,12 +55,12 @@ runs:
         environment = config.with_name('homelab-dependency.env')
         environment.write_text(
             'GOPROXY=http://127.0.0.1:18082/go/\n'
-            'PIP_INDEX_URL=http://127.0.0.1:18082/pypi/simple/\nPIP_RETRIES=0\n'
-            'UV_INDEX_URL=http://127.0.0.1:18082/pypi/simple/\nUV_HTTP_RETRIES=0\n'
-            'NPM_CONFIG_REGISTRY=http://127.0.0.1:18082/npm/\nNPM_CONFIG_FETCH_RETRIES=0\n'
+            'PIP_INDEX_URL=http://127.0.0.1:18082/pypi/simple/\nPIP_RETRIES=0\nPIP_TIMEOUT=300\n'
+            'UV_INDEX_URL=http://127.0.0.1:18082/pypi/simple/\nUV_HTTP_RETRIES=0\nUV_HTTP_TIMEOUT=300\n'
+            'NPM_CONFIG_REGISTRY=http://127.0.0.1:18082/npm/\nNPM_CONFIG_FETCH_RETRIES=0\nNPM_CONFIG_FETCH_TIMEOUT=300000\n'
             'NPM_CONFIG_AUDIT=false\nAPT_CONFIG=/run/secrets/dependency-apt\n')
         apt = config.with_name('homelab-dependency.apt')
-        apt.write_text('Acquire::http::Proxy "http://127.0.0.1:18082/";\nAcquire::Retries "0";\n')
+        apt.write_text('Acquire::http::Proxy "http://127.0.0.1:18082/";\nAcquire::Retries "0";\nAcquire::http::Timeout "300";\n')
         environment.chmod(0o600)
         apt.chmod(0o600)
         value['secret-files'] = 'dependency-env=' + str(environment) + '\ndependency-apt=' + str(apt)

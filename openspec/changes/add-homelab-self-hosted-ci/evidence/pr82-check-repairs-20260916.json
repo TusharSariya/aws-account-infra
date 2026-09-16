@@ -1,0 +1,38 @@
+{
+  "date": "2026-09-16",
+  "source_revision": "7f2258e375cb072cd6ed708e64d760ad415999d7",
+  "failures": {
+    "application_contracts": {
+      "run_id": 35125909104,
+      "attempt_1": "setup-opentofu AggregateError before tests",
+      "attempt_2": "success"
+    },
+    "ollama_image": {
+      "run_id": 35125909281,
+      "attempt_1": "published image; smoke-test pull failed with unexpected EOF",
+      "attempt_2": "queued"
+    },
+    "sdk_stable": {
+      "run_id": 35125909097,
+      "failure": "publication required by scripts/sdk-publish.sh change but publish-stable label absent",
+      "recovery": "authorized publish-stable label added; release gate preserved"
+    },
+    "admission": {
+      "run_id": 35125909282,
+      "failure": "active-runner guard rejected deployment",
+      "recovery": "rerun after drain; guard preserved"
+    },
+    "ecr_image": {
+      "run_id": 35125909425,
+      "failure": "pip timed out after 15 seconds waiting for buffered cold playwright wheel",
+      "repair": "300-second client read timeout; proxy attempt counts unchanged"
+    }
+  },
+  "timeout_fixture": {
+    "old_short_timeout": "failed as expected",
+    "generated_client_config_delayed_wheel": "passed",
+    "incorrect_sha256": "rejected",
+    "package_manager_retries": 0
+  },
+  "qualification": "Failure diagnosis and focused repair; not measured job-sizing evidence"
+}
