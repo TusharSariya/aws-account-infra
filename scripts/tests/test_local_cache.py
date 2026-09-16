@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import subprocess
 import unittest
+from unittest.mock import patch
 import yaml
 from cache_capacity import verify_cache_storage
 from ci_scratch import recommend, validate_adoption
@@ -14,7 +15,11 @@ ROOT = Path(__file__).resolve().parents[2]
 class ScratchTests(unittest.TestCase):
     def fixture(self):
         return [dict(cache=state, runner_id=str(i), success=True, evidence='run/'+str(i),
-                     scope='whole-pod-including-images-layers-temporary-and-logs', peak_bytes=4*1024**3)
+                     scope='whole-pod-including-images-layers-temporary-and-logs', peak_bytes=4*1024**3,
+                     coverage='before-checkout-through-cleanup', source_revision='a'*40,
+                     image_digest='sha256:'+'b'*64, job='checks/test', platform='linux/amd64',
+                     run_id=str(i), memory_peak_bytes=1024**3, cpu_peak_cores=1.0,
+                     upstream_bytes=100, elapsed_seconds=20, cold_content_evidence='fixture-empty')
                 for i, state in enumerate(['cold', 'warm', 'warm'])]
 
     def test_margin_rounding_and_revalidation(self):
@@ -23,7 +28,7 @@ class ScratchTests(unittest.TestCase):
         runs[1]['peak_bytes'] += 1
         self.assertEqual(recommend(runs), 7)
         with self.assertRaises(ValueError): validate_adoption(runs, {'success': True, 'declared_gib': 6})
-        self.assertEqual(validate_adoption(runs, dict(success=True, declared_gib=7, evidence='run/4', runner_id='4')), 7168)
+        self.assertEqual(validate_adoption(runs, dict(runs[0], declared_gib=7, evidence='run/4', runner_id='4', run_id='4')), 7168)
         for run in runs: run['peak_bytes'] = 0
         self.assertEqual(recommend(runs), 2)
 
@@ -32,6 +37,28 @@ class ScratchTests(unittest.TestCase):
         with self.assertRaises(ValueError): recommend(runs[:2])
         runs[1]['runner_id'] = runs[0]['runner_id']
         with self.assertRaises(ValueError): recommend(runs)
+
+    def test_incomparable_or_incomplete_receipts_rejected(self):
+        for field, value in [('source_revision', 'c'*40), ('image_digest', 'sha256:'+'c'*64),
+                             ('job', 'other'), ('platform', 'linux/arm64'),
+                             ('coverage', 'after-checkout'), ('upstream_bytes', -1),
+                             ('cpu_peak_cores', float('nan'))]:
+            with self.subTest(field=field):
+                runs = self.fixture()
+                runs[1][field] = value
+                with self.assertRaises(ValueError): recommend(runs)
+        runs = self.fixture()
+        del runs[0]['cold_content_evidence']
+        with self.assertRaises(ValueError): recommend(runs)
+
+    def test_fourth_run_requires_comparable_complete_measurement(self):
+        runs = self.fixture()
+        verification = dict(runs[0], runner_id='fourth', run_id='fourth', declared_gib=6)
+        self.assertEqual(validate_adoption(runs, verification), 6144)
+        for field, value in [('source_revision', 'c'*40), ('peak_bytes', 6*1024**3+1),
+                             ('image_digest', 'sha256:'+'c'*64), ('runner_id', '0')]:
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                validate_adoption(runs, dict(verification, **{field: value}))
 
 
 class CacheTests(unittest.TestCase):
@@ -75,16 +102,21 @@ class CacheTests(unittest.TestCase):
         self.assertEqual(len([d for d in docs if d['kind']=='PersistentVolume']), 4)
 
     def test_github_dependency_cache_is_disabled(self):
-        for p in (ROOT/'.github/workflows').glob('*.yml'):
+        for p in (ROOT/'.github').rglob('*.yml'):
             workflow = yaml.load(p.read_text(), Loader=yaml.BaseLoader)
-            for job in workflow.get('jobs', {}).values():
-                for step in job.get('steps', []):
+            groups = [j.get('steps', []) for j in workflow.get('jobs', {}).values()]
+            groups.append(workflow.get('runs', {}).get('steps', []))
+            for steps in groups:
+                for step in steps:
                     action = step.get('uses','')
-                    self.assertFalse(action.startswith('actions/cache@'), p.name)
+                    self.assertFalse(action.startswith(('actions/cache@', 'actions/cache/')), str(p))
                     options = step.get('with', {})
                     if action.startswith('astral-sh/setup-uv@'): self.assertEqual(options.get('enable-cache'), 'false', p.name)
                     if action.startswith('actions/setup-go@'): self.assertEqual(options.get('cache'), 'false', p.name)
-                    self.assertNotIn('type=gha', str(options), p.name)
+                    if action.startswith(('actions/setup-node@', 'actions/setup-python@')):
+                        self.assertFalse(options.get('cache'), p.name)
+                    self.assertNotIn('type=gha', str(step), p.name)
+
 
 
 class MonitorTests(unittest.TestCase):
@@ -121,3 +153,28 @@ class MonitorTests(unittest.TestCase):
             for rule in role['rules']:
                 if rule['resources'] == ['configmaps']:
                     self.assertIn(rule['resourceNames'], [['cache-status'], ['guest-capacity']])
+
+
+class ConfigurationTests(unittest.TestCase):
+    def test_user_requests_match_nexus_openapi_contract(self):
+        spec = importlib.util.spec_from_file_location('cache_configure', ROOT/'apps/platform/cache/configure.py')
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        users = []
+        def request(path, method='GET', value=None, **kwargs):
+            if method == 'GET':
+                return {'security/users?userId=admin': [], 'system/eula': {'accepted': True},
+                        'blobstores/file/default': {}, 'repositories': [], 'security/roles': [],
+                        'security/privileges': [], 'security/users': [{'userId': 'anonymous', 'source': 'default'}],
+                        'security/realms/active': []}[path]
+            if path.startswith('security/users'):
+                self.assertIn('emailAddress', value)
+                self.assertNotIn('email', value)
+                if method == 'PUT': self.assertEqual(value['source'], 'default')
+                else: self.assertIn('password', value)
+                users.append(value['userId'])
+        def read(path):
+            return json.dumps({'acceptEula': True, 'repositories': []}) if str(path) == '/config/repositories.json' else 'fixture-password'
+        with patch.object(module, 'request', side_effect=request), patch.object(module.Path, 'read_text', read):
+            module.reconcile()
+        self.assertEqual(users, ['anonymous', 'cache-build-writer', 'cache-monitor'])

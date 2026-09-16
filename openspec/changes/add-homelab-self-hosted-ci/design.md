@@ -23,7 +23,7 @@ Keep AI off throughout migration. Preserve existing state keys and append eviden
 The single worker remains a shared failure domain. Trusted privileged Docker runners are not isolation for hostile fork code. StrictFIFO may leave resources unused while the head waits. Per-Pod Argo admission is not atomic workflow admission. Controller failure must not strand operational commands.
 
 ## Validation
-Verify pinned artifacts, rendered Helm, OpenTofu plans, workflow contracts, admission/security policies and strict OpenSpec. Exercise AI-first/CI-first contention, FIFO head blocking, CPU/RAM exhaustion, cancellation, expiry, controller/node restart and reservation cleanup. Prove Stop/Status and Pi-hole during exhaustion and Kueue outage. Run actual ARC checkout/build/ARM/private deployment/quota jobs and hosted recovery with ARC absent. Require fresh empty post-deployment plans and existing merge gates; leave unobserved acceptance unchecked.
+Verify pinned artifacts, rendered Helm, OpenTofu plans, workflow contracts, admission/security policies and strict OpenSpec. Exercise AI-first/CI-first contention, FIFO head blocking, CPU/RAM exhaustion, cancellation, controller/node restart and reservation cleanup. Prove Stop/Status and Pi-hole during exhaustion and Kueue outage. Run actual ARC checkout/build/ARM/private deployment/quota jobs and hosted recovery with ARC absent. Require fresh empty post-deployment plans and existing merge gates; leave unobserved acceptance unchecked.
 
 ## Capacity rebudget, 2026-09-15
 Historical measurements and approvals remain in evidence. The approved current
@@ -54,8 +54,8 @@ fallback. Workflow-only changes must not fan out to unrelated state roots.
 
 Deploy admission/catalog first, run explicit Talos proofs including simultaneous
 mixed sizes, combined CPU/RAM/storage exhaustion and cleanup, then merge validated
-routing and set CI_EXECUTOR=talos. Observe GitHub's documented 24-hour queue expiry
-separately from cancellation with external monitoring and fixture cleanup. Keep
+routing and set CI_EXECUTOR=talos. The user waived the independent 24-hour GitHub expiry observation on 2026-09-15
+(America/St_Johns). Expiry remains unverified; retain optional tooling without running it. Keep
 unobserved acceptance unchecked. Verify actual routine runs, empty plans,
 autostart, Pi-hole and AI Off before returning the temporary Actions budget to $0.
 
@@ -103,8 +103,8 @@ Deploy services and admission first. Prove cross-runner npm/Python/APT/Docker
 reuse with upstream bytes and elapsed time; concurrency, quota rejection,
 cleanup/compaction, interrupted downloads, service/node restart, fallback,
 AI-first/CI-first contention, Stop/Status/Pi-hole under queue load and outage.
-Complete the independent 24-hour expiry observation and hosted recovery before
-global routing. Finish with empty plans, AI Off, healthy Pi-hole and no leaked
+Complete hosted recovery and all other required acceptance before global routing.
+The independent 24-hour expiry observation is waived, not verified. Finish with empty plans, AI Off, healthy Pi-hole and no leaked
 reservations. Historical evidence is retained and does not prove new budgets.
 
 ## Authorized worker OS disk expansion

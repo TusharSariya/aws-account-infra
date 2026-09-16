@@ -49,7 +49,7 @@ Routine workflows SHALL select github-hosted or talos via CI_EXECUTOR, without a
 Deployment SHALL fail unless fresh measured root/image storage, platform requests,
 the 60-GiB compute quota and 8-GiB additional storage headroom fit the worker.
 It SHALL account for desired ARC listeners and available Pod slots, preserve the
-118-GiB RAM platform reserve, wait for runners to become idle, and never consume
+18-GiB RAM platform reserve, wait for runners to become idle, and never consume
 retained AI storage. Jobs SHALL install only their required prerequisites.
 
 #### Scenario: Insufficient disk headroom
@@ -60,15 +60,15 @@ retained AI storage. Jobs SHALL install only their required prerequisites.
 - **WHEN** simultaneous differently sized runners fit shared CPU, RAM and scratch
 - **THEN** Kueue admits them concurrently and releases reservations after termination
 
-#### Scenario: Independent expiry observation
-- **WHEN** a GitHub job remains queued for the documented 24-hour timeout
-- **THEN** external monitoring records actual expiry separately from cancellation and verifies fixture cleanup
+#### Scenario: Waived independent expiry observation
+- **WHEN** evaluating cutover acceptance under the user waiver dated 2026-09-15 (America/St_Johns)
+- **THEN** the independent 24-hour GitHub expiry observation is recorded as unverified and is not run or required for cutover; cancellation, restart and reservation-cleanup tests remain required
 
 ### Requirement: Bounded local dependency and build caches
 Nexus Community Edition and PostgreSQL SHALL run in isolated platform Pods using
 2 CPU / 8 GiB and 0.5 CPU / 2 GiB respectively, within the 4 CPU / 18 GiB platform
 reserve. XFS project quotas SHALL enforce exactly 64 GiB on the separate data disk:
-48 GiB content, 8 GiB database/configuration and 8 GiB temporary/logs. Deployment
+48 GiB content, 6 GiB database, 2 GiB configuration and 8 GiB temporary/logs. Deployment
 MUST account for retained volumes, physical thin-pool headroom and fresh measurements
 including service images before admitting 60 GiB scratch plus 8 GiB eviction headroom.
 

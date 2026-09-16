@@ -82,8 +82,10 @@ def reconcile():
         request('security/roles'+('/'+identity if identity in roles else ''),'PUT' if identity in roles else 'POST',body)
     users={u['userId']:u for u in request('security/users')}
     for identity,role in [('anonymous','cache-reader'),('cache-build-writer','cache-build-writer'),('cache-monitor','cache-monitor')]:
-        body={'userId':identity,'firstName':'Cache','lastName':identity,'email':'cache@localhost.invalid','status':'active','roles':[role]}
-        if identity in users:request('security/users/'+identity,'PUT',body)
+        body={'userId':identity,'firstName':'Cache','lastName':identity,'emailAddress':'cache@localhost.invalid','status':'active','roles':[role]}
+        if identity in users:
+            body['source'] = users[identity]['source']
+            request('security/users/'+identity,'PUT',body)
         else:
             body['password']=Path('/credentials/' + ('metrics-password' if identity == 'cache-monitor' else 'build-password')).read_text().strip()
             request('security/users','POST',body)

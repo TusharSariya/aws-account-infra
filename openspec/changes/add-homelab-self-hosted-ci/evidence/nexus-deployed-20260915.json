@@ -1,0 +1,104 @@
+{
+  "observed_at": "2026-09-16T02:22:33.366003+00:00",
+  "apply": "success",
+  "post_plan_empty": true,
+  "capacity": {
+    "cpu": {
+      "allocatable": "37.950",
+      "platform_observed": "3.706",
+      "platform_reserved": "4.000",
+      "pool": "33.5"
+    },
+    "memory": {
+      "allocatable": "180865310720",
+      "platform_observed": "12297699328",
+      "platform_reserved": "19327352832",
+      "pool": "150Gi"
+    },
+    "cache_storage": {
+      "committed_bytes": "423058472960",
+      "cache_bytes": "68719476736",
+      "filesystem_available_bytes": 1262690648064,
+      "thin_pool_available_bytes": 1839531215447
+    },
+    "storage_and_slots": {
+      "pool": "64424509440",
+      "measured_used_with_images": "22875746304",
+      "platform_requests": "520093696",
+      "headroom": "8589934592",
+      "allocatable": "121286269137",
+      "projected_platform_pods": 26,
+      "runner_slots": 30,
+      "pod_headroom": 10
+    }
+  },
+  "queue_resources": [
+    {
+      "coveredResources": [
+        "cpu",
+        "memory",
+        "ephemeral-storage"
+      ],
+      "flavors": [
+        {
+          "name": "homelab-worker",
+          "resources": [
+            {
+              "name": "cpu",
+              "nominalQuota": "33.5"
+            },
+            {
+              "name": "memory",
+              "nominalQuota": "150Gi"
+            },
+            {
+              "name": "ephemeral-storage",
+              "nominalQuota": "60Gi"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "ai_replicas": 0,
+  "ai_requests": [
+    {
+      "ollama": {
+        "cpu": "31500m",
+        "ephemeral-storage": "256Mi",
+        "memory": "64Gi"
+      }
+    },
+    {
+      "odysseus": {
+        "cpu": "1",
+        "ephemeral-storage": "256Mi",
+        "memory": "8Gi"
+      }
+    },
+    {
+      "chroma": {
+        "cpu": "500m",
+        "ephemeral-storage": "256Mi",
+        "memory": "4Gi"
+      }
+    },
+    {
+      "searx": {
+        "cpu": "250m",
+        "ephemeral-storage": "256Mi",
+        "memory": "1Gi"
+      }
+    }
+  ],
+  "reserved_workloads": [],
+  "monitor": {
+    "checked_at": 1789525286.616829,
+    "usage": {
+      "components": 0,
+      "requests_per_day": 0
+    },
+    "warnings": [],
+    "note": "Nexus usage gauges can lag; no paid expansion is enabled"
+  }
+}

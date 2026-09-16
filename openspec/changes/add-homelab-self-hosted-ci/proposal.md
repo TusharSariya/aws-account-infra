@@ -20,7 +20,7 @@ Three reviewed PRs: foundation, admission/runners, cutover. New state key: kuber
 
 ## Local cache extension, 2026-09-15
 Add bounded worker-local Nexus Community Edition and PostgreSQL: 64 GiB XFS
-storage (48 content, 8 database/configuration, 8 temporary/logs), within a revised
+storage (48 content, 6 database, 2 configuration, 8 temporary/logs), within a revised
 4 CPU / 18 GiB platform reserve. AI uses 33.25 CPU / 77 GiB only when admitted.
 Replace remote dependency/build caches with shared proxy/raw/hosted cache
 repositories, measured job-specific scratch, pinned prerequisites, bounded verified
@@ -40,3 +40,9 @@ worker reboot if required. Talos EPHEMERAL uses grow:true on the system disk.
 Verify filesystem/partition identity preservation, larger measured capacity,
 Ready nodes, Pi-hole UDP/TCP and no leaked reservations; then repeat the cache
 image-inclusive checks. Never shrink a disk as rollback.
+
+## Acceptance waiver, 2026-09-15 (America/St_Johns)
+The user waived the independent 24-hour GitHub expiry observation. It remains
+unverified; retain optional expiry tooling without running it. Cancellation,
+controller/node restart and reservation-cleanup tests remain mandatory. This
+waiver does not complete cache, sizing or routing acceptance.
