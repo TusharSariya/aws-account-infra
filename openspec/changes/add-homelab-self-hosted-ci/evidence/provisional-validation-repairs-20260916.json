@@ -1,0 +1,76 @@
+{
+  "date": "2026-09-16",
+  "concurrency": {
+    "maximum_observed_admitted_jobs": 10,
+    "limits": "120 GiB shared; provisional Docker 12/24 GiB; compatibility 30 GiB",
+    "worker_conditions": {
+      "Ready": true,
+      "MemoryPressure": false,
+      "DiskPressure": false,
+      "PIDPressure": false
+    },
+    "qualification": "observed samples, not complete peak sizing"
+  },
+  "fresh_successes": [
+    {
+      "run_id": 35137554822,
+      "job": "application-contracts",
+      "scratch_gib": 12
+    },
+    {
+      "run_id": 35137554890,
+      "job": "offline-validation",
+      "scratch_gib": 12
+    },
+    {
+      "run_id": 35137845282,
+      "job": "application-contracts",
+      "scratch_gib": 12
+    },
+    {
+      "run_id": 35137845612,
+      "job": "checkov",
+      "scratch_gib": 12
+    }
+  ],
+  "preserved_failures": [
+    {
+      "run_id": 35137554880,
+      "cause": "CEL test still used historical 61 GiB rejection; corrected and all 16 cases passed locally"
+    },
+    {
+      "run_id": 35137845323,
+      "cause": "setup-opentofu AggregateError before tests; fresh debug rerun succeeded"
+    },
+    {
+      "run_id": 35137845455,
+      "cause": "setup-opentofu AggregateError before tests"
+    },
+    {
+      "run_id": 35137845270,
+      "cause": "setup-opentofu AggregateError before tests"
+    },
+    {
+      "run_id": 35137845615,
+      "cause": "LocalStack readiness timeout was swallowed; function still Pending when invoked; underlying readiness delay not yet confirmed"
+    }
+  ],
+  "repairs": {
+    "opentofu": "Talos uses exact 1.11.5 archive through existing two-cache/three-upstream checksum downloader; hosted path remains upstream action",
+    "archive_sha256": "901121681e751574d739de5208cad059eddf9bd739b575745cf9e3c961b28a13",
+    "checksum_sources": [
+      "https://api.github.com/repos/opentofu/opentofu/releases/tags/v1.11.5",
+      "https://github.com/opentofu/opentofu/releases/download/v1.11.5/tofu_1.11.5_SHA256SUMS"
+    ],
+    "local_archive_validation": "33821623 bytes via upstream on first attempt; Linux amd64 binary reports 1.11.5",
+    "localstack": "Fail closed on function_active_v2 readiness; bounded 10-minute creation wait; wait for configuration updates; cleanup also runs on readiness failure"
+  },
+  "local_tests": {
+    "localstack_integration": 3,
+    "application_unit": 35,
+    "deploy_unit": 25,
+    "checksum_downloader": 5,
+    "actionlint": "passed"
+  },
+  "remaining": "Talos runtime verification of repaired setup and LocalStack plus remaining job limits/cache acceptance"
+}

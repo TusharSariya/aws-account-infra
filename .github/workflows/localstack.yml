@@ -35,6 +35,8 @@ jobs:
           python -m pytest tests --ignore=tests/integration
       - name: Start sandbox
         if: steps.changes.outputs.run == 'true'
+        env:
+          LOCALSTACK_DEBUG: ${{ runner.debug || '0' }}
         run: ./scripts/localstack.sh up
       - name: Smoke test
         if: steps.changes.outputs.run == 'true'

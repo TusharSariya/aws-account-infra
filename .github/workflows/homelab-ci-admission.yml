@@ -65,7 +65,7 @@ jobs:
           cache: false
           go-version: '1.26.1'
           cache-dependency-path: scripts/tests/kueue_cel/go.sum
-      - uses: opentofu/setup-opentofu@v1
+      - uses: ./.github/actions/setup-opentofu
         with:
           tofu_version: 1.11.5
           tofu_wrapper: false
@@ -101,7 +101,7 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: false
-      - uses: opentofu/setup-opentofu@v1
+      - uses: ./.github/actions/setup-opentofu
         with:
           tofu_version: 1.11.5
           tofu_wrapper: false

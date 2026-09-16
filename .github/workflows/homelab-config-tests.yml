@@ -9,6 +9,7 @@ on:
       - 'scripts/talos-*'
       - 'scripts/talos_tools.py'
       - '.github/actions/talos-*/**'
+      - '.github/actions/setup-opentofu/**'
       - '.github/workflows/homelab-acceptance.yml'
       - '.github/workflows/homelab-worker-maintenance.yml'
       - 'deploy-units.json'
@@ -33,7 +34,7 @@ jobs:
       - uses: ./.github/actions/talos-runner-setup
         with:
           docker: 'true'
-      - uses: opentofu/setup-opentofu@v1
+      - uses: ./.github/actions/setup-opentofu
         with:
           tofu_version: 1.11.5
           tofu_wrapper: false
