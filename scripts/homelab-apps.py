@@ -13,6 +13,7 @@ import subprocess
 import time
 import sys
 import urllib.request
+from cache_download import fetch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'apps/platform/storage'))
@@ -51,6 +52,9 @@ def run(command, data=None, *, timeout=2400):
 def setup():
     (TF / '.terraform').mkdir(parents=True, exist_ok=True)
     for name, artifact in json.loads((CONFIG / 'artifacts.json').read_text()).items():
+        if os.environ.get('HOMELAB_DEPENDENCY_CACHE') == '1':
+            fetch(artifact['url'], artifact['sha256'], TF / '.terraform' / name, use_cache=True)
+            continue
         data = urllib.request.urlopen(artifact['url'], timeout=60).read()
         if hashlib.sha256(data).hexdigest() != artifact['sha256']:
             raise AppError('Chart checksum mismatch')

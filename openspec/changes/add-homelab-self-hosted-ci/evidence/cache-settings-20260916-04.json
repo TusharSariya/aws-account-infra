@@ -1,0 +1,132 @@
+{
+  "observed_at": "2026-09-16T16:12:10.668203+00:00",
+  "repositories": [
+    {
+      "name": "docker-build",
+      "online": true,
+      "docker": {
+        "v1Enabled": false,
+        "forceBasicAuth": false,
+        "httpPort": 5003,
+        "httpsPort": null,
+        "subdomain": null,
+        "pathEnabled": null
+      },
+      "cleanup": {
+        "policyNames": [
+          "ci-build-unused-7d"
+        ]
+      },
+      "proxy": null
+    },
+    {
+      "name": "raw-python-files",
+      "online": true,
+      "docker": null,
+      "cleanup": {
+        "policyNames": [
+          "ci-dependencies-unused-14d"
+        ]
+      },
+      "proxy": {
+        "remoteUrl": "https://files.pythonhosted.org",
+        "contentMaxAge": 1440,
+        "metadataMaxAge": 60,
+        "preserveEncodedCharacters": false
+      }
+    },
+    {
+      "name": "apt-git-core",
+      "online": true,
+      "docker": null,
+      "cleanup": {
+        "policyNames": [
+          "ci-dependencies-unused-14d"
+        ]
+      },
+      "proxy": {
+        "remoteUrl": "https://ppa.launchpadcontent.net/git-core/ppa/ubuntu",
+        "contentMaxAge": 1440,
+        "metadataMaxAge": 60,
+        "preserveEncodedCharacters": false
+      }
+    },
+    {
+      "name": "raw-cilium",
+      "online": true,
+      "docker": null,
+      "cleanup": {
+        "policyNames": [
+          "ci-pinned-raw-unused-30d"
+        ]
+      },
+      "proxy": {
+        "remoteUrl": "https://helm.cilium.io",
+        "contentMaxAge": 1440,
+        "metadataMaxAge": 60,
+        "preserveEncodedCharacters": false
+      }
+    },
+    {
+      "name": "raw-tailscale",
+      "online": true,
+      "docker": null,
+      "cleanup": {
+        "policyNames": [
+          "ci-pinned-raw-unused-30d"
+        ]
+      },
+      "proxy": {
+        "remoteUrl": "https://pkgs.tailscale.com",
+        "contentMaxAge": 1440,
+        "metadataMaxAge": 60,
+        "preserveEncodedCharacters": false
+      }
+    }
+  ],
+  "tasks": [
+    {
+      "id": "88665c20-e505-4195-8321-95362dac9c2a",
+      "name": "ci-cache-daily-compaction",
+      "type": "blobstore.compact",
+      "typeName": "Admin - Compact blob store",
+      "message": "Compacting [default]",
+      "currentState": "WAITING",
+      "lastRunResult": "OK",
+      "nextRun": "2026-09-17T05:30:00.000+00:00",
+      "lastRun": "2026-09-16T14:25:09.615+00:00",
+      "schedule": "advanced",
+      "properties": {
+        "blobstoreName": "default",
+        "blobsOlderThan": "0"
+      },
+      "enabled": true,
+      "alertEmail": null,
+      "notificationCondition": "FAILURE",
+      "startDate": "2026-09-16T14:23:51.877+00:00",
+      "recurringDays": null,
+      "cronExpression": "0 0 3 * * ?",
+      "timeZoneOffset": "Z"
+    },
+    {
+      "id": "9dd4739b-b233-4371-9edd-23c9277a9294",
+      "name": "Cleanup service",
+      "type": "repository.cleanup",
+      "typeName": "Admin - Cleanup repositories using their associated policies",
+      "message": "Run repository cleanup",
+      "currentState": "WAITING",
+      "lastRunResult": "OK",
+      "nextRun": "2026-09-17T01:00:00.000+00:00",
+      "lastRun": "2026-09-16T14:25:07.940+00:00",
+      "schedule": "advanced",
+      "properties": {},
+      "enabled": true,
+      "alertEmail": null,
+      "notificationCondition": "FAILURE",
+      "startDate": "2026-09-16T02:15:03.505+00:00",
+      "recurringDays": null,
+      "cronExpression": "0 0 1 * * ?",
+      "timeZoneOffset": "Z"
+    }
+  ]
+}

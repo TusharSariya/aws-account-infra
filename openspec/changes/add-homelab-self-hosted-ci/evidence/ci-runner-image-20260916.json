@@ -9,7 +9,7 @@
   "readonly_manifest_inspection": "success",
   "compressed_layer_bytes": 671868075,
   "deployed": true,
-  "fresh_runner_verified": false,
+  "fresh_runner_verified": true,
   "changes": [
     "helm_release.runners[\"homelab-talos\"]",
     "helm_release.runners[\"homelab-talos-checks\"]",
@@ -45,5 +45,37 @@
       "runner_slots": 30,
       "pod_headroom": 10
     }
-  }
+  },
+  "fresh_runner_verification": [
+    {
+      "run_id": "35114311226",
+      "job_id": 104855704293,
+      "job": "smoke",
+      "runner": "homelab-talos-zffb9-runner-jd2kv",
+      "runner_uid": "7bc3ae4b-180d-4421-8884-5f50661729ca",
+      "images": [
+        {
+          "name": "runner",
+          "image_id": "ghcr.io/tusharsariyaorg/homelab-ci-runner@sha256:ad674f57f1a60d4cf048eab6c85c043cba14c4f415faddd9be348b0bce78c6d8"
+        }
+      ],
+      "conclusion": "success",
+      "completed_at": "2026-09-16T15:24:12Z"
+    },
+    {
+      "run_id": "35114311204",
+      "job_id": 104855704288,
+      "job": "application-contracts",
+      "runner": "homelab-talos-zffb9-runner-9p7mp",
+      "runner_uid": "1053d080-4e65-43f5-a16f-fb04a1ba2a63",
+      "images": [
+        {
+          "name": "runner",
+          "image_id": "ghcr.io/tusharsariyaorg/homelab-ci-runner@sha256:ad674f57f1a60d4cf048eab6c85c043cba14c4f415faddd9be348b0bce78c6d8"
+        }
+      ],
+      "conclusion": "success",
+      "completed_at": "2026-09-16T15:22:19Z"
+    }
+  ]
 }

@@ -8,6 +8,7 @@ import tarfile
 import os
 import tempfile
 from cache_download import fetch
+from build_cache import cache_run_prefix
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = ROOT / 'apps/containers/ollama'
@@ -38,6 +39,8 @@ FROM {lock['runtime_image']}
 COPY --from=build /out/ollama /bin/ollama
 ENV OLLAMA_NOPRUNE=true OLLAMA_NO_CLOUD=true
 '''
+    dockerfile = '\n'.join(cache_run_prefix() + line[4:] if line.startswith('RUN ') else line
+                           for line in dockerfile.split('\n'))
     (source / 'Dockerfile').write_text(dockerfile)
     print(source)
 

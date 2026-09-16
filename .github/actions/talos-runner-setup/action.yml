@@ -24,10 +24,12 @@ runs:
         NEED_DOCKER: ${{ inputs.docker }}
         NEED_AWS: ${{ inputs.aws }}
         NEED_TAILSCALE: ${{ inputs.tailscale }}
+        RUNNER_ENVIRONMENT: ${{ runner.environment }}
       run: |
         set -euo pipefail
         test "$RUNNER_OS" = Linux
         printf 'HOMELAB_DEPENDENCY_CACHE=1\n' >> "$GITHUB_ENV"
+        bash "$GITHUB_ACTION_PATH/../../../scripts/talos-cache-setup.sh"
         read -r -a extras <<< "$EXTRA_PACKAGES"
         requested=(python3 jq curl git unzip "${extras[@]}")
         if [[ "$NEED_DOCKER" == true ]]; then requested+=(docker-compose-v2); fi

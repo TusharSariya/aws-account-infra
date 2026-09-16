@@ -1,0 +1,136 @@
+{
+  "environment": "local fresh Linux arm64 containers on OrbStack, not ARC",
+  "image_id": "cad9a2c87176",
+  "apt_signature_verification": true,
+  "python_package": "PyYAML==6.0.3",
+  "runs": [
+    {
+      "kind": "fallback-misconfigured-fixture-cache-url",
+      "exit_code": 0,
+      "reads": [
+        {
+          "route": "http://deb.debian.org/debian/dists/trixie/InRelease",
+          "source": "upstream",
+          "attempts": 1,
+          "bytes": 140421
+        },
+        {
+          "route": "http://deb.debian.org/debian/dists/trixie-updates/InRelease",
+          "source": "upstream",
+          "attempts": 1,
+          "bytes": 47340
+        },
+        {
+          "route": "http://deb.debian.org/debian-security/dists/trixie-security/InRelease",
+          "source": "upstream",
+          "attempts": 1,
+          "bytes": 43409
+        },
+        {
+          "route": "http://deb.debian.org/debian/dists/trixie/main/binary-arm64/by-hash/SHA256/be16b37b2f740f066ea93d35d56f04f94d63693e5a3eb421b052bf86fae75bcd",
+          "source": "upstream",
+          "attempts": 1,
+          "bytes": 9614192
+        },
+        {
+          "route": "http://deb.debian.org/debian/dists/trixie-updates/main/binary-arm64/by-hash/SHA256/fe771d58d4af39dbb94142d6f3ce578d340c6b1364c172d9e87f2287bdc4994b",
+          "source": "upstream",
+          "attempts": 1,
+          "bytes": 4424
+        },
+        {
+          "route": "http://deb.debian.org/debian-security/dists/trixie-security/main/binary-arm64/by-hash/SHA256/7a4fd21d7ee4769999a3df7299bbc83009e8036bc9db0bb7b9d3251d00b36e11",
+          "source": "upstream",
+          "attempts": 1,
+          "bytes": 262440
+        },
+        {
+          "route": "/pypi/simple/pip/",
+          "source": "upstream",
+          "attempts": 1,
+          "bytes": 113233
+        },
+        {
+          "route": "/pypi/simple/pyyaml/",
+          "source": "upstream",
+          "attempts": 1,
+          "bytes": 302118
+        },
+        {
+          "route": "/raw-python-files/packages/92/b5/47e807c2623074914e29dabd16cbbdd4bf5e9b2db9f8090fa64411fc5382/pyyaml-6.0.3-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata",
+          "source": "upstream",
+          "attempts": 1,
+          "bytes": 2351
+        },
+        {
+          "route": "/raw-python-files/packages/92/b5/47e807c2623074914e29dabd16cbbdd4bf5e9b2db9f8090fa64411fc5382/pyyaml-6.0.3-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl",
+          "source": "upstream",
+          "attempts": 1,
+          "bytes": 766454
+        }
+      ]
+    },
+    {
+      "kind": "nexus",
+      "exit_code": 0,
+      "reads": [
+        {
+          "route": "http://deb.debian.org/debian/dists/trixie/InRelease",
+          "source": "cache",
+          "attempts": 1,
+          "bytes": 140421
+        },
+        {
+          "route": "http://deb.debian.org/debian/dists/trixie-updates/InRelease",
+          "source": "cache",
+          "attempts": 1,
+          "bytes": 47340
+        },
+        {
+          "route": "http://deb.debian.org/debian-security/dists/trixie-security/InRelease",
+          "source": "cache",
+          "attempts": 1,
+          "bytes": 43409
+        },
+        {
+          "route": "http://deb.debian.org/debian/dists/trixie/main/binary-arm64/by-hash/SHA256/be16b37b2f740f066ea93d35d56f04f94d63693e5a3eb421b052bf86fae75bcd",
+          "source": "cache",
+          "attempts": 1,
+          "bytes": 9614192
+        },
+        {
+          "route": "http://deb.debian.org/debian/dists/trixie-updates/main/binary-arm64/by-hash/SHA256/fe771d58d4af39dbb94142d6f3ce578d340c6b1364c172d9e87f2287bdc4994b",
+          "source": "cache",
+          "attempts": 1,
+          "bytes": 4424
+        },
+        {
+          "route": "http://deb.debian.org/debian-security/dists/trixie-security/main/binary-arm64/by-hash/SHA256/7a4fd21d7ee4769999a3df7299bbc83009e8036bc9db0bb7b9d3251d00b36e11",
+          "source": "cache",
+          "attempts": 1,
+          "bytes": 262440
+        },
+        {
+          "route": "/pypi/simple/pyyaml/",
+          "source": "cache",
+          "attempts": 1,
+          "bytes": 285460
+        },
+        {
+          "route": "/pypi/packages/pyyaml/6.0.3/pyyaml-6.0.3-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata",
+          "source": "cache",
+          "attempts": 1,
+          "bytes": 2351
+        },
+        {
+          "route": "/pypi/packages/pyyaml/6.0.3/pyyaml-6.0.3-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl",
+          "source": "cache",
+          "attempts": 1,
+          "bytes": 766454
+        }
+      ]
+    }
+  ],
+  "sizing_qualified": false,
+  "nexus_upstream_bytes_verified": false
+}

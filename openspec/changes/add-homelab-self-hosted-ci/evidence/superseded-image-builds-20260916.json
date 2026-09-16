@@ -1,0 +1,17 @@
+{
+  "reason": "Image recipe now mounts dependency-cache settings; superseded upstream-only builds cannot satisfy new source receipts. Cancel only these two image builds before guarded cache reconfiguration.",
+  "runs": [
+    {
+      "databaseId": 35114311372,
+      "headSha": "57436364f89de69e7773d7ad2af247c003e6531f",
+      "status": "in_progress",
+      "workflowName": "odysseus-image"
+    },
+    {
+      "databaseId": 35114311712,
+      "headSha": "57436364f89de69e7773d7ad2af247c003e6531f",
+      "status": "queued",
+      "workflowName": "ollama-image"
+    }
+  ]
+}

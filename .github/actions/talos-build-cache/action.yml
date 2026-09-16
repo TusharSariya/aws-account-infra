@@ -1,0 +1,95 @@
+name: Disposable Talos build cache
+description: Separate branch/platform cache credentials from release publication
+inputs:
+  scope:
+    description: Additional matrix or build context scope
+    default: ''
+  platform:
+    description: Exact build platform
+    required: true
+  password:
+    description: Nexus build-cache-only writer credential
+    required: true
+outputs:
+  driver-opts:
+    description: Immutable BuildKit image and disposable Pod network
+    value: ${{ steps.settings.outputs.driver-opts }}
+  cache-from:
+    description: Current branch and main imports
+    value: ${{ steps.settings.outputs.cache-from }}
+  cache-to:
+    description: Nonfatal maximal OCI cache export
+    value: ${{ steps.settings.outputs.cache-to }}
+  secret-files:
+    description: Ephemeral dependency settings mounted only during build commands
+    value: ${{ steps.settings.outputs.secret-files }}
+  config:
+    description: BuildKit configuration path
+    value: ${{ steps.settings.outputs.config }}
+runs:
+  using: composite
+  steps:
+    - id: settings
+      if: runner.environment == 'self-hosted'
+      shell: bash
+      env:
+        CACHE_WORKFLOW: ${{ github.workflow }}/${{ github.job }}/${{ inputs.scope }}
+        CACHE_BRANCH: ${{ github.head_ref || github.ref_name }}
+        CACHE_PLATFORM: ${{ inputs.platform }}
+      run: |
+        set -euo pipefail
+        python3 - "$GITHUB_ACTION_PATH/../../.." <<'PY'
+        import os, pathlib, sys
+        sys.path.insert(0, str(pathlib.Path(sys.argv[1]) / 'scripts'))
+        from build_cache import settings
+        value = settings(os.environ['CACHE_WORKFLOW'], os.environ['CACHE_PLATFORM'], os.environ['CACHE_BRANCH'])
+        with open(os.environ['GITHUB_ENV'], 'a') as output:
+            for field in ('WORKFLOW', 'PLATFORM', 'BRANCH'):
+                value_text = os.environ['CACHE_' + field]
+                if '\n' in value_text or '\r' in value_text:
+                    raise ValueError('Single-line cache identity required')
+                output.write('HOMELAB_BUILD_CACHE_' + field + '=' + value_text + '\n')
+        config = pathlib.Path(os.environ['RUNNER_TEMP']) / 'homelab-buildkit.toml'
+        config.write_text(value.pop('config'))
+        environment = config.with_name('homelab-dependency.env')
+        environment.write_text(
+            'GOPROXY=http://127.0.0.1:18082/go/\n'
+            'PIP_INDEX_URL=http://127.0.0.1:18082/pypi/simple/\nPIP_RETRIES=0\n'
+            'UV_INDEX_URL=http://127.0.0.1:18082/pypi/simple/\nUV_HTTP_RETRIES=0\n'
+            'NPM_CONFIG_REGISTRY=http://127.0.0.1:18082/npm/\nNPM_CONFIG_FETCH_RETRIES=0\n'
+            'NPM_CONFIG_AUDIT=false\nAPT_CONFIG=/run/secrets/dependency-apt\n')
+        apt = config.with_name('homelab-dependency.apt')
+        apt.write_text('Acquire::http::Proxy "http://127.0.0.1:18082/";\nAcquire::Retries "0";\n')
+        environment.chmod(0o600)
+        apt.chmod(0o600)
+        value['secret-files'] = 'dependency-env=' + str(environment) + '\ndependency-apt=' + str(apt)
+        with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+            for name, content in value.items():
+                output.write(name + '<<CACHE_SETTINGS\n' + content + '\nCACHE_SETTINGS\n')
+            output.write('config=' + str(config) + '\n')
+        PY
+    - name: Prepare ephemeral cache upload credentials
+      if: runner.environment == 'self-hosted'
+      shell: bash
+      env:
+        CACHE_PASSWORD: ${{ inputs.password }}
+      run: |
+        set -euo pipefail
+        python3 - <<'PYTHON'
+        import base64, json, os, pathlib
+        directory = pathlib.Path(os.environ['RUNNER_TEMP']) / 'homelab-docker'
+        directory.mkdir(mode=0o700, exist_ok=True)
+        config = directory / 'config.json'
+        value = json.loads(config.read_text()) if config.exists() else {'auths': {}}
+        password = os.environ['CACHE_PASSWORD']
+        if password:
+            value.setdefault('auths', {})['nexus.homelab-cache.svc.cluster.local:5003'] = {
+                'auth': base64.b64encode(('cache-build-writer:' + password).encode()).decode()}
+        else:
+            print('::warning::Build cache credential absent; cache export may be denied')
+        fd = os.open(config, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, 'w') as output:
+            json.dump(value, output)
+        with open(os.environ['GITHUB_ENV'], 'a') as output:
+            output.write('DOCKER_CONFIG=' + str(directory) + '\n')
+        PYTHON

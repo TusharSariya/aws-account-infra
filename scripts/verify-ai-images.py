@@ -23,7 +23,7 @@ def input_hash(name):
     paths = [path for path in (ROOT / 'apps/containers' / name).rglob('*')
              if path.is_file() and '__pycache__' not in path.parts and path.suffix != '.pyc']
     paths += [ROOT / 'scripts' / (name + '-image-context.py'), ROOT / 'scripts' / (name + '-image-smoke.sh'),
-              ROOT / '.github/workflows' / (name + '-image.yml'), ROOT / 'scripts/verify-ai-images.py', ROOT / 'scripts/cache_download.py']
+              ROOT / '.github/workflows' / (name + '-image.yml'), ROOT / 'scripts/verify-ai-images.py', ROOT / 'scripts/cache_download.py', ROOT / 'scripts/build_cache.py']
     if name == 'odysseus':
         paths.extend([ROOT / 'scripts/odysseus-smoke-controller.py', ROOT / 'scripts/odysseus-source-tests.py'])
     digest = hashlib.sha256()

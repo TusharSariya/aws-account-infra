@@ -9,6 +9,7 @@ import tarfile
 import os
 import tempfile
 from cache_download import fetch
+from build_cache import cache_run_prefix
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = ROOT / 'apps/containers/odysseus'
@@ -49,6 +50,8 @@ def prepare(destination):
     dockerfile = dockerfile.replace('FROM python:3.14-slim', 'FROM ' + lock['python_image'])
     dockerfile = 'FROM ' + lock['ollama_image'] + ' AS ollama-client\n' + dockerfile
     dockerfile += (PACKAGE / 'Dockerfile.append').read_text()
+    dockerfile = '\n'.join(cache_run_prefix() + line[4:] if line.startswith('RUN ') else line
+                           for line in dockerfile.split('\n'))
     (source / 'Dockerfile').write_text(dockerfile)
     shutil.copyfile(PACKAGE / 'entrypoint.sh', source / 'homelab-entrypoint.sh')
     shutil.copyfile(PACKAGE / 'source.lock.json', source / 'homelab-source.lock.json')

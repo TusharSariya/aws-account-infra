@@ -10,6 +10,7 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+from cache_download import fetch
 
 ROOT = Path(__file__).resolve().parents[1]
 TF = ROOT / 'live/talos/homelab'
@@ -53,6 +54,10 @@ def cli():
     asset = 'talosctl-' + ('darwin-arm64' if system[0] == 'Darwin' else 'linux-amd64')
     cache = private_dir(Path.home() / '.cache/aws-account-infra/talos')
     binary = cache / (asset + '-' + VERSION)
+    if not binary.exists() and os.environ.get('HOMELAB_DEPENDENCY_CACHE') == '1':
+        fetch(f'https://github.com/siderolabs/talos/releases/download/{VERSION}/{asset}',
+              HASHES[system], binary, use_cache=True)
+        binary.chmod(0o700)
     if not binary.exists():
         with tempfile.NamedTemporaryFile(dir=cache, delete=False) as stream:
             temporary = Path(stream.name)
@@ -78,6 +83,9 @@ def cli():
 
 
 def download_verified(url, destination, expected):
+    if os.environ.get('HOMELAB_DEPENDENCY_CACHE') == '1':
+        fetch(url, expected, destination, use_cache=True)
+        return
     data = read_url(url, lambda response: response.read())
     if hashlib.sha256(data).hexdigest() != expected:
         raise ValueError('Downloaded artifact checksum mismatch')
@@ -85,9 +93,12 @@ def download_verified(url, destination, expected):
 
 
 def prepare_local_path_chart():
-    data = read_url(
-        'https://codeload.github.com/rancher/local-path-provisioner/tar.gz/refs/tags/v0.0.37',
-        lambda response: response.read())
+    with tempfile.TemporaryDirectory() as temporary:
+        archive_path = Path(temporary) / 'chart.tar.gz'
+        download_verified(
+            'https://codeload.github.com/rancher/local-path-provisioner/tar.gz/refs/tags/v0.0.37',
+            archive_path, '3602edf85bb1513d463073917adc930752177d034e1f944fb8f7610c779a34f6')
+        data = archive_path.read_bytes()
     if hashlib.sha256(data).hexdigest() != '3602edf85bb1513d463073917adc930752177d034e1f944fb8f7610c779a34f6':
         raise ValueError('Local-path source checksum mismatch')
     prefix = 'local-path-provisioner-0.0.37/deploy/chart/local-path-provisioner/'

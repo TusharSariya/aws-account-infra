@@ -47,7 +47,7 @@ template:
         args:
           - |
             mount -t binfmt_misc binfmt_misc /proc/sys/fs/binfmt_misc
-            exec dockerd-entrypoint.sh dockerd --host=unix:///var/run/docker.sock --group=123 --data-root=/scratch/docker
+            exec dockerd-entrypoint.sh dockerd --host=unix:///var/run/docker.sock --group=123 --data-root=/scratch/docker --registry-mirror=http://nexus.homelab-cache.svc.cluster.local:5000 --max-download-attempts=1
         securityContext: {privileged: true}
         restartPolicy: Always
         startupProbe:

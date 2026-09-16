@@ -18,6 +18,8 @@ ORIGINS = {
     'dl.k8s.io': 'raw-kubernetes',
     'get.helm.sh': 'raw-helm',
     'go.dev': 'raw-go',
+    'helm.cilium.io': 'raw-cilium',
+    'pkgs.tailscale.com': 'raw-tailscale',
 }
 
 

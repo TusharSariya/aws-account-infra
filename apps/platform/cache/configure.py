@@ -67,7 +67,7 @@ def reconcile():
             body['storage']['writePolicy'] = 'ALLOW'
         if fmt == 'apt': body['apt'] = {'distribution':repo['distribution'], 'flat':False}
         if fmt == 'docker':
-            body['docker']={'v1Enabled':False,'forceBasicAuth':kind=='hosted','httpPort':repo['port']}
+            body['docker']={'v1Enabled':False,'forceBasicAuth':False,'httpPort':repo['port']}
             if kind=='proxy': body['dockerProxy']={'indexType': 'HUB' if name=='docker-hub' else 'REGISTRY', 'cacheForeignLayers':False}
         endpoint = f'repositories/{fmt}/{kind}'
         if name in existing:

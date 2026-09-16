@@ -10,6 +10,13 @@ on:
       - 'apps/platform/storage/**'
       - 'scripts/cache_capacity.py'
       - 'scripts/cache_download.py'
+      - 'scripts/cache_transport.py'
+      - 'scripts/build_cache.py'
+      - 'scripts/nexus_observation.py'
+      - 'scripts/tests/test_build_cache.py'
+      - 'scripts/tests/test_nexus_observation.py'
+      - 'scripts/talos-cache-setup.sh'
+      - 'scripts/tests/test_cache_transport.py'
       - 'scripts/tests/test_cache_download.py'
       - 'scripts/tests/test_registry_enrollment.py'
       - 'scripts/ci_scratch.py'
@@ -64,7 +71,7 @@ jobs:
           uv run --with PyYAML==6.0.3 python scripts/homelab-ci.py setup
           uv run --with PyYAML==6.0.3 python scripts/runner_catalog.py
           PYTHONPATH=scripts uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p 'test_kueue_*.py'
-          for pattern in 'test_local_cache.py' 'test_capacity_*.py' 'test_cache_download.py' 'test_registry_enrollment.py'; do
+          for pattern in 'test_local_cache.py' 'test_capacity_*.py' 'test_cache_download.py' 'test_cache_transport.py' 'test_build_cache.py' 'test_nexus_observation.py' 'test_registry_enrollment.py'; do
             PYTHONPATH=scripts uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p "$pattern"
           done
           uv run --with PyYAML==6.0.3 python scripts/tests/kueue_cel/generate.py "$RUNNER_TEMP/cel-cases.json"

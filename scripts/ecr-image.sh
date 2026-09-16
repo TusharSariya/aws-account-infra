@@ -31,7 +31,9 @@ aws ecr describe-repositories --repository-names "$NAME" --region "$REGION" >/de
 aws ecr get-login-password --region "$REGION" \
   | docker login --username AWS --password-stdin "${ACCOUNT}.dkr.ecr.${REGION}.amazonaws.com"
 
-docker buildx build \
+# shellcheck source=scripts/build-cache-flags.sh
+source "$REPO_ROOT/scripts/build-cache-flags.sh"
+docker buildx build ${build_cache_args[@]+"${build_cache_args[@]}"} \
   --platform linux/arm64 \
   --provenance=false \
   --sbom=false \

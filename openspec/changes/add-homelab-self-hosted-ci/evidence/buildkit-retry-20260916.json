@@ -1,0 +1,114 @@
+{
+  "image": "moby/buildkit@sha256:28a898719c18a33f4e8000685287fa36fd0dd9560c6440227d3a732d79bb41d8",
+  "version": "v0.32.2",
+  "scope": "local disposable HTTP registry fixtures, not ARC sizing acceptance",
+  "manifest_failure": [
+    {
+      "port": 18091,
+      "method": "HEAD",
+      "path": "/v2/fixture/manifests/latest?ns=host.docker.internal%3A18090"
+    },
+    {
+      "port": 18090,
+      "method": "HEAD",
+      "path": "/v2/fixture/manifests/latest"
+    },
+    {
+      "port": 18090,
+      "method": "HEAD",
+      "path": "/v2/fixture/manifests/latest"
+    }
+  ],
+  "blob_failure": [
+    {
+      "port": 18093,
+      "method": "HEAD",
+      "path": "/v2/fixture/manifests/latest",
+      "layer": false
+    },
+    {
+      "port": 18093,
+      "method": "GET",
+      "path": "/v2/fixture/manifests/sha256:8717f1d4ffa52dc527cb0c16865a2fd9cbefb46ff55a7837d0ccabd27f577bb6",
+      "layer": false
+    },
+    {
+      "port": 18093,
+      "method": "GET",
+      "path": "/v2/fixture/blobs/sha256:2f297455119ab0e5b002d7a0a4c739e8846e4c92fe3739db166e25c332ce7945",
+      "layer": false
+    },
+    {
+      "port": 18093,
+      "method": "GET",
+      "path": "/v2/fixture/blobs/sha256:cf1db9cab8822a88869e11e797ea06dca94fed6e03e71eeef2f1047189b7b231",
+      "layer": true
+    },
+    {
+      "port": 18092,
+      "method": "GET",
+      "path": "/v2/fixture/blobs/sha256:cf1db9cab8822a88869e11e797ea06dca94fed6e03e71eeef2f1047189b7b231",
+      "layer": true
+    },
+    {
+      "port": 18092,
+      "method": "GET",
+      "path": "/v2/fixture/blobs/sha256:cf1db9cab8822a88869e11e797ea06dca94fed6e03e71eeef2f1047189b7b231",
+      "layer": true
+    },
+    {
+      "port": 18093,
+      "method": "GET",
+      "path": "/v2/fixture/blobs/sha256:cf1db9cab8822a88869e11e797ea06dca94fed6e03e71eeef2f1047189b7b231",
+      "layer": true
+    },
+    {
+      "port": 18092,
+      "method": "GET",
+      "path": "/v2/fixture/blobs/sha256:cf1db9cab8822a88869e11e797ea06dca94fed6e03e71eeef2f1047189b7b231",
+      "layer": true
+    },
+    {
+      "port": 18092,
+      "method": "GET",
+      "path": "/v2/fixture/blobs/sha256:cf1db9cab8822a88869e11e797ea06dca94fed6e03e71eeef2f1047189b7b231",
+      "layer": true
+    },
+    {
+      "port": 18093,
+      "method": "GET",
+      "path": "/v2/fixture/blobs/sha256:cf1db9cab8822a88869e11e797ea06dca94fed6e03e71eeef2f1047189b7b231",
+      "layer": true
+    },
+    {
+      "port": 18092,
+      "method": "GET",
+      "path": "/v2/fixture/blobs/sha256:cf1db9cab8822a88869e11e797ea06dca94fed6e03e71eeef2f1047189b7b231",
+      "layer": true
+    },
+    {
+      "port": 18092,
+      "method": "GET",
+      "path": "/v2/fixture/blobs/sha256:cf1db9cab8822a88869e11e797ea06dca94fed6e03e71eeef2f1047189b7b231",
+      "layer": true
+    },
+    {
+      "port": 18093,
+      "method": "GET",
+      "path": "/v2/fixture/blobs/sha256:cf1db9cab8822a88869e11e797ea06dca94fed6e03e71eeef2f1047189b7b231",
+      "layer": true
+    },
+    {
+      "port": 18092,
+      "method": "GET",
+      "path": "/v2/fixture/blobs/sha256:cf1db9cab8822a88869e11e797ea06dca94fed6e03e71eeef2f1047189b7b231",
+      "layer": true
+    },
+    {
+      "port": 18092,
+      "method": "GET",
+      "path": "/v2/fixture/blobs/sha256:cf1db9cab8822a88869e11e797ea06dca94fed6e03e71eeef2f1047189b7b231",
+      "layer": true
+    }
+  ]
+}

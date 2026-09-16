@@ -116,6 +116,31 @@
       "format": "raw",
       "type": "proxy",
       "remote": "https://awscli.amazonaws.com"
+    },
+    {
+      "name": "raw-python-files",
+      "format": "raw",
+      "type": "proxy",
+      "remote": "https://files.pythonhosted.org"
+    },
+    {
+      "name": "apt-git-core",
+      "format": "apt",
+      "type": "proxy",
+      "remote": "https://ppa.launchpadcontent.net/git-core/ppa/ubuntu",
+      "distribution": "noble"
+    },
+    {
+      "name": "raw-cilium",
+      "format": "raw",
+      "type": "proxy",
+      "remote": "https://helm.cilium.io"
+    },
+    {
+      "name": "raw-tailscale",
+      "format": "raw",
+      "type": "proxy",
+      "remote": "https://pkgs.tailscale.com"
     }
   ]
 }

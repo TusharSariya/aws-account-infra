@@ -1,0 +1,18 @@
+{
+  "date": "2026-09-16",
+  "builder": "nexus-readback-20260916",
+  "fresh_builder": true,
+  "environment": "local OrbStack, not ARC",
+  "buildkit_image": "moby/buildkit@sha256:28a898719c18a33f4e8000685287fa36fd0dd9560c6440227d3a732d79bb41d8",
+  "cache_repository": "docker-build",
+  "fixture": "ci/acceptance-20260916/linux-amd64:cold",
+  "authenticated": false,
+  "cache_import": "OCI manifest imported; COPY proof /proof CACHED",
+  "downloaded_layer": "sha256:16bab4a9c72593b119bdac29c521a4dc105342e7ef7fb496ed2ef4c07c4e943c",
+  "downloaded_layer_bytes": 146,
+  "export_options": "mode=max,oci-mediatypes=true,image-manifest=true,ignore-error=true",
+  "anonymous_upload": "manifest unauthorized",
+  "build_exit_code": 0,
+  "sizing_qualified": false,
+  "bounded_retry_qualified": false
+}

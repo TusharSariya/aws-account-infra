@@ -1,0 +1,43 @@
+{
+  "source": "d1f55958ad05e70532e2aa60a7f9d0741b3707b3de5599d6e0fb99e7a4157276",
+  "plan": "b056a3b8b107ed3dcabd3a7a3ad1523e241727bbd0b033ef2310a0cd6bcbda2f",
+  "time": 1789574455.060508,
+  "apply": "success",
+  "capacity": {
+    "cpu": {
+      "allocatable": "37.950",
+      "platform_observed": "3.706",
+      "platform_reserved": "4.000",
+      "pool": "33.5"
+    },
+    "memory": {
+      "allocatable": "180865314816",
+      "platform_observed": "12297699328",
+      "platform_reserved": "19327352832",
+      "pool": "150Gi"
+    },
+    "cache_storage": {
+      "committed_bytes": "423058472960",
+      "cache_bytes": "68719476736",
+      "filesystem_available_bytes": 1262517968896,
+      "thin_pool_available_bytes": 1838374156291
+    },
+    "storage_and_slots": {
+      "pool": "64424509440",
+      "measured_used_with_images": "23415820288",
+      "platform_requests": "520093696",
+      "headroom": "8589934592",
+      "allocatable": "121286269137",
+      "projected_platform_pods": 26,
+      "runner_slots": 30,
+      "pod_headroom": 10
+    }
+  },
+  "changes": [
+    "helm_release.cache",
+    "helm_release.runners[\"homelab-talos\"]"
+  ],
+  "execution": "local",
+  "post_plan_empty": true,
+  "note": "Guarded local saved plan; source digest covers uncommitted cache-client implementation. Runtime acceptance remains open."
+}
