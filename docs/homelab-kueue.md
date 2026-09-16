@@ -2,11 +2,11 @@
 
 ## Policy and ownership
 
-Kueue 0.19.4 admits declared CPU/RAM/ephemeral-storage requests against `homelab-compute` (36 CPU, 160 GiB), bound to `talos-worker-01`. AI, CI and Argo LocalQueues share the whole pool. StrictFIFO, equal priority and disabled preemption/borrowing are reviewed in `config/environments/kubernetes/homelab-ci/pool-values.yaml`. An older large waiting request blocks newer smaller work. Utilization does not affect reservations. GitHub's upstream queue is separate.
+Kueue 0.19.4 admits declared CPU/RAM/ephemeral-storage requests against `homelab-compute` (33.5 CPU, 150 GiB), bound to `talos-worker-01`. AI, CI and Argo LocalQueues share the whole pool. StrictFIFO, equal priority and disabled preemption/borrowing are reviewed in `config/environments/kubernetes/homelab-ci/pool-values.yaml`. An older large waiting request blocks newer smaller work. Utilization does not affect reservations. GitHub's upstream queue is separate.
 
 Kubernetes schedules admitted Pods and enforces limits. The AI lifecycle controller owns desired state, replicas, draining, idle shutdown and storage protection. ARC 0.14.2 owns disposable runners; Argo owns workflow execution. Platform controllers, DNS and operational commands stay outside Kueue.
 
-AI retains 35.75 CPU / 77 GiB and its existing volumes. Each complete runner Pod reserves/limits its reviewed catalog CPU/RAM/scratch budget. Multiple disposable runners share admission, with zero idle runners and no ARC maximum. The shared scratch quota is 60 GiB. Trusted privileged runner/Docker containers use no host filesystem, host socket or host namespace mounts. GitHub fork PRs never run on Talos. The existing App registration key is not mounted into runner Pods; the runner service account has no Kubernetes API token.
+AI retains 33.25 CPU / 77 GiB and its existing volumes. Each complete runner Pod reserves/limits its reviewed catalog CPU/RAM/scratch budget. Multiple disposable runners share admission, with zero idle runners and no ARC maximum. The shared scratch quota is 60 GiB. Trusted privileged runner/Docker containers use no host filesystem, host socket or host namespace mounts. GitHub fork PRs never run on Talos. The existing App registration key is not mounted into runner Pods; the runner service account has no Kubernetes API token.
 
 ## Automatic platform recovery
 
@@ -35,7 +35,7 @@ The only retirement targets are `proxmox_virtual_environment_vm.ci_runner[0]`, i
 
 If retirement applies VM deletion/RAM configuration but fails only the pinned image deletion with `Datastore.Allocate`, use `scripts/ci-runner-retirement-recover.py --failed-record PRIVATE/record.json --record-dir NEW_PRIVATE --kubeconfig KUBECONFIG`. It checks the original guarded plan and exact live identities, removes only the checksum-verified image through existing root SSH and requires a fresh empty hardware plan. Retain the failed receipt; use the new recovery receipt for maintenance.
 
-Do not enable the pool on a 156-GiB worker. `scripts/kueue_capacity.py` checks actual allocatable against the 36 CPU / 160 GiB pool plus a reviewed 1.5 CPU / 8 GiB platform reserve. It includes restartable init containers and Pod overhead in observed platform requests. If the check fails, inspect and review the budget; do not silently shrink it or disregard platform reservations.
+Do not enable the pool on a 156-GiB worker. `scripts/kueue_capacity.py` checks actual allocatable against the 33.5 CPU / 150 GiB pool plus a reviewed 4 CPU / 18 GiB platform reserve. It includes restartable init containers and Pod overhead in observed platform requests. If the check fails, inspect and review the budget; do not silently shrink it or disregard platform reservations.
 
 ## Independent bootstrap and recovery
 
@@ -75,7 +75,7 @@ Leave all unobserved acceptance unchecked in OpenSpec. Record source commit, run
 
 - With AI off, no other waiting/running compute and scheduled jobs quiesced, run `python3 scripts/kueue-acceptance.py --kubeconfig "$KUBECONFIG" --scenario cpu`, then `--scenario memory`, `--scenario ephemeral-storage` and `--scenario combined`. Each creates uniquely named bounded Pods, proves older-large/newer-small FIFO blocking, queued cancellation, normal completion/release and cleanup. It never restarts a node/controller or deletes unrelated work.
 - Dispatch `homelab-arc-acceptance` before changing routine routing. It explicitly selects the ARC scale set and covers checkout, Docker, a privileged bounded fixture, ARM Linux tests and private cluster networking. Repeat with a queued GitHub run and cancel it; verify its EphemeralRunner, Pod and Workload disappear. Record an expired-request case separately; a cancelled run does not prove expiry.
-- AI-first: Start AI, verify its 35.75/77 reservation, dispatch an ARC job and observe it waiting. Stop AI and observe runner admission only after AI termination. CI-first: run a held ARC job, Start AI, observe AI pending with zero idle time, complete CI, then observe AI admission. End with AI Off.
+- AI-first: Start AI, verify its 33.25/77 reservation, dispatch an ARC job and observe it waiting. Stop AI and observe runner admission only after AI termination. CI-first: run a held ARC job, Start AI, observe AI pending with zero idle time, complete CI, then observe AI admission. End with AI Off.
 - Exercise controller restart while queued/running, then node restart through the existing hosted worker-maintenance workflow. Verify no stale reservations, duplicate runners or unexpected AI desired-state change.
 - During a controlled Kueue outage, prove operator Stop/Status and Pi-hole UDP/TCP remain usable, new compute cannot start and cleanup completes after controller recovery. Preserve and restore the exact controller replica count; do not force-remove workload finalizers to manufacture success.
 - Run actual ARM candidate packaging/upload, Docker image publishing, the existing privileged disposable quota/reboot suite and a reviewed application-only private deployment on ARC. The latter still needs all protected environments, saved-plan checks and merge gates. Neither the local ARM test nor the acceptance network check proves private deployment.
@@ -173,3 +173,6 @@ minutes, early cancellation or any runner acquisition invalidate the proof.
 observed Pod/Workload cleanup. Review GitHub's actual reason after 24 hours; elapsed
 time plus a cancelled conclusion alone is not credited as verified expiry.
 Unobserved expiry stays unchecked and CI_EXECUTOR remains unset.
+
+The local Nexus cache extension is staged, not deployed. See the OpenSpec cache
+rollout tasks and image-inclusive storage evidence before applying these budgets.

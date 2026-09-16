@@ -52,6 +52,8 @@ jobs:
           tofu -chdir=live/proxmox/homelab validate
           tofu -chdir=live/proxmox/homelab test -var-file=../../../config/environments/proxmox/homelab/vms.tfvars
       - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: false
       - name: Validate Talos definitions and migration guards
         run: |
           tofu fmt -check -recursive live/talos/homelab

@@ -72,6 +72,7 @@ resource "helm_release" "capacity" {
   namespace = "kube-system"
   chart     = "${path.module}/../../../charts/homelab-capacity"
   values = [file("${local.config}/capacity-values.yaml"), yamlencode({
+    config        = { cacheProjects = jsondecode(file("${local.config}/../homelab-ci/cache-storage.json")) }
     chartRevision = sha256(join("", [for f in sort(tolist(fileset("${path.module}/../../../charts/homelab-capacity", "**"))) : filesha256("${path.module}/../../../charts/homelab-capacity/${f}")]))
     code          = { for f in fileset("${path.module}/../../../apps/platform/storage", "*.py") : f => file("${path.module}/../../../apps/platform/storage/${f}") }
   })]

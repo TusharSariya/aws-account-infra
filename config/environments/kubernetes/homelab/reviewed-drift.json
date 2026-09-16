@@ -23,6 +23,15 @@
       "failed_revision": 4,
       "source_commit": "0630f7e5110864de3b36cf92b874e0df4283b667",
       "verified_configuration_sha256": "6f212b3f3502c5b5ec89937ac06183f1e846b0a5704503b7a68b762a595e319b"
+    },
+    {
+      "address": "helm_release.capacity",
+      "fingerprint": "9e578dac96c77b689ef41e803193ae73e81d16fd168787147387e5d9b6493928",
+      "failed_local_record": "nexus-capacity-apps-20260915-02",
+      "failed_revision": 6,
+      "source_commit": "9440abaedfe6b7fed98ecc34d47b8c9413262f7f",
+      "reason": "Known cache-directory allowlist rejection caused collector readiness timeout; only release metadata/status changed.",
+      "verified_configuration_sha256": "2830d498675fdd02fbd5e2f30b265c875e8e3d1f5faaf24231736bcab0b05e2f"
     }
   ]
 }

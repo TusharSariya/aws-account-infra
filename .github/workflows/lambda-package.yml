@@ -54,6 +54,7 @@ jobs:
           packages: python3-venv python3-pip zip
       - uses: astral-sh/setup-uv@v6
         with:
+          enable-cache: false
           python-version: "3.14"
       - uses: docker/setup-qemu-action@v3
         if: runner.arch == 'X64'

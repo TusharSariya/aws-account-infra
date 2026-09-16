@@ -11,6 +11,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: false
       - uses: opentofu/setup-opentofu@v1
         with:
           tofu_version: 1.11.5

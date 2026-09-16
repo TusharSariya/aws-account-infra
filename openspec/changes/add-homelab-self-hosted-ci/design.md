@@ -5,9 +5,9 @@ The approved migration replaces VM 103 with trusted ARC Docker-in-Docker Pods on
 Kueue reserves declared requests. Kubernetes schedules and enforces limits. The lifecycle controller owns AI desired state, replicas, draining, activity, idle shutdown and storage-pressure protections. ARC owns disposable runners; Argo owns workflow execution. DNS, networking, storage helpers, platform controllers and operational commands stay outside admission.
 
 ## Decisions
-Install Kueue 0.19.4 and ARC 0.14.2 with OpenTofu-managed Helm in an independent Kubernetes CI root. Use one worker-bound ClusterQueue, StrictFIFO, equal priority, no preemption, no cohort/borrowing/fairness and 36 CPU / 160 GiB quota. Namespace LocalQueues are submission points, not reserved partitions. Concurrent reservations must fit; an older waiting large workload blocks a newer smaller one. Reject requests larger than the pool with an actionable message. FIFO starts at Kueue submission, not at GitHub's upstream queue.
+Install Kueue 0.19.4 and ARC 0.14.2 with OpenTofu-managed Helm in an independent Kubernetes CI root. Use one worker-bound ClusterQueue, StrictFIFO, equal priority, no preemption, no cohort/borrowing/fairness and 33.5 CPU / 150 GiB quota. Namespace LocalQueues are submission points, not reserved partitions. Concurrent reservations must fit; an older waiting large workload blocks a newer smaller one. Reject requests larger than the pool with an actionable message. FIFO starts at Kueue submission, not at GitHub's upstream queue.
 
-AI keeps its aggregate 35.75 CPU / 77 GiB reservation and retained volumes. Use Deployment/Pod integration without transferring lifecycle ownership. Start queues; Stop cancels waiting work or drains running work; Force Stop keeps explicit semantics. Queue waiting cannot accrue idle time. Adopt runtime templates only while off, avoiding two AI reservations. Status adds queue order, resources and blocking reasons without replacing existing API states. Release reservations only after observed termination.
+AI keeps its aggregate 33.25 CPU / 77 GiB reservation and retained volumes. Use Deployment/Pod integration without transferring lifecycle ownership. Start queues; Stop cancels waiting work or drains running work; Force Stop keeps explicit semantics. Queue waiting cannot accrue idle time. Adopt runtime templates only while off, avoiding two AI reservations. Status adds queue order, resources and blocking reasons without replacing existing API states. Release reservations only after observed termination.
 
 ARC uses separate controller/runner namespaces and the existing repository-scoped GitHub App via a privately enrolled Secret. minRunners=0 with no ARC maximum. Kueue controls admitted concurrency across a repository-managed catalog of arbitrary reviewed CPU/RAM/scratch budgets, with one homogeneous scale set per configuration. Catalog CPU uses cores (whole millicores); memory/scratch use MiB. `homelab-talos` remains 4 CPU / 16 GiB / 30 GiB with Docker; `homelab-talos-light` starts at 1 CPU / 2 GiB / 2 GiB without Docker, and `homelab-talos-checks` at 2 CPU / 4 GiB / 4 GiB without Docker. These are initial job budgets, not universal minimums or fixed tiers. Promote jobs only through reviewed catalog changes deployed before workflow references. OpenTofu generates container budgets; actual rendered effective Pod requests and matching limits must equal the catalog, including restartable Docker and initialization peaks. Preserve the existing release with an OpenTofu moved block and wait for existing runners to become idle before updating it. No host filesystem or host Docker socket mounts. Fork execution is disabled. Preserve ARM artifacts via tested ARM packaging. Verify cancelled/expired GitHub work deletes pending runner workloads.
 
@@ -25,14 +25,18 @@ The single worker remains a shared failure domain. Trusted privileged Docker run
 ## Validation
 Verify pinned artifacts, rendered Helm, OpenTofu plans, workflow contracts, admission/security policies and strict OpenSpec. Exercise AI-first/CI-first contention, FIFO head blocking, CPU/RAM exhaustion, cancellation, expiry, controller/node restart and reservation cleanup. Prove Stop/Status and Pi-hole during exhaustion and Kueue outage. Run actual ARC checkout/build/ARM/private deployment/quota jobs and hosted recovery with ARC absent. Require fresh empty post-deployment plans and existing merge gates; leave unobserved acceptance unchecked.
 
-## Observed capacity adjustment, 2026-09-15
-The restored 172-GiB guest exposes 168.44 GiB allocatable. The user approved an 8-GiB platform reserve after observing 1.81 GiB Pod working set and 448 MiB additional controller requests, preserving the 160-GiB pool and 172-GiB worker. Admission still requires the complete pool plus reserve to fit observed allocatable.
+## Capacity rebudget, 2026-09-15
+Historical measurements and approvals remain in evidence. The approved current
+pool is 33.5 CPU / 150 GiB, with 4 CPU / 18 GiB platform reserve including Nexus
+(2 CPU / 8 GiB) and PostgreSQL (0.5 CPU / 2 GiB). AI requests 33.25 CPU / 77 GiB
+only when admitted; Off retains no compute reservation. Fresh allocatable checks
+remain authoritative.
 
 ## Shared scratch and job-sized rollout
 The shared ClusterQueue also admits ephemeral-storage against 60 GiB, without
 separate runner partitions or borrowing. Scratch includes logs, writable layers
 and bounded emptyDir volumes. Retained AI PVC storage is never used as compute
-scratch. AI keeps 35.75 CPU / 77 GiB; it still prevents a 1-CPU runner from fitting.
+scratch. AI keeps 33.25 CPU / 77 GiB; it still prevents a 1-CPU runner from fitting.
 
 At plan and apply, fresh kubelet root/image measurements plus the full scratch
 quota and 8 GiB additional storage headroom must fit node allocatable and measured
@@ -40,7 +44,7 @@ free bytes. Missing, stale or insufficient measurements fail deployment. Node
 allocatable already excludes kubelet eviction reservations. Root use includes
 images on Talos; check root and image filesystems independently without adding
 image bytes twice. Recheck all desired listener reservations, available Pod slots
-and 10 additional platform/Argo slots. Keep the 8-GiB platform RAM reserve.
+and 10 additional platform/Argo slots. Keep the 18-GiB platform RAM reserve.
 
 Audit every routine job, including reusable storage/acceptance and supporting
 gates. Select lightweight, checks or Docker-enabled configurations explicitly;
@@ -54,3 +58,64 @@ routing and set CI_EXECUTOR=talos. Observe GitHub's documented 24-hour queue exp
 separately from cancellation with external monitoring and fixture cleanup. Keep
 unobserved acceptance unchecked. Verify actual routine runs, empty plans,
 autostart, Pi-hole and AI Off before returning the temporary Actions budget to $0.
+
+## Shared local Nexus cache
+Nexus Community Edition and PostgreSQL run as isolated platform Pods on the
+existing worker, managed through the guarded OpenTofu CI root. Four retained,
+static local PVs on the separate XFS data disk enforce 48 GiB content, 6 GiB
+PostgreSQL, 2 GiB Nexus configuration and 8 GiB temporary files/logs. The existing
+privileged quota collector owns project assignment; service Pods have no host
+mounts or quota privileges. Deployment checks actual hard limits, fresh guest
+and physical thin-pool bytes, retained PV commitments and image-inclusive scratch.
+The 60-GiB scratch target and 8-GiB eviction headroom are mandatory; failure is a
+rollout blocker, not permission to lower headroom.
+
+Proxy npm, PyPI, APT, Go and workflow container registries; raw repositories cache
+pinned tool downloads. A separate hosted Docker repository stores disposable build
+caches. Consumers receive read/browse permissions only; build writers can add/edit
+only build-cache content. Administration and trusted release publication remain
+separate. Credentials must never enter cached content. Preserve lockfiles, package
+integrity, signed APT metadata, Go checksum verification and image digests. Cache
+misses/outages fall back to verified upstream with bounded retries; upload failure
+cannot invalidate an otherwise successful build. Bootstrap/recovery can rebuild
+from upstream without the cache. Recurring prerequisites belong in reviewed pinned
+runner images.
+
+GitHub dependency/build cache reads and writes, including setup-action automatic
+caching, are disabled. Keep the repository cache limit at its free allowance and
+paid cache spending at $0. Published releases, deployment artifacts and operational
+evidence keep their existing workflows. No automatic paid expansion is permitted.
+
+Use supported Nexus cleanup and blob compaction, never filesystem deletion of
+blob content. Warn at 80% storage and 75% of CE limits (30,000 components and
+75,000 requests/day); reclaim eligible content before exhaustion. Soft quotas are
+alerts; XFS hard quotas enforce storage. On 2026-09-15 the user authorized CE EULA
+acceptance and an explicit exception permitting supported UI creation of cleanup
+policies/compaction schedules with deployment verification, because Sonatype
+marks the cleanup-policy REST API Pro-only. All other desired configuration stays
+under the guarded infrastructure workflow.
+
+Measure each eligible job once cold and twice warm on distinct fresh runners,
+including checkout, package installation, unpacked images, build layers, temporary
+files and logs. Scratch is ceil(maximum * 1.25 + 1 GiB), minimum 2 GiB. Re-run at
+the declared limit before catalog adoption; preserve homelab-talos compatibility.
+Deploy services and admission first. Prove cross-runner npm/Python/APT/Docker
+reuse with upstream bytes and elapsed time; concurrency, quota rejection,
+cleanup/compaction, interrupted downloads, service/node restart, fallback,
+AI-first/CI-first contention, Stop/Status/Pi-hole under queue load and outage.
+Complete the independent 24-hour expiry observation and hosted recovery before
+global routing. Finish with empty plans, AI Off, healthy Pi-hole and no leaked
+reservations. Historical evidence is retained and does not prove new budgets.
+
+## Authorized worker OS disk expansion
+The user authorized extending the plan after the image-inclusive scratch gate
+failed on the 100-GiB worker OS disk. Increase only VM 102 scsi0
+(local-lvm:vm-102-disk-1) from 100 to 128 GiB through an exact saved-plan guard.
+Keep the 1,200-GiB scsi1 data disk and all control-plane disks unchanged.
+Total primary allocations become 1,428 GiB, plus two EFI volumes. Preserve
+StrictFIFO budgets and 60-GiB scratch plus 8-GiB headroom. Verify physical pool
+headroom before allocation, keep AI Off and drain compute before a graceful
+worker reboot if required. Talos EPHEMERAL uses grow:true on the system disk.
+Verify filesystem/partition identity preservation, larger measured capacity,
+Ready nodes, Pi-hole UDP/TCP and no leaked reservations; then repeat the cache
+image-inclusive checks. Never shrink a disk as rollback.

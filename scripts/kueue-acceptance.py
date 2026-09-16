@@ -51,10 +51,10 @@ def main():
         run(['delete','pod',name,'-n','homelab-jobs','--wait=true','--timeout=90s'])
     try:
         budgets = {
-            'cpu': [('4', '1Gi', '16Mi'), ('35.75', '77Gi', '16Mi')],
-            'memory': [('100m', '32Gi', '16Mi'), ('100m', '150Gi', '16Mi')],
+            'cpu': [('4', '1Gi', '16Mi'), ('33.25', '77Gi', '16Mi')],
+            'memory': [('100m', '32Gi', '16Mi'), ('100m', '140Gi', '16Mi')],
             'ephemeral-storage': [('100m', '64Mi', '30Gi'), ('100m', '64Mi', '40Gi')],
-            'combined': [('4', '32Gi', '30Gi'), ('35.75', '150Gi', '40Gi')],
+            'combined': [('4', '32Gi', '30Gi'), ('33.25', '140Gi', '40Gi')],
         }
         first, second = budgets[args.scenario]
         blocker=create('blocker', *first[:2], scratch=first[2])
@@ -75,7 +75,7 @@ def main():
         later=create('completion','100m','64Mi');wait(later,True)
         delete(blocker)
         delete(later)
-        completed = create('normal', '35.75', '77Gi', seconds=30)
+        completed = create('normal', '33.25', '77Gi', seconds=30)
         wait(completed, True)
         follower = create('after-normal', '4', '16Gi')
         wait(follower, False)

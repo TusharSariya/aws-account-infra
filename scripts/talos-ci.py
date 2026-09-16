@@ -113,7 +113,7 @@ def guard_storage_config(configs):
 
 def guard_storage_disks(disks, volumes):
     disks = {d['metadata']['id']: d['spec'] for d in disks}
-    if disks.get('sda', {}).get('size') != 100 * 1024**3:
+    if disks.get('sda', {}).get('size') != 128 * 1024**3:
         raise StageError('Worker OS disk identity/size mismatch')
     data = disks.get('sdb', {})
     if (data.get('size') != 1200 * 1024**3 or data.get('dev_path') != '/dev/sdb'
@@ -162,7 +162,7 @@ def run_private(command, env):
         # Never forward command output, exception text, resource YAML or credentials.
         import re
         for line in result.stderr.splitlines():
-            if re.fullmatch(r'ACCEPTANCE_DIAGNOSTIC: (?:(?:network|readiness|storage|capacity) line [0-9]{1,4}|probe (?:api-read|namespace-dry-run) (?:success|failure|timeout)|error (?:Forbidden|InternalError|Unauthorized|failed-calling-webhook|connection-refused|timeout|no-endpoints-available|AlreadyExists|ServiceUnavailable|certificate|EOF))', line):
+            if re.fullmatch(r'ACCEPTANCE_DIAGNOSTIC: (?:(?:network|readiness|storage|capacity|lifecycle) line [0-9]{1,4}|probe (?:api-read|namespace-dry-run) (?:success|failure|timeout)|error (?:Forbidden|InternalError|Unauthorized|failed-calling-webhook|connection-refused|timeout|no-endpoints-available|AlreadyExists|ServiceUnavailable|certificate|EOF))', line):
                 print(line, file=sys.stderr)
         raise StageError('Private command failed: ' + Path(str(command[0])).name
                          + '; exit ' + str(result.returncode) + '; output suppressed')

@@ -91,6 +91,8 @@ jobs:
           fi
           sudo tailscale set --accept-routes=true --accept-dns=false
       - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: false
         if: contains(fromJSON(needs.detect.outputs.units).*.id, 'talos-homelab') || contains(fromJSON(needs.detect.outputs.units).*.id, 'kubernetes-homelab')
       - name: Verify Proxmox apply identity
         if: contains(fromJSON(needs.detect.outputs.units).*.id, 'proxmox-homelab')

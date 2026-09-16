@@ -1,0 +1,109 @@
+{
+  "acceptEula": true,
+  "repositories": [
+    {
+      "name": "npm",
+      "format": "npm",
+      "type": "proxy",
+      "remote": "https://registry.npmjs.org"
+    },
+    {
+      "name": "pypi",
+      "format": "pypi",
+      "type": "proxy",
+      "remote": "https://pypi.org"
+    },
+    {
+      "name": "go",
+      "format": "go",
+      "type": "proxy",
+      "remote": "https://proxy.golang.org"
+    },
+    {
+      "name": "apt-ubuntu",
+      "format": "apt",
+      "type": "proxy",
+      "remote": "http://archive.ubuntu.com/ubuntu",
+      "distribution": "noble"
+    },
+    {
+      "name": "apt-ubuntu-security",
+      "format": "apt",
+      "type": "proxy",
+      "remote": "http://security.ubuntu.com/ubuntu",
+      "distribution": "noble-security"
+    },
+    {
+      "name": "apt-debian",
+      "format": "apt",
+      "type": "proxy",
+      "remote": "https://deb.debian.org/debian",
+      "distribution": "trixie"
+    },
+    {
+      "name": "apt-debian-security",
+      "format": "apt",
+      "type": "proxy",
+      "remote": "https://security.debian.org/debian-security",
+      "distribution": "trixie-security"
+    },
+    {
+      "name": "docker-hub",
+      "format": "docker",
+      "type": "proxy",
+      "remote": "https://registry-1.docker.io",
+      "port": 5000
+    },
+    {
+      "name": "docker-ghcr",
+      "format": "docker",
+      "type": "proxy",
+      "remote": "https://ghcr.io",
+      "port": 5001
+    },
+    {
+      "name": "docker-ecr",
+      "format": "docker",
+      "type": "proxy",
+      "remote": "https://public.ecr.aws",
+      "port": 5002
+    },
+    {
+      "name": "docker-microsoft",
+      "format": "docker",
+      "type": "proxy",
+      "remote": "https://mcr.microsoft.com",
+      "port": 5004
+    },
+    {
+      "name": "docker-build",
+      "format": "docker",
+      "type": "hosted",
+      "port": 5003
+    },
+    {
+      "name": "raw-github",
+      "format": "raw",
+      "type": "proxy",
+      "remote": "https://github.com"
+    },
+    {
+      "name": "raw-kubernetes",
+      "format": "raw",
+      "type": "proxy",
+      "remote": "https://dl.k8s.io"
+    },
+    {
+      "name": "raw-helm",
+      "format": "raw",
+      "type": "proxy",
+      "remote": "https://get.helm.sh"
+    },
+    {
+      "name": "raw-go",
+      "format": "raw",
+      "type": "proxy",
+      "remote": "https://go.dev/dl"
+    }
+  ]
+}

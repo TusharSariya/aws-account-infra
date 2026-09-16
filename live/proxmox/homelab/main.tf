@@ -89,7 +89,7 @@ resource "proxmox_virtual_environment_vm" "guest" {
       error_message = "VM creation requires explicit approval after reviewing the live plan and outstanding readiness checks."
     }
     precondition {
-      condition     = local.total_vcpus <= (var.ci_runner_enabled ? 44 : 40) && local.total_memory_gib <= 176 && local.total_guest_disks_gib <= (var.ci_runner_enabled ? 1500 : 1400)
+      condition     = local.total_vcpus <= (var.ci_runner_enabled ? 44 : 40) && local.total_memory_gib <= 176 && local.total_guest_disks_gib <= (var.ci_runner_enabled ? 1528 : 1428)
       error_message = "Guest allocations exceed the approved host capacity budget."
     }
   }

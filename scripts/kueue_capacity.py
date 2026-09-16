@@ -31,7 +31,12 @@ def requests(pod, resource):
     return max(regular + sidecars, peak) + quantity(spec.get('overhead', {}).get(resource, '0'))
 
 
-def verify(node, pods, reserve):
+def verify(node, pods, reserve, pool=None):
+    if pool is None:
+        from pathlib import Path
+        import yaml
+        pool = yaml.safe_load((Path(__file__).resolve().parents[1] /
+            "config/environments/kubernetes/homelab-ci/pool-values.yaml").read_text())
     if node['metadata']['name'] != 'talos-worker-01':
         raise ValueError('Expected talos-worker-01')
     if not any(c['type'] == 'Ready' and c['status'] == 'True' for c in node['status']['conditions']):
@@ -41,7 +46,8 @@ def verify(node, pods, reserve):
     if quantity(node['status']['capacity']['memory']) < 168 * 1024**3:
         raise ValueError('Restore worker to 172 GiB before enabling the pool')
     result = {}
-    for resource, pool in [('cpu', '36'), ('memory', '160Gi')]:
+    for resource in ('cpu', 'memory'):
+        quota = pool[resource]
         observed = sum((requests(p, resource) for p in pods
                         if p['spec'].get('nodeName') == 'talos-worker-01'
                         and p.get('status', {}).get('phase') not in ('Succeeded', 'Failed')
@@ -50,10 +56,10 @@ def verify(node, pods, reserve):
         available = quantity(node['status']['allocatable'][resource])
         if observed > budget:
             raise ValueError(f'Platform {resource} requests {observed} exceed reviewed reserve {budget}')
-        if quantity(pool) + budget > available:
+        if quantity(quota) + budget > available:
             raise ValueError(f'Pool plus platform {resource} reserve exceeds node allocatable {available}')
         result[resource] = dict(allocatable=str(available), platform_observed=str(observed),
-                                platform_reserved=str(budget), pool=pool)
+                                platform_reserved=str(budget), pool=quota)
     return result
 
 

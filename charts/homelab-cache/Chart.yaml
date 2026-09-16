@@ -1,0 +1,4 @@
+apiVersion: v2
+name: homelab-cache
+version: 0.1.0
+description: Bounded local Nexus Community Edition dependency cache

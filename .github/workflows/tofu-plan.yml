@@ -177,6 +177,8 @@ jobs:
           tofu_version: 1.11.5
           tofu_wrapper: false
       - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: false
       - name: Plan Talos through visible guarded stages
         uses: ./.github/actions/talos-deploy
         with:
@@ -225,6 +227,8 @@ jobs:
           tofu_version: 1.11.5
           tofu_wrapper: false
       - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: false
       - name: Plan Kubernetes applications
         uses: ./.github/actions/kubernetes-deploy
         with:

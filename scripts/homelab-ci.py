@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 TF = ROOT / 'live/kubernetes/homelab-ci'
 CONFIG = ROOT / 'config/environments/kubernetes/homelab-ci'
 RELEASES = {'kueue': ('kueue-system', '0.19.4'), 'queue': ('kueue-system', None),
-            'arc': ('arc-systems', '0.14.2'), 'runners': ('arc-runners', '0.14.2')}
+            'arc': ('arc-systems', '0.14.2'), 'cache': ('homelab-cache', None), 'runners': ('arc-runners', '0.14.2')}
 
 
 def run(args, data=None):
@@ -113,7 +113,37 @@ def preflight(kube):
         pod['metadata'] = {'labels': {}}
         pod['spec']['nodeName'] = 'talos-worker-01'
         projected.append(pod)
-    report = verify(node, projected, config['platformReserve'])
+    # Cache Pods are outside Kueue but consume the approved platform reserve.
+    cache_values = yaml.safe_load((ROOT / 'charts/homelab-cache/values.yaml').read_text())
+    # Render every desired service and transient job; include whole-Pod init
+    # requests and reserve one monitoring/configuration slot even while idle.
+    rendered = run(['helm', 'template', 'homelab-cache', ROOT / 'charts/homelab-cache', '-f', '-'],
+                   yaml.safe_dump({'configure': True, 'volumes': json.loads((CONFIG / 'cache-storage.json').read_text())}).encode())
+    for resource in yaml.safe_load_all(rendered):
+        if not resource or resource.get('kind') not in ('Deployment', 'Job', 'CronJob'):
+            continue
+        template = (resource['spec']['jobTemplate']['spec']['template'] if resource['kind'] == 'CronJob'
+                    else resource['spec']['template'])
+        app = template['metadata']['labels']['app']
+        if not any(p['metadata'].get('namespace') == 'homelab-cache' and
+                   p['metadata'].get('labels', {}).get('app') == app and
+                   p.get('status', {}).get('phase') not in ('Succeeded', 'Failed') for p in projected):
+            pod = copy.deepcopy(template)
+            pod['spec']['nodeName'] = config['worker']
+            projected.append(pod)
+    from cache_capacity import verify_cache_storage
+    guest = json.loads(get('get', 'configmap', 'guest-capacity', '-n', 'homelab-platform')['data']['sample.json'])
+    physical = json.loads(get('get', 'configmap', 'physical-capacity', '-n', 'homelab-platform')['data']['sample.json'])
+    storage = json.loads((CONFIG / 'cache-storage.json').read_text())
+    capacity_config = yaml.safe_load((ROOT / 'config/environments/kubernetes/homelab/capacity-values.yaml').read_text())['config']
+    cache_report = verify_cache_storage(guest, physical, storage, capacity_config, get('get', 'pv')['items'])
+    images = {name for item in node['status'].get('images', []) for name in item['names']}
+    for image in cache_values['images'].values():
+        digest = image.split('@')[1]
+        if not any(name.endswith('@' + digest) for name in images):
+            raise ValueError('Preload pinned Nexus/PostgreSQL images before fresh scratch measurement')
+    report = verify(node, projected, config['platformReserve'], config)
+    report['cache_storage'] = cache_report
     report['storage_and_slots'] = verify_storage(node, projected, summary, config, catalog)
     run(kube + ['-n', 'homelab-services', 'rollout', 'status', 'deployment/pihole', '--timeout=60s'])
     # Resolve the exact peer through Tailscale, independent of Mac MagicDNS.
@@ -144,11 +174,33 @@ def enroll(kube, source):
     run(kube + ['apply', '--server-side', '--field-manager=homelab-ci-credentials', '-f', '-'], json.dumps(secret).encode())
 
 
+def enroll_cache(kube, source):
+    if (not source or source.is_symlink() or source.stat().st_mode & 0o077
+            or source.stat().st_uid != os.getuid()):
+        raise ValueError('Private owned cache credentials file required')
+    value = json.loads(source.read_text())
+    if set(value) != {'database', 'admin-password', 'build-password', 'metrics-password'} or any(
+            not isinstance(v, str) or len(v) < 32 for v in value.values()):
+        raise ValueError('Cache credentials require four distinct strong secrets')
+    if len(set(value.values())) != 4:
+        raise ValueError('Cache credential roles must not share passwords')
+    namespace = {'apiVersion':'v1', 'kind':'Namespace', 'metadata':{'name':'homelab-cache',
+        'labels':{'app.kubernetes.io/managed-by':'Helm','pod-security.kubernetes.io/enforce':'restricted'},
+        'annotations':{'meta.helm.sh/release-name':'homelab-cache','meta.helm.sh/release-namespace':'homelab-cache'}}}
+    run(kube + ['apply','--server-side','--field-manager=homelab-cache-credentials','-f','-'],json.dumps(namespace).encode())
+    for name, data in [('nexus-database', {'password':value['database']}),
+                       ('nexus-administrator', {k:value[k] for k in ('admin-password','build-password','metrics-password')})]:
+        manifest = {'apiVersion':'v1','kind':'Secret','metadata':{'name':name,'namespace':'homelab-cache'},
+                    'type':'Opaque','data':{k:base64.b64encode(v.encode()).decode() for k,v in data.items()}}
+        run(kube + ['apply','--server-side','--field-manager=homelab-cache-credentials','-f','-'],json.dumps(manifest).encode())
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('operation', choices=['setup','plan','apply','enroll','status'])
+    parser.add_argument('operation', choices=['setup','plan','apply','enroll','enroll-cache','status'])
     parser.add_argument('--private', type=Path)
     parser.add_argument('--app-json', type=Path)
+    parser.add_argument('--cache-json', type=Path)
     args = parser.parse_args()
     os.umask(0o077)
     guard_environment()
@@ -190,6 +242,10 @@ def main():
         print(json.dumps({'waiting_fifo': sorted(waiting, key=lambda w: (w['waiting_position'] is None, w['waiting_position'] or 0)), 'reserved': reserved}, indent=2))
         return
     with execution_lock():
+        if args.operation == 'enroll-cache':
+            enroll_cache(kube, args.cache_json)
+            print('PASS: cache credentials enrolled privately')
+            return
         if args.operation == 'enroll':
             enroll(kube, args.app_json)
             print('PASS: GitHub App Secret enrolled privately')

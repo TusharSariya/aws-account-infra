@@ -1,14 +1,14 @@
 worker: talos-worker-01
-cpu: '36'
-memory: 160Gi
+cpu: '33.5'
+memory: 150Gi
 scratch: 60Gi
 # Measured root/image usage must fit alongside the pool and eviction headroom.
 storageHeadroom: 8Gi
 podHeadroom: 10
 strategy: StrictFIFO
 platformReserve:
-  cpu: 1500m
-  memory: 8Gi
+  cpu: 4000m
+  memory: 18Gi
 queues:
   - {namespace: homelab-models, name: ai}
   - {namespace: arc-runners, name: ci}

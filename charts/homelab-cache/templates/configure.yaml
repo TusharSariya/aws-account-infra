@@ -1,0 +1,43 @@
+{{- if .Values.configure }}
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: nexus-configure, namespace: homelab-cache}
+data:
+  configure.py: {{ .Values.configurationCode | quote }}
+  repositories.json: {{ .Values.repositories | toJson | quote }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: nexus-configure
+  namespace: homelab-cache
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 300
+  template:
+    metadata: {labels: {app: nexus-configure}}
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      nodeSelector: {kubernetes.io/hostname: {{ .Values.node }}}
+      securityContext: {runAsNonRoot: true, runAsUser: 200, runAsGroup: 1000, fsGroup: 1000, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: configure
+          image: {{ .Values.configurationImage | quote }}
+          command: [python, -B, /config/configure.py]
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          resources:
+            requests: {cpu: 100m, memory: 128Mi, ephemeral-storage: 16Mi}
+            limits: {cpu: 100m, memory: 128Mi, ephemeral-storage: 16Mi}
+          volumeMounts:
+            - {name: config, mountPath: /config, readOnly: true}
+            - {name: credentials, mountPath: /credentials, readOnly: true}
+            - {name: bootstrap, mountPath: /bootstrap, readOnly: true}
+      volumes:
+        - {name: config, configMap: {name: nexus-configure}}
+        - {name: credentials, secret: {secretName: {{ .Values.adminSecret }}, defaultMode: 0440}}
+        - {name: bootstrap, persistentVolumeClaim: {claimName: configuration, readOnly: true}}
+{{- end }}

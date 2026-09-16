@@ -24,9 +24,9 @@ OpenTofu 1.11.5 and `bpg/proxmox` 0.112.0 were used. Retain `.terraform.lock.hcl
 | Guest | ID | vCPU | RAM (GiB) | Primary disks (GiB) | Reserved IPv4 | Startup order |
 |---|---:|---:|---:|---|---|---:|
 | talos-cp-01 | 100 | 2 | 4 | 100 | 10.42.0.220 | 1 |
-| talos-worker-01 | 102 | 38 | 172 | 100 OS + 1200 data | 10.42.0.222 | 2 |
+| talos-worker-01 | 102 | 38 | 172 | 128 OS + 1200 data | 10.42.0.222 | 2 |
 
-Primary disks total 1,400 GiB plus two EFI volumes, leaving approximately 395.992 GiB before auxiliary allocations. Guest RAM totals 176 GiB, leaving approximately 12 GiB of observed host RAM. These budgets must be measured under load; CPU affinity and NUMA tuning are deferred.
+Primary disks total 1,428 GiB plus two EFI volumes, leaving approximately 367.992 GiB before auxiliary allocations. Guest RAM totals 176 GiB, leaving approximately 12 GiB of observed host RAM. These budgets must be measured under load; CPU affinity and NUMA tuning are deferred.
 
 Both guests use OVMF, Q35, host CPU, VirtIO NICs on vmbr0, virtio-scsi-pci, raw local-lvm disks, disabled ballooning/hotplug/discard and no automatic reboot. Both enable the QEMU agent with trim disabled. Only the shared worker uses the qemu-plus-gVisor ISO. No NAS or sandbox VM is created. Worker scsi0 is its OS disk; scsi1 is its separate data disk, provisioned inside Talos in phase 6.
 

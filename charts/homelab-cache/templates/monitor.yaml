@@ -1,0 +1,102 @@
+{{- if .Values.configure }}
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: cache-monitor, namespace: homelab-cache}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cache-status, namespace: homelab-cache}
+data: {status.json: '{}'}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cache-monitor, namespace: homelab-cache}
+data:
+  monitor.py: {{ .Values.monitorCode | quote }}
+  volumes.json: {{ .Values.volumes | toJson | quote }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: {name: cache-monitor, namespace: homelab-cache}
+rules:
+  - {apiGroups: [''], resources: [configmaps], resourceNames: [cache-status], verbs: [patch]}
+  - {apiGroups: [''], resources: [events], verbs: [create]}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: {name: cache-monitor, namespace: homelab-cache}
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: cache-monitor}
+subjects: [{kind: ServiceAccount, name: cache-monitor, namespace: homelab-cache}]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: {name: cache-monitor, namespace: homelab-platform}
+rules:
+  - {apiGroups: [''], resources: [configmaps], resourceNames: [guest-capacity], verbs: [get]}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: {name: cache-monitor, namespace: homelab-platform}
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: cache-monitor}
+subjects: [{kind: ServiceAccount, name: cache-monitor, namespace: homelab-cache}]
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata: {name: cache-monitor, namespace: homelab-cache}
+spec:
+  schedule: '*/5 * * * *'
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 90
+      template:
+        metadata: {labels: {app: cache-monitor}}
+        spec:
+          serviceAccountName: cache-monitor
+          restartPolicy: Never
+          nodeSelector: {kubernetes.io/hostname: {{ .Values.node }}}
+          securityContext: {runAsNonRoot: true, runAsUser: 200, runAsGroup: 1000, fsGroup: 1000, seccompProfile: {type: RuntimeDefault}}
+          containers:
+            - name: monitor
+              image: {{ .Values.configurationImage | quote }}
+              command: [python, -B, /config/monitor.py]
+              securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+              resources:
+                requests: {cpu: 50m, memory: 64Mi, ephemeral-storage: 16Mi}
+                limits: {cpu: 50m, memory: 64Mi, ephemeral-storage: 16Mi}
+              volumeMounts:
+                - {name: config, mountPath: /config, readOnly: true}
+                - {name: credentials, mountPath: /credentials, readOnly: true}
+          volumes:
+            - {name: config, configMap: {name: cache-monitor}}
+            - name: credentials
+              secret:
+                secretName: {{ .Values.adminSecret }}
+                defaultMode: 0440
+                items: [{key: metrics-password, path: metrics-password}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: monitor, namespace: homelab-cache}
+spec:
+  podSelector: {matchLabels: {app: cache-monitor}}
+  policyTypes: [Egress]
+  egress:
+    - to: [{podSelector: {matchLabels: {app: nexus}}}]
+      ports: [{port: 8081}]
+    - to: [{namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}}]
+      ports: [{port: 53, protocol: UDP}, {port: 53, protocol: TCP}]
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata: {name: monitor-api, namespace: homelab-cache}
+spec:
+  endpointSelector: {matchLabels: {app: cache-monitor}}
+  egress:
+    - toEntities: [kube-apiserver]
+      toPorts:
+        - ports: [{port: '6443', protocol: TCP}]
+{{- end }}

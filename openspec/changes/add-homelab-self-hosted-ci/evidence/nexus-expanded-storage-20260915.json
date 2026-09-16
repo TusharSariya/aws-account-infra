@@ -1,0 +1,25 @@
+{
+  "pool": "64424509440",
+  "measured_used_with_images": "26241875968",
+  "platform_requests": "83886080",
+  "headroom": "8589934592",
+  "allocatable": "121286269137",
+  "projected_platform_pods": 24,
+  "runner_slots": 30,
+  "pod_headroom": 10,
+  "images": [
+    {
+      "names": [
+        "docker.io/sonatype/nexus3@sha256:56142f13432cf072e017aebb2025f201e42ae36ff40bb82618c702504c61f7dd"
+      ],
+      "sizeBytes": 486849025
+    },
+    {
+      "names": [
+        "docker.io/library/postgres@sha256:f3bd19c606e442c3d7bdfa8002e03fe260a1023351e0ea4598032022b68dd6e3"
+      ],
+      "sizeBytes": 156043705
+    }
+  ],
+  "time": "2026-09-16T00:47:29Z"
+}

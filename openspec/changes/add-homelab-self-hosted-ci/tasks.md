@@ -31,3 +31,18 @@
 - [ ] 4.8 Observe the full GitHub 24-hour request expiry separately from cancellation with external monitoring and fixture cleanup.
 - [ ] 4.9 Merge validated routing, set CI_EXECUTOR=talos and verify representative routine workflows at declared sizes without leaked reservations.
 - [ ] 4.10 Record final empty plans, autostart recovery, Pi-hole health and AI Off; verify ordinary workflows need no paid hosted compute before restoring the temporary Actions budget to $0.
+
+## 5. Shared local cache and measured scratch (2026-09-15)
+- [x] 5.1 Update the design and requirements with approved Nexus storage/resource budgets and preserve prior evidence, including authorized EULA and UI cleanup setup exception.
+- [ ] 5.2 Deploy revised admission/AI budgets and isolated Nexus/PostgreSQL services through guarded OpenTofu after actual XFS quotas, retained PV commitments, thin-pool headroom and image-inclusive 60-GiB scratch checks pass.
+- [ ] 5.3 Configure proxy/raw/build repositories, least-privilege consumers and writers, supported cleanup/compaction, 80% storage and 75% CE usage warnings, and verify UI-managed settings.
+- [ ] 5.4 Build reviewed pinned prerequisite runner images; route package managers and nested Docker through cache with verified bounded upstream fallback and nonfatal upload failure.
+- [ ] 5.5 Disable all GitHub dependency/build cache access and verify repository free allowance and $0 paid cache spending.
+- [ ] 5.6 Measure eligible jobs cold and twice warm on fresh runners, adopt max plus 25% and 1 GiB rounded up with 2-GiB minimum only after revalidation at the declared size.
+- [ ] 5.7 Prove fresh-runner npm/Python/APT/Docker reuse with upstream bytes/time, concurrent mixed sizes, actual quota rejection, cleanup/compaction, interrupted downloads, cache/node restart and fallback.
+- [ ] 5.8 Repeat revised-budget AI-first/CI-first, FIFO, cancellation and cleanup, Stop/Status/Pi-hole under full queue and Kueue outage, plus hosted recovery.
+- [ ] 5.9 Complete remaining original acceptance including independent 24-hour expiry; only then enable global Talos routing and verify empty plans, AI Off, Pi-hole and no reservations.
+
+## 6. Authorized OS capacity prerequisite
+- [x] 6.1 Implement and verify the exact VM 102 scsi0 100-to-128-GiB saved-plan guard; preserve scsi1, control-plane disks and all other VM settings.
+- [x] 6.2 Apply the guarded expansion, verify Talos EPHEMERAL growth and retained filesystem identities, recover Ready/Pi-hole/AI Off and rerun fresh image-inclusive capacity checks.

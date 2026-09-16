@@ -185,7 +185,8 @@
         "scripts/local_lifecycle_record.py",
         "scripts/local_lifecycle_tools.py",
         "scripts/homelab-lifecycle-local.py",
-        "scripts/tests/test_local_lifecycle.py"
+        "scripts/tests/test_local_lifecycle.py",
+        "config/environments/kubernetes/homelab-ci/cache-storage.json"
       ]
     },
     {
@@ -206,7 +207,10 @@
         "scripts/kueue-postrender.py",
         "scripts/kueue_capacity.py",
         ".github/workflows/homelab-ci-admission.yml",
-        "scripts/runner_catalog.py"
+        "scripts/runner_catalog.py",
+        "charts/homelab-cache/",
+        "scripts/cache_capacity.py",
+        "apps/platform/cache/"
       ]
     }
   ]

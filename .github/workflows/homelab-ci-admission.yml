@@ -5,6 +5,13 @@ on:
       - 'live/kubernetes/homelab-ci/**'
       - 'config/environments/kubernetes/homelab-ci/**'
       - 'charts/homelab-queue/**'
+      - 'charts/homelab-cache/**'
+      - 'apps/platform/cache/**'
+      - 'apps/platform/storage/**'
+      - 'scripts/cache_capacity.py'
+      - 'scripts/ci_scratch.py'
+      - 'scripts/tests/test_local_cache.py'
+      - 'scripts/tests/test_capacity_*.py'
       - 'scripts/homelab-ci.py'
       - 'scripts/kueue*'
       - 'scripts/runner_catalog.py'
@@ -35,11 +42,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: false
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.19.0
       - uses: actions/setup-go@v6
         with:
+          cache: false
           go-version: '1.26.1'
           cache-dependency-path: scripts/tests/kueue_cel/go.sum
       - uses: opentofu/setup-opentofu@v1
@@ -51,6 +61,9 @@ jobs:
           uv run --with PyYAML==6.0.3 python scripts/homelab-ci.py setup
           uv run --with PyYAML==6.0.3 python scripts/runner_catalog.py
           PYTHONPATH=scripts uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p 'test_kueue_*.py'
+          for pattern in 'test_local_cache.py' 'test_capacity_*.py'; do
+            PYTHONPATH=scripts uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p "$pattern"
+          done
           uv run --with PyYAML==6.0.3 python scripts/tests/kueue_cel/generate.py "$RUNNER_TEMP/cel-cases.json"
           (cd scripts/tests/kueue_cel && CGO_ENABLED=0 go run . "$RUNNER_TEMP/cel-cases.json")
           tofu -chdir=live/kubernetes/homelab-ci init -backend=false -input=false -lockfile=readonly
@@ -73,6 +86,8 @@ jobs:
         run: |
           if [[ "$MODE" == apply ]]; then test "$CONFIRM" = homelab-ci; fi
       - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: false
       - uses: opentofu/setup-opentofu@v1
         with:
           tofu_version: 1.11.5
