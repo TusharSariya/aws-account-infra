@@ -4,7 +4,7 @@ Share bounded Talos application compute while preserving independent recovery an
 ## ADDED Requirements
 
 ### Requirement: Shared admission pool
-AI, CI and ordinary Argo execution Pods SHALL share one worker-bound Kueue 0.19.4 ClusterQueue with 33.5 CPU, 150 GiB RAM and 60 GiB ephemeral storage. It SHALL use StrictFIFO, equal priorities, no preemption, borrowing or fairness policy. LocalQueues SHALL not partition quota. Oversized submissions MUST be rejected with an actionable error.
+AI, CI and ordinary Argo execution Pods SHALL share one worker-bound Kueue 0.19.4 ClusterQueue with 33.5 CPU, 150 GiB RAM and 120 GiB ephemeral storage. It SHALL use StrictFIFO, equal priorities, no preemption, borrowing or fairness policy. LocalQueues SHALL not partition quota. Oversized submissions MUST be rejected with an actionable error.
 
 #### Scenario: Contention
 - **WHEN** an older queued workload cannot fit remaining CPU, RAM or ephemeral storage
@@ -47,7 +47,7 @@ Routine workflows SHALL select github-hosted or talos via CI_EXECUTOR, without a
 
 ### Requirement: Measured storage and listener capacity
 Deployment SHALL fail unless fresh measured root/image storage, platform requests,
-the 60-GiB compute quota and 8-GiB additional storage headroom fit the worker.
+the 120-GiB compute quota and 8-GiB additional storage headroom fit the worker.
 It SHALL account for desired ARC listeners and available Pod slots, preserve the
 18-GiB RAM platform reserve, wait for runners to become idle, and never consume
 retained AI storage. Jobs SHALL install only their required prerequisites.
@@ -70,7 +70,7 @@ Nexus Community Edition and PostgreSQL SHALL run in isolated platform Pods using
 reserve. XFS project quotas SHALL enforce exactly 64 GiB on the separate data disk:
 48 GiB content, 6 GiB database, 2 GiB configuration and 8 GiB temporary/logs. Deployment
 MUST account for retained volumes, physical thin-pool headroom and fresh measurements
-including service images before admitting 60 GiB scratch plus 8 GiB eviction headroom.
+including service images before admitting 120 GiB scratch plus 8 GiB eviction headroom.
 
 #### Scenario: Cache footprint does not fit
 - **WHEN** service images, retained volumes or measured physical headroom prevent the approved budget fitting
@@ -106,22 +106,32 @@ compaction schedules SHALL be verified during deployment.
 - **WHEN** cleanup soft-deletes eligible components
 - **THEN** supported blob compaction reclaims their physical bytes without direct blob-file deletion
 
-### Requirement: Evidence-based scratch sizing
-Each eligible job SHALL be measured once cold and twice warm on fresh runners,
-including checkout, installation, images, layers, temporary files and logs.
-Scratch SHALL equal the maximum plus 25% and 1 GiB rounded upward to whole GiB,
-with a 2-GiB minimum. Adoption MUST follow a successful run at that limit.
-The existing homelab-talos configuration SHALL remain compatible.
+### Requirement: Provisional scratch sizing and fresh validation
+Under the user authorization dated 2026-09-16, eligible jobs MAY adopt provisional
+scratch limits before the original four-run measurement protocol. Each eligible
+job MUST succeed on a fresh runner at its declared limit before cutover. Failures
+SHALL be investigated and allocations refined without disabling resource limits.
+The existing homelab-talos configuration SHALL remain compatible, and approved
+CPU/RAM and Docker capability SHALL be retained.
 
-#### Scenario: Missing measurements
-- **WHEN** cold/warm measurements or the declared-limit verification are missing
-- **THEN** no smaller runner configuration is adopted on estimated evidence
+Full cold/two-warm/fourth-run tooling SHALL remain available for qualified measured
+budgets, including images, layers, temporary files and logs, using the maximum
+plus 25% and 1 GiB rounded upward with a 2-GiB minimum. Provisional allocations
+MUST NOT be reported as measured or four-run verified.
+
+#### Scenario: Provisional adoption
+- **WHEN** full cold/warm measurements are not yet available
+- **THEN** explicitly provisional configurations may be deployed and tested on fresh runners; missing measurements remain unverified
+
+#### Scenario: Provisional limit fails
+- **WHEN** a job exceeds its provisional allocation
+- **THEN** inspect the failure, revise its catalog allocation and repeat fresh-run validation before cutover
 
 ### Requirement: Guarded OS disk expansion
-VM 102 scsi0 SHALL expand from 100 to 128 GiB through an exact saved-plan guard
+VM 102 scsi0 SHALL expand from 128 to 192 GiB through an exact saved-plan guard
 after physical headroom verification. No other disk or VM setting SHALL change.
 Talos EPHEMERAL expansion SHALL retain partition/filesystem identities.
 
 #### Scenario: Scratch capacity recovery
 - **WHEN** the expanded filesystem is Ready
-- **THEN** fresh measurements including Nexus/PostgreSQL images MUST fit 60 GiB scratch and 8 GiB headroom before cache rollout resumes
+- **THEN** fresh measurements including Nexus/PostgreSQL images MUST fit 120 GiB scratch and 8 GiB headroom before cache rollout resumes

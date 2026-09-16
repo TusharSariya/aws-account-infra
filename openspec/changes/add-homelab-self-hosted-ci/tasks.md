@@ -41,7 +41,7 @@
 - [x] 5.4a Build and publish a private prerequisite runner image through independent hosted recovery; verify existing version/checksum pins, read-only image-pull credentials, deploy its immutable digest through a guarded CI-root plan, and verify successful fresh ARC jobs at that digest. Evidence: ci-runner-image-20260916.json.
 - [ ] 5.4b Route all package managers and nested Docker through cache with verified fallback and nonfatal upload failure. Enforce two-cache/three-upstream attempts for dependency and pinned-download clients; retain the 2026-09-16 user exception accepting stock BuildKit internal registry retries. Other Docker acceptance remains required.
 - [x] 5.5 Disable explicit GitHub dependency/build cache access, audit nested composite/setup actions, and verify repository 10-GB free allowance and $0 paid cache-storage budget with further usage blocked.
-- [ ] 5.6 Measure eligible jobs cold and twice warm on fresh runners, adopt max plus 25% and 1 GiB rounded up with 2-GiB minimum only after revalidation at the declared size.
+- [ ] 5.6 Under the 2026-09-16 user authorization, deploy explicitly provisional per-job scratch limits, validate each eligible job on a fresh runner at its limit, and refine failures. Retain the four-run sizing tooling and mark absent full measurements unverified; they no longer block initial provisional adoption.
 - [ ] 5.7 Prove fresh-runner npm/Python/APT/Docker reuse with upstream bytes/time, concurrent mixed sizes, actual quota rejection, cleanup/compaction, interrupted downloads, cache/node restart and fallback.
 - [ ] 5.8 Repeat revised-budget AI-first/CI-first, FIFO, cancellation and cleanup, Stop/Status/Pi-hole under full queue and Kueue outage, plus hosted recovery.
 - [ ] 5.9 Complete remaining original acceptance with independent 24-hour expiry explicitly waived and unverified; only then enable global Talos routing and verify empty plans, AI Off, Pi-hole and no reservations.
@@ -49,3 +49,9 @@
 ## 6. Authorized OS capacity prerequisite
 - [x] 6.1 Implement and verify the exact VM 102 scsi0 100-to-128-GiB saved-plan guard; preserve scsi1, control-plane disks and all other VM settings.
 - [x] 6.2 Apply the guarded expansion, verify Talos EPHEMERAL growth and retained filesystem identities, recover Ready/Pi-hole/AI Off and rerun fresh image-inclusive capacity checks.
+
+## 7. Authorized concurrency improvement (2026-09-16)
+- [x] 7.1 Record the user request for 120-GiB shared scratch and explicit acceptance of provisional limits followed by fresh validation; preserve historical 60-GiB evidence.
+- [x] 7.2 Guard and apply only VM 102 scsi0 128-to-192-GiB growth, verify retained identities, worker recovery and Pi-hole, and require fresh empty infrastructure plans.
+- [x] 7.3 Deploy the 120-GiB pool and provisional 12-/24-GiB Docker catalog entries before routing references; preserve CPU/RAM, 8-GiB headroom, 64-GiB Nexus storage and 30-GiB compatibility.
+- [ ] 7.4 Verify Docker's two-attempt ranged resume on Talos, repeat failed PR checks, prove improved mixed-job concurrency and refine provisional limits using fresh runs.

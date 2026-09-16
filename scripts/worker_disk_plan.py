@@ -1,7 +1,10 @@
-"""Exact allowlist for the authorized 100-to-128-GiB worker OS disk growth."""
+"""Exact allowlist for the authorized 128-to-192-GiB worker OS disk growth."""
 from copy import deepcopy
 from ci_runner_plan import WORKER
 from ci_retirement_plan import unknown
+
+BEFORE_GIB = 128
+AFTER_GIB = 192
 
 
 def guard(plan):
@@ -22,12 +25,12 @@ def guard(plan):
                 or len(expected.get('disk', [])) != 2):
             raise ValueError('Worker identity or disk inventory differs')
         disks = {d['interface']: d for d in expected['disk']}
-        for interface, size, identity in [('scsi0', 100, 'vm-102-disk-1'), ('scsi1', 1200, 'vm-102-disk-2')]:
+        for interface, size, identity in [('scsi0', BEFORE_GIB, 'vm-102-disk-1'), ('scsi1', 1200, 'vm-102-disk-2')]:
             disk = disks[interface]
             if (disk.get('size') != size or disk.get('datastore_id') != 'local-lvm'
                     or disk.get('path_in_datastore') != identity):
                 raise ValueError('Worker disk identity differs: ' + interface)
-        disks['scsi0']['size'] = 128
+        disks['scsi0']['size'] = AFTER_GIB
         if expected != change['after']:
             raise ValueError('Disk plan changes more than the authorized OS size')
         changed.append(WORKER)

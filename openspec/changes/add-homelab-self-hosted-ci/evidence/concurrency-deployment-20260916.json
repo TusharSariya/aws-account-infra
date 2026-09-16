@@ -1,0 +1,194 @@
+{
+  "date": "2026-09-16",
+  "worker_maintenance": {
+    "source_tree_sha256": "5fe3c3c210a43ec673eb3947be8a7eb5089cb7a94ccc1aa2bed1a093003ee0d3",
+    "started_at": 1789584657.415002,
+    "phase": "success",
+    "before_volumes": {
+      "EPHEMERAL": {
+        "phase": "ready",
+        "type": "partition",
+        "location": "/dev/sda4",
+        "mountLocation": "/dev/sda4",
+        "partitionIndex": 4,
+        "parentLocation": "/dev/sda",
+        "uuid": "72476ee5-4706-44c9-885b-67fdcd7f8d98",
+        "partitionUUID": "a465d6c7-edfb-4c75-a7c5-4cd4895e12e4",
+        "size": 135127891968,
+        "prettySize": "135 GB",
+        "filesystem": "xfs",
+        "mountSpec": {
+          "targetPath": "/var",
+          "selinuxLabel": "system_u:object_r:ephemeral_t:s0",
+          "projectQuotaSupport": true,
+          "fileMode": 493
+        }
+      },
+      "STATE": {
+        "phase": "ready",
+        "type": "partition",
+        "location": "/dev/sda3",
+        "mountLocation": "/dev/sda3",
+        "partitionIndex": 3,
+        "parentLocation": "/dev/sda",
+        "uuid": "8e98a2db-10f5-4cd0-b4c8-aed7b91d8514",
+        "partitionUUID": "226d10f9-531c-4c60-a6ae-31874732a80b",
+        "size": 104857600,
+        "prettySize": "105 MB",
+        "filesystem": "xfs",
+        "mountSpec": {
+          "targetPath": "/system/state",
+          "selinuxLabel": "system_u:object_r:system_state_t:s0",
+          "projectQuotaSupport": false,
+          "fileMode": 448
+        }
+      },
+      "u-local-path-provisioner": {
+        "phase": "ready",
+        "type": "partition",
+        "location": "/dev/sdb1",
+        "mountLocation": "/dev/sdb1",
+        "partitionIndex": 1,
+        "parentLocation": "/dev/sdb",
+        "uuid": "86f3ada1-17e4-4f74-9d73-a18c1774cc31",
+        "partitionUUID": "4b94f790-0d84-43ef-ba5b-da4bffc20939",
+        "size": 1288488091648,
+        "prettySize": "1.3 TB",
+        "filesystem": "xfs",
+        "mountSpec": {
+          "targetPath": "local-path-provisioner",
+          "selinuxLabel": "system_u:object_r:ephemeral_t:s0",
+          "projectQuotaSupport": true,
+          "parentId": "/var/mnt",
+          "fileMode": 493
+        }
+      }
+    },
+    "after_volumes": {
+      "EPHEMERAL": {
+        "phase": "ready",
+        "type": "partition",
+        "location": "/dev/sda4",
+        "mountLocation": "/dev/sda4",
+        "partitionIndex": 4,
+        "parentLocation": "/dev/sda",
+        "uuid": "72476ee5-4706-44c9-885b-67fdcd7f8d98",
+        "partitionUUID": "a465d6c7-edfb-4c75-a7c5-4cd4895e12e4",
+        "size": 203847368704,
+        "prettySize": "204 GB",
+        "filesystem": "xfs",
+        "mountSpec": {
+          "targetPath": "/var",
+          "selinuxLabel": "system_u:object_r:ephemeral_t:s0",
+          "projectQuotaSupport": true,
+          "fileMode": 493
+        }
+      },
+      "STATE": {
+        "phase": "ready",
+        "type": "partition",
+        "location": "/dev/sda3",
+        "mountLocation": "/dev/sda3",
+        "partitionIndex": 3,
+        "parentLocation": "/dev/sda",
+        "uuid": "8e98a2db-10f5-4cd0-b4c8-aed7b91d8514",
+        "partitionUUID": "226d10f9-531c-4c60-a6ae-31874732a80b",
+        "size": 104857600,
+        "prettySize": "105 MB",
+        "filesystem": "xfs",
+        "mountSpec": {
+          "targetPath": "/system/state",
+          "selinuxLabel": "system_u:object_r:system_state_t:s0",
+          "projectQuotaSupport": false,
+          "fileMode": 448
+        }
+      },
+      "u-local-path-provisioner": {
+        "phase": "ready",
+        "type": "partition",
+        "location": "/dev/sdb1",
+        "mountLocation": "/dev/sdb1",
+        "partitionIndex": 1,
+        "parentLocation": "/dev/sdb",
+        "uuid": "86f3ada1-17e4-4f74-9d73-a18c1774cc31",
+        "partitionUUID": "4b94f790-0d84-43ef-ba5b-da4bffc20939",
+        "size": 1288488091648,
+        "prettySize": "1.3 TB",
+        "filesystem": "xfs",
+        "mountSpec": {
+          "targetPath": "local-path-provisioner",
+          "selinuxLabel": "system_u:object_r:ephemeral_t:s0",
+          "projectQuotaSupport": true,
+          "parentId": "/var/mnt",
+          "fileMode": 493
+        }
+      }
+    },
+    "boot_id": "2d9b9c55-5075-45d2-bbf9-d85758232077",
+    "completed_at": 1789584845.3534348,
+    "worker_memory_bytes": 184683593728,
+    "kubernetes_memory": "177121908Ki",
+    "dns_transports": [
+      "udp",
+      "tcp"
+    ],
+    "manager": "retired"
+  },
+  "ci_deployment": {
+    "source": "5fe3c3c210a43ec673eb3947be8a7eb5089cb7a94ccc1aa2bed1a093003ee0d3",
+    "apply": "success",
+    "post_plan_empty": true,
+    "capacity": {
+      "cpu": {
+        "allocatable": "37.950",
+        "platform_observed": "3.806",
+        "platform_reserved": "4.000",
+        "pool": "33.5"
+      },
+      "memory": {
+        "allocatable": "180865323008",
+        "platform_observed": "12431917056",
+        "platform_reserved": "19327352832",
+        "pool": "150Gi"
+      },
+      "cache_storage": {
+        "committed_bytes": "423058472960",
+        "cache_bytes": "68719476736",
+        "filesystem_available_bytes": 1244360142848,
+        "thin_pool_available_bytes": 1812147482080
+      },
+      "storage_and_slots": {
+        "pool": "128849018880",
+        "measured_used_with_images": "24676974592",
+        "platform_requests": "520093696",
+        "headroom": "8589934592",
+        "allocatable": "183133798097",
+        "projected_platform_pods": 28,
+        "runner_slots": 33,
+        "pod_headroom": 10
+      }
+    },
+    "changes": [
+      "helm_release.queue",
+      "helm_release.runners[\"homelab-talos\"]",
+      "helm_release.runners[\"homelab-talos-build\"]",
+      "helm_release.runners[\"homelab-talos-docker-small\"]"
+    ]
+  },
+  "proxmox_post_plan_empty": true,
+  "limits_status": "provisional; fresh job validation pending",
+  "workflow_mapping": {
+    "lambda-package": "homelab-talos-docker-small",
+    "homelab-config-tests": "homelab-talos-docker-small",
+    "homelab-apps-tests": "homelab-talos-docker-small",
+    "localstack": "homelab-talos-docker-small",
+    "storage-foundation": "homelab-talos-docker-small",
+    "sdk-publish-stable": "homelab-talos-docker-small",
+    "sdk": "homelab-talos-docker-small",
+    "checkov": "homelab-talos-docker-small",
+    "odysseus-image": "homelab-talos-build",
+    "ecr-push": "homelab-talos-build"
+  },
+  "retained_compatibility": "homelab-talos: 4 CPU / 16 GiB / 30 GiB",
+  "automatic_runner_cleanup": "All ARC runner Pods removed after normal GitHub cancellation; no manual runner deletion before maintenance"
+}

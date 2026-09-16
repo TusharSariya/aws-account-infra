@@ -33,7 +33,7 @@ only when admitted; Off retains no compute reservation. Fresh allocatable checks
 remain authoritative.
 
 ## Shared scratch and job-sized rollout
-The shared ClusterQueue also admits ephemeral-storage against 60 GiB, without
+The shared ClusterQueue also admits ephemeral-storage against 120 GiB, without
 separate runner partitions or borrowing. Scratch includes logs, writable layers
 and bounded emptyDir volumes. Retained AI PVC storage is never used as compute
 scratch. AI keeps 33.25 CPU / 77 GiB; it still prevents a 1-CPU runner from fitting.
@@ -67,7 +67,7 @@ PostgreSQL, 2 GiB Nexus configuration and 8 GiB temporary files/logs. The existi
 privileged quota collector owns project assignment; service Pods have no host
 mounts or quota privileges. Deployment checks actual hard limits, fresh guest
 and physical thin-pool bytes, retained PV commitments and image-inclusive scratch.
-The 60-GiB scratch target and 8-GiB eviction headroom are mandatory; failure is a
+The 120-GiB scratch target and 8-GiB eviction headroom are mandatory; failure is a
 rollout blocker, not permission to lower headroom.
 
 Proxy npm, PyPI, APT, Go and workflow container registries; raw repositories cache
@@ -105,10 +105,15 @@ policies/compaction schedules with deployment verification, because Sonatype
 marks the cleanup-policy REST API Pro-only. All other desired configuration stays
 under the guarded infrastructure workflow.
 
-Measure each eligible job once cold and twice warm on distinct fresh runners,
-including checkout, package installation, unpacked images, build layers, temporary
-files and logs. Scratch is ceil(maximum * 1.25 + 1 GiB), minimum 2 GiB. Re-run at
-the declared limit before catalog adoption; preserve homelab-talos compatibility.
+On 2026-09-16 the user authorized provisional job-specific scratch limits,
+followed by fresh-run validation and refinement, instead of requiring the full
+cold/two-warm/fourth-run proof before reductions. Label these allocations as
+provisional and preserve homelab-talos compatibility. Every eligible job must
+succeed on a fresh runner at its declared limit before cutover; inspect failures
+and refine the relevant allocation rather than weaken quota enforcement. The
+full measurement protocol and `scripts/ci_scratch.py` remain available to qualify
+measured budgets using ceil(peak * 1.25 + 1 GiB), minimum 2 GiB. Do not report
+provisional allocations as measured or four-run verified.
 Deploy services and admission first. Prove cross-runner npm/Python/APT/Docker
 reuse with upstream bytes and elapsed time; concurrency, quota rejection,
 cleanup/compaction, interrupted downloads, service/node restart, fallback,
@@ -117,7 +122,7 @@ Complete hosted recovery and all other required acceptance before global routing
 The independent 24-hour expiry observation is waived, not verified. Finish with empty plans, AI Off, healthy Pi-hole and no leaked
 reservations. Historical evidence is retained and does not prove new budgets.
 
-## Authorized worker OS disk expansion
+## Historical worker OS disk expansion (completed)
 The user authorized extending the plan after the image-inclusive scratch gate
 failed on the 100-GiB worker OS disk. Increase only VM 102 scsi0
 (local-lvm:vm-102-disk-1) from 100 to 128 GiB through an exact saved-plan guard.
@@ -151,3 +156,24 @@ do not qualify job sizing until full lifecycle coverage, image accounting and
 upstream byte observations are established. No measured budget is adopted by
 this repair. Stock BuildKit retry-count acceptance does not waive resource
 containment, integrity checks or any remaining runtime acceptance.
+
+## Concurrency revision authorized 2026-09-16
+The user requested doubling shared compute scratch from 60 to 120 GiB and
+reducing per-job reservations. They explicitly selected provisional limits, then
+fresh-run validation and refinement. Retain 33.5 CPU / 150 GiB, 4 CPU / 18 GiB
+platform reserve, 8 GiB storage headroom and the separate 64-GiB Nexus allocation.
+The current 128-GiB worker OS disk cannot contain the doubled pool alongside
+images and reserves. Expand only VM 102 scsi0 from 128 to 192 GiB through a fresh
+exact saved-plan guard, fresh physical thin-pool verification and drained worker
+maintenance. Preserve scsi1 and all retained filesystem identities.
+
+Deploy provisional Docker configurations at 4 CPU / 16 GiB with 12 GiB for
+smaller Docker jobs and 24 GiB for image builds. Keep the compatible 30-GiB
+configuration for the largest builds and the existing non-Docker configurations.
+Deploy catalog entries before workflows reference them. Enforce whole-Pod
+budgets, including nested Docker/BuildKit cgroups. Configure two Docker layer
+download attempts: the interrupted registry fixture demonstrates byte-range
+resume on attempt two, while the original one-attempt setting fails with EOF.
+This preserves the two-cache/three-upstream ceiling and does not extend the
+separate BuildKit retry exception. Deployment, fresh job success, concurrency
+and final acceptance remain unverified until new runtime evidence exists.

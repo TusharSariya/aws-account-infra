@@ -20,7 +20,7 @@ class CatalogTests(unittest.TestCase):
             entries['homelab-talos-custom'] = dict(cpu=3.001, memory=5121, scratch=6145, docker=True)
             (path / 'runner-catalog.json').write_text(json.dumps(entries))
             validate_rendered(rendered_values(path), path)
-            for resource, value in [('cpu', 36.001), ('memory', 163841), ('scratch', 61441), ('cpu', 0), ('cpu', .0001)]:
+            for resource, value in [('cpu', 33.501), ('memory', 153601), ('scratch', 122881), ('cpu', 0), ('cpu', .0001)]:
                 invalid = copy.deepcopy(entries)
                 invalid['homelab-talos-custom'][resource] = value
                 (path / 'runner-catalog.json').write_text(json.dumps(invalid))
@@ -73,3 +73,16 @@ class StorageTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Pod slots'): verify_storage(*broken)
         broken = copy.deepcopy(args); del broken[2]['node']['runtime']['imageFs']
         with self.assertRaises(KeyError): verify_storage(*broken)
+
+    def test_doubled_pool_requires_expanded_disk_and_available_pod_slots(self):
+        node, pods, summary, config, entries = self.fixture()
+        config.update(scratch='120Gi', cpu='33.5', memory='150Gi')
+        with self.assertRaises(ValueError):
+            verify_storage(node, pods, summary, config, entries)
+        node['status']['allocatable']['ephemeral-storage'] = '172Gi'
+        for fs in (summary['node']['fs'], summary['node']['runtime']['imageFs']):
+            fs['availableBytes'] = 150 * 1024**3
+        self.assertEqual(verify_storage(node, pods, summary, config, entries)['runner_slots'], 33)
+        node['status']['allocatable']['pods'] = '42'
+        with self.assertRaisesRegex(ValueError, 'Pod slots'):
+            verify_storage(node, pods, summary, config, entries)

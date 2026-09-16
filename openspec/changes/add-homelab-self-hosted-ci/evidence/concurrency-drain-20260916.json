@@ -1,0 +1,84 @@
+{
+  "observed_at": "2026-09-16T18:33:00.630191+00:00",
+  "reason": "User requested doubled scratch pool and provisional job limits; preserve active work and drain queued branch checks before worker maintenance",
+  "runs": [
+    {
+      "databaseId": 35132887625,
+      "headSha": "24006fc8b192bd381228f774302926829454d440",
+      "name": "ecr-push",
+      "status": "queued",
+      "cancel_requested": true
+    },
+    {
+      "databaseId": 35132887578,
+      "headSha": "24006fc8b192bd381228f774302926829454d440",
+      "name": "homelab-recovery-tests",
+      "status": "queued",
+      "cancel_requested": true
+    },
+    {
+      "databaseId": 35132887580,
+      "headSha": "24006fc8b192bd381228f774302926829454d440",
+      "name": "sdk-publish-stable",
+      "status": "queued",
+      "cancel_requested": true
+    },
+    {
+      "databaseId": 35132887879,
+      "headSha": "24006fc8b192bd381228f774302926829454d440",
+      "name": "tofu-apply",
+      "status": "queued",
+      "cancel_requested": true
+    },
+    {
+      "databaseId": 35132887543,
+      "headSha": "24006fc8b192bd381228f774302926829454d440",
+      "name": "homelab-config-tests",
+      "status": "queued",
+      "cancel_requested": true
+    },
+    {
+      "databaseId": 35132887557,
+      "headSha": "24006fc8b192bd381228f774302926829454d440",
+      "name": "gitleaks",
+      "status": "queued",
+      "cancel_requested": true
+    },
+    {
+      "databaseId": 35132887446,
+      "headSha": "24006fc8b192bd381228f774302926829454d440",
+      "name": "sdk",
+      "status": "queued",
+      "cancel_requested": true
+    },
+    {
+      "databaseId": 35132887497,
+      "headSha": "24006fc8b192bd381228f774302926829454d440",
+      "name": "ARC compatibility",
+      "status": "queued",
+      "cancel_requested": true
+    },
+    {
+      "databaseId": 35132887425,
+      "headSha": "24006fc8b192bd381228f774302926829454d440",
+      "name": "tofu-plan",
+      "status": "queued",
+      "cancel_requested": true
+    },
+    {
+      "databaseId": 35132887561,
+      "headSha": "24006fc8b192bd381228f774302926829454d440",
+      "name": "ollama-image",
+      "status": "queued",
+      "cancel_requested": true
+    }
+  ],
+  "active_job_drain": {
+    "run_id": 35132887526,
+    "workflow": "odysseus-image",
+    "observed_step": "Verify packaged service startup and authentication",
+    "publication_step": "success",
+    "cancel_requested_at": "2026-09-16T18:44:42.375561+00:00",
+    "reason": "Worker maintenance after disk expansion; smoke verification will repeat with revised runner settings"
+  }
+}
