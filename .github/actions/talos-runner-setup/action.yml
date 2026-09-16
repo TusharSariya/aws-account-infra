@@ -44,15 +44,17 @@ runs:
           sudo rm -rf /var/lib/apt/lists/*
         fi
         if [[ "$NEED_AWS" == true ]]; then
-          test "$(uname -m)" = x86_64
-          aws_install_dir=$(mktemp -d "$RUNNER_TEMP/aws-cli.XXXXXXXX")
-          trap 'rm -rf "$aws_install_dir"' EXIT
-          python3 "$GITHUB_ACTION_PATH/../../../scripts/cache_download.py" \
-            https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.36.45.zip \
-            0f02381483b0a5ca127a4cb379e656a73007b346561a5e41d3249d3bc1861226 \
-            "$aws_install_dir/aws.zip" --cache
-          unzip -q "$aws_install_dir/aws.zip" -d "$aws_install_dir"
-          sudo "$aws_install_dir/aws/install" --update
+          if [[ "$(aws --version 2>/dev/null || true)" != aws-cli/2.36.45\ * ]]; then
+            test "$(uname -m)" = x86_64
+            aws_install_dir=$(mktemp -d "$RUNNER_TEMP/aws-cli.XXXXXXXX")
+            trap 'rm -rf "$aws_install_dir"' EXIT
+            python3 "$GITHUB_ACTION_PATH/../../../scripts/cache_download.py" \
+              https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.36.45.zip \
+              0f02381483b0a5ca127a4cb379e656a73007b346561a5e41d3249d3bc1861226 \
+              "$aws_install_dir/aws.zip" --cache
+            unzip -q "$aws_install_dir/aws.zip" -d "$aws_install_dir"
+            sudo "$aws_install_dir/aws/install" --update
+          fi
           aws --version
         fi
         if [[ "$NEED_TAILSCALE" == true ]]; then

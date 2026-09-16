@@ -1,0 +1,76 @@
+name: ci-runner-image
+on:
+  pull_request:
+    paths:
+      - 'apps/containers/ci-runner/**'
+      - 'scripts/ci-runner-image.sh'
+      - 'scripts/cache_download.py'
+      - '.github/workflows/ci-runner-image.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'apps/containers/ci-runner/**'
+      - 'scripts/ci-runner-image.sh'
+      - 'scripts/cache_download.py'
+      - '.github/workflows/ci-runner-image.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-runner-image-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    # Bootstrap must remain available while ARC and Nexus are absent.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: prod
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and verify prerequisites
+        env:
+          SOURCE_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          image="ghcr.io/tusharsariyaorg/homelab-ci-runner:$SOURCE_REVISION"
+          bash scripts/ci-runner-image.sh --load --tag "$image" \
+            --label org.opencontainers.image.source=https://github.com/TusharSariyaOrg/aws-account-infra \
+            --label "org.opencontainers.image.revision=$SOURCE_REVISION"
+          docker run --rm "$image" bash -ec '
+            test "$(id -un)" = runner
+            test -x /home/runner/run.sh
+            aws --version
+            docker compose version
+            python3 --version
+            shellcheck --version
+            test ! -e /tmp/aws.zip'
+          docker run --rm "$image" cat /opt/ci-packages.tsv > "$RUNNER_TEMP/ci-packages.tsv"
+          docker push "$image"
+          docker buildx imagetools inspect "$image" --format '{{json .Manifest}}' > "$RUNNER_TEMP/runner-manifest.json"
+      - name: Verify private publication
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          test "$(gh api /orgs/TusharSariyaOrg/packages/container/homelab-ci-runner --jq .visibility)" = private
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ci-runner-image-receipt
+          path: |
+            ${{ runner.temp }}/ci-packages.tsv
+            ${{ runner.temp }}/runner-manifest.json
+          retention-days: 90
+          if-no-files-found: error
