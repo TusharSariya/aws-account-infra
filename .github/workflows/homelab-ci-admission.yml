@@ -7,6 +7,7 @@ on:
       - 'charts/homelab-queue/**'
       - 'scripts/homelab-ci.py'
       - 'scripts/kueue*'
+      - 'scripts/runner_catalog.py'
       - 'scripts/tests/test_kueue_*.py'
       - 'scripts/tests/kueue_cel/**'
       - '.github/workflows/homelab-ci-admission.yml'
@@ -44,9 +45,11 @@ jobs:
       - uses: opentofu/setup-opentofu@v1
         with:
           tofu_version: 1.11.5
+          tofu_wrapper: false
       - name: Verify admission artifacts, contracts and CEL behavior
         run: |
           uv run --with PyYAML==6.0.3 python scripts/homelab-ci.py setup
+          uv run --with PyYAML==6.0.3 python scripts/runner_catalog.py
           PYTHONPATH=scripts uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p 'test_kueue_*.py'
           uv run --with PyYAML==6.0.3 python scripts/tests/kueue_cel/generate.py "$RUNNER_TEMP/cel-cases.json"
           (cd scripts/tests/kueue_cel && CGO_ENABLED=0 go run . "$RUNNER_TEMP/cel-cases.json")

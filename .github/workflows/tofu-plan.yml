@@ -16,7 +16,7 @@ permissions:
 jobs:
   detect:
     if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-light"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
     outputs:
       units: ${{ steps.units.outputs.units }}
       aws_units: ${{ steps.units.outputs.aws_units }}
@@ -38,7 +38,7 @@ jobs:
   plan:
     needs: detect
     if: needs.detect.outputs.aws_units != '[]' && github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-checks"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
     strategy:
       fail-fast: false
       matrix:
@@ -49,6 +49,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/talos-runner-setup
+        with:
+          packages: dnsutils openssh-client rsync
       - uses: aws-actions/configure-aws-credentials@v4
         if: matrix.unit.cloud == 'aws'
         with:
@@ -57,6 +59,7 @@ jobs:
       - uses: opentofu/setup-opentofu@v1
         with:
           tofu_version: 1.11.5
+          tofu_wrapper: false
       - name: format
         run: tofu fmt -check -recursive
       - name: initialize
@@ -88,7 +91,7 @@ jobs:
 
   proxmox-plan:
     needs: detect
-    if: contains(needs.detect.outputs.units, 'proxmox-homelab') && github.event.pull_request.head.repo.full_name == github.repository
+    if: contains(fromJSON(needs.detect.outputs.units).*.id, 'proxmox-homelab') && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: prod
@@ -120,6 +123,7 @@ jobs:
       - uses: opentofu/setup-opentofu@v1
         with:
           tofu_version: 1.11.5
+          tofu_wrapper: false
       - name: Verify authenticated HTTPS and plan token scope
         run: python3 ../../../scripts/proxmox-ci-check.py plan
       - name: Initialize and validate
@@ -149,7 +153,7 @@ jobs:
 
   talos-plan:
     needs: detect
-    if: contains(needs.detect.outputs.units, 'talos-homelab') && github.event.pull_request.head.repo.full_name == github.repository
+    if: contains(fromJSON(needs.detect.outputs.units).*.id, 'talos-homelab') && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: prod
@@ -193,13 +197,16 @@ jobs:
 
   applications-plan:
     needs: detect
-    if: contains(needs.detect.outputs.units, 'kubernetes-homelab') && github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
+    if: contains(fromJSON(needs.detect.outputs.units).*.id, 'kubernetes-homelab') && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-checks"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
     timeout-minutes: 20
     environment: prod
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/talos-runner-setup
+        with:
+          tailscale: 'true'
+          packages: dnsutils openssh-client rsync
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.TOFU_PLAN_ROLE_ARN }}
@@ -238,24 +245,24 @@ jobs:
 
   plan-gate:
     needs: [detect, plan, proxmox-plan, talos-plan, applications-plan]
-    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-light"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
     steps:
       - name: gate
         run: |
           [[ "${{ needs.detect.result }}" == "success" ]] || exit 1
           [[ "${{ needs.plan.result }}" != "failure" && "${{ needs.plan.result }}" != "cancelled" ]] || exit 1
-          if [[ '${{ contains(needs.detect.outputs.units, 'proxmox-homelab') }}' == true ]]; then
+          if [[ '${{ contains(fromJSON(needs.detect.outputs.units).*.id, 'proxmox-homelab') }}' == true ]]; then
             [[ "${{ needs.proxmox-plan.result }}" == success ]] || {
               echo '::error::Proxmox plan must succeed from a trusted repository branch.'; exit 1;
             }
           fi
-          if [[ '${{ contains(needs.detect.outputs.units, 'talos-homelab') }}' == true ]]; then
+          if [[ '${{ contains(fromJSON(needs.detect.outputs.units).*.id, 'talos-homelab') }}' == true ]]; then
             [[ "${{ needs.talos-plan.result }}" == success ]] || {
               echo '::error::Talos plan must succeed from a trusted repository branch.'; exit 1;
             }
           fi
-          if [[ '${{ contains(needs.detect.outputs.units, 'kubernetes-homelab') }}' == true ]]; then
+          if [[ '${{ contains(fromJSON(needs.detect.outputs.units).*.id, 'kubernetes-homelab') }}' == true ]]; then
             [[ "${{ needs.applications-plan.result }}" == success ]] || {
               echo '::error::Application plan must succeed from a trusted branch.'; exit 1;
             }

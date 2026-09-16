@@ -44,7 +44,8 @@ class Contracts(unittest.TestCase):
         documents = self.render('live/kubernetes/homelab-ci/.terraform/gha-runner-scale-set-0.14.2.tgz',
             name='homelab-talos',namespace='arc-runners',values='config/environments/kubernetes/homelab-ci/arc-runner-values.yaml')
         scale = next(d for d in documents if d['kind'] == 'AutoscalingRunnerSet')['spec']
-        self.assertEqual((scale['minRunners'],scale['maxRunners']), (0,1))
+        self.assertEqual(scale['minRunners'], 0)
+        self.assertNotIn('maxRunners', scale)
         self.assertEqual(scale['githubConfigSecret'],'github-app')
         pod = scale['template']
         self.assertEqual(requests(pod,'cpu'),4)
@@ -62,6 +63,21 @@ class Contracts(unittest.TestCase):
         for key in ['hostPID','hostIPC','hostNetwork']:
             self.assertFalse(pod['spec'].get(key,False))
 
+    def test_every_catalog_entry_matches_actual_helm_pod(self):
+        from runner_catalog import rendered_values, validate_rendered, validate_workflows
+        values = rendered_values()
+        validate_rendered(values)
+        validate_workflows()
+        rendered = {}
+        for name, value in values.items():
+            with TemporaryDirectory() as directory:
+                path = Path(directory) / 'values.yaml'
+                path.write_text(yaml.safe_dump(value))
+                docs = self.render('live/kubernetes/homelab-ci/.terraform/gha-runner-scale-set-0.14.2.tgz',
+                                   name=name, namespace='arc-runners', values=path)
+                rendered[name] = next(d for d in docs if d['kind'] == 'AutoscalingRunnerSet')['spec']
+        validate_rendered(rendered)
+
     def test_workload_webhooks_are_filtered_and_stop_updates_bypass(self):
         raw = self.render('live/kubernetes/homelab-ci/.terraform/kueue-0.19.4.tgz',name='kueue',
                           namespace='kueue-system',values='config/environments/kubernetes/homelab-ci/kueue-values.yaml')
@@ -69,7 +85,7 @@ class Contracts(unittest.TestCase):
         manager = yaml.safe_load(config['data']['controller_manager_config.yaml'])
         self.assertEqual(manager['integrations']['frameworks'],['pod','deployment'])
         self.assertFalse(manager['manageJobsWithoutQueueName'])
-        self.assertEqual(manager['resources']['excludeResourcePrefixes'], ['ephemeral-storage'])
+        self.assertEqual(manager['resources']['excludeResourcePrefixes'], [])
         render = module('postrender','scripts/kueue-postrender.py').render
         hooks = [h for d in render(raw) if d['kind'].endswith('WebhookConfiguration') for h in d['webhooks']]
         for name in ['mpod.kb.io','vpod.kb.io','mdeployment.kb.io','vdeployment.kb.io']:
@@ -96,14 +112,15 @@ class Contracts(unittest.TestCase):
         cron = next(d for d in docs if d['kind']=='CronWorkflow')['spec']
         self.assertEqual((cron['timezone'],cron['concurrencyPolicy']),('UTC','Forbid'))
 
-    def test_bootstrap_and_merge_gates_remain_hosted(self):
+    def test_bootstrap_stays_hosted_and_routine_gates_allow_cancellation(self):
         for name in ['homelab-ci-admission','homelab-worker-maintenance','homelab-lifecycle-maintenance']:
             workflow=yaml.load((ROOT/'.github/workflows'/f'{name}.yml').read_text(),Loader=yaml.BaseLoader)
             for job in workflow['jobs'].values():
                 if 'runs-on' in job: self.assertNotIn('CI_EXECUTOR',job['runs-on'])
         for name,key in [('tofu-plan','plan-gate'),('tofu-apply','apply-gate'),('sdk-publish-stable','publish-gate')]:
             workflow=yaml.load((ROOT/'.github/workflows'/f'{name}.yml').read_text(),Loader=yaml.BaseLoader)
-            self.assertIn('always()', workflow['jobs'][key]['if'])
+            self.assertIn('!cancelled()', workflow['jobs'][key]['if'])
+            self.assertNotIn('always()', workflow['jobs'][key]['if'])
         for p in (ROOT/'.github/workflows').glob('*.yml'):
             for job in yaml.load(p.read_text(),Loader=yaml.BaseLoader)['jobs'].values():
                 if 'CI_EXECUTOR' in str(job.get('runs-on','')):

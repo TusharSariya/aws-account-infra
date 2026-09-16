@@ -205,7 +205,8 @@
         "scripts/homelab-ci.py",
         "scripts/kueue-postrender.py",
         "scripts/kueue_capacity.py",
-        ".github/workflows/homelab-ci-admission.yml"
+        ".github/workflows/homelab-ci-admission.yml",
+        "scripts/runner_catalog.py"
       ]
     }
   ]

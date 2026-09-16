@@ -4,13 +4,13 @@ import os, sys
 os.chdir(Path(__file__).resolve().parents[3])
 policy=next(d for d in yaml.safe_load_all(subprocess.check_output(['helm','template','queue','charts/homelab-queue'])) if d and d['kind']=='ValidatingAdmissionPolicy')
 def container(cpu='1',memory='1Gi',**kw):
- return dict(name='main',resources=dict(requests=dict(cpu=cpu,memory=memory)),**kw)
+ return dict(name='main',resources=dict(requests={'cpu':cpu,'memory':memory,'ephemeral-storage':'16Mi'}),**kw)
 base=dict(metadata=dict(labels={'kueue.x-k8s.io/queue-name':'argo','kueue.x-k8s.io/workload-priority-class':'homelab-compute'}),spec=dict(serviceAccountName='homelab-job',containers=[container()],schedulingGates=[dict(name='kueue.x-k8s.io/admission')]))
 request=dict(namespace='homelab-jobs',operation='CREATE',userInfo=dict(username='operator'))
 cases=[]
 def case(name,obj,allowed,req=None,old=None): cases.append(dict(name=name,object=obj,allowed=allowed,request=req or request,oldObject=old))
 case('ordinary queued Pod',base,True)
-for resource,value in [('cpu','36.001'),('memory','161Gi')]:
+for resource,value in [('cpu','36.001'),('memory','161Gi'),('ephemeral-storage','61Gi')]:
  obj=copy.deepcopy(base);obj['spec']['containers'][0]['resources']['requests'][resource]=value;case('oversized '+resource,obj,False)
 obj=copy.deepcopy(base);obj['spec']['containers']=[container('18'),container('18.001')];case('aggregate exceeds pool',obj,False)
 obj=copy.deepcopy(base);obj['spec']['initContainers']=[container('37')];case('init peak exceeds pool',obj,False)

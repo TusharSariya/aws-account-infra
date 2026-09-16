@@ -2,11 +2,11 @@
 
 ## Policy and ownership
 
-Kueue 0.19.4 admits declared CPU/RAM requests against `homelab-compute` (36 CPU, 160 GiB), bound to `talos-worker-01`. AI, CI and Argo LocalQueues share the whole pool. StrictFIFO, equal priority and disabled preemption/borrowing are reviewed in `config/environments/kubernetes/homelab-ci/pool-values.yaml`. An older large waiting request blocks newer smaller work. Utilization does not affect reservations. GitHub's upstream queue is separate.
+Kueue 0.19.4 admits declared CPU/RAM/ephemeral-storage requests against `homelab-compute` (36 CPU, 160 GiB), bound to `talos-worker-01`. AI, CI and Argo LocalQueues share the whole pool. StrictFIFO, equal priority and disabled preemption/borrowing are reviewed in `config/environments/kubernetes/homelab-ci/pool-values.yaml`. An older large waiting request blocks newer smaller work. Utilization does not affect reservations. GitHub's upstream queue is separate.
 
 Kubernetes schedules admitted Pods and enforces limits. The AI lifecycle controller owns desired state, replicas, draining, idle shutdown and storage protection. ARC 0.14.2 owns disposable runners; Argo owns workflow execution. Platform controllers, DNS and operational commands stay outside Kueue.
 
-AI retains 35.75 CPU / 77 GiB and its existing volumes. Each complete runner Pod reserves/limits 4 CPU / 16 GiB, including Docker. One runner at most, zero idle runners. Shared disposable scratch is limited to 30 GiB. Trusted privileged runner/Docker containers use no host filesystem, host socket or host namespace mounts. GitHub fork PRs never run on Talos. The existing App registration key is not mounted into runner Pods; the runner service account has no Kubernetes API token.
+AI retains 35.75 CPU / 77 GiB and its existing volumes. Each complete runner Pod reserves/limits its reviewed catalog CPU/RAM/scratch budget. Multiple disposable runners share admission, with zero idle runners and no ARC maximum. The shared scratch quota is 60 GiB. Trusted privileged runner/Docker containers use no host filesystem, host socket or host namespace mounts. GitHub fork PRs never run on Talos. The existing App registration key is not mounted into runner Pods; the runner service account has no Kubernetes API token.
 
 ## Automatic platform recovery
 
@@ -73,7 +73,7 @@ Argo admits each execution Pod independently. Reviewed smoke execution uses a 30
 
 Leave all unobserved acceptance unchecked in OpenSpec. Record source commit, run URL or local receipt, actual runner identity, before/after workload conditions, quota and cleanup evidence. Local tests cannot satisfy required GitHub checks.
 
-- With AI off, no other waiting/running compute and scheduled jobs quiesced, run `python3 scripts/kueue-acceptance.py --kubeconfig "$KUBECONFIG" --scenario cpu`, then `--scenario memory`. Each creates uniquely named bounded Pods, proves older-large/newer-small FIFO blocking, queued cancellation, normal completion/release and cleanup. It never restarts a node/controller or deletes unrelated work.
+- With AI off, no other waiting/running compute and scheduled jobs quiesced, run `python3 scripts/kueue-acceptance.py --kubeconfig "$KUBECONFIG" --scenario cpu`, then `--scenario memory`, `--scenario ephemeral-storage` and `--scenario combined`. Each creates uniquely named bounded Pods, proves older-large/newer-small FIFO blocking, queued cancellation, normal completion/release and cleanup. It never restarts a node/controller or deletes unrelated work.
 - Dispatch `homelab-arc-acceptance` before changing routine routing. It explicitly selects the ARC scale set and covers checkout, Docker, a privileged bounded fixture, ARM Linux tests and private cluster networking. Repeat with a queued GitHub run and cancel it; verify its EphemeralRunner, Pod and Workload disappear. Record an expired-request case separately; a cancelled run does not prove expiry.
 - AI-first: Start AI, verify its 35.75/77 reservation, dispatch an ARC job and observe it waiting. Stop AI and observe runner admission only after AI termination. CI-first: run a held ARC job, Start AI, observe AI pending with zero idle time, complete CI, then observe AI admission. End with AI Off.
 - Exercise controller restart while queued/running, then node restart through the existing hosted worker-maintenance workflow. Verify no stale reservations, duplicate runners or unexpected AI desired-state change.
@@ -88,3 +88,88 @@ Leave all unobserved acceptance unchecked in OpenSpec. Record source commit, run
 - [ClusterQueue policy](https://kueue.sigs.k8s.io/docs/concepts/cluster_queue/)
 - [Kueue visibility API](https://kueue.sigs.k8s.io/docs/tasks/manage/monitor_pending_workloads/pending_workloads_on_demand/)
 - [ARC 0.14.2 chart inputs](https://github.com/actions/actions-runner-controller/blob/gha-runner-scale-set-0.14.2/charts/gha-runner-scale-set/values.yaml)
+
+## Runner catalog and measured admission
+
+`config/environments/kubernetes/homelab-ci/runner-catalog.json` is authoritative.
+CPU is cores to whole-millicore precision; memory and scratch are integer MiB.
+These are arbitrary reviewed amounts, not fixed size tiers. OpenTofu generates
+one homogeneous ARC scale set per entry, using the existing App/controller/state.
+Adding a configuration requires catalog review and deployment before workflow use.
+
+| runs-on | Whole-Pod CPU | RAM | Scratch | Docker |
+| --- | ---: | ---: | ---: | --- |
+| homelab-talos-light | 1 | 2 GiB | 2 GiB | No |
+| homelab-talos-checks | 2 | 4 GiB | 4 GiB | No |
+| homelab-talos | 4 | 16 GiB | 30 GiB | Yes |
+
+Lightweight sizing is an initial budget. Promote a job through review when actual
+usage exceeds it; do not automatically escalate resources or fall back to hosted.
+`runner_catalog.py` validates all workflow names and effective resources from the
+production OpenTofu locals. Contract tests additionally render the pinned ARC
+chart and check aggregate requests/limits, including initialization and Docker.
+All compute containers must declare ephemeral-storage so omitted requests cannot
+bypass scratch admission. Pod limits include emptyDir, logs and writable layers.
+
+Before plan and again before apply, the guard requires AI Off, idle runners,
+fresh kubelet root/image storage samples, the 60-GiB pool plus 8-GiB additional
+storage headroom fitting measured allocatable/free storage, all desired listener
+requests inside the existing CPU/8-GiB RAM reserve, and sufficient Pod slots with
+10 slots reserved for platform/ordinary Argo. Missing/stale measurements fail.
+AI retained storage is never a fallback. Preserve the compatible Helm release
+through the OpenTofu moved block; do not uninstall active runners.
+
+### Job audit
+
+- Light: detection, comments, required result gates, merge helpers, shell checks,
+  Gitleaks, recovery unit tests, SDK spec lint and catalog validation.
+- Checks: AWS/application plans and application-only apply, Ansible lint, Trivy,
+  TFLint, SDK smoke, API docs build and reusable live acceptance.
+- Docker: Checkov's Docker action, config/application tests using Docker,
+  LocalStack/Compose, SDK generation/publication, image builds/publication,
+  ARM packaging/upload and disposable storage quota enforcement.
+- Independent hosted: admission bootstrap/upgrades and their contracts,
+  Proxmox/Talos plans or combined hardware apply, node/lifecycle/storage
+  maintenance, migration, independent etcd backup and recovery. Mac recovery
+  remains available. There is no automatic paid fallback.
+
+The prerequisite action takes explicit `packages`, `aws`, `docker` and `tailscale`
+inputs. Non-Docker jobs never wait for a Docker daemon. Workflow-only changes keep
+the existing affected-state selector and cannot select unrelated infrastructure.
+
+The trusted PR label `arc-acceptance` explicitly selects Talos for routine jobs
+without changing CI_EXECUTOR. Add the label, then synchronize the PR to run all
+applicable workflows with its updated event payload. Hosted recovery exceptions
+remain independent. Run the explicit ARC acceptance matrix before cutover. Preserve timestamps and
+actual identities to prove overlapping light/checks jobs and inspect simultaneous
+Kueue reservations including scratch. Completion requires all remaining OpenSpec
+runtime scenarios, not only these probes. GitHub's [24-hour self-hosted queue
+limit](https://docs.github.com/en/enterprise-cloud%40latest/actions/reference/limits)
+requires an independent full-duration expiry observation, external monitoring and
+cleanup; cancelling a job proves only cancellation. Keep CI_EXECUTOR unset until
+acceptance passes, and retain the temporary Actions budget until ordinary workflow
+execution has been verified on Talos.
+
+### Independent 24-hour expiry observation
+
+After other proofs finish and all AI/CI/Argo workloads are quiesced, prepare a new
+owned mode-0700 directory containing the existing mode-0600 kubeconfig, then run:
+
+```sh
+python3 scripts/arc-expiry.py start --private "$PRIVATE" --ref feat/job-sized-kueue-runners
+```
+
+This intentionally holds the entire compute CPU pool with a sleeping disposable
+Pod, while leaving platform/Pi-hole/operator controls outside Kueue. It dispatches
+one uniquely named expiry-only GitHub job to the existing light scale set. The
+job must never execute. A detached Mac observer records GitHub job state every
+minute, preserves reason annotations for review, and removes only its UID-matched
+blocker. The Pod has a 26-hour active deadline as an independent fail-safe.
+
+Keep the Mac connected during the observation. Observer source and logs are copied
+into the private directory, independent of checkout edits. Gaps longer than ten
+minutes, early cancellation or any runner acquisition invalidate the proof.
+`expiry-record.json` records its process ID, run ID, timestamps, conclusion and
+observed Pod/Workload cleanup. Review GitHub's actual reason after 24 hours; elapsed
+time plus a cancelled conclusion alone is not credited as verified expiry.
+Unobserved expiry stays unchecked and CI_EXECUTOR remains unset.

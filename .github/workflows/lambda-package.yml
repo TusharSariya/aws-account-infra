@@ -43,25 +43,27 @@ env:
 jobs:
   package:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-24.04-arm","talos":"homelab-talos"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-24.04-arm","talos":"homelab-talos"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/talos-runner-setup
+        with:
+          docker: 'true'
+          aws: 'true'
+          packages: python3-venv python3-pip zip
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.14"
       - uses: docker/setup-qemu-action@v3
-        if: vars.CI_EXECUTOR == 'talos'
+        if: runner.arch == 'X64'
         with:
           platforms: arm64
       - uses: docker/setup-buildx-action@v3
-        if: vars.CI_EXECUTOR == 'talos'
+        if: runner.arch == 'X64'
       - name: Test
-        env:
-          CI_EXECUTOR: ${{ vars.CI_EXECUTOR }}
         run: |
-          if [[ "$CI_EXECUTOR" == talos ]]; then
+          if [[ "$RUNNER_ARCH" == X64 ]]; then
             bash scripts/lambda-package-arm.sh test
           else
             uv run --directory apps/lambda/python/3.14/court-booker pytest
@@ -75,12 +77,11 @@ jobs:
       - name: Package and upload
         if: steps.aws.outcome == 'success'
         env:
-          CI_EXECUTOR: ${{ vars.CI_EXECUTOR }}
           TAG: ${{ github.sha }}
           LAMBDA_ZIP_PREFIX: ${{ github.event_name == 'pull_request' && 'candidate/court-booker' || 'stable/court-booker' }}
         run: |
           chmod +x scripts/lambda-package.sh
-          if [[ "$CI_EXECUTOR" == talos ]]; then
+          if [[ "$RUNNER_ARCH" == X64 ]]; then
             bash scripts/lambda-package-arm.sh package "$TAG"
           else
             ./scripts/lambda-package.sh python/3.14/court-booker "$TAG"

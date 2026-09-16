@@ -12,7 +12,7 @@ IMAGE = 'python:3.14-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--kubeconfig', required=True)
-    parser.add_argument('--scenario', choices=['cpu','memory'], required=True)
+    parser.add_argument('--scenario', choices=['cpu','memory','ephemeral-storage','combined'], required=True)
     args = parser.parse_args()
     kube = ['kubectl','--kubeconfig',args.kubeconfig,'--request-timeout=30s']
     run_id = uuid.uuid4().hex[:12]
@@ -24,16 +24,16 @@ def main():
     # This acceptance window must be explicitly quiesced first.
     if any(not any(c['type']=='Finished' and c['status']=='True' for c in w.get('status',{}).get('conditions',[])) for w in workloads()):
         raise ValueError('Quiesce AI, ARC and Argo before the contention acceptance window')
-    def create(suffix, cpu, memory, seconds=600):
+    def create(suffix, cpu, memory, seconds=600, scratch="16Mi"):
         name = 'queue-proof-' + run_id + '-' + suffix
         pod = {'apiVersion':'v1','kind':'Pod','metadata':{'name':name,'namespace':'homelab-jobs','labels':{
             'homelab/acceptance-run':run_id,'kueue.x-k8s.io/queue-name':'argo','kueue.x-k8s.io/workload-priority-class':'homelab-compute'}},
-            'spec':{'restartPolicy':'Never','automountServiceAccountToken':False,'serviceAccountName':'homelab-job',
+            'spec':{'restartPolicy':'Never','terminationGracePeriodSeconds':1,'automountServiceAccountToken':False,'serviceAccountName':'homelab-job',
                     'schedulingGates':[{'name':'kueue.x-k8s.io/admission'}],
                     'securityContext':{'runAsNonRoot':True,'runAsUser':8737,'seccompProfile':{'type':'RuntimeDefault'}},
                     'containers':[{'name':'proof','image':IMAGE,'command':['python','-B','-c',f'import time; time.sleep({seconds})'],
                     'securityContext':{'allowPrivilegeEscalation':False,'readOnlyRootFilesystem':True,'capabilities':{'drop':['ALL']}},
-                    'resources':{'requests':{'cpu':cpu,'memory':memory},'limits':{'cpu':cpu,'memory':memory}}}]}}
+                    'resources':{'requests':{'cpu':cpu,'memory':memory,'ephemeral-storage':scratch},'limits':{'cpu':cpu,'memory':memory,'ephemeral-storage':scratch}}}]}}
         obj = json.loads(run(['create','-f','-','-o','json'],pod));created.append((name,obj['metadata']['uid']))
         return name
     def observed(name):
@@ -50,9 +50,16 @@ def main():
     def delete(name):
         run(['delete','pod',name,'-n','homelab-jobs','--wait=true','--timeout=90s'])
     try:
-        blocker=create('blocker','4' if args.scenario=='cpu' else '100m','1Gi' if args.scenario=='cpu' else '32Gi')
+        budgets = {
+            'cpu': [('4', '1Gi', '16Mi'), ('35.75', '77Gi', '16Mi')],
+            'memory': [('100m', '32Gi', '16Mi'), ('100m', '150Gi', '16Mi')],
+            'ephemeral-storage': [('100m', '64Mi', '30Gi'), ('100m', '64Mi', '40Gi')],
+            'combined': [('4', '32Gi', '30Gi'), ('35.75', '150Gi', '40Gi')],
+        }
+        first, second = budgets[args.scenario]
+        blocker=create('blocker', *first[:2], scratch=first[2])
         wait(blocker,True)
-        older=create('older','35.75' if args.scenario=='cpu' else '100m','77Gi' if args.scenario=='cpu' else '150Gi')
+        older=create('older', *second[:2], scratch=second[2])
         wait(older,False)
         # Kubernetes creationTimestamp has second resolution; avoid an ordering tie.
         time.sleep(2)

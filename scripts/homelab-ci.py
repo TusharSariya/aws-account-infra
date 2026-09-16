@@ -5,6 +5,7 @@ import base64
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -44,7 +45,13 @@ def guard(plan):
         if change['actions'] == ['no-op']:
             continue
         name = obj['address'].removeprefix('helm_release.')
-        if (obj['address'] != 'helm_release.' + name or name not in RELEASES
+        match = re.fullmatch(r'runners\["([^"]+)"\]', name)
+        if match:
+            catalog = json.loads((CONFIG / 'runner-catalog.json').read_text())
+            if match[1] not in catalog or change['after'].get('name') != match[1]:
+                raise ValueError('Unknown runner scale set')
+            name = 'runners'
+        if ((not match and obj['address'] != 'helm_release.' + name) or name not in RELEASES
                 or change['actions'] not in (['create'], ['update'])):
             raise ValueError('Unexpected CI infrastructure change: ' + obj['address'])
         namespace, version = RELEASES[name]
@@ -85,8 +92,29 @@ def preflight(kube):
             p['metadata']['namespace'] == 'homelab-models' and p['metadata'].get('labels', {}).get('app') == 'ai-runtime'
             and p.get('status', {}).get('phase') not in ('Succeeded', 'Failed') for p in pods):
         raise ValueError('Keep AI off with termination observed throughout migration')
-    report = verify(get('get', 'node', 'talos-worker-01'), pods,
-                    yaml.safe_load((CONFIG / 'pool-values.yaml').read_text())['platformReserve'])
+    config = yaml.safe_load((CONFIG / 'pool-values.yaml').read_text())
+    catalog = json.loads((CONFIG / 'runner-catalog.json').read_text())
+    # Updating a scale set must not interrupt an assigned or gated runner.
+    if any(p['metadata']['namespace'] == 'arc-runners'
+           and 'kueue.x-k8s.io/queue-name' in p['metadata'].get('labels', {})
+           and p.get('status', {}).get('phase') not in ('Succeeded', 'Failed') for p in pods):
+        raise ValueError('Wait for all existing runners to become idle before admission deployment')
+    node = get('get', 'node', 'talos-worker-01')
+    summary = json.loads(run(kube + ['get', '--raw=/api/v1/nodes/talos-worker-01/proxy/stats/summary']))
+    from kueue_capacity import verify_storage
+    # Include every desired listener, even if the scheduler places it elsewhere.
+    existing = {p['metadata'].get('labels', {}).get('actions.github.com/scale-set-name') for p in pods
+                if any(o.get('kind') == 'AutoscalingListener' for o in p['metadata'].get('ownerReferences', []))}
+    projected = list(pods)
+    listener = yaml.safe_load((CONFIG / 'arc-runner-values.yaml').read_text())['listenerTemplate']
+    import copy
+    for name in set(catalog) - existing:
+        pod = copy.deepcopy(listener)
+        pod['metadata'] = {'labels': {}}
+        pod['spec']['nodeName'] = 'talos-worker-01'
+        projected.append(pod)
+    report = verify(node, projected, config['platformReserve'])
+    report['storage_and_slots'] = verify_storage(node, projected, summary, config, catalog)
     run(kube + ['-n', 'homelab-services', 'rollout', 'status', 'deployment/pihole', '--timeout=60s'])
     # Resolve the exact peer through Tailscale, independent of Mac MagicDNS.
     from lifecycle_session import apps
@@ -127,6 +155,9 @@ def main():
     if any(k.startswith(('AWS_ENDPOINT_URL','TF_VAR_','TOFU_CLI_ARGS')) for k in os.environ):
         raise ValueError('Endpoint, variable and CLI overrides are forbidden')
     if args.operation in ('setup', 'plan', 'apply'):
+        from runner_catalog import catalog, validate_workflows
+        catalog()
+        validate_workflows()
         artifacts()
     if args.operation == 'setup':
         print('PASS: pinned Helm archives verified')
@@ -154,7 +185,7 @@ def main():
                     'reserved': obj.get('status', {}).get('admission', {}).get('podSetAssignments', [])}
             from kueue_capacity import requests
             info['waiting_position'] = positions.get((info['namespace'], info['name']))
-            info['requested'] = {r: str(sum(requests(p['template'], r) * p['count'] for p in obj['spec']['podSets'])) for r in ['cpu','memory']}
+            info['requested'] = {r: str(sum(requests(p['template'], r) * p['count'] for p in obj['spec']['podSets'])) for r in ['cpu','memory','ephemeral-storage']}
             (reserved if info['reserved'] else waiting).append(info)
         print(json.dumps({'waiting_fifo': sorted(waiting, key=lambda w: (w['waiting_position'] is None, w['waiting_position'] or 0)), 'reserved': reserved}, indent=2))
         return

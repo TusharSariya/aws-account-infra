@@ -1,0 +1,18 @@
+name: runner-catalog
+on:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  catalog:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-light"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: 1.11.5
+          tofu_wrapper: false
+      - run: uv run --with PyYAML==6.0.3 python scripts/runner_catalog.py

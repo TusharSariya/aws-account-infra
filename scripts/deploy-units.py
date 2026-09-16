@@ -45,6 +45,8 @@ def ordered(units):
 def select_units(files, units):
     # CI plumbing changes are validated offline; they do not change every state.
     # Shared infrastructure inputs belong in each consuming root's watch list.
+    files = [path for path in files if not path.startswith((
+        '.github/workflows/', '.github/actions/talos-runner-setup/'))]
     return [unit for unit in units if unit["ci"] and
             any(path.startswith(prefix) for path in files for prefix in unit["watch"])]
 

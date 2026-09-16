@@ -4,6 +4,7 @@ Application compute needs one bounded admission pool on the existing Talos worke
 ## What Changes
 - Replace the separate VM runner proposal with pinned Kueue 0.19.4 and ARC 0.14.2.
 - Restore worker RAM to 172 GiB and admit AI, CI and ordinary Argo Pods against one 36 CPU / 160 GiB pool.
+- Add reviewed arbitrary-size runner catalog, multiple disposable scale sets, whole-Pod validation and shared 60-GiB scratch admission with measured capacity gates.
 - Preserve lifecycle controls, retained AI storage, reviewed workflows and deployment gates.
 - Retire only identified VM 103 CI resources through guarded maintenance.
 - Select routine execution explicitly with CI_EXECUTOR=github-hosted|talos after acceptance; no automatic paid fallback.

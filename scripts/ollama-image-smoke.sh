@@ -44,13 +44,14 @@ HTTPServer(('0.0.0.0',8080),Handler).serve_forever()
 (root / 'server.py').chmod(0o644)
 PY
 chmod 755 "$fixture"
+# Resolve fixture aliases before inherited Kubernetes search domains.
 docker network create "$network" >/dev/null
-docker run -d --name "$controller" --network "$network" --network-alias ai-lifecycle.homelab-platform.svc \
+docker run -d --dns-option ndots:0 --name "$controller" --network "$network" --network-alias ai-lifecycle.homelab-platform.svc \
   --user 1000:1000 --cap-drop ALL --security-opt no-new-privileges --read-only --memory 128m \
   -v "$fixture:/fixture:ro" \
   python:3.14-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6 \
   python /fixture/server.py >/dev/null
-docker run -d --name "$model" --network "$network" --network-alias ollama \
+docker run -d --dns-option ndots:0 --name "$model" --network "$network" --network-alias ollama \
   --user 1000:1000 --cap-drop ALL --security-opt no-new-privileges --read-only --memory 512m \
   --tmpfs /tmp:uid=1000,gid=1000,size=128m -v "$fixture:/credentials:ro" \
   -e HOME=/tmp -e OLLAMA_MODELS=/tmp/models -e OLLAMA_HOST=0.0.0.0:11434 \

@@ -12,7 +12,16 @@ services:
       # Lambda zip execution (court-booker integration tests) needs the host Docker engine.
       - /var/run/docker.sock:/var/run/docker.sock
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:4566/_localstack/health"]
+      # Service health can precede ready-hook completion on constrained runners.
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import json, urllib.request;
+          status = json.load(urllib.request.urlopen('http://localhost:4566/_localstack/init/ready', timeout=2));
+          scripts = {script['name']: script['state'] for script in status['scripts']};
+          assert status['completed'] and scripts.get('10-bootstrap.sh') == 'SUCCESSFUL' and all(state == 'SUCCESSFUL' for state in scripts.values())
       interval: 5s
       timeout: 3s
       retries: 20
