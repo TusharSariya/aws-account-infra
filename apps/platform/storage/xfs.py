@@ -114,7 +114,8 @@ def open_mount(path, source):
 
 
 def open_project(mount_fd, name):
-    if not name.startswith('ai-') or '/' in name or '\\' in name or name in ('.', '..'):
+    cache_names = {'ci-cache-blobs', 'ci-cache-database', 'ci-cache-configuration', 'ci-cache-temporary'}
+    if (not name.startswith('ai-') and name not in cache_names) or '/' in name or '\\' in name or name in ('.', '..'):
         raise ValueError('Invalid project basename')
     try:
         os.mkdir(name, mode=0o750, dir_fd=mount_fd)

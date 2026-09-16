@@ -141,3 +141,40 @@ routing remains disabled.
 References: [usage API](https://help.sonatype.com/en/service-metrics-data-api.html),
 [GitHub cache limits](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching),
 [budget SKU identifiers](https://docs.github.com/en/billing/reference/product-and-sku-names).
+
+## PR #81 failure remediation (2026-09-16 UTC)
+
+Selected and remotely verified the successful PR build receipts from Ollama run
+35042995439 (artifact 10426361794) and Odysseus run 35042995463 (artifact
+10426401516). Updated immutable AI pins and retained the complete input-hash,
+source-commit, successful-run and artifact-checksum checks. Cancelled redundant
+older Talos builds 35041020930 and 35041022578; runner termination was observed.
+
+The local lifecycle validation initially timed out, then passed on retry. A cold
+kubectl discovery trial took 5.2 seconds versus 0.3 seconds through the fixed
+Workflow API endpoint. Changed the six Workflow dry-runs to use that endpoint
+with strict server field validation, impersonation and dryRun=All preserved;
+all six cases and private Argo authentication passed live. The original hosted
+failure's precise cause remains unconfirmed because its wrapper discarded the
+underlying diagnostic. Added a fixed lifecycle source-line diagnostic through
+the existing secret-safe allowlist so future failures are attributable.
+
+The first application update exposed an XFS basename guard that rejected all
+four ci-cache directories. The new regression test reproduced this using the
+production cache catalog and real directory opens. Added only those four names
+to the existing guard; unknown names and symlinks remain rejected. The failed
+Helm update was allowed to finish, its metadata/status-only drift was reviewed
+and fingerprinted through the existing narrow recovery mechanism, and a fresh
+saved plan was applied successfully. Private records retain attempts
+nexus-capacity-apps-20260915-02 through -04.
+
+The live collector now reports healthy enforced limits of 48/6/2/8 GiB. The
+AI template and lifecycle update succeeded, with intentional Off verified.
+The guarded CI plan subsequently passed with only helm_release.cache creation
+and helm_release.queue update proposed. Fresh accounting included 394 GiB of
+retained/proposed local volume commitments, 64 GiB cache, 60 GiB scratch and
+8 GiB eviction headroom; platform requests were 3.706 CPU within the 4-CPU
+reserve. No cache service or queue update was applied in this remediation.
+
+Focused regression tests passed before pushing. Hosted PR reruns remain the
+merge authority; local success is not substituted for their results.

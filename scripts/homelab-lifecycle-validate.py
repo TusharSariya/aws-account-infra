@@ -4,6 +4,8 @@ import importlib.util
 import json
 from pathlib import Path
 import subprocess
+import sys
+import traceback
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('homelab_apps', ROOT / 'scripts/homelab-apps.py')
@@ -14,8 +16,10 @@ CLIENT = 'system:serviceaccount:homelab-jobs:homelab-workflow-client'
 
 
 def dry_run(value, accepted):
+    # Use the fixed CRD endpoint: keep strict server validation and admission,
+    # without kubectl OpenAPI discovery on each fresh runner.
     result = subprocess.run([str(KUBECTL), '--request-timeout=20s', '--as=' + CLIENT,
-        'create', '--dry-run=server', '-f', '-'], input=json.dumps(value).encode(), capture_output=True, timeout=30)
+        'create', '--raw=/apis/argoproj.io/v1alpha1/namespaces/homelab-jobs/workflows?fieldValidation=Strict&dryRun=All', '-f', '-'], input=json.dumps(value).encode(), capture_output=True, timeout=30)
     if accepted != (result.returncode == 0):
         raise apps.AppError('Reviewed Workflow admission contract failed')
     if not accepted and b'homelab-reviewed-workflows' not in result.stderr:
@@ -60,4 +64,7 @@ if __name__ == '__main__':
     try:
         main()
     except Exception as error:
+        frames = [frame for frame in traceback.extract_tb(error.__traceback__) if frame.filename == __file__]
+        if frames:
+            print('ACCEPTANCE_DIAGNOSTIC: lifecycle line ' + str(frames[-1].lineno), file=sys.stderr)
         raise SystemExit(str(error) if isinstance(error, apps.AppError) else 'Lifecycle acceptance failed; private diagnostics suppressed') from None
