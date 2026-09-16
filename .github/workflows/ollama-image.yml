@@ -99,6 +99,22 @@ jobs:
           [[ "$visibility" == private ]]
           echo "Image: ghcr.io/tusharsariyaorg/homelab-ollama@$IMAGE_DIGEST" >> "$GITHUB_STEP_SUMMARY"
           echo 'Commit this digest to AI values and the workspace CLI build input before apply.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Load built layers for immutable smoke verification
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ steps.source.outputs.context }}
+          platforms: linux/amd64
+          load: true
+          tags: ghcr.io/tusharsariyaorg/homelab-ollama:${{ steps.source.outputs.revision }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/TusharSariyaOrg/aws-account-infra
+            org.opencontainers.image.revision=${{ steps.source.outputs.revision }}
+          allow: ${{ runner.environment == 'self-hosted' && 'network.host' || '' }}
+          secret-files: ${{ steps.cache.outputs.secret-files }}
+          # Reuse this builder's result. Published provenance/SBOM stay intact;
+          # Docker 28's classic local store cannot import their manifest list.
+          provenance: false
+          sbom: false
       - name: Verify packaged authenticated admission
         env:
           IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
