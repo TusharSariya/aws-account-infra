@@ -129,3 +129,25 @@ worker reboot if required. Talos EPHEMERAL uses grow:true on the system disk.
 Verify filesystem/partition identity preservation, larger measured capacity,
 Ready nodes, Pi-hole UDP/TCP and no leaked reservations; then repeat the cache
 image-inclusive checks. Never shrink a disk as rollback.
+
+## Nested Docker resource containment repair (2026-09-16)
+Runtime inspection found stock buildx creating its builder under `/docker/buildx`,
+outside the admitted runner Pod. The prior Pod CPU/RAM sample excluded that
+builder, so it cannot qualify any measured allocation. Preserve the original
+observation in `evidence/nested-cgroup-defect-20260916.json`.
+
+The Docker sidecar now derives and validates the guaranteed Pod cgroup against
+its downward-API UID and uses that parent for ordinary Docker containers. The
+Talos build-cache action passes the same validated parent explicitly to buildx,
+which otherwise overrides the daemon default. Both paths share the existing
+4-CPU/16-GiB aggregate Pod limit; approved resource budgets are unchanged. The
+repair was deployed using a fresh guarded plan and verified with a fresh empty
+post-plan. Runtime ancestry evidence is in
+`evidence/cgroup-deployment-20260916-05.json`.
+
+The temporary read-only administration observer in `scripts/ci_measure.py` and
+`scripts/ci_pod_usage.py` is preliminary measurement tooling. Samples explicitly
+do not qualify job sizing until full lifecycle coverage, image accounting and
+upstream byte observations are established. No measured budget is adopted by
+this repair. Stock BuildKit retry-count acceptance does not waive resource
+containment, integrity checks or any remaining runtime acceptance.

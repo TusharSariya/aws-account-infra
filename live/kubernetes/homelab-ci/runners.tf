@@ -17,7 +17,7 @@ locals {
         spec = merge(local.runner_base.template.spec, {
           containers = [merge(local.runner_base.template.spec.containers[0], {
             resources = { requests = local.runner_allocations[name], limits = local.runner_allocations[name] }
-            env       = config.docker ? local.runner_base.template.spec.containers[0].env : []
+            env       = [for entry in local.runner_base.template.spec.containers[0].env : entry if config.docker]
             volumeMounts = config.docker ? local.runner_base.template.spec.containers[0].volumeMounts : [
               { name = "scratch", mountPath = "/home/runner/_work", subPath = "work" }
             ]

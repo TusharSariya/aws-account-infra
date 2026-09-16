@@ -41,8 +41,9 @@ runs:
         python3 - "$GITHUB_ACTION_PATH/../../.." <<'PY'
         import os, pathlib, sys
         sys.path.insert(0, str(pathlib.Path(sys.argv[1]) / 'scripts'))
-        from build_cache import settings
-        value = settings(os.environ['CACHE_WORKFLOW'], os.environ['CACHE_PLATFORM'], os.environ['CACHE_BRANCH'])
+        from build_cache import settings, pod_cgroup_parent
+        value = settings(os.environ['CACHE_WORKFLOW'], os.environ['CACHE_PLATFORM'], os.environ['CACHE_BRANCH'],
+                         cgroup_parent=pod_cgroup_parent())
         with open(os.environ['GITHUB_ENV'], 'a') as output:
             for field in ('WORKFLOW', 'PLATFORM', 'BRANCH'):
                 value_text = os.environ['CACHE_' + field]

@@ -4,6 +4,7 @@ import hashlib
 import json
 import re
 import os
+from pathlib import Path
 
 
 def cache_run_prefix():
@@ -32,11 +33,24 @@ def key(value):
     return readable + '-' + hashlib.sha256(value.encode()).hexdigest()[:12]
 
 
-def settings(workflow, platform, branch):
+def pod_cgroup_parent():
+    uid = os.environ.get('HOMELAB_RUNNER_POD_UID', '')
+    if not re.fullmatch(r'[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}', uid):
+        raise ValueError('Observed Talos Pod UID required')
+    parent = Path('/var/run/homelab-pod-cgroup').read_text().strip()
+    if parent != '/kubepods/pod' + uid:
+        raise ValueError('BuildKit must share the admitted runner Pod cgroup')
+    return parent
+
+
+def settings(workflow, platform, branch, *, cgroup_parent=None):
     if platform not in ('linux/amd64', 'linux/arm64'):
         raise ValueError('One reviewed build platform required')
     if not workflow or not branch:
         raise ValueError('Workflow and branch scope required')
+    if cgroup_parent is not None and not re.fullmatch(
+            r'/kubepods/pod[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}', cgroup_parent):
+        raise ValueError('Exact guaranteed Talos Pod cgroup required')
     repository = REGISTRY + '/ci/' + key(workflow) + '/' + platform.replace('/', '-')
     current = repository + ':' + key(branch)
     main = repository + ':' + key('main')
@@ -44,7 +58,8 @@ def settings(workflow, platform, branch):
         'cache-from': '\n'.join('type=registry,ref=' + ref for ref in dict.fromkeys([current, main])),
         'cache-to': 'type=registry,ref=' + current + ',mode=max,oci-mediatypes=true,image-manifest=true,ignore-error=true',
         'config': registry_config(),
-        'driver-opts': 'network=host\nimage=' + BUILDKIT_IMAGE,
+        'driver-opts': 'network=host\nimage=' + BUILDKIT_IMAGE +
+                       ('\ncgroup-parent=' + cgroup_parent if cgroup_parent else ''),
     }
 
 

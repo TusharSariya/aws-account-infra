@@ -1,8 +1,24 @@
 import unittest
-from build_cache import settings
+from unittest.mock import patch
+from build_cache import settings, pod_cgroup_parent
 
 
 class BuildCacheTests(unittest.TestCase):
+    def test_builder_is_bound_to_the_observed_pod(self):
+        uid = 'edb2ab4c-354a-4966-8f0b-9e4643619db6'
+        parent = '/kubepods/pod' + uid
+        with patch.dict('os.environ', {'HOMELAB_RUNNER_POD_UID': uid}), \
+                patch('build_cache.Path.read_text', return_value=parent + '\n'):
+            value = settings('build', 'linux/amd64', 'main', cgroup_parent=pod_cgroup_parent())
+        self.assertIn('cgroup-parent=' + parent, value['driver-opts'].splitlines())
+        for invalid in ['/docker/buildx', '/', parent + '\nnetwork=host']:
+            with self.assertRaises(ValueError):
+                settings('build', 'linux/amd64', 'main', cgroup_parent=invalid)
+        with patch.dict('os.environ', {'HOMELAB_RUNNER_POD_UID': uid}), \
+                patch('build_cache.Path.read_text', return_value='/docker/buildx'):
+            with self.assertRaises(ValueError):
+                pod_cgroup_parent()
+
     def test_scope_isolates_workflows_platforms_and_branches(self):
         first = settings('Ollama image', 'linux/amd64', 'feature/cache')
         for args in [('Other workflow','linux/amd64','feature/cache'),
