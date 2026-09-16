@@ -1,0 +1,68 @@
+{
+  "observed_at": "2026-09-16T14:39:56.996877+00:00",
+  "bindings": {
+    "raw-awscli": {
+      "policyNames": [
+        "ci-pinned-raw-unused-30d"
+      ]
+    },
+    "raw-codeload": {
+      "policyNames": [
+        "ci-pinned-raw-unused-30d"
+      ]
+    }
+  },
+  "apply": "success",
+  "changes": [
+    "helm_release.cache"
+  ],
+  "post_plan_empty": true,
+  "capacity": {
+    "cpu": {
+      "allocatable": "37.950",
+      "platform_observed": "3.706",
+      "platform_reserved": "4.000",
+      "pool": "33.5"
+    },
+    "memory": {
+      "allocatable": "180865310720",
+      "platform_observed": "12297699328",
+      "platform_reserved": "19327352832",
+      "pool": "150Gi"
+    },
+    "cache_storage": {
+      "committed_bytes": "423058472960",
+      "cache_bytes": "68719476736",
+      "filesystem_available_bytes": 1262681628672,
+      "thin_pool_available_bytes": 1839531215447
+    },
+    "storage_and_slots": {
+      "pool": "64424509440",
+      "measured_used_with_images": "22886080512",
+      "platform_requests": "520093696",
+      "headroom": "8589934592",
+      "allocatable": "121286269137",
+      "projected_platform_pods": 26,
+      "runner_slots": 30,
+      "pod_headroom": 10
+    }
+  },
+  "local_port_forward_smoke": [
+    {
+      "source": "cache",
+      "attempts": 1,
+      "bytes": 30044517,
+      "sha256": "3d0a6f0a06f7d0b8657879f72345a6c457f877b9f51204d686ac8b1a3e237072",
+      "elapsed_seconds": 35.824308207957074
+    },
+    {
+      "source": "cache",
+      "attempts": 1,
+      "bytes": 30044517,
+      "sha256": "3d0a6f0a06f7d0b8657879f72345a6c457f877b9f51204d686ac8b1a3e237072",
+      "elapsed_seconds": 29.336278333095834
+    }
+  ],
+  "fresh_runner_reuse_verified": false,
+  "upstream_bytes_verified": false
+}

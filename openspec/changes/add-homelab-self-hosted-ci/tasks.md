@@ -36,7 +36,8 @@
 - [x] 5.1 Update the design and requirements with approved Nexus storage/resource budgets and preserve prior evidence, including authorized EULA and UI cleanup setup exception.
 - [x] 5.2 Deploy revised admission/AI budgets and isolated Nexus/PostgreSQL services through guarded OpenTofu after actual XFS quotas, retained PV commitments, thin-pool headroom and image-inclusive 60-GiB scratch checks pass.
 - [x] 5.3a Deploy and reconcile the initial proxy/raw/build repositories, authorized EULA and separate read-only consumer/build-writer/monitor roles; verify successful monitoring execution.
-- [ ] 5.3b Reconcile all workflow origins/distributions; preview and configure supported cleanup (14 days dependencies, 30 days pinned raw, 7 days build caches), daily cleanup and subsequent compaction; verify UI settings and execution and exercise warning delivery.
+- [x] 5.3b Preview and configure supported cleanup for the initial 16 repositories (14 days dependencies, 30 days pinned raw, 7 days build caches), daily cleanup and subsequent compaction; verify UI settings and successful execution (evidence: nexus-cleanup-20260916.json and three empty CSV previews). Physical reclamation remains in 5.7.
+- [ ] 5.3c Reconcile all workflow origins/distributions, bind added repositories to cleanup policies, and exercise warning delivery.
 - [ ] 5.4 Build reviewed pinned prerequisite runner images; route package managers and nested Docker through cache with verified bounded upstream fallback and nonfatal upload failure.
 - [x] 5.5 Disable explicit GitHub dependency/build cache access, audit nested composite/setup actions, and verify repository 10-GB free allowance and $0 paid cache-storage budget with further usage blocked.
 - [ ] 5.6 Measure eligible jobs cold and twice warm on fresh runners, adopt max plus 25% and 1 GiB rounded up with 2-GiB minimum only after revalidation at the declared size.

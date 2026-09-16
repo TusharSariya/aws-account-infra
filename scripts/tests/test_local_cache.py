@@ -156,6 +156,20 @@ class MonitorTests(unittest.TestCase):
 
 
 class ConfigurationTests(unittest.TestCase):
+    def test_repository_noop_allows_defaults_but_detects_managed_drift(self):
+        spec = importlib.util.spec_from_file_location('cache_configure', ROOT/'apps/platform/cache/configure.py')
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        desired = {'online': True, 'proxy': {'remoteUrl': 'https://example.org'},
+                   'cleanup': {'policyNames': ['retention']}}
+        observed = copy.deepcopy(desired)
+        observed['proxy']['preserveEncodedCharacters'] = False
+        self.assertTrue(module.contains_settings(observed, desired))
+        observed['proxy']['remoteUrl'] = 'https://wrong.invalid'
+        self.assertFalse(module.contains_settings(observed, desired))
+        self.assertFalse(module.contains_settings({}, desired))
+
+
     def test_user_requests_match_nexus_openapi_contract(self):
         spec = importlib.util.spec_from_file_location('cache_configure', ROOT/'apps/platform/cache/configure.py')
         module = importlib.util.module_from_spec(spec)

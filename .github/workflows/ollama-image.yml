@@ -6,6 +6,7 @@ on:
       - 'scripts/ollama-image-context.py'
       - 'scripts/ollama-image-smoke.sh'
       - 'scripts/verify-ai-images.py'
+      - 'scripts/cache_download.py'
       - '.github/workflows/ollama-image.yml'
   push:
     branches: [main]
@@ -14,6 +15,7 @@ on:
       - 'scripts/ollama-image-context.py'
       - 'scripts/ollama-image-smoke.sh'
       - 'scripts/verify-ai-images.py'
+      - 'scripts/cache_download.py'
       - '.github/workflows/ollama-image.yml'
   workflow_dispatch:
     inputs:

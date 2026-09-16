@@ -25,6 +25,15 @@ def request(path, method='GET', value=None, password=None, text=False):
         return json.loads(body) if body else None
 
 
+def contains_settings(observed, desired):
+    """Compare managed fields while allowing Nexus-populated defaults."""
+    if isinstance(desired, dict):
+        return isinstance(observed, dict) and all(
+            key in observed and contains_settings(observed[key], value)
+            for key, value in desired.items())
+    return observed == desired
+
+
 def reconcile():
     config = json.loads(Path('/config/repositories.json').read_text())
     try:
@@ -67,7 +76,8 @@ def reconcile():
             observed=request(endpoint+'/'+name)
             # CE cleanup is intentionally managed in the supported UI. Preserve it.
             if observed.get('cleanup'):body['cleanup']=observed['cleanup']
-            request(endpoint+'/'+name,'PUT',body)
+            if not contains_settings(observed, body):
+                request(endpoint+'/'+name,'PUT',body)
         else: request(endpoint,'POST',body)
         read.extend(f'nx-repository-view-{fmt}-{name}-{action}' for action in ('browse','read'))
     roles={r['id'] for r in request('security/roles')}

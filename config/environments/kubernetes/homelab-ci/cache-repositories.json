@@ -104,6 +104,18 @@
       "format": "raw",
       "type": "proxy",
       "remote": "https://go.dev/dl"
+    },
+    {
+      "name": "raw-codeload",
+      "format": "raw",
+      "type": "proxy",
+      "remote": "https://codeload.github.com"
+    },
+    {
+      "name": "raw-awscli",
+      "format": "raw",
+      "type": "proxy",
+      "remote": "https://awscli.amazonaws.com"
     }
   ]
 }
