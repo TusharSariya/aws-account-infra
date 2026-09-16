@@ -75,7 +75,15 @@ def start(private, ref):
     fixture = uuid.uuid4().hex
     record = dict(fixture_id=fixture, blocker='arc-expiry-' + fixture[:12], started_at=now(),
                   state='starting', ref=ref, github_run=None, candidates=[])
-    resources = {'cpu': '36', 'memory': '64Mi', 'ephemeral-storage': '16Mi'}
+    import yaml
+    pool = yaml.safe_load((Path(__file__).resolve().parents[1] /
+        'config/environments/kubernetes/homelab-ci/pool-values.yaml').read_text())
+    queue = json.loads(kubectl(private, 'get', 'clusterqueue', 'homelab-compute', '-o', 'json'))
+    observed_cpu = [str(resource['nominalQuota']) for group in queue['spec']['resourceGroups']
+                    for flavor in group['flavors'] for resource in flavor['resources'] if resource['name'] == 'cpu']
+    if observed_cpu != [str(pool['cpu'])]:
+        raise ValueError('Deploy the configured shared CPU pool before starting expiry observation')
+    resources = {'cpu': str(pool['cpu']), 'memory': '64Mi', 'ephemeral-storage': '16Mi'}
     pod = {'apiVersion': 'v1', 'kind': 'Pod', 'metadata': {'name': record['blocker'], 'namespace': 'homelab-jobs',
            'labels': {'homelab/acceptance-run': fixture, 'kueue.x-k8s.io/queue-name': 'argo',
                       'kueue.x-k8s.io/workload-priority-class': 'homelab-compute'}},
