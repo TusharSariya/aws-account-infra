@@ -81,6 +81,16 @@ cannot invalidate an otherwise successful build. Bootstrap/recovery can rebuild
 from upstream without the cache. Recurring prerequisites belong in reviewed pinned
 runner images.
 
+On 2026-09-16 the user accepted stock BuildKit's excessive internal retries for
+now after the failed-layer fixture observed four cache and eight upstream
+attempts. Do not maintain a patched BuildKit solely to enforce the two/three
+attempt limit. This exception covers BuildKit's internal registry/layer retries
+only; dependency and pinned-download clients retain at most two cache attempts
+then at most three upstream attempts. Preserve the failed retry receipt and
+continue outage, interrupted-download, integrity and denied-upload acceptance.
+Release publication failures remain fatal. This is separate from the 24-hour
+expiry observation waiver.
+
 GitHub dependency/build cache reads and writes, including setup-action automatic
 caching, are disabled. Keep the repository cache limit at its free allowance and
 paid cache spending at $0. Published releases, deployment artifacts and operational

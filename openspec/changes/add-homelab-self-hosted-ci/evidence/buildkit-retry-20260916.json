@@ -110,5 +110,12 @@
       "path": "/v2/fixture/blobs/sha256:cf1db9cab8822a88869e11e797ea06dca94fed6e03e71eeef2f1047189b7b231",
       "layer": true
     }
-  ]
+  ],
+  "user_exception": {
+    "date": "2026-09-16",
+    "scope": "stock BuildKit internal registry/layer retry counts",
+    "accepted_for_now": true,
+    "exact_two_three_compliance": false,
+    "other_acceptance_waived": false
+  }
 }

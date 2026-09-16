@@ -13,9 +13,11 @@ import subprocess
 import time
 import sys
 import urllib.request
-from cache_download import fetch
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'scripts'))
+from cache_download import fetch
+
 sys.path.insert(0, str(ROOT / 'apps/platform/storage'))
 from workload_state import is_terminated
 TF = ROOT / 'live/kubernetes/homelab'

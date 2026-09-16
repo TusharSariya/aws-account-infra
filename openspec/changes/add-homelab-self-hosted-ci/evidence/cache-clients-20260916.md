@@ -111,3 +111,13 @@ URL and consequently exercised successful upstream fallback instead; it is kept
 as such, not counted as Nexus reuse. Both receipts are retained in
 `cache-linux-local-20260916.json`. User reported no known host/network changes
 during the private-route interruption.
+
+## User acceptance of stock BuildKit retries
+
+On 2026-09-16 the user responded to the observed four-cache/eight-upstream
+failed-layer attempts: "my understand this is an excessive retry problem? so its
+fine for now". Stock BuildKit internal registry/layer retries are therefore
+accepted for now. No patched BuildKit is required solely for the exact two/three
+limit. The original failed receipt remains intact. This does not waive integrity,
+cache fallback, interrupted downloads, denied uploads, release failure handling,
+or the exact attempt limit for dependency and pinned-download clients.

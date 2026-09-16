@@ -14,6 +14,10 @@ import talos_tools as tools
 
 class DownloadTests(unittest.TestCase):
     def setUp(self):
+        # Test upstream recovery independently of the CI runner's cache setting.
+        environment = patch.dict(tools.os.environ, {'HOMELAB_DEPENDENCY_CACHE': '0'})
+        environment.start()
+        self.addCleanup(environment.stop)
         sleeper = patch.object(tools.time, 'sleep')
         sleeper.start()
         self.addCleanup(sleeper.stop)
@@ -22,6 +26,19 @@ class DownloadTests(unittest.TestCase):
         self.destination = Path(self.temp.name) / 'tool'
         self.payload = b'complete verified tool'
         self.digest = hashlib.sha256(self.payload).hexdigest()
+
+    def test_talos_cache_keeps_checksum_failure_fatal(self):
+        response = io.BytesIO(b'corrupt')
+        response.headers = {}
+        opener = MagicMock()
+        opener.open.return_value = response
+        with patch.dict(tools.os.environ, {'HOMELAB_DEPENDENCY_CACHE': '1'}), \
+                patch('cache_download.urllib.request.build_opener', return_value=opener):
+            with self.assertRaisesRegex(ValueError, 'checksum'):
+                tools.download_verified('https://get.helm.sh/helm-test.tar.gz',
+                                        self.destination, self.digest)
+        self.assertEqual(opener.open.call_count, 1)
+        self.assertFalse(self.destination.exists())
 
     def test_transport_timeout_retries_and_verifies(self):
         with patch.object(tools.urllib.request, 'urlopen', side_effect=[TimeoutError(), io.BytesIO(self.payload)]) as request:

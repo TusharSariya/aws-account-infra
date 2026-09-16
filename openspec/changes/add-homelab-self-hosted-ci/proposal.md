@@ -24,7 +24,10 @@ storage (48 content, 6 database, 2 configuration, 8 temporary/logs), within a re
 4 CPU / 18 GiB platform reserve. AI uses 33.25 CPU / 77 GiB only when admitted.
 Replace remote dependency/build caches with shared proxy/raw/hosted cache
 repositories, measured job-specific scratch, pinned prerequisites, bounded verified
-upstream fallback and supported cleanup. Preserve the 60-GiB compute scratch
+upstream fallback and supported cleanup. On 2026-09-16 the user accepted stock
+BuildKit's internal excessive registry retries for now; the exact two-cache/
+three-upstream attempt limit remains required for other dependency and pinned
+download clients. Preserve the 60-GiB compute scratch
 plus 8-GiB headroom gate and all original migration acceptance. The user permits
 UI-managed cleanup schedules with verification where the CE REST API is unavailable.
 

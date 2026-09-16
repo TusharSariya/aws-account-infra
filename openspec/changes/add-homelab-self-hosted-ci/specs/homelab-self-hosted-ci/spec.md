@@ -88,6 +88,8 @@ setup-action caching SHALL be disabled, with free allowance and $0 paid cache sp
 #### Scenario: Cache unavailable
 - **WHEN** reads miss or the cache is unavailable
 - **THEN** bounded retries permit verified upstream downloads and bootstrap/recovery remain independent
+- **AND** dependency and pinned-download clients use at most two cache attempts followed by at most three upstream attempts
+- **AND** stock BuildKit internal registry/layer retries are accepted under the 2026-09-16 user exception, with the observed four-cache/eight-upstream failure retained as evidence rather than reported as two/three compliance
 
 #### Scenario: Upload fails
 - **WHEN** an otherwise successful build cannot upload its disposable cache
