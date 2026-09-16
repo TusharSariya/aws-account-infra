@@ -1,0 +1,646 @@
+{
+  "started_at": "2026-09-16T14:52:59.741065+00:00",
+  "reason": "Cancel queued and active draft validation before immutable runner-image deployment",
+  "runs_before": [
+    {
+      "conclusion": "",
+      "databaseId": 35110911847,
+      "headSha": "4e2d9a0c235a13a4651edcf8e7abad0a2fcfa217",
+      "name": "sdk-publish-stable",
+      "status": "pending"
+    },
+    {
+      "conclusion": "",
+      "databaseId": 35110911323,
+      "headSha": "4e2d9a0c235a13a4651edcf8e7abad0a2fcfa217",
+      "name": "ansible",
+      "status": "queued"
+    },
+    {
+      "conclusion": "",
+      "databaseId": 35110911304,
+      "headSha": "4e2d9a0c235a13a4651edcf8e7abad0a2fcfa217",
+      "name": "tofu-plan",
+      "status": "queued"
+    },
+    {
+      "conclusion": "",
+      "databaseId": 35110911407,
+      "headSha": "4e2d9a0c235a13a4651edcf8e7abad0a2fcfa217",
+      "name": "gitleaks",
+      "status": "queued"
+    },
+    {
+      "conclusion": "",
+      "databaseId": 35110911443,
+      "headSha": "4e2d9a0c235a13a4651edcf8e7abad0a2fcfa217",
+      "name": "trivy",
+      "status": "queued"
+    },
+    {
+      "conclusion": "",
+      "databaseId": 35110911856,
+      "headSha": "4e2d9a0c235a13a4651edcf8e7abad0a2fcfa217",
+      "name": "ARC compatibility",
+      "status": "queued"
+    },
+    {
+      "conclusion": "",
+      "databaseId": 35110911380,
+      "headSha": "4e2d9a0c235a13a4651edcf8e7abad0a2fcfa217",
+      "name": "sdk-publish-stable",
+      "status": "queued"
+    },
+    {
+      "conclusion": "",
+      "databaseId": 35110911413,
+      "headSha": "4e2d9a0c235a13a4651edcf8e7abad0a2fcfa217",
+      "name": "homelab-config-tests",
+      "status": "queued"
+    },
+    {
+      "conclusion": "",
+      "databaseId": 35110911452,
+      "headSha": "4e2d9a0c235a13a4651edcf8e7abad0a2fcfa217",
+      "name": "localstack",
+      "status": "queued"
+    },
+    {
+      "conclusion": "",
+      "databaseId": 35110911366,
+      "headSha": "4e2d9a0c235a13a4651edcf8e7abad0a2fcfa217",
+      "name": "odysseus-image",
+      "status": "queued"
+    },
+    {
+      "conclusion": "",
+      "databaseId": 35110911533,
+      "headSha": "4e2d9a0c235a13a4651edcf8e7abad0a2fcfa217",
+      "name": "tflint",
+      "status": "queued"
+    },
+    {
+      "conclusion": "",
+      "databaseId": 35110912327,
+      "headSha": "4e2d9a0c235a13a4651edcf8e7abad0a2fcfa217",
+      "name": "tofu-apply",
+      "status": "queued"
+    },
+    {
+      "conclusion": "",
+      "databaseId": 35110911325,
+      "headSha": "4e2d9a0c235a13a4651edcf8e7abad0a2fcfa217",
+      "name": "ollama-image",
+      "status": "in_progress"
+    }
+  ],
+  "pods_before": [
+    {
+      "name": "homelab-talos-checks-hbj8m-runner-6nsgt",
+      "uid": "b19befce-c82c-437f-b201-8adb97573eab",
+      "phase": "Pending",
+      "scheduling_gates": [
+        {
+          "name": "kueue.x-k8s.io/admission"
+        },
+        {
+          "name": "kueue.x-k8s.io/topology"
+        }
+      ]
+    },
+    {
+      "name": "homelab-talos-checks-hbj8m-runner-bf9fp",
+      "uid": "bc902ea3-44d3-4911-a62b-853b9b14aba8",
+      "phase": "Pending",
+      "scheduling_gates": [
+        {
+          "name": "kueue.x-k8s.io/admission"
+        },
+        {
+          "name": "kueue.x-k8s.io/topology"
+        }
+      ]
+    },
+    {
+      "name": "homelab-talos-checks-hbj8m-runner-bqdsf",
+      "uid": "c7e4cec5-54c1-43d6-b6c4-e79c93c3bec6",
+      "phase": "Pending",
+      "scheduling_gates": [
+        {
+          "name": "kueue.x-k8s.io/admission"
+        },
+        {
+          "name": "kueue.x-k8s.io/topology"
+        }
+      ]
+    },
+    {
+      "name": "homelab-talos-checks-hbj8m-runner-xbq86",
+      "uid": "a2bdc4da-1568-40c1-a066-1e8f769b728d",
+      "phase": "Pending",
+      "scheduling_gates": [
+        {
+          "name": "kueue.x-k8s.io/admission"
+        },
+        {
+          "name": "kueue.x-k8s.io/topology"
+        }
+      ]
+    },
+    {
+      "name": "homelab-talos-light-5zn6x-runner-2ts5b",
+      "uid": "8ef76b85-5065-47b0-96e2-93afaf9edd85",
+      "phase": "Pending",
+      "scheduling_gates": [
+        {
+          "name": "kueue.x-k8s.io/admission"
+        },
+        {
+          "name": "kueue.x-k8s.io/topology"
+        }
+      ]
+    },
+    {
+      "name": "homelab-talos-light-5zn6x-runner-7cs7j",
+      "uid": "1e9077a9-3677-41cf-8e9e-563b318ce5bd",
+      "phase": "Pending",
+      "scheduling_gates": [
+        {
+          "name": "kueue.x-k8s.io/admission"
+        },
+        {
+          "name": "kueue.x-k8s.io/topology"
+        }
+      ]
+    },
+    {
+      "name": "homelab-talos-light-5zn6x-runner-7l7tj",
+      "uid": "44c32699-b7d3-44d0-bfc0-45ac1e0f531e",
+      "phase": "Pending",
+      "scheduling_gates": [
+        {
+          "name": "kueue.x-k8s.io/admission"
+        },
+        {
+          "name": "kueue.x-k8s.io/topology"
+        }
+      ]
+    },
+    {
+      "name": "homelab-talos-light-5zn6x-runner-8pq68",
+      "uid": "4cc00d30-a50f-435e-a433-757c81ee73d5",
+      "phase": "Pending",
+      "scheduling_gates": [
+        {
+          "name": "kueue.x-k8s.io/admission"
+        },
+        {
+          "name": "kueue.x-k8s.io/topology"
+        }
+      ]
+    },
+    {
+      "name": "homelab-talos-light-5zn6x-runner-jjg4s",
+      "uid": "8c86d232-028e-40ef-9232-88f7b6565ece",
+      "phase": "Pending",
+      "scheduling_gates": [
+        {
+          "name": "kueue.x-k8s.io/admission"
+        },
+        {
+          "name": "kueue.x-k8s.io/topology"
+        }
+      ]
+    },
+    {
+      "name": "homelab-talos-light-5zn6x-runner-tjtnl",
+      "uid": "be0510cf-ea28-4f59-8913-a1f5fc7e80e5",
+      "phase": "Pending",
+      "scheduling_gates": [
+        {
+          "name": "kueue.x-k8s.io/admission"
+        },
+        {
+          "name": "kueue.x-k8s.io/topology"
+        }
+      ]
+    },
+    {
+      "name": "homelab-talos-mgpqp-runner-5fjd7",
+      "uid": "771a3390-1740-4d18-9279-fad4708ea6ab",
+      "phase": "Running",
+      "scheduling_gates": []
+    },
+    {
+      "name": "homelab-talos-mgpqp-runner-9k2h7",
+      "uid": "0d19551d-33d0-49a5-b621-bfc04008fe90",
+      "phase": "Pending",
+      "scheduling_gates": [
+        {
+          "name": "kueue.x-k8s.io/admission"
+        },
+        {
+          "name": "kueue.x-k8s.io/topology"
+        }
+      ]
+    },
+    {
+      "name": "homelab-talos-mgpqp-runner-bpm28",
+      "uid": "0bbd09d5-bcaf-4171-a416-6b9ffa6842b6",
+      "phase": "Pending",
+      "scheduling_gates": [
+        {
+          "name": "kueue.x-k8s.io/admission"
+        },
+        {
+          "name": "kueue.x-k8s.io/topology"
+        }
+      ]
+    },
+    {
+      "name": "homelab-talos-mgpqp-runner-glqv9",
+      "uid": "46c6213c-5ebe-430c-82bb-c7b1ee0e829f",
+      "phase": "Pending",
+      "scheduling_gates": [
+        {
+          "name": "kueue.x-k8s.io/admission"
+        },
+        {
+          "name": "kueue.x-k8s.io/topology"
+        }
+      ]
+    },
+    {
+      "name": "homelab-talos-mgpqp-runner-gsjbr",
+      "uid": "455a48ba-7afd-4102-a3fe-f2c2a7b660b5",
+      "phase": "Running",
+      "scheduling_gates": []
+    }
+  ],
+  "workloads_before": [
+    {
+      "name": "pod-homelab-talos-checks-hbj8m-runner-6nsgt-d81b9",
+      "uid": "33fd65ae-252c-45c2-a7ca-50be1b87c654",
+      "admission": null,
+      "conditions": [
+        {
+          "lastTransitionTime": "2026-09-16T14:47:22Z",
+          "message": "Not all pods are ready or succeeded",
+          "observedGeneration": 1,
+          "reason": "WaitForStart",
+          "status": "False",
+          "type": "PodsReady"
+        }
+      ]
+    },
+    {
+      "name": "pod-homelab-talos-checks-hbj8m-runner-bf9fp-05efd",
+      "uid": "95203d7b-6a35-4771-a666-b89081a779eb",
+      "admission": null,
+      "conditions": [
+        {
+          "lastTransitionTime": "2026-09-16T14:47:23Z",
+          "message": "Not all pods are ready or succeeded",
+          "observedGeneration": 1,
+          "reason": "WaitForStart",
+          "status": "False",
+          "type": "PodsReady"
+        }
+      ]
+    },
+    {
+      "name": "pod-homelab-talos-checks-hbj8m-runner-bqdsf-ec873",
+      "uid": "4d655107-e44a-415a-9b00-0d60374a3b03",
+      "admission": null,
+      "conditions": [
+        {
+          "lastTransitionTime": "2026-09-16T14:47:22Z",
+          "message": "Not all pods are ready or succeeded",
+          "observedGeneration": 1,
+          "reason": "WaitForStart",
+          "status": "False",
+          "type": "PodsReady"
+        }
+      ]
+    },
+    {
+      "name": "pod-homelab-talos-checks-hbj8m-runner-xbq86-ef0a3",
+      "uid": "7e23e2d7-c16b-474e-97f8-5f2a2a3f7470",
+      "admission": null,
+      "conditions": [
+        {
+          "lastTransitionTime": "2026-09-16T14:47:21Z",
+          "message": "Not all pods are ready or succeeded",
+          "observedGeneration": 1,
+          "reason": "WaitForStart",
+          "status": "False",
+          "type": "PodsReady"
+        }
+      ]
+    },
+    {
+      "name": "pod-homelab-talos-light-5zn6x-runner-2ts5b-d2039",
+      "uid": "007bc6a8-9759-484f-a86f-0e458f214909",
+      "admission": null,
+      "conditions": [
+        {
+          "lastTransitionTime": "2026-09-16T14:47:20Z",
+          "message": "Not all pods are ready or succeeded",
+          "observedGeneration": 1,
+          "reason": "WaitForStart",
+          "status": "False",
+          "type": "PodsReady"
+        }
+      ]
+    },
+    {
+      "name": "pod-homelab-talos-light-5zn6x-runner-7cs7j-67b2d",
+      "uid": "5a784b53-6822-4394-9470-e2760f681119",
+      "admission": null,
+      "conditions": [
+        {
+          "lastTransitionTime": "2026-09-16T14:50:05Z",
+          "message": "Not all pods are ready or succeeded",
+          "observedGeneration": 1,
+          "reason": "WaitForStart",
+          "status": "False",
+          "type": "PodsReady"
+        }
+      ]
+    },
+    {
+      "name": "pod-homelab-talos-light-5zn6x-runner-7l7tj-44373",
+      "uid": "fd58e8e4-326a-4f7c-a467-b15c4fc3fdee",
+      "admission": null,
+      "conditions": [
+        {
+          "lastTransitionTime": "2026-09-16T14:47:19Z",
+          "message": "Not all pods are ready or succeeded",
+          "observedGeneration": 1,
+          "reason": "WaitForStart",
+          "status": "False",
+          "type": "PodsReady"
+        }
+      ]
+    },
+    {
+      "name": "pod-homelab-talos-light-5zn6x-runner-8pq68-93f1a",
+      "uid": "00142d19-4ce9-4b65-b5ef-88da5ad2e6f7",
+      "admission": null,
+      "conditions": [
+        {
+          "lastTransitionTime": "2026-09-16T14:47:21Z",
+          "message": "Not all pods are ready or succeeded",
+          "observedGeneration": 1,
+          "reason": "WaitForStart",
+          "status": "False",
+          "type": "PodsReady"
+        }
+      ]
+    },
+    {
+      "name": "pod-homelab-talos-light-5zn6x-runner-jjg4s-f3d28",
+      "uid": "45810bac-50d8-40fb-9710-8b8d978799a7",
+      "admission": null,
+      "conditions": [
+        {
+          "lastTransitionTime": "2026-09-16T14:47:20Z",
+          "message": "Not all pods are ready or succeeded",
+          "observedGeneration": 1,
+          "reason": "WaitForStart",
+          "status": "False",
+          "type": "PodsReady"
+        }
+      ]
+    },
+    {
+      "name": "pod-homelab-talos-light-5zn6x-runner-tjtnl-34200",
+      "uid": "e824150a-a971-414c-b849-1dc381dc418b",
+      "admission": null,
+      "conditions": [
+        {
+          "lastTransitionTime": "2026-09-16T14:47:21Z",
+          "message": "Not all pods are ready or succeeded",
+          "observedGeneration": 1,
+          "reason": "WaitForStart",
+          "status": "False",
+          "type": "PodsReady"
+        }
+      ]
+    },
+    {
+      "name": "pod-homelab-talos-mgpqp-runner-5fjd7-fb70c",
+      "uid": "6faf780b-ee97-49bf-a36e-86f370701b11",
+      "admission": {
+        "clusterQueue": "homelab-compute",
+        "podSetAssignments": [
+          {
+            "count": 1,
+            "flavors": {
+              "cpu": "homelab-worker",
+              "ephemeral-storage": "homelab-worker",
+              "memory": "homelab-worker"
+            },
+            "name": "main",
+            "resourceUsage": {
+              "cpu": "4",
+              "ephemeral-storage": "30Gi",
+              "memory": "16Gi"
+            }
+          }
+        ]
+      },
+      "conditions": [
+        {
+          "lastTransitionTime": "2026-09-16T14:50:19Z",
+          "message": "Quota reserved in ClusterQueue homelab-compute",
+          "observedGeneration": 1,
+          "reason": "QuotaReserved",
+          "status": "True",
+          "type": "QuotaReserved"
+        },
+        {
+          "lastTransitionTime": "2026-09-16T14:50:19Z",
+          "message": "The workload is admitted",
+          "observedGeneration": 1,
+          "reason": "Admitted",
+          "status": "True",
+          "type": "Admitted"
+        },
+        {
+          "lastTransitionTime": "2026-09-16T14:51:01Z",
+          "message": "All pods reached readiness and the workload is running",
+          "observedGeneration": 1,
+          "reason": "Started",
+          "status": "True",
+          "type": "PodsReady"
+        }
+      ]
+    },
+    {
+      "name": "pod-homelab-talos-mgpqp-runner-9k2h7-55138",
+      "uid": "f3dd29fc-0485-487c-b7f6-e2ec9f7f84e4",
+      "admission": null,
+      "conditions": [
+        {
+          "lastTransitionTime": "2026-09-16T14:50:53Z",
+          "message": "couldn't assign flavors to pod set main: insufficient unused quota for ephemeral-storage in flavor homelab-worker, 30Gi more needed",
+          "observedGeneration": 1,
+          "reason": "Pending",
+          "status": "False",
+          "type": "QuotaReserved"
+        },
+        {
+          "lastTransitionTime": "2026-09-16T14:47:17Z",
+          "message": "Not all pods are ready or succeeded",
+          "observedGeneration": 1,
+          "reason": "WaitForStart",
+          "status": "False",
+          "type": "PodsReady"
+        }
+      ]
+    },
+    {
+      "name": "pod-homelab-talos-mgpqp-runner-bpm28-b0309",
+      "uid": "72427e56-c4b3-4f44-a0f9-cfd17ff477f6",
+      "admission": null,
+      "conditions": [
+        {
+          "lastTransitionTime": "2026-09-16T14:47:18Z",
+          "message": "Not all pods are ready or succeeded",
+          "observedGeneration": 1,
+          "reason": "WaitForStart",
+          "status": "False",
+          "type": "PodsReady"
+        }
+      ]
+    },
+    {
+      "name": "pod-homelab-talos-mgpqp-runner-glqv9-4c9ac",
+      "uid": "dad28b17-2eb0-4b20-90d9-529390528a86",
+      "admission": null,
+      "conditions": [
+        {
+          "lastTransitionTime": "2026-09-16T14:47:18Z",
+          "message": "Not all pods are ready or succeeded",
+          "observedGeneration": 1,
+          "reason": "WaitForStart",
+          "status": "False",
+          "type": "PodsReady"
+        }
+      ]
+    },
+    {
+      "name": "pod-homelab-talos-mgpqp-runner-gsjbr-07499",
+      "uid": "559e74ac-afc7-406e-a26b-1bb75eb65f56",
+      "admission": {
+        "clusterQueue": "homelab-compute",
+        "podSetAssignments": [
+          {
+            "count": 1,
+            "flavors": {
+              "cpu": "homelab-worker",
+              "ephemeral-storage": "homelab-worker",
+              "memory": "homelab-worker"
+            },
+            "name": "main",
+            "resourceUsage": {
+              "cpu": "4",
+              "ephemeral-storage": "30Gi",
+              "memory": "16Gi"
+            }
+          }
+        ]
+      },
+      "conditions": [
+        {
+          "lastTransitionTime": "2026-09-16T14:50:53Z",
+          "message": "Quota reserved in ClusterQueue homelab-compute",
+          "observedGeneration": 1,
+          "reason": "QuotaReserved",
+          "status": "True",
+          "type": "QuotaReserved"
+        },
+        {
+          "lastTransitionTime": "2026-09-16T14:50:53Z",
+          "message": "The workload is admitted",
+          "observedGeneration": 1,
+          "reason": "Admitted",
+          "status": "True",
+          "type": "Admitted"
+        },
+        {
+          "lastTransitionTime": "2026-09-16T14:51:29Z",
+          "message": "All pods reached readiness and the workload is running",
+          "observedGeneration": 1,
+          "reason": "Started",
+          "status": "True",
+          "type": "PodsReady"
+        }
+      ]
+    }
+  ],
+  "verified_at": "2026-09-16T14:55:40.150878+00:00",
+  "pods_after": [],
+  "workloads_after": [],
+  "queue_status_after": {
+    "admittedWorkloads": 0,
+    "conditions": [
+      {
+        "lastTransitionTime": "2026-09-15T09:39:41Z",
+        "message": "Can admit new workloads",
+        "observedGeneration": 3,
+        "reason": "Ready",
+        "status": "True",
+        "type": "Active"
+      }
+    ],
+    "flavorsReservation": [
+      {
+        "name": "homelab-worker",
+        "resources": [
+          {
+            "borrowed": "0",
+            "name": "cpu",
+            "total": "0"
+          },
+          {
+            "borrowed": "0",
+            "name": "ephemeral-storage",
+            "total": "0"
+          },
+          {
+            "borrowed": "0",
+            "name": "memory",
+            "total": "0"
+          }
+        ]
+      }
+    ],
+    "flavorsUsage": [
+      {
+        "name": "homelab-worker",
+        "resources": [
+          {
+            "borrowed": "0",
+            "name": "cpu",
+            "total": "0"
+          },
+          {
+            "borrowed": "0",
+            "name": "ephemeral-storage",
+            "total": "0"
+          },
+          {
+            "borrowed": "0",
+            "name": "memory",
+            "total": "0"
+          }
+        ]
+      }
+    ],
+    "pendingWorkloads": 0,
+    "reservingWorkloads": 0
+  },
+  "runner_cleanup_verified": true
+}

@@ -9,6 +9,9 @@ on:
       - 'apps/platform/cache/**'
       - 'apps/platform/storage/**'
       - 'scripts/cache_capacity.py'
+      - 'scripts/cache_download.py'
+      - 'scripts/tests/test_cache_download.py'
+      - 'scripts/tests/test_registry_enrollment.py'
       - 'scripts/ci_scratch.py'
       - 'scripts/tests/test_local_cache.py'
       - 'scripts/tests/test_capacity_*.py'
@@ -61,7 +64,7 @@ jobs:
           uv run --with PyYAML==6.0.3 python scripts/homelab-ci.py setup
           uv run --with PyYAML==6.0.3 python scripts/runner_catalog.py
           PYTHONPATH=scripts uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p 'test_kueue_*.py'
-          for pattern in 'test_local_cache.py' 'test_capacity_*.py'; do
+          for pattern in 'test_local_cache.py' 'test_capacity_*.py' 'test_cache_download.py' 'test_registry_enrollment.py'; do
             PYTHONPATH=scripts uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p "$pattern"
           done
           uv run --with PyYAML==6.0.3 python scripts/tests/kueue_cel/generate.py "$RUNNER_TEMP/cel-cases.json"

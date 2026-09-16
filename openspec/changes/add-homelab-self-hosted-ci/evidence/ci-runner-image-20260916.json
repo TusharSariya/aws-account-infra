@@ -1,0 +1,49 @@
+{
+  "run_id": 35110911491,
+  "source_revision": "4e2d9a0c235a13a4651edcf8e7abad0a2fcfa217",
+  "image": "ghcr.io/tusharsariyaorg/homelab-ci-runner@sha256:ad674f57f1a60d4cf048eab6c85c043cba14c4f415faddd9be348b0bce78c6d8",
+  "visibility_verified": "private",
+  "credential_scopes": [
+    "read:packages"
+  ],
+  "readonly_manifest_inspection": "success",
+  "compressed_layer_bytes": 671868075,
+  "deployed": true,
+  "fresh_runner_verified": false,
+  "changes": [
+    "helm_release.runners[\"homelab-talos\"]",
+    "helm_release.runners[\"homelab-talos-checks\"]",
+    "helm_release.runners[\"homelab-talos-light\"]"
+  ],
+  "post_plan_empty": true,
+  "capacity": {
+    "cpu": {
+      "allocatable": "37.950",
+      "platform_observed": "3.706",
+      "platform_reserved": "4.000",
+      "pool": "33.5"
+    },
+    "memory": {
+      "allocatable": "180865310720",
+      "platform_observed": "12297699328",
+      "platform_reserved": "19327352832",
+      "pool": "150Gi"
+    },
+    "cache_storage": {
+      "committed_bytes": "423058472960",
+      "cache_bytes": "68719476736",
+      "filesystem_available_bytes": 1262560305152,
+      "thin_pool_available_bytes": 1839531215447
+    },
+    "storage_and_slots": {
+      "pool": "64424509440",
+      "measured_used_with_images": "22925422592",
+      "platform_requests": "520093696",
+      "headroom": "8589934592",
+      "allocatable": "121286269137",
+      "projected_platform_pods": 26,
+      "runner_slots": 30,
+      "pod_headroom": 10
+    }
+  }
+}

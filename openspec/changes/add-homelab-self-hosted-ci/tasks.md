@@ -38,7 +38,8 @@
 - [x] 5.3a Deploy and reconcile the initial proxy/raw/build repositories, authorized EULA and separate read-only consumer/build-writer/monitor roles; verify successful monitoring execution.
 - [x] 5.3b Preview and configure supported cleanup for the initial 16 repositories (14 days dependencies, 30 days pinned raw, 7 days build caches), daily cleanup and subsequent compaction; verify UI settings and successful execution (evidence: nexus-cleanup-20260916.json and three empty CSV previews). Physical reclamation remains in 5.7.
 - [ ] 5.3c Reconcile all workflow origins/distributions, bind added repositories to cleanup policies, and exercise warning delivery.
-- [ ] 5.4 Build reviewed pinned prerequisite runner images; route package managers and nested Docker through cache with verified bounded upstream fallback and nonfatal upload failure.
+- [x] 5.4a Build and publish a private prerequisite runner image through independent hosted recovery; verify existing version/checksum pins, read-only image-pull credentials, and deploy its immutable digest through a guarded CI-root plan. Evidence: ci-runner-image-20260916.json.
+- [ ] 5.4b Verify the prerequisite image on fresh ARC runners; route all package managers and nested Docker through cache with verified bounded upstream fallback and nonfatal upload failure.
 - [x] 5.5 Disable explicit GitHub dependency/build cache access, audit nested composite/setup actions, and verify repository 10-GB free allowance and $0 paid cache-storage budget with further usage blocked.
 - [ ] 5.6 Measure eligible jobs cold and twice warm on fresh runners, adopt max plus 25% and 1 GiB rounded up with 2-GiB minimum only after revalidation at the declared size.
 - [ ] 5.7 Prove fresh-runner npm/Python/APT/Docker reuse with upstream bytes/time, concurrent mixed sizes, actual quota rejection, cleanup/compaction, interrupted downloads, cache/node restart and fallback.
