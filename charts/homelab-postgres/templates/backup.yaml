@@ -77,6 +77,6 @@ spec:
           volumes:
             - {name: code, configMap: {name: apps-db-backup-code}}
             - {name: identity, secret: {secretName: apps-db-backup-identity, defaultMode: 288}}
-            - {name: ca, secret: {secretName: apps-db-ca}}
+            - {name: ca, secret: {secretName: apps-db-ca, items: [{key: ca.crt, path: ca.crt}]}}
             - {name: scratch, persistentVolumeClaim: {claimName: apps-db-backup-scratch}}
 {{- end }}

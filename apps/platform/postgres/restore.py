@@ -53,6 +53,9 @@ def restore_roles(connection, inventory, passwords):
             sql.Identifier(name), sql.SQL('LOGIN' if role['login'] else 'NOLOGIN'),
             sql.SQL('BYPASSRLS' if role['bypassrls'] else 'NOBYPASSRLS'), sql.Literal(role['connection_limit']))
         connection.execute(statement)
+        connection.execute(sql.SQL('ALTER ROLE {} {} VALID UNTIL {}').format(
+            sql.Identifier(name), sql.SQL('INHERIT' if role['inherit'] else 'NOINHERIT'),
+            sql.Literal(role['valid_until'] or 'infinity')))
         if role['login']:
             # Hash client-side; never send a cleartext password in a SQL statement.
             encoded = connection.pgconn.encrypt_password(passwords[name].encode(), name.encode(), b'scram-sha-256')
@@ -88,6 +91,8 @@ def restore(directory, passwords):
                              '--dbname=postgres', str(directory / 'apps.dump')], capture_output=True)
     if result.returncode:
         raise BackupError('Restore failed; dispose of the target instance before retrying')
+    with psycopg.connect('', dbname='apps', autocommit=True) as connection:
+        connection.execute('GRANT EXECUTE ON FUNCTION pg_catalog.pg_control_system() TO apps_backup')
 
 
 def main():

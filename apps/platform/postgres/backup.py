@@ -67,11 +67,14 @@ def command_to_file(command, path, limit):
 
 def roles(connection):
     # pg_roles deliberately excludes password hashes (unlike pg_authid).
-    names = connection.execute("""SELECT rolname, rolcanlogin, rolbypassrls, rolconnlimit, rolconfig
+    names = connection.execute("""SELECT rolname, rolcanlogin, rolbypassrls, rolconnlimit, rolconfig, rolinherit, rolvaliduntil,
+        rolsuper, rolcreatedb, rolcreaterole, rolreplication
         FROM pg_roles WHERE rolname !~ '^pg_' AND rolname NOT IN
         ('postgres', 'streaming_replica', 'cnpg_pooler_pgbouncer') ORDER BY rolname""").fetchall()
     result = []
-    for name, login, bypass, limit, settings in names:
+    for name, login, bypass, limit, settings, inherit, valid_until, superuser, createdb, createrole, replication in names:
+        if any((superuser, createdb, createrole, replication)):
+            raise BackupError('Unreviewed privileged database role')
         if not (name in ('apps_owner', 'apps_backup') or name.startswith('app_')):
             raise BackupError('Unreviewed database role; update role inventory before backup')
         if bypass and name != 'apps_backup':
@@ -80,7 +83,8 @@ def roles(connection):
             FROM pg_auth_members m JOIN pg_roles r ON r.oid=m.roleid
             JOIN pg_roles u ON u.oid=m.member WHERE u.rolname=%s ORDER BY r.rolname""", (name,)).fetchall()
         result.append(dict(name=name, login=login, bypassrls=bypass, connection_limit=limit,
-                           settings=settings or [], memberships=memberships))
+                           settings=settings or [], memberships=memberships, inherit=inherit,
+                           valid_until=valid_until.isoformat() if valid_until else None))
     return result
 
 
