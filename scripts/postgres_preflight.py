@@ -1,13 +1,29 @@
 """Read-only deployment gate: never drain or interrupt AI/CI to make room."""
 import json
+import os
+import socket
 
 
 def verify(kubectl, run):
     def get(*args):
         return json.loads(run([kubectl, '--request-timeout=30s', *args, '-o', 'json']))
+    # Only the current admitted ARC runner is part of this deployment. Never
+    # exempt another job, AI, a local caller, or a runner from another repository.
+    hostname = socket.gethostname()
+    repository = os.environ.get('GITHUB_REPOSITORY', '').split('/')
+    own_runner = (os.environ.get('GITHUB_ACTIONS') == 'true' and
+                  os.environ.get('RUNNER_NAME') == hostname and len(repository) == 2)
     pods = get('get', 'pods', '-A')['items']
     for pod in pods:
         labels = pod['metadata'].get('labels', {})
+        metadata = pod['metadata']
+        if (own_runner and metadata.get('namespace') == 'arc-runners' and
+                metadata.get('name') == hostname and labels.get('app') != 'ai-runtime' and
+                labels.get('kueue.x-k8s.io/queue-name') == 'ci' and
+                labels.get('app.kubernetes.io/component') == 'runner' and
+                labels.get('actions.github.com/organization') == repository[0] and
+                labels.get('actions.github.com/repository') == repository[1]):
+            continue
         if (pod.get('status', {}).get('phase') not in ('Succeeded', 'Failed') and
                 ('kueue.x-k8s.io/queue-name' in labels or labels.get('app') == 'ai-runtime')):
             raise ValueError('Wait for active AI/CI work to finish; deployment never interrupts it')
