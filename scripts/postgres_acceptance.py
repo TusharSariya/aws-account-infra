@@ -73,6 +73,14 @@ def setup():
 
 
 def verify():
+    admin('REVOKE ALL ON shared.acceptance_probe FROM app_acceptance_a_runtime; REVOKE USAGE ON SCHEMA shared FROM app_acceptance_a_runtime;')
+    run(['-n',NAMESPACE,'label','pod',APPS[1].replace('_','-'),'homelab/apps-db-client=true','--overwrite'])
+    for attempt in range(30):
+        try:
+            client(APPS[1],'SELECT 1');break
+        except ValueError:
+            time.sleep(2)
+    else: raise ValueError('Client policy did not converge')
     def writes(app):
         for i in range(10):
             client(app,f"INSERT INTO app_{app}.probe VALUES ({i}, 'fixture') ON CONFLICT DO NOTHING")
@@ -88,9 +96,15 @@ def verify():
     assert client(APPS[0],'SELECT id FROM shared.acceptance_probe')=='42'
     client(APPS[1],'SELECT * FROM shared.acceptance_probe',success=False)
     run(['-n',NAMESPACE,'label','pod',APPS[1].replace('_','-'),'homelab/apps-db-client-'])
-    time.sleep(3)
-    client(APPS[1],'SELECT 1',success=False)
-    run(['-n',NAMESPACE,'label','pod',APPS[1].replace('_','-'),'homelab/apps-db-client=true'])
+    try:
+        for attempt in range(30):
+            try:
+                client(APPS[1],'SELECT 1',success=False);break
+            except ValueError:
+                time.sleep(2)
+        else: raise ValueError('Unlabeled client was not denied after policy convergence')
+    finally:
+        run(['-n',NAMESPACE,'label','pod',APPS[1].replace('_','-'),'homelab/apps-db-client=true','--overwrite'])
     print(json.dumps({'concurrent_dml':'passed','cross_schema':'denied','runtime_ddl':'denied','plaintext':'denied','unlabeled_network_client':'denied','explicit_shared_grant':'passed'}))
 
 

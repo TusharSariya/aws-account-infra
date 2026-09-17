@@ -41,12 +41,14 @@ def main():
             raise AssertionError('Disposable database did not become ready')
     with connect(source) as c:
         c.execute('CREATE ROLE apps_owner NOLOGIN')
+        c.execute('CREATE ROLE cnpg_metrics_exporter NOLOGIN')
         c.execute('CREATE DATABASE apps OWNER apps_owner')
     with connect(source, database='apps') as c:
         for statement in json.load(open('/tmp/bootstrap.json')):
             c.execute(statement)
         for app in ['one', 'two']:
             c.execute(statements(app))
+            c.execute(f"ALTER ROLE app_{app}_runtime VALID UNTIL 'infinity'")
         c.execute('CREATE TABLE shared.reference (id integer PRIMARY KEY)')
         c.execute('ALTER TABLE shared.reference OWNER TO apps_owner')
         c.execute('INSERT INTO shared.reference VALUES (42)')

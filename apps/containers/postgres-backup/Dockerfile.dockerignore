@@ -1,0 +1,8 @@
+**
+!apps/
+!apps/containers/
+!apps/containers/postgres-backup/
+!apps/containers/postgres-backup/requirements.txt
+!apps/platform/
+!apps/platform/postgres/
+!apps/platform/postgres/*.py

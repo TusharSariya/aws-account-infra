@@ -16,7 +16,12 @@ data "aws_iam_policy_document" "security_alerts" {
     condition {
       test     = "ArnEquals"
       variable = "aws:SourceArn"
-      values   = ["arn:aws:cloudwatch:${var.region}:${var.aws_account_id}:alarm:homelab-etcd-backup-stale"]
+      values = [
+        "arn:aws:cloudwatch:${var.region}:${var.aws_account_id}:alarm:homelab-etcd-backup-stale",
+        "arn:aws:cloudwatch:${var.region}:${var.aws_account_id}:alarm:homelab-postgres-backup-stale",
+        "arn:aws:cloudwatch:${var.region}:${var.aws_account_id}:alarm:homelab-postgres-BackupFailure",
+        "arn:aws:cloudwatch:${var.region}:${var.aws_account_id}:alarm:homelab-postgres-CertificateExpiring"
+      ]
     }
     condition {
       test     = "StringEquals"

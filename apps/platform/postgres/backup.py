@@ -67,10 +67,10 @@ def command_to_file(command, path, limit):
 
 def roles(connection):
     # pg_roles deliberately excludes password hashes (unlike pg_authid).
-    names = connection.execute("""SELECT rolname, rolcanlogin, rolbypassrls, rolconnlimit, rolconfig, rolinherit, rolvaliduntil,
+    names = connection.execute("""SELECT rolname, rolcanlogin, rolbypassrls, rolconnlimit, rolconfig, rolinherit, rolvaliduntil::text,
         rolsuper, rolcreatedb, rolcreaterole, rolreplication
         FROM pg_roles WHERE rolname !~ '^pg_' AND rolname NOT IN
-        ('postgres', 'streaming_replica', 'cnpg_pooler_pgbouncer') ORDER BY rolname""").fetchall()
+        ('postgres', 'streaming_replica', 'cnpg_pooler_pgbouncer', 'cnpg_metrics_exporter') ORDER BY rolname""").fetchall()
     result = []
     for name, login, bypass, limit, settings, inherit, valid_until, superuser, createdb, createrole, replication in names:
         if any((superuser, createdb, createrole, replication)):
@@ -84,7 +84,7 @@ def roles(connection):
             JOIN pg_roles u ON u.oid=m.member WHERE u.rolname=%s ORDER BY r.rolname""", (name,)).fetchall()
         result.append(dict(name=name, login=login, bypassrls=bypass, connection_limit=limit,
                            settings=settings or [], memberships=memberships, inherit=inherit,
-                           valid_until=valid_until.isoformat() if valid_until else None))
+                           valid_until=valid_until))
     return result
 
 
@@ -218,13 +218,14 @@ def main():
         metric(cw, 'CertificateExpiring', int(expiry.returncode != 0))
         backup(session.client('s3', config=AWS_CONFIG), cw, '/scratch')
         return 0
-    except Exception:
+    except Exception as error:
         # Top-level suppression prevents SDK/database diagnostics leaking credentials.
         try:
             metric(cw, 'BackupFailure')
         except Exception:
             pass  # Independent missing-heartbeat alarm still covers credential failure.
-        print('Backup failed; no success heartbeat. Inspect protected diagnostics and retry.')
+        reason = str(error) if isinstance(error, BackupError) else type(error).__name__
+        print('Backup failed; no success heartbeat: ' + reason)
         return 1
 
 

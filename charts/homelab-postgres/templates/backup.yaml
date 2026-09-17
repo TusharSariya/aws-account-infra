@@ -148,4 +148,41 @@ spec:
           volumes:
             - {name: code, configMap: {name: apps-db-backup-code}}
             - {name: identity, secret: {secretName: apps-db-backup-identity, defaultMode: 288}}
+---
+# A short consumer binds WaitForFirstConsumer scratch during installation,
+# so Helm never waits for tomorrow's scheduled backup. No database/S3 access.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: apps-db-scratch-{{ .Values.backupImage | sha256sum | trunc 8 }}
+  namespace: homelab-data
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 120
+  template:
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      nodeSelector: {kubernetes.io/hostname: {{ .Values.node }}}
+      imagePullSecrets: [{name: ghcr-read}]
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: initialize
+          image: {{ .Values.backupImage | quote }}
+          command: [python, -c, "import os; s=os.statvfs('/scratch'); assert s.f_bavail*s.f_frsize >= 64*1024**3"]
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: 100m, memory: 128Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts: [{name: scratch, mountPath: /scratch}]
+      volumes:
+        - {name: scratch, persistentVolumeClaim: {claimName: apps-db-backup-scratch}}
 {{- end }}

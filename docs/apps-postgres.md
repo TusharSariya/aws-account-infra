@@ -36,7 +36,7 @@ The retained database claim starts at 32 GiB; backup scratch is a retained, disk
 3. Store base64 of private enrollment JSON (`password`, `client.crt`, `client.key`) in prod environment secret `POSTGRES_BACKUP_CREDENTIALS_B64`. Kubernetes credential reconciliation bypasses OpenTofu. Copy the existing read-only registry Secret to `homelab-data` through that reconciliation.
 4. Wait for AI and queued CI work to be idle, then use `scripts/homelab-ci.py` plan/apply for the reduced pool. Do not stop work to reclaim capacity. Existing admission safeguards remain authoritative.
 5. Apply the complete guarded Kubernetes root plan. `postgres_preflight.verify` checks the reduced live queue, idle workload inventory and mounted disk space immediately before apply. Run the same preflight for an authorized local deployment. Do not weaken drift, saved-plan or backend checks.
-6. Verify cluster Ready, secrets, TLS/network policy, restart persistence, backup and two restores. A successful Helm apply alone is not acceptance.
+6. Verify cluster Ready, secrets, TLS/network policy, restart persistence, backup and two restores. A successful Helm apply alone is not acceptance. A bounded initializer Job binds and checks scratch before Helm waits for readiness. Cilium API-server entity egress permits CNPG management and the monitor while database client access remains explicitly labeled.
 
 ## Backup and retention
 
@@ -46,7 +46,7 @@ CronJob `homelab-data/apps-db-backup` runs at 06:30 UTC, retries twice within a 
 kubectl -n homelab-data create job --from=cronjob/apps-db-backup apps-db-backup-manual-$(date +%s)
 ```
 
-The archive contains custom-format `pg_dump --create`, password-free role metadata/memberships, database/system version and checksum manifest. Backup has `pg_read_all_data` and BYPASSRLS, with no superuser or object write grants. Unknown roles fail closed rather than silently omitting ownership.
+The archive contains custom-format `pg_dump --create`, password-free role metadata/memberships, database/system version and checksum manifest. Backup has `pg_read_all_data` and BYPASSRLS, with no superuser or object write grants. Unknown roles fail closed rather than silently omitting ownership. Reserved CNPG operator roles are excluded; app roles and their attributes are preserved.
 
 A unique staging object is read back and SHA-256 verified before an atomic multipart copy publishes `apps-db/latest.tar.gz`. The resulting exact version is read back and verified, checked against current, then recorded in logs and followed by the success heartbeat. Dump, staging upload and checksum failures cannot replace latest. Incomplete promotion never completes a new version. The workload cannot delete objects or versions.
 
@@ -75,3 +75,9 @@ python apps/platform/postgres/restore.py --bucket homelab-postgres-992382747916-
 Use the built backup image or its pinned dependencies and PostgreSQL 18 client tools. Scratch needs 64 GiB free. Archive extraction rejects links, unexpected members, oversized files and checksum mismatches. It recreates reviewed role attributes/memberships with fresh passwords, then restores database ownership, data and grants. If it fails after creating objects, dispose of the test instance before retrying; no automatic cleanup targets production. Database-specific role settings are carried by `pg_dump --create`.
 
 Restore current and older exact versions into separate disposable instances, then verify expected rows, table owners, runtime/migration boundaries, shared grants and RLS. Record version IDs and checksums, never credentials. No automatic replacement of the production database is offered.
+
+## Recorded acceptance
+
+The [acceptance evidence](../openspec/changes/add-apps-postgres-backups/evidence/live-acceptance.json) records real cluster TLS/network/isolation and restart checks, three injected pre-publication failures, and two exact S3 versions restored into disposable PostgreSQL instances with fresh SCRAM credentials. Temporary app schemas, roles and namespace were removed afterward. The stale-alarm routing test used a synthetic alarm transition; it did not simulate a 30-hour outage.
+
+Repeat with `scripts/postgres_acceptance.py` (setup, verify, restart, cleanup) and `scripts/postgres_failure_acceptance.py` (dump, upload, checksum), using the intended kubeconfig. These commands intentionally change temporary fixtures or restart the primary, so run within an authorized acceptance window. `scripts/tests/postgres_s3_restore.py` verifies exact-version restores against disposable targets.
