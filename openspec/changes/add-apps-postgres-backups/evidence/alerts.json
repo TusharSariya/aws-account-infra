@@ -1,0 +1,23 @@
+{
+  "test": "Synthetic ALARM transition tests SNS routing; 30-hour outage was not elapsed",
+  "alarms": {
+    "homelab-postgres-backup-stale": [
+      {
+        "timestamp": "2026-09-17T14:30:00.061000-02:30",
+        "summary": "Successfully executed action arn:aws:sns:us-east-1:992382747916:account-security-alerts"
+      }
+    ],
+    "homelab-postgres-BackupFailure": [
+      {
+        "timestamp": "2026-09-17T14:30:01.167000-02:30",
+        "summary": "Successfully executed action arn:aws:sns:us-east-1:992382747916:account-security-alerts"
+      }
+    ]
+  },
+  "sns_policy_apply": {
+    "plan_sha256": "a83802ba6c90bfb68f22034a2bc0f24f8f76a15b4bcee325ceec7907bb9b510a",
+    "change": "Exact PostgreSQL alarm ARNs added to existing SNS policy",
+    "observed_drift": "Read-only CodeArtifact asset_size_bytes increased; no planned resource change"
+  },
+  "synthetic_stale_state_cleanup": "Restored OK after observing three real verified BackupSuccess heartbeats in the current hour; normal hourly evaluation remains enabled."
+}

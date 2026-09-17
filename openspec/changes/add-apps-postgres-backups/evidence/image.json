@@ -1,7 +1,7 @@
 {
-  "image": "ghcr.io/tusharsariyaorg/homelab-postgres-backup@sha256:265d27f5d1a353364500f57282b22243daa104c8c38663a124690d77f25a328e",
-  "source_commit": "62aed5d",
-  "workflow_run": 35248676577,
+  "image": "ghcr.io/tusharsariyaorg/homelab-postgres-backup@sha256:bf63c3b94be7c4cd5f7b0a7c9112d53c9d065260e18eee7845c30053cf2c5499",
+  "source_commit": "98a1202a19fa25047a92653373fa93cbd5203fdc",
+  "workflow_run": 35251478950,
   "status": "success",
   "visibility": "private",
   "executor": "homelab-talos-docker-small"

@@ -64,5 +64,11 @@
       "status": "passed"
     }
   ],
-  "temporary_app_cleanup": "completed"
+  "temporary_app_cleanup": "completed",
+  "serialization": {
+    "shared_scratch_lock": "passed",
+    "backup_running_while_lock_held": true,
+    "latest_unchanged_while_locked": "hnbKD1B9YdDiDaa2sX_8Ozk5OTbjDXKh",
+    "published_after_release": "5M.bl1LRM5vAJYoCUFMOPJaoi4OC1KAQ"
+  }
 }

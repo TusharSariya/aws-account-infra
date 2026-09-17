@@ -1,7 +1,7 @@
 node: talos-worker-01
 postgresImage: ghcr.io/cloudnative-pg/postgresql:18.4-standard-trixie@sha256:ebf3919504d7523a63e8e2fee9b051211de714644b36469275558c624afd50ec
 # Set only after the image build returns a verified immutable reference.
-backupImage: ghcr.io/tusharsariyaorg/homelab-postgres-backup@sha256:265d27f5d1a353364500f57282b22243daa104c8c38663a124690d77f25a328e
+backupImage: ghcr.io/tusharsariyaorg/homelab-postgres-backup@sha256:bf63c3b94be7c4cd5f7b0a7c9112d53c9d065260e18eee7845c30053cf2c5499
 backup:
   enabled: true
   bucket: homelab-postgres-992382747916-us-east-1
