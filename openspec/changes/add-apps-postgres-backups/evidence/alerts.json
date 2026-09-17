@@ -19,5 +19,20 @@
     "change": "Exact PostgreSQL alarm ARNs added to existing SNS policy",
     "observed_drift": "Read-only CodeArtifact asset_size_bytes increased; no planned resource change"
   },
-  "synthetic_stale_state_cleanup": "Restored OK after observing three real verified BackupSuccess heartbeats in the current hour; normal hourly evaluation remains enabled."
+  "synthetic_stale_state_cleanup": "Restored OK after observing three real verified BackupSuccess heartbeats in the current hour; normal hourly evaluation remains enabled.",
+  "synthetic_failure_state_cleanup": "Restored OK after removing injected failed Jobs, verifying the final backup, and observing BackupFailure=0 from the independent monitor; normal evaluation remains enabled.",
+  "final_alarm_states": [
+    {
+      "name": "homelab-postgres-BackupFailure",
+      "state": "OK"
+    },
+    {
+      "name": "homelab-postgres-CertificateExpiring",
+      "state": "OK"
+    },
+    {
+      "name": "homelab-postgres-backup-stale",
+      "state": "OK"
+    }
+  ]
 }
