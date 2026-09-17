@@ -4,10 +4,10 @@ This file preserves the original installation transcript, including the retired
 `10.42.0.*` addresses. Do not execute these examples against the current cluster
 or use them as a replacement-machine runbook. Current configured addresses are
 control plane `10.0.0.220`, worker `10.0.0.222`, API VIP `10.0.0.231:6443`;
-[cluster configuration](../../../config/environments/proxmox/homelab/talos/cluster.json)
+[cluster configuration](../../config/environments/proxmox/homelab/talos/cluster.json)
 and the current runbook are authoritative.
 
-The control plane is now managed by the [Talos OpenTofu root](../../talos/homelab/README.md).
+The control plane is now managed by the [Talos OpenTofu root](../../live/talos/homelab/README.md).
 Routine configuration changes use its GitHub CI path. The CLI sequence below
 records the initial installation and is not the current deployment procedure.
 
