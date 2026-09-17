@@ -2,6 +2,8 @@
 
 ## Policy and ownership
 
+As of 2026-09-17, repository variable `CI_EXECUTOR=talos` makes the server the default for routine CI, at the owner's explicit direction. PR #87's failed workflows were retried after this change. Independent bootstrap/recovery jobs retain their hosted or Mac execution paths. Earlier rollout acceptance requirements below remain historical evidence requirements; changing the routing does not mark unobserved scenarios complete.
+
 Kueue 0.19.4 admits declared CPU/RAM/ephemeral-storage requests against `homelab-compute` (31.5 CPU, 144 GiB), bound to `talos-worker-01`. AI, CI and Argo LocalQueues share the whole pool. StrictFIFO, equal priority and disabled preemption/borrowing are reviewed in `config/environments/kubernetes/homelab-ci/pool-values.yaml`. An older large waiting request blocks newer smaller work. Utilization does not affect reservations. GitHub's upstream queue is separate.
 
 Kubernetes schedules admitted Pods and enforces limits. The AI lifecycle controller owns desired state, replicas, draining, idle shutdown and storage protection. ARC 0.14.2 owns disposable runners; Argo owns workflow execution. Platform controllers, DNS and operational commands stay outside Kueue.
@@ -19,7 +21,7 @@ Review three PRs in order: foundation; admission/runners; routing/acceptance. Ke
 1. Retire the old CI VM and restore worker RAM using the next section. Verify Pi-hole and actual allocatable capacity.
 2. Deploy the independent CI/admission root with the hosted workflow or Mac path. Enroll the existing GitHub App privately. Existing application namespaces must already exist.
 3. Deploy AI/lifecycle/Argo chart changes through the existing application root with AI off. New compute templates carry an admission gate even if Kueue has not yet installed its webhook. Operational templates have neither gate nor queue label.
-4. Complete live acceptance, including a successful guarded private application deployment on ARC. Only then set repository variable `CI_EXECUTOR=talos`. Until then leave it unset or `github-hosted`.
+4. The original rollout required complete live acceptance before setting `CI_EXECUTOR=talos`. The owner explicitly directed the default switch on 2026-09-17. Keep remaining live acceptance gaps recorded; do not treat this routing choice as proof they passed.
 
 Changing `CI_EXECUTOR` is explicit; unknown values fail workflow runner selection. There is no automatic paid fallback. CI/admission bootstrap, Proxmox/Talos changes and worker/recovery operations always use hosted runners. Routine application-only/AWS deployments can use Talos; a combined Proxmox/Talos apply stays hosted. Required plan/apply/publish gates retain their conditions.
 
@@ -35,7 +37,7 @@ The only retirement targets are `proxmox_virtual_environment_vm.ci_runner[0]`, i
 
 If retirement applies VM deletion/RAM configuration but fails only the pinned image deletion with `Datastore.Allocate`, use `scripts/ci-runner-retirement-recover.py --failed-record PRIVATE/record.json --record-dir NEW_PRIVATE --kubeconfig KUBECONFIG`. It checks the original guarded plan and exact live identities, removes only the checksum-verified image through existing root SSH and requires a fresh empty hardware plan. Retain the failed receipt; use the new recovery receipt for maintenance.
 
-Do not enable the pool on a 156-GiB worker. `scripts/kueue_capacity.py` checks actual allocatable against the 31.5 CPU / 144 GiB pool plus a reviewed 4 CPU / 24 GiB platform reserve. It includes restartable init containers and Pod overhead in observed platform requests. If the check fails, inspect and review the budget; do not silently shrink it or disregard platform reservations.
+Do not enable the pool on a 156-GiB worker. `scripts/kueue_capacity.py` checks actual allocatable against the 31.5 CPU / 144 GiB pool plus a reviewed 6 CPU / 24 GiB platform reserve. It includes restartable init containers and Pod overhead in observed platform requests. If the check fails, inspect and review the budget; do not silently shrink it or disregard platform reservations.
 
 ## Independent bootstrap and recovery
 
@@ -75,7 +77,7 @@ Leave all unobserved acceptance unchecked in OpenSpec. Record source commit, run
 
 - With AI off, no other waiting/running compute and scheduled jobs quiesced, run `python3 scripts/kueue-acceptance.py --kubeconfig "$KUBECONFIG" --scenario cpu`, then `--scenario memory`, `--scenario ephemeral-storage` and `--scenario combined`. Each creates uniquely named bounded Pods, proves older-large/newer-small FIFO blocking, queued cancellation, normal completion/release and cleanup. It never restarts a node/controller or deletes unrelated work.
 - Dispatch `homelab-arc-acceptance` before changing routine routing. It explicitly selects the ARC scale set and covers checkout, Docker, a privileged bounded fixture, ARM Linux tests and private cluster networking. Repeat with a queued GitHub run and cancel it; verify its EphemeralRunner, Pod and Workload disappear. Record an expired-request case separately; a cancelled run does not prove expiry.
-- AI-first: Start AI, verify its 33.25/77 reservation, dispatch an ARC job and observe it waiting. Stop AI and observe runner admission only after AI termination. CI-first: run a held ARC job, Start AI, observe AI pending with zero idle time, complete CI, then observe AI admission. End with AI Off.
+- AI-first: Start AI, verify its 31.25/77 reservation, dispatch an ARC job and observe it waiting. Stop AI and observe runner admission only after AI termination. CI-first: run a held ARC job, Start AI, observe AI pending with zero idle time, complete CI, then observe AI admission. End with AI Off.
 - Exercise controller restart while queued/running, then node restart through the existing hosted worker-maintenance workflow. Verify no stale reservations, duplicate runners or unexpected AI desired-state change.
 - During a controlled Kueue outage, prove operator Stop/Status and Pi-hole UDP/TCP remain usable, new compute cannot start and cleanup completes after controller recovery. Preserve and restore the exact controller replica count; do not force-remove workload finalizers to manufacture success.
 - Run actual ARM candidate packaging/upload, Docker image publishing, the existing privileged disposable quota/reboot suite and a reviewed application-only private deployment on ARC. The latter still needs all protected environments, saved-plan checks and merge gates. Neither the local ARM test nor the acceptance network check proves private deployment.
@@ -128,7 +130,7 @@ through the OpenTofu moved block; do not uninstall active runners.
 - Docker: Checkov's Docker action, config/application tests using Docker,
   LocalStack/Compose, SDK generation/publication, image builds/publication,
   ARM packaging/upload and disposable storage quota enforcement.
-- Independent hosted: admission bootstrap/upgrades and their contracts,
+- Independent hosted: admission bootstrap/upgrades and their dispatched contracts (PR-only offline contracts run on Talos),
   Proxmox/Talos plans or combined hardware apply, node/lifecycle/storage
   maintenance, migration, independent etcd backup and recovery. Mac recovery
   remains available. There is no automatic paid fallback.
@@ -146,9 +148,7 @@ Kueue reservations including scratch. Completion requires all remaining OpenSpec
 runtime scenarios, not only these probes. GitHub's [24-hour self-hosted queue
 limit](https://docs.github.com/en/enterprise-cloud%40latest/actions/reference/limits)
 requires an independent full-duration expiry observation, external monitoring and
-cleanup; cancelling a job proves only cancellation. Keep CI_EXECUTOR unset until
-acceptance passes, and retain the temporary Actions budget until ordinary workflow
-execution has been verified on Talos.
+cleanup; cancelling a job proves only cancellation. The owner-directed default switch does not satisfy this expiry proof.
 
 ### Independent 24-hour expiry observation
 
@@ -172,7 +172,7 @@ minutes, early cancellation or any runner acquisition invalidate the proof.
 `expiry-record.json` records its process ID, run ID, timestamps, conclusion and
 observed Pod/Workload cleanup. Review GitHub's actual reason after 24 hours; elapsed
 time plus a cancelled conclusion alone is not credited as verified expiry.
-Unobserved expiry stays unchecked and CI_EXECUTOR remains unset.
+Unobserved expiry stays unchecked independently of the owner-directed routing setting.
 
 The local Nexus cache extension is staged, not deployed. See the OpenSpec cache
 rollout tasks and image-inclusive storage evidence before applying these budgets.
