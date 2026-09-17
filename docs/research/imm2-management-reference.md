@@ -91,7 +91,7 @@ The official catalog also contains commands absent from this unit's help, such a
 
 ### Power and boot operations
 
-These operations are available in this firmware's help. The initial discovery was read-only; a later authorized graceful shutdown was observed as described below. Other mutating operations remain untested.
+These operations are available in this firmware's help. The initial discovery was read-only; later authorized shutdown and power-on operations were observed as described below. Other mutating operations remain untested.
 
 | Desired operation | CLI form | Interpretation |
 |---|---|---|
@@ -113,9 +113,40 @@ Scheduled power actions and delayed reset are also advertised; exact options are
 
 ### Observed graceful shutdown delay
 
-During a user-authorized shutdown on 2026-09-17, `power off -s` returned `ok`, but SSH and IPMI continued to report power on throughout an observation window of approximately five minutes. A later IPMI query returned `powerstate: off`, confirming that shutdown eventually completed. No forced power-off or second shutdown request was sent. The exact completion time and reason for the delay were not established; Proxmox and guest logs were unavailable once the host was off.
+During a user-authorized shutdown on 2026-09-17, `power off -s` returned `ok`, but SSH and IPMI continued to report power on throughout an observation window of approximately five minutes. A later IPMI query returned `powerstate: off`, confirming that shutdown eventually completed. No forced IMM power-off or second shutdown request was sent. Proxmox logs recovered after the next boot showed that the host received the power-button event and began shutdown. It waited 180 seconds for VM 102's QEMU guest-agent shutdown; the VM task then reported `VM quit/powerdown failed - terminating now with SIGTERM`. VM 100 stopped afterward. The guest shutdown service took approximately 4m 16s on the host clock. Thus host power-off completed, but a clean shutdown of every guest was not established. The guest-agent timeout explains a substantial part of the delay; its underlying cause has not been diagnosed.
 
 Treat command acceptance separately from completed shutdown. A five-minute observation timeout is not proof that the request was ignored or blocked. Continue checking power state and report completion as pending or unknown until observed; do not automatically escalate to forced power-off.
+
+### Observed cold start and platform recovery
+
+On 2026-09-17, IMM accepted `power on` at **22:15:15 UTC**. No VM start commands or service restarts were needed. Proxmox confirmed VM 100 (`talos-cp-01`) has `onboot: 1`, `startup: order=1`; VM 102 (`talos-worker-01`) has `onboot: 1`, `startup: order=2`. Its boot journal recorded both automatic starts.
+
+| Milestone | UTC | Elapsed from request | Evidence |
+|---|---|---|---|
+| IPMI confirms power on | 22:15:49 | 34s | Read-only IPMI query |
+| Proxmox SSH reachable | 22:19:19 | 4m 4s | Client TCP observation |
+| Control-plane VM started | 22:19:29 | 4m 14s | Proxmox boot journal |
+| Worker VM started | 22:19:33 | 4m 18s | Proxmox boot journal |
+| Kubernetes API reachable | 22:20:51 | 5m 36s | Client TCP observation |
+| Control-plane Node Ready | 22:20:58 | 5m 43s | Node condition |
+| Application PostgreSQL Ready | 22:21:16 | 6m 1s | Pod Ready condition |
+| Nexus PostgreSQL Ready | 22:21:30 | 6m 15s | Pod Ready condition |
+| Kueue controller Ready | 22:21:31 | 6m 16s | Pod Ready condition |
+| Pi-hole Ready | 22:22:21 | 7m 6s | Pod Ready condition |
+| Nexus Ready | 22:22:30 | 7m 15s | Pod Ready condition |
+
+This is one observed boot, not a guaranteed startup deadline. Client network connectivity was interrupted during recovery; persisted Kubernetes condition timestamps fill the observation gap. The worker's Ready condition retained a pre-boot timestamp, so it cannot supply a reliable worker boot-duration measurement. Both nodes were confirmed Ready afterward. IMM's clock differed from the client clock; IMM event timestamps were not used for this table.
+
+Functional checks performed after client connectivity returned confirmed:
+
+- Application PostgreSQL was primary and healthy; a temporary-table write/read returned `42`, then rolled back. Nexus PostgreSQL also answered SQL queries.
+- Pi-hole answered external DNS queries over UDP and TCP, both locally and through its Tailscale endpoint. Its HTTPS admin endpoint returned 302 using certificate validation and an explicitly resolved MagicDNS address. The Mac's normal resolver did not resolve the tailnet hostname during this check.
+- Nexus status and writable endpoints returned 200. The Docker Hub proxy served a pinned Python manifest and configuration blob with verified SHA-256 digests. Other proxy ports returned the expected authentication challenge; complete image-layer pulls through every upstream were not tested.
+- A uniquely named, bounded Pod entered Kueue with admission gates, received quota, ran on `talos-worker-01`, completed successfully and was deleted; no probe workload remained. Both Kueue visibility API versions were available.
+- All enabled Deployments, StatefulSets and DaemonSets were ready, including Cilium, CoreDNS, CNPG, ARC, Argo, Tailscale, storage provisioner and lifecycle/capacity services. Guest and physical capacity collectors reported healthy samples. Production PVCs were Bound. AI deployments intentionally retained zero replicas.
+- PostgreSQL backup monitoring completed successfully. This check did not run a new backup/restore. Two cache-monitor jobs failed during recovery (including a timeout at 22:25); a later job completed successfully at 22:35:15. Pod readiness at 7m 15s therefore does not establish that every monitoring path was already healthy then.
+
+GitHub checks queued while the host was off remained queued at the initial post-boot verification despite healthy ARC listeners; track CI recovery separately from controller readiness. An older storage-test namespace also retained a Pending test PVC; it was not changed or counted as a production storage failure. See [structured startup evidence](imm2-startup-evidence.json) for the observations and functional probe results.
 
 ### Other administrative capabilities and limits
 
@@ -246,4 +277,4 @@ Factory reset, log deletion, NMI, firmware updates, activation keys, configurati
 
 ## 5. Delivery boundary
 
-Delivered: this reference, official-source research, full advertised CLI help and read-only evidence. No MCP service, credentials file, port exposure, account change, firmware update, monitoring deployment or automatic remediation has been installed. The separately authorized graceful shutdown and its delayed completion are recorded above. A future implementation can use this document as its capability contract while validating untested functions incrementally.
+Delivered: this reference, official-source research, full advertised CLI help and read-only evidence. No MCP service, credentials file, port exposure, account change, firmware update, monitoring deployment or automatic remediation has been installed. The separately authorized shutdown, subsequent power-on, and platform recovery checks are recorded above. A future implementation can use this document as its capability contract while validating untested functions incrementally.
