@@ -190,24 +190,21 @@ def test_scheduler_target_has_zero_retries_and_same_payload(stack):
     lam = _client("lambda")
     iam = _client("iam")
     role_name = f"court-booker-scheduler-{stack['suffix']}"
-    try:
-        iam.create_role(
-            RoleName=role_name,
-            AssumeRolePolicyDocument=json.dumps(
-                {
-                    "Version": "2012-10-17",
-                    "Statement": [
-                        {
-                            "Effect": "Allow",
-                            "Principal": {"Service": "scheduler.amazonaws.com"},
-                            "Action": "sts:AssumeRole",
-                        }
-                    ],
-                }
-            ),
-        )
-    except Exception:
-        pass
+    iam.create_role(
+        RoleName=role_name,
+        AssumeRolePolicyDocument=json.dumps(
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": {"Service": "scheduler.amazonaws.com"},
+                        "Action": "sts:AssumeRole",
+                    }
+                ],
+            }
+        ),
+    )
     iam.put_role_policy(
         RoleName=role_name,
         PolicyName="invoke",
@@ -221,22 +218,19 @@ def test_scheduler_target_has_zero_retries_and_same_payload(stack):
     function_arn = lam.get_function(FunctionName=stack["function_name"])["Configuration"]["FunctionArn"]
     role_arn = iam.get_role(RoleName=role_name)["Role"]["Arn"]
     name = f"court-booker-weekly-{stack['suffix']}"
-    try:
-        scheduler.create_schedule(
-            Name=name,
-            ScheduleExpression="cron(58 17 ? * FRI *)",
-            ScheduleExpressionTimezone="America/St_Johns",
-            FlexibleTimeWindow={"Mode": "OFF"},
-            Target={
-                "Arn": function_arn,
-                "RoleArn": role_arn,
-                "Input": json.dumps(WEEKLY_PAYLOAD),
-                "RetryPolicy": {"MaximumRetryAttempts": 0, "MaximumEventAgeInSeconds": 60},
-            },
-            State="DISABLED",
-        )
-    except Exception as exc:
-        pytest.skip(f"EventBridge Scheduler not available: {exc}")
+    scheduler.create_schedule(
+        Name=name,
+        ScheduleExpression="cron(58 17 ? * FRI *)",
+        ScheduleExpressionTimezone="America/St_Johns",
+        FlexibleTimeWindow={"Mode": "OFF"},
+        Target={
+            "Arn": function_arn,
+            "RoleArn": role_arn,
+            "Input": json.dumps(WEEKLY_PAYLOAD),
+            "RetryPolicy": {"MaximumRetryAttempts": 0, "MaximumEventAgeInSeconds": 60},
+        },
+        State="DISABLED",
+    )
     try:
         got = scheduler.get_schedule(Name=name)
         assert got["Target"]["RetryPolicy"]["MaximumRetryAttempts"] == 0

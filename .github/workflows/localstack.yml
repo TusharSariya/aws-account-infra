@@ -1,4 +1,4 @@
-name: localstack
+name: court-booker-localstack
 
 on:
   pull_request:
@@ -8,6 +8,7 @@ permissions:
 
 jobs:
   smoke:
+    name: court-booker-localstack
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-docker-small"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
     steps:
