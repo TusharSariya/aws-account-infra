@@ -1,7 +1,7 @@
 worker: talos-worker-01
 cpu: '33.5'
 memory: 150Gi
-scratch: 120Gi
+scratch: 240Gi
 # Measured root/image usage must fit alongside the pool and eviction headroom.
 storageHeadroom: 8Gi
 podHeadroom: 10

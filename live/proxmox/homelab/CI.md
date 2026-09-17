@@ -61,7 +61,7 @@ The operator-accepted allow-all tailnet network policy still applies to the CI
 runner. The tag is an identity, not a network restriction. This setup does not
 activate the previously deferred restrictive policy or retag the Proxmox host.
 The runner reaches the existing private HTTPS Serve endpoint; no port is exposed
-publicly and no router port-forwarding is needed. The laptop and pve must be on.
+publicly and no router port-forwarding is needed. Proxmox and the direct LAN router must be on.
 
 Provision the limited plan API identity from a trusted administration checkout:
 

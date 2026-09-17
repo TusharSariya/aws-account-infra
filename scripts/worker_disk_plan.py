@@ -1,10 +1,10 @@
-"""Exact allowlist for the authorized 128-to-192-GiB worker OS disk growth."""
+"""Exact allowlist for the authorized 192-to-320-GiB worker OS disk growth."""
 from copy import deepcopy
 from ci_runner_plan import WORKER
 from ci_retirement_plan import unknown
 
-BEFORE_GIB = 128
-AFTER_GIB = 192
+BEFORE_GIB = 192
+AFTER_GIB = 320
 
 
 def guard(plan):

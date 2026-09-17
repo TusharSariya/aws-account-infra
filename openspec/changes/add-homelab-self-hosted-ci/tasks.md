@@ -55,3 +55,9 @@
 - [x] 7.2 Guard and apply only VM 102 scsi0 128-to-192-GiB growth, verify retained identities, worker recovery and Pi-hole, and require fresh empty infrastructure plans.
 - [x] 7.3 Deploy the 120-GiB pool and provisional 12-/24-GiB Docker catalog entries before routing references; preserve CPU/RAM, 8-GiB headroom, 64-GiB Nexus storage and 30-GiB compatibility.
 - [ ] 7.4 Verify Docker's two-attempt ranged resume on Talos, repeat failed PR checks, prove improved mixed-job concurrency and refine provisional limits using fresh runs.
+
+## 8. Pending second scratch expansion
+- [x] 8.1 Prepare and verify exact 192-to-320-GiB disk guards and 240-GiB quota definitions; preserve per-job limits.
+- [ ] 8.2 After active CI drains, recheck physical headroom and apply a fresh exact disk plan; verify retained identities and 128-GiB EPHEMERAL growth.
+- [ ] 8.3 Apply the 240-GiB admission pool only after fresh image-inclusive capacity checks; verify fresh empty plans.
+- [ ] 8.4 Repeat scratch exhaustion, FIFO, cancellation/release and mixed-size concurrency under 240 GiB before accepting the new quota.

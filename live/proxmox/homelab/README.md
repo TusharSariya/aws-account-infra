@@ -24,7 +24,7 @@ OpenTofu 1.11.5 and `bpg/proxmox` 0.112.0 were used. Retain `.terraform.lock.hcl
 | Guest | ID | vCPU | RAM (GiB) | Primary disks (GiB) | Reserved IPv4 | Startup order |
 |---|---:|---:|---:|---|---|---:|
 | talos-cp-01 | 100 | 2 | 4 | 100 | 10.0.0.220 | 1 |
-| talos-worker-01 | 102 | 38 | 172 | 192 OS + 1200 data | 10.0.0.222 | 2 |
+| talos-worker-01 | 102 | 38 | 172 | 320 OS + 1200 data | 10.0.0.222 | 2 |
 
 Primary disks total 1,428 GiB plus two EFI volumes, leaving approximately 367.992 GiB before auxiliary allocations. Guest RAM totals 176 GiB, leaving approximately 12 GiB of observed host RAM. These budgets must be measured under load; CPU affinity and NUMA tuning are deferred.
 

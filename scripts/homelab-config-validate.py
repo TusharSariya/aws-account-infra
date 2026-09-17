@@ -42,7 +42,7 @@ def check(vms, inventory, documents):
         cp = name == CP
         vm = vms[name]
         require((vm['vcpus'], vm['memory_gib'], vm['disks_gib']) ==
-                ((2, 4, [100]) if cp else (38, 172, [192, 1200])), name + ': capacity drift')
+                ((2, 4, [100]) if cp else (38, 172, [320, 1200])), name + ': capacity drift')
         require((vm['vm_id'], vm['ipv4_address'], vm['mac_address'], vm['startup_order']) ==
                 ((100, '10.0.0.220', '02:42:00:00:01:00', 1) if cp else
                  (102, '10.0.0.222', '02:42:00:00:01:02', 2)), name + ': identity drift')

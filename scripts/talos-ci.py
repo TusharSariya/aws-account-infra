@@ -113,7 +113,7 @@ def guard_storage_config(configs):
 
 def guard_storage_disks(disks, volumes):
     disks = {d['metadata']['id']: d['spec'] for d in disks}
-    if disks.get('sda', {}).get('size') != 192 * 1024**3:
+    if disks.get('sda', {}).get('size') != 320 * 1024**3:
         raise StageError('Worker OS disk identity/size mismatch')
     data = disks.get('sdb', {})
     if (data.get('size') != 1200 * 1024**3 or data.get('dev_path') != '/dev/sdb'

@@ -1,3 +1,14 @@
+## Pending second scratch expansion, 2026-09-16 (America/St_Johns)
+The user requested another doubling when the next maintenance window is available.
+The target is 240 GiB shared scratch, with an exact VM 102 scsi0 expansion from
+192 to 320 GiB before quota adoption. Preserve 33.5 CPU / 150 GiB RAM, the
+4 CPU / 18 GiB platform reserve, 8 GiB scratch headroom, separate 64 GiB cache,
+all retained volume identities and existing provisional per-job reservations.
+The currently deployed pool remains 120 GiB until fresh saved plans, drained
+maintenance, measured filesystem growth and capacity verification succeed.
+Earlier sizing/deployment sections below describe the superseded 120-GiB stage;
+its receipts remain historical evidence and do not verify 240 GiB.
+
 ## Why
 Application compute needs one bounded admission pool on the existing Talos worker. GitHub-hosted bootstrap and Mac recovery must remain independent of that pool.
 
