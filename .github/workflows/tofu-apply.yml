@@ -62,6 +62,7 @@ jobs:
           GHCR_READ_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
           ODYSSEUS_ADMIN_PASSWORD: ${{ secrets.ODYSSEUS_ADMIN_PASSWORD }}
           SEARXNG_SECRET: ${{ secrets.SEARXNG_SECRET }}
+          POSTGRES_BACKUP_CREDENTIALS_B64: ${{ secrets.POSTGRES_BACKUP_CREDENTIALS_B64 }}
           AI_LIFECYCLE_CREDENTIALS_B64: ${{ secrets.AI_LIFECYCLE_CREDENTIALS_B64 }}
         run: python3 scripts/homelab-apps.py credentials
       - uses: aws-actions/configure-aws-credentials@v4
@@ -160,6 +161,7 @@ jobs:
           ghcr-token: ${{ secrets.GHCR_READ_TOKEN }}
           odysseus-password: ${{ secrets.ODYSSEUS_ADMIN_PASSWORD }}
           searxng-secret: ${{ secrets.SEARXNG_SECRET }}
+          postgres-credentials-b64: ${{ secrets.POSTGRES_BACKUP_CREDENTIALS_B64 }}
           lifecycle-credentials-b64: ${{ secrets.AI_LIFECYCLE_CREDENTIALS_B64 }}
 
   worker-maintenance:

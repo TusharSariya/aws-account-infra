@@ -540,3 +540,7 @@ Later candidates:
 ### Optional Tailscale access hardening
 
 Operator decision: retain the supplied default allow-all tailnet network policy for the initial personal build. Tailnet membership is the accepted network trust boundary; all members/devices can reach advertised destinations broadly. This does not make Serve public. The proposed account/port-scoped policy in `config/environments/proxmox/homelab/tailscale/policy.json` is an unapplied optional improvement, including removal of Funnel permission. Revisit before adding other users or less-trusted devices. Do not block VM creation or subnet-route acceptance on adopting it. Tailnet-only management, existing host authentication and recovery prerequisites remain required.
+
+## Approved bounded database prerequisite
+
+The owner subsequently approved `add-apps-postgres-backups`: one PostgreSQL primary and daily versioned S3 logical backups within 2 CPU / 6 GiB on the existing worker. See [database runbook](../apps-postgres.md) and [OpenSpec change](../../openspec/changes/add-apps-postgres-backups/proposal.md), linked to roadmap #32. This does not select a first app or resume the broader resilience/WAL/HA programme. Acceptance is tracked separately from implementation.

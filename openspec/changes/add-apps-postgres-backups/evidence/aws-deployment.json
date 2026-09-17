@@ -1,0 +1,13 @@
+{
+  "execution": "local",
+  "resources": "PostgreSQL additions only",
+  "plan_sha256": "55c163c733db58a33b95fc9d627efc0b59964f1f01ed589d6bd3ff7b82b8b878",
+  "outputs": {
+    "bucket": "homelab-postgres-992382747916-us-east-1",
+    "kms_key_arn": "arn:aws:kms:us-east-1:992382747916:key/9d02eeb7-9b3a-46c6-9032-13851a0eec29",
+    "profile_arn": "arn:aws:rolesanywhere:us-east-1:992382747916:profile/eadc5c4d-8939-4a77-9f6f-887f15ae642e",
+    "role_arn": "arn:aws:iam::992382747916:role/homelab/homelab-postgres-backup",
+    "trust_anchor_arn": "arn:aws:rolesanywhere:us-east-1:992382747916:trust-anchor/3fa6e0a8-a30f-46f3-9881-e14f06b58fcc"
+  },
+  "existing_resources_changed": false
+}

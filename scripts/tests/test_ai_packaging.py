@@ -26,7 +26,7 @@ class PackagingTests(unittest.TestCase):
         self.assertEqual(self.runtime['metadata']['annotations']['homelab/desired-state'], 'off')
         containers = self.pod['containers']
         self.assertEqual({c['name'] for c in containers}, {'ollama', 'odysseus', 'chroma', 'searx'})
-        self.assertEqual(sum(cpu(str(c['resources']['requests']['cpu'])) for c in containers), Decimal('33.25'))
+        self.assertEqual(sum(cpu(str(c['resources']['requests']['cpu'])) for c in containers), Decimal('31.25'))
         self.assertEqual(sum(int(c['resources']['requests']['memory'][:-2]) for c in containers), 77)
         for container in containers:
             for dimension in ('cpu', 'memory'):

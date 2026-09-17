@@ -2,11 +2,11 @@
 
 ## Policy and ownership
 
-Kueue 0.19.4 admits declared CPU/RAM/ephemeral-storage requests against `homelab-compute` (33.5 CPU, 150 GiB), bound to `talos-worker-01`. AI, CI and Argo LocalQueues share the whole pool. StrictFIFO, equal priority and disabled preemption/borrowing are reviewed in `config/environments/kubernetes/homelab-ci/pool-values.yaml`. An older large waiting request blocks newer smaller work. Utilization does not affect reservations. GitHub's upstream queue is separate.
+Kueue 0.19.4 admits declared CPU/RAM/ephemeral-storage requests against `homelab-compute` (31.5 CPU, 144 GiB), bound to `talos-worker-01`. AI, CI and Argo LocalQueues share the whole pool. StrictFIFO, equal priority and disabled preemption/borrowing are reviewed in `config/environments/kubernetes/homelab-ci/pool-values.yaml`. An older large waiting request blocks newer smaller work. Utilization does not affect reservations. GitHub's upstream queue is separate.
 
 Kubernetes schedules admitted Pods and enforces limits. The AI lifecycle controller owns desired state, replicas, draining, idle shutdown and storage protection. ARC 0.14.2 owns disposable runners; Argo owns workflow execution. Platform controllers, DNS and operational commands stay outside Kueue.
 
-AI retains 33.25 CPU / 77 GiB and its existing volumes. Each complete runner Pod reserves/limits its reviewed catalog CPU/RAM/scratch budget. Multiple disposable runners share admission, with zero idle runners and no ARC maximum. The shared scratch quota is 60 GiB. Trusted privileged runner/Docker containers use no host filesystem, host socket or host namespace mounts. GitHub fork PRs never run on Talos. The existing App registration key is not mounted into runner Pods; the runner service account has no Kubernetes API token.
+AI retains 31.25 CPU / 77 GiB and its existing volumes. Each complete runner Pod reserves/limits its reviewed catalog CPU/RAM/scratch budget. Multiple disposable runners share admission, with zero idle runners and no ARC maximum. The shared scratch quota is 60 GiB. Trusted privileged runner/Docker containers use no host filesystem, host socket or host namespace mounts. GitHub fork PRs never run on Talos. The existing App registration key is not mounted into runner Pods; the runner service account has no Kubernetes API token.
 
 ## Automatic platform recovery
 
@@ -35,7 +35,7 @@ The only retirement targets are `proxmox_virtual_environment_vm.ci_runner[0]`, i
 
 If retirement applies VM deletion/RAM configuration but fails only the pinned image deletion with `Datastore.Allocate`, use `scripts/ci-runner-retirement-recover.py --failed-record PRIVATE/record.json --record-dir NEW_PRIVATE --kubeconfig KUBECONFIG`. It checks the original guarded plan and exact live identities, removes only the checksum-verified image through existing root SSH and requires a fresh empty hardware plan. Retain the failed receipt; use the new recovery receipt for maintenance.
 
-Do not enable the pool on a 156-GiB worker. `scripts/kueue_capacity.py` checks actual allocatable against the 33.5 CPU / 150 GiB pool plus a reviewed 4 CPU / 18 GiB platform reserve. It includes restartable init containers and Pod overhead in observed platform requests. If the check fails, inspect and review the budget; do not silently shrink it or disregard platform reservations.
+Do not enable the pool on a 156-GiB worker. `scripts/kueue_capacity.py` checks actual allocatable against the 31.5 CPU / 144 GiB pool plus a reviewed 4 CPU / 24 GiB platform reserve. It includes restartable init containers and Pod overhead in observed platform requests. If the check fails, inspect and review the budget; do not silently shrink it or disregard platform reservations.
 
 ## Independent bootstrap and recovery
 

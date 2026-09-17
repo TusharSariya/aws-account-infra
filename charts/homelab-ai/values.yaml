@@ -1,6 +1,6 @@
 node: talos-worker-01
 # The other three containers request 1.75 CPU and 13 GiB.
-ollamaCpu: "31.5"
+ollamaCpu: "29.5"
 images: {}
 volumes:
   models:

@@ -198,6 +198,8 @@ class GuardTests(unittest.TestCase):
             (config / 'ollama-values.yaml').write_text('image: ollama/ollama:latest')
             (config / 'workspace-values.yaml').write_text('image: test\ninitImage: test\ncomponents: {}')
             (config / 'ai-values.yaml').write_text('images: {ollama: test}')
+            (config / 'postgres-values.yaml').write_text('postgresImage: test\nbackup: {enabled: false}')
+            (config / 'postgres-operator-values.yaml').write_text('image: {tag: test}')
             with self.assertRaises(apps.AppError):
                 apps.execute('plan', config)
             run.assert_not_called()
@@ -237,6 +239,7 @@ class GuardTests(unittest.TestCase):
     def test_new_credentials_are_external_and_registry_secret_has_correct_type(self):
         values = dict.fromkeys(apps.SECRET_NAMES, 'a-fixture-only-value-that-is-long-enough')
         values['AI_LIFECYCLE_CREDENTIALS_B64'] = base64.b64encode(json.dumps({name: character * 43 for name, character in zip(('operator', 'odysseus', 'ollama', 'model-user', 'model-workspace'), 'abcde')}).encode()).decode()
+        values['POSTGRES_BACKUP_CREDENTIALS_B64'] = base64.b64encode(json.dumps({'password': 'p'*43, 'client.crt': 'BEGIN CERTIFICATE fixture', 'client.key': 'PRIVATE KEY fixture'}).encode()).decode()
         with patch.dict(apps.os.environ, {**values, 'GITHUB_ACTIONS': 'true'}), patch.object(apps, 'run', return_value=b'') as run:
             apps.bootstrap('kubectl')
         manifests = [json.loads(call.args[1]) for call in run.call_args_list if len(call.args) == 2]

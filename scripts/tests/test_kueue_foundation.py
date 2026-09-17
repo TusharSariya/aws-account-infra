@@ -16,17 +16,17 @@ class CapacityTests(unittest.TestCase):
         node = {'metadata': {'name': 'talos-worker-01'}, 'status': {
             'conditions': [{'type': 'Ready', 'status': 'True'}], 'capacity': {'memory': '177121916Ki'},
             'allocatable': {'cpu': '37950m', 'memory': '176626300Ki'}}}
-        verify(node, [], {'cpu': '4', 'memory': '18Gi'})
+        verify(node, [], {'cpu': '6', 'memory': '24Gi'})
         with self.assertRaisesRegex(ValueError, 'allocatable'):
-            verify(node, [], {'cpu': '4', 'memory': '19Gi'})
+            verify(node, [], {'cpu': '6', 'memory': '25Gi'})
 
     def test_pool_and_platform_must_fit(self):
         node = {'metadata': {'name': 'talos-worker-01'}, 'status': {
             'conditions': [{'type': 'Ready', 'status': 'True'}], 'capacity': {'memory': '172Gi'},
             'allocatable': {'cpu': '37500m', 'memory': '171Gi'}}}
-        verify(node, [], {'cpu': '4', 'memory': '21Gi'})
+        verify(node, [], {'cpu': '6', 'memory': '27Gi'})
         with self.assertRaisesRegex(ValueError, 'allocatable'):
-            verify(node, [], {'cpu': '4.1', 'memory': '21Gi'})
+            verify(node, [], {'cpu': '6.1', 'memory': '27Gi'})
         node['status']['capacity']['memory'] = '156Gi'
         with self.assertRaisesRegex(ValueError, 'Restore'):
             verify(node, [], {'cpu': '1', 'memory': '1Gi'})

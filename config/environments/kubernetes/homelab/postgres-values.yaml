@@ -1,0 +1,12 @@
+node: talos-worker-01
+postgresImage: ghcr.io/cloudnative-pg/postgresql:18.4-standard-trixie@sha256:ebf3919504d7523a63e8e2fee9b051211de714644b36469275558c624afd50ec
+# Set only after the image build returns a verified immutable reference.
+backupImage: ""
+backup:
+  enabled: false
+  bucket: homelab-postgres-992382747916-us-east-1
+  kmsKeyArn: arn:aws:kms:us-east-1:992382747916:key/9d02eeb7-9b3a-46c6-9032-13851a0eec29
+  trustAnchorArn: arn:aws:rolesanywhere:us-east-1:992382747916:trust-anchor/3fa6e0a8-a30f-46f3-9881-e14f06b58fcc
+  profileArn: arn:aws:rolesanywhere:us-east-1:992382747916:profile/eadc5c4d-8939-4a77-9f6f-887f15ae642e
+  roleArn: arn:aws:iam::992382747916:role/homelab/homelab-postgres-backup
+code: {}

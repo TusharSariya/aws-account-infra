@@ -8,6 +8,9 @@ on:
       - 'apps/platform/lifecycle/**'
       - 'apps/platform/jobs/**'
       - 'apps/platform/recovery/**'
+      - 'apps/platform/postgres/**'
+      - 'scripts/postgres_*.py'
+      - 'scripts/tests/*postgres*'
       - 'scripts/ai-data-backup.py'
       - 'scripts/lifecycle_session.py'
       - 'scripts/homelab-lifecycle-maintenance.py'
@@ -78,6 +81,9 @@ jobs:
           uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p test_local_lifecycle.py
           python3 -m unittest discover -s scripts/tests -p test_deploy_units.py
           python3 -m unittest discover -s scripts/tests -p test_odysseus_backup.py
+          uv run --with boto3==1.42.49 --with 'psycopg[binary]==3.3.3' python -m unittest discover -s scripts/tests -p test_postgres_backup.py
+          docker build --platform linux/amd64 -f apps/containers/postgres-backup/Dockerfile -t homelab-postgres-backup:local .
+          bash scripts/tests/postgres-integration.sh
           bash -n scripts/odysseus-backup.sh
           bash -n scripts/odysseus-setup-wizard.sh
           tofu -chdir=live/kubernetes/homelab init -backend=false -input=false -lockfile=readonly

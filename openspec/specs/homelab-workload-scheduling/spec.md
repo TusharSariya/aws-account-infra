@@ -52,7 +52,7 @@ The system SHALL shut AI down after a configurable continuous interval of verifi
 - **THEN** the verified idle interval resets and automatic shutdown remains blocked until a new complete interval is observed
 
 ### Requirement: Atomic AI resource admission
-Ollama, Odysseus, Chroma and Searx SHALL share one schedulable Pod, with zero replicas off and one on. Their combined reservation MUST be 35.75 CPU and 77 GiB RAM, including Ollama at 34 CPU and 64 GiB. Platform components MUST have separate budgets and VM CPU/RAM MUST remain unchanged.
+Ollama, Odysseus, Chroma and Searx SHALL share one schedulable Pod, with zero replicas off and one on. Their combined reservation MUST be 31.25 CPU and 77 GiB RAM, including Ollama at 29.5 CPU and 64 GiB. Platform components MUST have separate budgets and VM CPU/RAM MUST remain unchanged.
 
 #### Scenario: Insufficient capacity
 - **WHEN** the aggregate reservation does not fit
