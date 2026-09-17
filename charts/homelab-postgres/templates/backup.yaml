@@ -26,6 +26,7 @@ spec:
   successfulJobsHistoryLimit: 2
   failedJobsHistoryLimit: 3
   jobTemplate:
+    metadata: {labels: {app: apps-db-backup}}
     spec:
       backoffLimit: 2
       activeDeadlineSeconds: 7200
@@ -79,4 +80,72 @@ spec:
             - {name: identity, secret: {secretName: apps-db-backup-identity, defaultMode: 288}}
             - {name: ca, secret: {secretName: apps-db-ca, items: [{key: ca.crt, path: ca.crt}]}}
             - {name: scratch, persistentVolumeClaim: {claimName: apps-db-backup-scratch}}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: apps-db-backup-monitor, namespace: homelab-data}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: {name: apps-db-backup-monitor, namespace: homelab-data}
+rules:
+  - apiGroups: [batch]
+    resources: [jobs]
+    verbs: [list]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: {name: apps-db-backup-monitor, namespace: homelab-data}
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: apps-db-backup-monitor}
+subjects: [{kind: ServiceAccount, name: apps-db-backup-monitor, namespace: homelab-data}]
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata: {name: apps-db-backup-monitor, namespace: homelab-data}
+spec:
+  schedule: "*/15 * * * *"
+  timeZone: Etc/UTC
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 600
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 120
+      template:
+        metadata: {labels: {app: apps-db-backup-monitor}}
+        spec:
+          serviceAccountName: apps-db-backup-monitor
+          nodeSelector: {kubernetes.io/hostname: {{ .Values.node }}}
+          restartPolicy: Never
+          imagePullSecrets: [{name: ghcr-read}]
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+            seccompProfile: {type: RuntimeDefault}
+          containers:
+            - name: monitor
+              image: {{ .Values.backupImage | quote }}
+              command: [python, /code/monitor.py]
+              resources:
+                requests: {cpu: 100m, memory: 128Mi}
+                limits: {cpu: 100m, memory: 128Mi}
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: {drop: [ALL]}
+              env:
+                - {name: AWS_PROFILE, value: postgres-backup}
+                - {name: AWS_CONFIG_FILE, value: /code/aws-config}
+                - {name: AWS_EC2_METADATA_DISABLED, value: "true"}
+                - {name: PYTHONDONTWRITEBYTECODE, value: "1"}
+              volumeMounts:
+                - {name: code, mountPath: /code, readOnly: true}
+                - {name: identity, mountPath: /identity, readOnly: true}
+          volumes:
+            - {name: code, configMap: {name: apps-db-backup-code}}
+            - {name: identity, secret: {secretName: apps-db-backup-identity, defaultMode: 288}}
 {{- end }}

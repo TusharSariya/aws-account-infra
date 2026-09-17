@@ -69,3 +69,15 @@ spec:
   storageClassName: worker-local-retain
   resources:
     requests: {storage: 64Gi}
+---
+# Admission bounds manual/scheduled overlap as well as the running database.
+# A second backup cannot consume another reservation while waiting for its lock.
+apiVersion: v1
+kind: ResourceQuota
+metadata: {name: apps-db-compute, namespace: homelab-data}
+spec:
+  hard:
+    requests.cpu: 1600m
+    requests.memory: 5248Mi
+    limits.cpu: 1600m
+    limits.memory: 5248Mi

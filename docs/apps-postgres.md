@@ -27,7 +27,7 @@ Shared objects should be owned by `apps_owner`. Functions and types require expl
 
 ## Capacity and deployment order
 
-PostgreSQL requests/limits 1 CPU / 4 GiB; CNPG 250m / 512 MiB; backup 500m / 1 GiB. This fits the approved 2 CPU / 6 GiB allocation. Platform reserve is 6 CPU / 24 GiB, AI/CI pool 31.5 CPU / 144 GiB, and AI 31.25 CPU (Ollama 29.5). VM resources are unchanged.
+PostgreSQL requests/limits 1 CPU / 4 GiB; CNPG 250m / 512 MiB; backup 500m / 1 GiB. An independent failure monitor uses 100m / 128 MiB from management headroom. This fits the approved 2 CPU / 6 GiB allocation. A namespace compute quota prevents a second manual backup from reserving another 500m / 1 GiB while it waits. Platform reserve is 6 CPU / 24 GiB, AI/CI pool 31.5 CPU / 144 GiB, and AI 31.25 CPU (Ollama 29.5). VM resources are unchanged.
 
 The retained database claim starts at 32 GiB; backup scratch is a retained, disk-backed 64 GiB claim on the same worker data disk. `worker-local-retain` does **not** enforce PVC sizes as disk quotas and has `allowVolumeExpansion: false`. A size edit cannot grow this storage in place. Growth needs a separately reviewed migration. The backup process limits dump bytes to 30 GiB and archive bytes to 32 GiB, leaving metadata headroom under 64 GiB; a too-large backup fails without replacing latest. This protects this process, not arbitrary writers to the PVC. Preflight requires the expected XFS mount and at least 112 GiB free (32 + 64 + 16 headroom).
 
@@ -52,7 +52,7 @@ A unique staging object is read back and SHA-256 verified before an atomic multi
 
 The separate S3 bucket uses versioning, SSE-KMS, blocked public access, HTTPS-only access and an explicit DeleteBucket deny. **Current latest never expires.** Noncurrent latest versions become eligible for expiration seven days after replacement, without a retained-version-count exception. Staging current and noncurrent objects expire after one day; incomplete multipart uploads abort after one day. Lifecycle deletion is asynchronous. The existing recovery bucket's 30-day Object Lock is unchanged. See [S3 lifecycle semantics](https://docs.aws.amazon.com/AmazonS3/latest/userguide/lifecycle-expire-general-considerations.html).
 
-CloudWatch sends the existing account-security-alerts SNS destination backup failures, approximately 30 hours without verified success, and certificate expiry within 30 days. Failed authentication can prevent sending failure metrics; the independent missing-success alarm remains effective. Daily logical backups target roughly one day of data loss when successful; failures extend that window.
+A 15-minute monitor with read-only Job-list permissions detects terminal failed Jobs independently of the backup process, including OOM/deadline failures. CloudWatch sends the existing account-security-alerts SNS destination backup failures, approximately 30 hours without verified success, and certificate expiry within 30 days. Failed authentication can prevent sending failure metrics; the independent missing-success alarm remains effective. Daily logical backups target roughly one day of data loss when successful; failures extend that window.
 
 ## Credential lifecycle
 
