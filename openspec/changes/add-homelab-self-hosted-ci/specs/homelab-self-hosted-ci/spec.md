@@ -1,13 +1,14 @@
-## Pending second scratch expansion, 2026-09-16 (America/St_Johns)
-The user requested another doubling when the next maintenance window is available.
-The target is 240 GiB shared scratch, with an exact VM 102 scsi0 expansion from
-192 to 320 GiB before quota adoption. Preserve 33.5 CPU / 150 GiB RAM, the
+## Second scratch expansion, 2026-09-16 (America/St_Johns)
+The user requested another doubling at the next available maintenance window.
+The deployed pool is now 240 GiB shared scratch after an exact VM 102 scsi0
+expansion from 192 to 320 GiB. Preserve 33.5 CPU / 150 GiB RAM, the
 4 CPU / 18 GiB platform reserve, 8 GiB scratch headroom, separate 64 GiB cache,
 all retained volume identities and existing provisional per-job reservations.
-The currently deployed pool remains 120 GiB until fresh saved plans, drained
-maintenance, measured filesystem growth and capacity verification succeed.
-Earlier sizing/deployment sections below describe the superseded 120-GiB stage;
-its receipts remain historical evidence and do not verify 240 GiB.
+The guarded disk and queue applies passed, EPHEMERAL grew exactly 128 GiB,
+both post-deployment plans are empty, and Pi-hole/Nexus recovered with AI Off.
+The 240-GiB scratch exhaustion/FIFO/cancellation fixture passed. Fresh ordinary
+CI concurrency and remaining full rollout acceptance still require evidence.
+Earlier dated deployment sections retain historical sizes and receipts.
 
 ## Purpose
 Share bounded Talos application compute while preserving independent recovery and operational controls.
@@ -15,7 +16,7 @@ Share bounded Talos application compute while preserving independent recovery an
 ## ADDED Requirements
 
 ### Requirement: Shared admission pool
-AI, CI and ordinary Argo execution Pods SHALL share one worker-bound Kueue 0.19.4 ClusterQueue with 33.5 CPU, 150 GiB RAM and 120 GiB ephemeral storage. It SHALL use StrictFIFO, equal priorities, no preemption, borrowing or fairness policy. LocalQueues SHALL not partition quota. Oversized submissions MUST be rejected with an actionable error.
+AI, CI and ordinary Argo execution Pods SHALL share one worker-bound Kueue 0.19.4 ClusterQueue with 33.5 CPU, 150 GiB RAM and 240 GiB ephemeral storage. It SHALL use StrictFIFO, equal priorities, no preemption, borrowing or fairness policy. LocalQueues SHALL not partition quota. Oversized submissions MUST be rejected with an actionable error.
 
 #### Scenario: Contention
 - **WHEN** an older queued workload cannot fit remaining CPU, RAM or ephemeral storage
@@ -58,7 +59,7 @@ Routine workflows SHALL select github-hosted or talos via CI_EXECUTOR, without a
 
 ### Requirement: Measured storage and listener capacity
 Deployment SHALL fail unless fresh measured root/image storage, platform requests,
-the 120-GiB compute quota and 8-GiB additional storage headroom fit the worker.
+the 240-GiB compute quota and 8-GiB additional storage headroom fit the worker.
 It SHALL account for desired ARC listeners and available Pod slots, preserve the
 18-GiB RAM platform reserve, wait for runners to become idle, and never consume
 retained AI storage. Jobs SHALL install only their required prerequisites.
@@ -81,7 +82,7 @@ Nexus Community Edition and PostgreSQL SHALL run in isolated platform Pods using
 reserve. XFS project quotas SHALL enforce exactly 64 GiB on the separate data disk:
 48 GiB content, 6 GiB database, 2 GiB configuration and 8 GiB temporary/logs. Deployment
 MUST account for retained volumes, physical thin-pool headroom and fresh measurements
-including service images before admitting 120 GiB scratch plus 8 GiB eviction headroom.
+including service images before admitting 240 GiB scratch plus 8 GiB eviction headroom.
 
 #### Scenario: Cache footprint does not fit
 - **WHEN** service images, retained volumes or measured physical headroom prevent the approved budget fitting
@@ -139,10 +140,10 @@ MUST NOT be reported as measured or four-run verified.
 - **THEN** inspect the failure, revise its catalog allocation and repeat fresh-run validation before cutover
 
 ### Requirement: Guarded OS disk expansion
-VM 102 scsi0 SHALL expand from 128 to 192 GiB through an exact saved-plan guard
+VM 102 scsi0 SHALL expand from 192 to 320 GiB through an exact saved-plan guard
 after physical headroom verification. No other disk or VM setting SHALL change.
 Talos EPHEMERAL expansion SHALL retain partition/filesystem identities.
 
 #### Scenario: Scratch capacity recovery
 - **WHEN** the expanded filesystem is Ready
-- **THEN** fresh measurements including Nexus/PostgreSQL images MUST fit 120 GiB scratch and 8 GiB headroom before cache rollout resumes
+- **THEN** fresh measurements including Nexus/PostgreSQL images MUST fit 240 GiB scratch and 8 GiB headroom before cache rollout resumes

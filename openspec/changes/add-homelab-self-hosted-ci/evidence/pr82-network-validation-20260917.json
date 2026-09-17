@@ -1,0 +1,32 @@
+{
+  "source_commit": "1e66ff61db00f0500761965ceb0940718f8f55bc",
+  "pool_at_time_gib": 120,
+  "verified_runs": {
+    "ECR": 35173502128,
+    "Ollama": 35173502008,
+    "Odysseus": 35173501851,
+    "LocalStack": 35173501825,
+    "configuration": 35173501882,
+    "application_contracts": 35173501733,
+    "runner_catalog": 35173502095,
+    "ARC_acceptance": 35173502007,
+    "SDK_stable": 35174602027,
+    "plan_gate": 35173502234
+  },
+  "deployment": {
+    "run": 35174602236,
+    "apply_job": "success",
+    "post_deployment_acceptance": [
+      "capacity",
+      "network",
+      "lifecycle",
+      "pvc",
+      "storage-foundation"
+    ],
+    "apply_gate": "success",
+    "workflow_conclusion": "failure",
+    "reason": "Final auto-merge attempted a draft PR; fixed by draft condition in 2e19178, with fresh CI verification pending."
+  },
+  "network_health": "Both nodes Ready, API VIP authenticated readyz ok, Pi-hole UDP/TCP passed, AI deployment replicas 0.",
+  "superseded_failures": "Earlier ECR timeout, stale AI receipt guard, stale Proxmox IP validation, idle-only admission and missing apply label failures are preserved in prior GitHub runs."
+}

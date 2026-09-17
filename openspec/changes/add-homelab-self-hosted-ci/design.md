@@ -1,13 +1,14 @@
-## Pending second scratch expansion, 2026-09-16 (America/St_Johns)
-The user requested another doubling when the next maintenance window is available.
-The target is 240 GiB shared scratch, with an exact VM 102 scsi0 expansion from
-192 to 320 GiB before quota adoption. Preserve 33.5 CPU / 150 GiB RAM, the
+## Second scratch expansion, 2026-09-16 (America/St_Johns)
+The user requested another doubling at the next available maintenance window.
+The deployed pool is now 240 GiB shared scratch after an exact VM 102 scsi0
+expansion from 192 to 320 GiB. Preserve 33.5 CPU / 150 GiB RAM, the
 4 CPU / 18 GiB platform reserve, 8 GiB scratch headroom, separate 64 GiB cache,
 all retained volume identities and existing provisional per-job reservations.
-The currently deployed pool remains 120 GiB until fresh saved plans, drained
-maintenance, measured filesystem growth and capacity verification succeed.
-Earlier sizing/deployment sections below describe the superseded 120-GiB stage;
-its receipts remain historical evidence and do not verify 240 GiB.
+The guarded disk and queue applies passed, EPHEMERAL grew exactly 128 GiB,
+both post-deployment plans are empty, and Pi-hole/Nexus recovered with AI Off.
+The 240-GiB scratch exhaustion/FIFO/cancellation fixture passed. Fresh ordinary
+CI concurrency and remaining full rollout acceptance still require evidence.
+Earlier dated deployment sections retain historical sizes and receipts.
 
 ## Context
 The approved migration replaces VM 103 with trusted ARC Docker-in-Docker Pods on Talos. Historical VM implementation and failed attempts remain evidence, not migration acceptance.
@@ -44,7 +45,7 @@ only when admitted; Off retains no compute reservation. Fresh allocatable checks
 remain authoritative.
 
 ## Shared scratch and job-sized rollout
-The shared ClusterQueue also admits ephemeral-storage against 120 GiB, without
+The shared ClusterQueue also admits ephemeral-storage against 240 GiB, without
 separate runner partitions or borrowing. Scratch includes logs, writable layers
 and bounded emptyDir volumes. Retained AI PVC storage is never used as compute
 scratch. AI keeps 33.25 CPU / 77 GiB; it still prevents a 1-CPU runner from fitting.
@@ -78,7 +79,7 @@ PostgreSQL, 2 GiB Nexus configuration and 8 GiB temporary files/logs. The existi
 privileged quota collector owns project assignment; service Pods have no host
 mounts or quota privileges. Deployment checks actual hard limits, fresh guest
 and physical thin-pool bytes, retained PV commitments and image-inclusive scratch.
-The 120-GiB scratch target and 8-GiB eviction headroom are mandatory; failure is a
+The 240-GiB scratch target and 8-GiB eviction headroom are mandatory; failure is a
 rollout blocker, not permission to lower headroom.
 
 Proxy npm, PyPI, APT, Go and workflow container registries; raw repositories cache

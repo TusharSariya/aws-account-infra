@@ -1,13 +1,14 @@
-## Pending second scratch expansion, 2026-09-16 (America/St_Johns)
-The user requested another doubling when the next maintenance window is available.
-The target is 240 GiB shared scratch, with an exact VM 102 scsi0 expansion from
-192 to 320 GiB before quota adoption. Preserve 33.5 CPU / 150 GiB RAM, the
+## Second scratch expansion, 2026-09-16 (America/St_Johns)
+The user requested another doubling at the next available maintenance window.
+The deployed pool is now 240 GiB shared scratch after an exact VM 102 scsi0
+expansion from 192 to 320 GiB. Preserve 33.5 CPU / 150 GiB RAM, the
 4 CPU / 18 GiB platform reserve, 8 GiB scratch headroom, separate 64 GiB cache,
 all retained volume identities and existing provisional per-job reservations.
-The currently deployed pool remains 120 GiB until fresh saved plans, drained
-maintenance, measured filesystem growth and capacity verification succeed.
-Earlier sizing/deployment sections below describe the superseded 120-GiB stage;
-its receipts remain historical evidence and do not verify 240 GiB.
+The guarded disk and queue applies passed, EPHEMERAL grew exactly 128 GiB,
+both post-deployment plans are empty, and Pi-hole/Nexus recovered with AI Off.
+The 240-GiB scratch exhaustion/FIFO/cancellation fixture passed. Fresh ordinary
+CI concurrency and remaining full rollout acceptance still require evidence.
+Earlier dated deployment sections retain historical sizes and receipts.
 
 ## Why
 Application compute needs one bounded admission pool on the existing Talos worker. GitHub-hosted bootstrap and Mac recovery must remain independent of that pool.
@@ -15,7 +16,7 @@ Application compute needs one bounded admission pool on the existing Talos worke
 ## What Changes
 - Replace the separate VM runner proposal with pinned Kueue 0.19.4 and ARC 0.14.2.
 - Restore worker RAM to 172 GiB and admit AI, CI and ordinary Argo Pods against one 33.5 CPU / 150 GiB pool.
-- Add reviewed arbitrary-size runner catalog, multiple disposable scale sets, whole-Pod validation and shared 120-GiB scratch admission with measured capacity gates.
+- Add reviewed arbitrary-size runner catalog, multiple disposable scale sets, whole-Pod validation and shared 240-GiB scratch admission with measured capacity gates.
 - Preserve lifecycle controls, retained AI storage, reviewed workflows and deployment gates.
 - Retire only identified VM 103 CI resources through guarded maintenance.
 - Select routine execution explicitly with CI_EXECUTOR=github-hosted|talos after acceptance; no automatic paid fallback.

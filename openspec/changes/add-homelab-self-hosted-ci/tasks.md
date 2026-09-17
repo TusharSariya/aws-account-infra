@@ -58,6 +58,6 @@
 
 ## 8. Pending second scratch expansion
 - [x] 8.1 Prepare and verify exact 192-to-320-GiB disk guards and 240-GiB quota definitions; preserve per-job limits.
-- [ ] 8.2 After active CI drains, recheck physical headroom and apply a fresh exact disk plan; verify retained identities and 128-GiB EPHEMERAL growth.
-- [ ] 8.3 Apply the 240-GiB admission pool only after fresh image-inclusive capacity checks; verify fresh empty plans.
+- [x] 8.2 After active CI drains, recheck physical headroom and apply a fresh exact disk plan; verify retained identities and 128-GiB EPHEMERAL growth.
+- [x] 8.3 Apply the 240-GiB admission pool only after fresh image-inclusive capacity checks; verify fresh empty plans.
 - [ ] 8.4 Repeat scratch exhaustion, FIFO, cancellation/release and mixed-size concurrency under 240 GiB before accepting the new quota.
