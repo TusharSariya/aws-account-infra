@@ -50,7 +50,7 @@ The system SHALL shut AI down after a configurable continuous interval of verifi
 - **THEN** the verified idle interval resets and automatic shutdown remains blocked until a new complete interval is observed
 
 ### Requirement: Atomic AI resource admission
-Ollama, Odysseus, Chroma and Searx SHALL share one schedulable Pod, with zero replicas off and one on. Their combined reservation MUST be 35.75 CPU and 77 GiB RAM, including Ollama at 34 CPU and 64 GiB. Platform components MUST have separate budgets and VM CPU/RAM MUST remain unchanged.
+Ollama, Odysseus, Chroma and Searx SHALL share one schedulable Pod, with zero replicas off and one on. Their combined reservation MUST be 31.25 CPU and 77 GiB RAM, including Ollama at 29.5 CPU and 64 GiB. Platform components MUST have separate budgets and VM CPU/RAM MUST remain unchanged.
 
 #### Scenario: Insufficient capacity
 - **WHEN** the aggregate reservation does not fit
@@ -97,7 +97,7 @@ The existing worker XFS filesystem SHALL enforce project hard limits using stabl
 - **THEN** configuration remains valid and startup depends on actual fresh capacity evidence
 
 ### Requirement: Ordered protected rollout
-The platform SHALL deliver storage, aggregate default-off packaging and lifecycle/scheduling as three ordered delivery stages through existing OpenTofu/Helm infrastructure, with lifecycle/scheduling reviewed as a dependency-ordered stack of PRs. Explicitly authorized local execution MAY use the same backend and saved-plan guards when CI is unavailable; its evidence MUST be labeled local and MUST NOT satisfy or bypass GitHub merge checks. Backend keys, dependency ordering, apply label, protected environment and destructive-change guards MUST remain intact. The authorized AI reset MUST stop writers, verify exact identities and record a durable one-time migration that routine CI cannot replay.
+The platform SHALL deliver storage, aggregate default-off packaging and lifecycle/scheduling as three ordered delivery stages through existing OpenTofu/Helm infrastructure, with lifecycle/scheduling incorporation recorded against the merged implementation and subsequent reviewed updates. Explicitly authorized local execution MAY use the same backend and saved-plan guards when CI is unavailable; its evidence MUST be labeled local and MUST NOT satisfy or bypass GitHub merge checks. Backend keys, dependency ordering, apply label, protected environment and destructive-change guards MUST remain intact. The authorized AI reset MUST stop writers, verify exact identities and record a durable one-time migration that routine CI cannot replay.
 
 #### Scenario: Selected check does not succeed
 - **WHEN** a required acceptance job fails, is cancelled or unexpectedly skips
@@ -109,10 +109,10 @@ The platform SHALL deliver storage, aggregate default-off packaging and lifecycl
 - **AND** it records source and plan hashes, local results and encrypted recovery artifacts independently from GitHub Actions
 - **AND** changed source or plan bytes prevent applying or reusing an earlier execution record, and the reset is never replayed
 
-#### Scenario: Dependency-ordered review stack
-- **WHEN** an already deployed lifecycle delivery is split into smaller review PRs
-- **THEN** each PR targets its immediate predecessor, the combined implementation is preserved, and merges proceed bottom-up into the main branch
-- **AND** intermediate source branches are not applied as rollbacks to the already upgraded cluster; deployment uses the assembled reviewed tip and required merge checks remain enforced
+#### Scenario: Superseded review stack
+- **WHEN** the lifecycle implementation is already incorporated through merged PR #79 and subsequent reviewed updates
+- **THEN** the former stack #70-#76 and #69 is retained as historical evidence, not merged again or deployed as a rollback
+- **AND** outstanding acceptance remains open until its exact source and successful evidence are recorded; incorporation does not waive required merge checks or deployment safeguards
 
 ### Requirement: Reviewed idle configuration
 The controller SHALL accept an integer idleTimeoutSeconds between 60 and 86400 from repository-managed Helm configuration, defaulting to 1800. Status SHALL report the effective timeout. Invalid values MUST prevent startup. Configuration changes and controller recovery MUST begin a fresh verified interval; they MUST NOT weaken activity verification or graceful Stop.
