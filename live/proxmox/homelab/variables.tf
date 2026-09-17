@@ -46,7 +46,7 @@ variable "vms" {
       length(vm.disks_gib) >= 1 && length(vm.disks_gib) <= 2 &&
       alltrue([for size in vm.disks_gib : size > 0 && size == floor(size)]) &&
       can(regex("^02:([0-9a-fA-F]{2}:){4}[0-9a-fA-F]{2}$", vm.mac_address)) &&
-      can(regex("^10\\.42\\.0\\.22[0-3]$", vm.ipv4_address)) &&
+      can(regex("^10\\.0\\.0\\.22[0-3]$", vm.ipv4_address)) &&
       vm.startup_order >= 1 && vm.startup_order <= 2 &&
       vm.startup_order == floor(vm.startup_order)
     ])

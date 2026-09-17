@@ -8,7 +8,7 @@ from worker_disk_plan import BEFORE_GIB, AFTER_GIB
 def verify_host():
     def host(command):
         return json.loads(subprocess.check_output(['ssh', '-o', 'BatchMode=yes', '-o',
-            'ConnectTimeout=10', 'server-10-42', command], timeout=30))
+            'ConnectTimeout=10', 'root@10.0.0.92', command], timeout=30))
     config = host('pvesh get /nodes/pve/qemu/102/config --output-format json')
     if (config['name'] != 'talos-worker-01' or int(config['cores']) != 38
             or int(config['memory']) != 172*1024 or config['hotplug'] != '0'):

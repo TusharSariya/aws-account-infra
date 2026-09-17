@@ -18,7 +18,7 @@ def run(command):
 
 
 def host(command):
-    return run(['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', 'server-10-42', command])
+    return run(['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', 'root@10.0.0.92', command])
 
 
 def main():

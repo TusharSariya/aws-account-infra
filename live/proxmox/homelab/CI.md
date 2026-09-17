@@ -66,7 +66,7 @@ publicly and no router port-forwarding is needed. The laptop and pve must be on.
 Provision the limited plan API identity from a trusted administration checkout:
 
 ```bash
-python3 scripts/proxmox-provider-bootstrap.py --plan --ssh-target server-10-42
+python3 scripts/proxmox-provider-bootstrap.py --plan --ssh-target root@10.0.0.92
 ```
 
 This creates `homelab-tofu-plan@pve` with privilege separation, system audit,

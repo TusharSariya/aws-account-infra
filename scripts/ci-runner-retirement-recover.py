@@ -45,7 +45,7 @@ def main():
     if 'Datastore.Allocate' not in log or 'ci-ubuntu-24.04-20260911.qcow2' not in log:
         raise ValueError('Expected exact datastore permission failure')
     def host(script):
-        return subprocess.check_output(['ssh', '-o', 'BatchMode=yes', 'server-10-42', script], timeout=120)
+        return subprocess.check_output(['ssh', '-o', 'BatchMode=yes', 'root@10.0.0.92', script], timeout=120)
     kube = ['kubectl', '--kubeconfig', str(args.kubeconfig), '--request-timeout=30s']
     with execution_lock():
         guard_ai_off(json.loads(subprocess.check_output(kube + ['get','deployment','ai-runtime','-n','homelab-models','-o','json'])),

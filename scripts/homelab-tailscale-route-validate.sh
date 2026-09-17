@@ -10,6 +10,6 @@ expected={"10.0.0.92/32", "10.0.0.220/32", "10.0.0.222/32", "10.0.0.231/32"}
 assert expected.issubset(set(p[0].get("AllowedIPs",[]))), "Host routes not received from pve"
 print("PASS: pve advertises the approved LAN host routes")'
 ssh -T -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=8 \
-  -o ProxyCommand=none -o ProxyJump=none root@pve.tail2f646b.ts.net \
+  -o ProxyCommand=none -o ProxyJump=none -o HostKeyAlias=10.0.0.92 root@100.101.182.9 \
   'test "$(hostname)" = pve && ping -c 1 -W 3 10.0.0.231 >/dev/null'
 printf 'PASS: authenticated Tailscale host access and host-to-VIP reachability. Test subnet forwarding from an off-LAN client separately.\n'

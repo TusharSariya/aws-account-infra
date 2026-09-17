@@ -39,13 +39,19 @@
       "seconds": 6.479,
       "megabits_per_second": 82.87,
       "compression": false
-    }
+    },
+    "ecr_fresh_runner": {
+      "run_id": 35141976225,
+      "attempt": 2,
+      "conclusion": "success",
+      "scratch_gib": 24
+    },
+    "tailscale_host_route_validation": "PASS: four advertised routes, authenticated SSH to Tailscale IP and host-to-VIP reachability"
   },
   "limits": [
     "Single samples, not line-rate capacity measurements.",
     "No comparable old complete bandwidth measurement; no precise before/after speedup claimed.",
-    "Historical evidence retains historical addresses.",
-    "ECR rerun passed registry login and reached Build and push; final result pending."
+    "Historical evidence retains historical addresses."
   ],
   "image_receipts": {
     "ollama": {
@@ -57,5 +63,12 @@
       "artifact_id": 10467741959
     }
   },
-  "verification": "Remote successful workflows, artifact SHA256, source input hashes and immutable image selections verified; six lifecycle image tests passed."
+  "verification": "Remote successful workflows, artifact SHA256, source input hashes and immutable image selections verified; six lifecycle image tests passed.",
+  "validation": {
+    "talos_tests": 33,
+    "application_tests": 24,
+    "deploy_unit_tests": 25,
+    "proxmox_mock_tests": 5,
+    "generated_configs": "Two pinned Talos configs strictly validated; capacity, networking, identity and negative drift checks passed."
+  }
 }
