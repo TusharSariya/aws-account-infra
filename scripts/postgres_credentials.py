@@ -27,6 +27,6 @@ def reconcile(kubectl, writer):
         'pod-security.kubernetes.io/enforce': 'restricted', 'pod-security.kubernetes.io/enforce-version': 'v1.36'})))
     for name, data in [('apps-db-backup-db', {'username': 'apps_backup', 'password': values['password']}),
                        ('apps-db-backup-identity', {k: values[k] for k in ('client.crt', 'client.key')})]:
-        writer(kubectl, dict(apiVersion='v1', kind='Secret', metadata=dict(name=name, namespace='homelab-data'),
+        writer(kubectl, dict(apiVersion='v1', kind='Secret', metadata=dict(name=name, namespace='homelab-data', labels={'cnpg.io/reload': 'true'}),
             type='kubernetes.io/basic-auth' if name.endswith('-db') else 'Opaque',
             data={k: base64.b64encode(v.encode()).decode() for k, v in data.items()}))

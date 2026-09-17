@@ -74,7 +74,7 @@ def main():
                 'password': base64.b64encode(values[kind].encode()).decode(), 'ca.crt': ca}
         for namespace in {'homelab-data', args.namespace}:
             manifest = dict(apiVersion='v1', kind='Secret', type='kubernetes.io/basic-auth',
-                metadata=dict(name=name, namespace=namespace), data=data)
+                metadata=dict(name=name, namespace=namespace, labels={'cnpg.io/reload': 'true'}), data=data)
             run(['kubectl', 'apply', '--server-side', '--field-manager=homelab-postgres-credentials', '-f', '-'], json.dumps(manifest).encode())
         manifest = dict(apiVersion='postgresql.cnpg.io/v1', kind='DatabaseRole',
             metadata=dict(name=name, namespace='homelab-data'),

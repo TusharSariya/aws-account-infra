@@ -165,6 +165,7 @@ def reconcile_credential_object(kubectl, manifest):
             raise AppError('Missing resource version for credential update')
         if kind == 'Secret':
             current['data'], current['type'] = manifest['data'], manifest['type']
+            current['metadata'].setdefault('labels', {}).update(metadata.get('labels', {}))
         else:
             current['metadata'].setdefault('labels', {}).update(metadata.get('labels', {}))
         current.pop('status', None)

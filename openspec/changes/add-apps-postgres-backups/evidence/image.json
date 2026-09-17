@@ -1,0 +1,8 @@
+{
+  "image": "ghcr.io/tusharsariyaorg/homelab-postgres-backup@sha256:265d27f5d1a353364500f57282b22243daa104c8c38663a124690d77f25a328e",
+  "source_commit": "62aed5d",
+  "workflow_run": 35248676577,
+  "status": "success",
+  "visibility": "private",
+  "executor": "homelab-talos-docker-small"
+}
