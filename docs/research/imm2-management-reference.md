@@ -91,7 +91,7 @@ The official catalog also contains commands absent from this unit's help, such a
 
 ### Power and boot operations
 
-These operations are available in this firmware's help; **no mutating operation below was tested**.
+These operations are available in this firmware's help. The initial discovery was read-only; a later authorized graceful shutdown was observed as described below. Other mutating operations remain untested.
 
 | Desired operation | CLI form | Interpretation |
 |---|---|---|
@@ -110,6 +110,12 @@ These operations are available in this firmware's help; **no mutating operation 
 | Restart IMM | `resetsp` / `spreset` | Management-controller restart; distinct from host reset |
 
 Scheduled power actions and delayed reset are also advertised; exact options are in the appendix. Graceful completion depends on OS cooperation. Follow up with state checks; never convert a timeout into a forced shutdown automatically. Mains power and an independent network path must remain available to turn the host back on. These distinctions are supported by [Lenovo's power](https://pubs.lenovo.com/imm2/aj1camst04) and [reset](https://pubs.lenovo.com/imm2/aj1camst05) references.
+
+### Observed graceful shutdown delay
+
+During a user-authorized shutdown on 2026-09-17, `power off -s` returned `ok`, but SSH and IPMI continued to report power on throughout an observation window of approximately five minutes. A later IPMI query returned `powerstate: off`, confirming that shutdown eventually completed. No forced power-off or second shutdown request was sent. The exact completion time and reason for the delay were not established; Proxmox and guest logs were unavailable once the host was off.
+
+Treat command acceptance separately from completed shutdown. A five-minute observation timeout is not proof that the request was ignored or blocked. Continue checking power state and report completion as pending or unknown until observed; do not automatically escalate to forced power-off.
 
 ### Other administrative capabilities and limits
 
