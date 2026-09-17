@@ -935,7 +935,6 @@
   "limitations": [
     "Two cache-monitor jobs failed during recovery; later 22:35:15Z job completed successfully.",
     "Existing storage-check fixture has an unbound delete PVC; production PVCs are Bound.",
-    "GitHub PR checks remained queued despite healthy ARC listeners at time of initial functional verification.",
     "Worker Ready transition timestamp predates this boot and is not a valid boot-duration measurement."
   ],
   "previous_shutdown": {
@@ -943,5 +942,25 @@
     "worker_task_message": "VM quit/powerdown failed - terminating now with SIGTERM",
     "host_guest_shutdown_service_duration_seconds": 256,
     "clean_guest_shutdown_proven": false
-  }
+  },
+  "ci_recovery": [
+    {
+      "completed_at": "2026-09-17T22:44:20Z",
+      "conclusion": "success",
+      "html_url": "https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/35283469379/job/105410463115",
+      "name": "lint",
+      "runner_name": "homelab-talos-checks-hs4pd-runner-wf75p",
+      "started_at": "2026-09-17T22:44:08Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-09-17T22:44:22Z",
+      "conclusion": "success",
+      "html_url": "https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/35283469379/job/105410463364",
+      "name": "shell",
+      "runner_name": "homelab-talos-light-r4czp-runner-qtc9b",
+      "started_at": "2026-09-17T22:44:09Z",
+      "status": "completed"
+    }
+  ]
 }
