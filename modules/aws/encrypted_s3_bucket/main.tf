@@ -56,6 +56,20 @@ module "bucket" {
 data "aws_iam_policy_document" "deny_insecure_transport" {
   count = var.attach_deny_insecure_transport_policy ? 1 : 0
 
+  dynamic "statement" {
+    for_each = var.protect_bucket_deletion ? [1] : []
+    content {
+      sid       = "DenyBucketDeletion"
+      effect    = "Deny"
+      actions   = ["s3:DeleteBucket"]
+      resources = [module.bucket.s3_bucket_arn]
+      principals {
+        type        = "*"
+        identifiers = ["*"]
+      }
+    }
+  }
+
   statement {
     sid    = "DenyInsecureTransport"
     effect = "Deny"

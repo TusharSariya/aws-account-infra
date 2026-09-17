@@ -1,0 +1,188 @@
+{{- if .Values.backup.enabled }}
+{{- if not (regexMatch "^[^ @]+@sha256:[a-f0-9]{64}$" .Values.backupImage) }}
+{{- fail "Build and pin the backup image before enabling backups" }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: apps-db-backup-code, namespace: homelab-data}
+data:
+{{- range $name, $content := .Values.code }}
+  {{ $name }}: |
+{{ $content | indent 4 }}
+{{- end }}
+  aws-config: |
+    [profile postgres-backup]
+    region = us-east-1
+    credential_process = /usr/local/bin/aws_signing_helper credential-process --certificate /identity/client.crt --private-key /identity/client.key --trust-anchor-arn {{ required "trust anchor required" .Values.backup.trustAnchorArn }} --profile-arn {{ required "profile required" .Values.backup.profileArn }} --role-arn {{ required "role required" .Values.backup.roleArn }} --session-duration 3600
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata: {name: apps-db-backup, namespace: homelab-data}
+spec:
+  schedule: "30 6 * * *"
+  timeZone: Etc/UTC
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    metadata: {labels: {app: apps-db-backup}}
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 7200
+      template:
+        metadata: {labels: {app: apps-db-backup}}
+        spec:
+          nodeSelector: {kubernetes.io/hostname: {{ .Values.node }}}
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          imagePullSecrets: [{name: ghcr-read}]
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+            seccompProfile: {type: RuntimeDefault}
+          containers:
+            - name: backup
+              image: {{ .Values.backupImage | quote }}
+              command: [python, /code/backup.py]
+              resources:
+                requests: {cpu: 500m, memory: 1Gi}
+                limits: {cpu: 500m, memory: 1Gi}
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: {drop: [ALL]}
+              env:
+                - {name: PGHOST, value: apps-db-rw.homelab-data.svc.cluster.local}
+                - {name: PGDATABASE, value: apps}
+                - {name: PGUSER, value: apps_backup}
+                - {name: PGSSLMODE, value: verify-full}
+                - {name: PGSSLROOTCERT, value: /ca/ca.crt}
+                - {name: PGCONNECT_TIMEOUT, value: "15"}
+                - name: PGPASSWORD
+                  valueFrom: {secretKeyRef: {name: apps-db-backup-db, key: password}}
+                - {name: AWS_PROFILE, value: postgres-backup}
+                - {name: AWS_CONFIG_FILE, value: /code/aws-config}
+                - {name: AWS_EC2_METADATA_DISABLED, value: "true"}
+                - {name: BACKUP_BUCKET, value: {{ .Values.backup.bucket | quote }}}
+                - {name: BACKUP_KMS_KEY, value: {{ required "KMS key required" .Values.backup.kmsKeyArn | quote }}}
+                - {name: PYTHONDONTWRITEBYTECODE, value: "1"}
+                - {name: TMPDIR, value: /scratch}
+              volumeMounts:
+                - {name: code, mountPath: /code, readOnly: true}
+                - {name: identity, mountPath: /identity, readOnly: true}
+                - {name: ca, mountPath: /ca, readOnly: true}
+                - {name: scratch, mountPath: /scratch}
+          volumes:
+            - {name: code, configMap: {name: apps-db-backup-code}}
+            - {name: identity, secret: {secretName: apps-db-backup-identity, defaultMode: 288}}
+            - {name: ca, secret: {secretName: apps-db-ca, items: [{key: ca.crt, path: ca.crt}]}}
+            - {name: scratch, persistentVolumeClaim: {claimName: apps-db-backup-scratch}}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: apps-db-backup-monitor, namespace: homelab-data}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: {name: apps-db-backup-monitor, namespace: homelab-data}
+rules:
+  - apiGroups: [batch]
+    resources: [jobs]
+    verbs: [list]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: {name: apps-db-backup-monitor, namespace: homelab-data}
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: apps-db-backup-monitor}
+subjects: [{kind: ServiceAccount, name: apps-db-backup-monitor, namespace: homelab-data}]
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata: {name: apps-db-backup-monitor, namespace: homelab-data}
+spec:
+  schedule: "*/15 * * * *"
+  timeZone: Etc/UTC
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 600
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 120
+      template:
+        metadata: {labels: {app: apps-db-backup-monitor}}
+        spec:
+          serviceAccountName: apps-db-backup-monitor
+          nodeSelector: {kubernetes.io/hostname: {{ .Values.node }}}
+          restartPolicy: Never
+          imagePullSecrets: [{name: ghcr-read}]
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+            seccompProfile: {type: RuntimeDefault}
+          containers:
+            - name: monitor
+              image: {{ .Values.backupImage | quote }}
+              command: [python, /code/monitor.py]
+              resources:
+                requests: {cpu: 100m, memory: 128Mi}
+                limits: {cpu: 100m, memory: 128Mi}
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: {drop: [ALL]}
+              env:
+                - {name: AWS_PROFILE, value: postgres-backup}
+                - {name: AWS_CONFIG_FILE, value: /code/aws-config}
+                - {name: AWS_EC2_METADATA_DISABLED, value: "true"}
+                - {name: PYTHONDONTWRITEBYTECODE, value: "1"}
+              volumeMounts:
+                - {name: code, mountPath: /code, readOnly: true}
+                - {name: identity, mountPath: /identity, readOnly: true}
+          volumes:
+            - {name: code, configMap: {name: apps-db-backup-code}}
+            - {name: identity, secret: {secretName: apps-db-backup-identity, defaultMode: 288}}
+---
+# A short consumer binds WaitForFirstConsumer scratch during installation,
+# so Helm never waits for tomorrow's scheduled backup. No database/S3 access.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: apps-db-scratch-{{ .Values.backupImage | sha256sum | trunc 8 }}
+  namespace: homelab-data
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 120
+  template:
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      nodeSelector: {kubernetes.io/hostname: {{ .Values.node }}}
+      imagePullSecrets: [{name: ghcr-read}]
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: initialize
+          image: {{ .Values.backupImage | quote }}
+          command: [python, -c, "import os; s=os.statvfs('/scratch'); assert s.f_bavail*s.f_frsize >= 64*1024**3"]
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: 100m, memory: 128Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts: [{name: scratch, mountPath: /scratch}]
+      volumes:
+        - {name: scratch, persistentVolumeClaim: {claimName: apps-db-backup-scratch}}
+{{- end }}

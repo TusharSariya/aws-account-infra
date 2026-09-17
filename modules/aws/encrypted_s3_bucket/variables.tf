@@ -80,3 +80,9 @@ variable "object_lock_retention_days" {
     error_message = "Retention must be null or a positive whole number of days."
   }
 }
+
+variable "protect_bucket_deletion" {
+  type        = bool
+  default     = false
+  description = "Explicitly deny DeleteBucket. Removing this protection requires a reviewed policy change."
+}

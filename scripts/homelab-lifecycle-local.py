@@ -90,6 +90,8 @@ def main():
         data = apps.run(command + ['show', '-json', plan])
         apps.check_secrets(data, args.record)
         apps.guard_plan(json.loads(data))
+        from postgres_preflight import verify as verify_postgres_capacity
+        verify_postgres_capacity(kubectl, apps.run)
         apps.run(command + ['apply', '-input=false', '-lock-timeout=60s', plan])
         apps.check_secrets(apps.run(command + ['state', 'pull']), args.record)
         value['apply'] = 'success'

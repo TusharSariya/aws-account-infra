@@ -1,0 +1,15 @@
+fullnameOverride: cnpg
+replicaCount: 1
+image:
+  tag: 1.30.0@sha256:a2701eb97cdd2a34b1fdb2cb51987f544b706e40bec72ae7146cd8580efefebb
+nodeSelector:
+  kubernetes.io/hostname: talos-worker-01
+resources:
+  requests: {cpu: 250m, memory: 512Mi}
+  limits: {cpu: 250m, memory: 512Mi}
+updateStrategy:
+  type: Recreate
+config:
+  data:
+    WATCH_NAMESPACE: homelab-data
+    CREATE_DEBUG_JOB: "false"

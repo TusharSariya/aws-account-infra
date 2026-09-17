@@ -1,0 +1,74 @@
+{
+  "date": "2026-09-17",
+  "application": {
+    "concurrent_dml": "passed",
+    "cross_schema": "denied",
+    "runtime_ddl": "denied",
+    "plaintext": "denied",
+    "unlabeled_network_client": "denied",
+    "explicit_shared_grant": "passed"
+  },
+  "restart": {
+    "restart_persistence": "passed",
+    "previous_pod_uid": "8436112d-da49-4284-a47c-e681ed8326af",
+    "new_pod_uid": "8f7167d2-f644-46e2-9160-3dccfdaf4c4d"
+  },
+  "restores": {
+    "execution": "local disposable PostgreSQL instances; production TLS verified separately",
+    "s3_restores": [
+      {
+        "version_id": "2HSya59jd3Fn9Yl_zIxkxdWKffntn8o1",
+        "sha256": "fd6c2db0c65a51819afdc7ebf1b97b50fb44518e66949e58ae42f1782230ce93",
+        "rows": [
+          10,
+          10
+        ],
+        "ownership": "passed",
+        "schema_isolation": "passed",
+        "shared_grants": "passed",
+        "rls": "passed",
+        "fresh_scram_authentication": "passed"
+      },
+      {
+        "version_id": "hnbKD1B9YdDiDaa2sX_8Ozk5OTbjDXKh",
+        "sha256": "e73665ce4645fe0f103e6dd578f1fa585b3b5225d7aaabed42bcee2f80fcb5d1",
+        "rows": [
+          10,
+          11
+        ],
+        "ownership": "passed",
+        "schema_isolation": "passed",
+        "shared_grants": "passed",
+        "rls": "passed",
+        "fresh_scram_authentication": "passed"
+      }
+    ]
+  },
+  "failure_injection": [
+    {
+      "failure": "dump",
+      "job": "apps-db-test-dump-1789664903",
+      "latest_unchanged": "hnbKD1B9YdDiDaa2sX_8Ozk5OTbjDXKh",
+      "status": "passed"
+    },
+    {
+      "failure": "upload",
+      "job": "apps-db-test-upload-1789664910",
+      "latest_unchanged": "hnbKD1B9YdDiDaa2sX_8Ozk5OTbjDXKh",
+      "status": "passed"
+    },
+    {
+      "failure": "checksum",
+      "job": "apps-db-test-checksum-1789664918",
+      "latest_unchanged": "hnbKD1B9YdDiDaa2sX_8Ozk5OTbjDXKh",
+      "status": "passed"
+    }
+  ],
+  "temporary_app_cleanup": "completed",
+  "serialization": {
+    "shared_scratch_lock": "passed",
+    "backup_running_while_lock_held": true,
+    "latest_unchanged_while_locked": "hnbKD1B9YdDiDaa2sX_8Ozk5OTbjDXKh",
+    "published_after_release": "5M.bl1LRM5vAJYoCUFMOPJaoi4OC1KAQ"
+  }
+}

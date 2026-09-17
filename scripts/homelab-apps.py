@@ -22,12 +22,12 @@ sys.path.insert(0, str(ROOT / 'apps/platform/storage'))
 from workload_state import is_terminated
 TF = ROOT / 'live/kubernetes/homelab'
 CONFIG = ROOT / 'config/environments/kubernetes/homelab'
-SECRET_NAMES = ('TS_OPERATOR_CLIENT_ID', 'TS_OPERATOR_CLIENT_SECRET', 'PIHOLE_ADMIN_PASSWORD', 'GHCR_READ_USER', 'GHCR_READ_TOKEN', 'ODYSSEUS_ADMIN_PASSWORD', 'SEARXNG_SECRET', 'AI_LIFECYCLE_CREDENTIALS_B64', 'TALOS_SECRETS_B64')
+SECRET_NAMES = ('TS_OPERATOR_CLIENT_ID', 'TS_OPERATOR_CLIENT_SECRET', 'PIHOLE_ADMIN_PASSWORD', 'GHCR_READ_USER', 'GHCR_READ_TOKEN', 'ODYSSEUS_ADMIN_PASSWORD', 'SEARXNG_SECRET', 'AI_LIFECYCLE_CREDENTIALS_B64', 'POSTGRES_BACKUP_CREDENTIALS_B64', 'TALOS_SECRETS_B64')
 class AppError(ValueError):
     """Only deliberately authored, secret-free diagnostics."""
 
 
-ADDRESSES = {'helm_release.tailscale_operator', 'helm_release.pihole', 'helm_release.ollama', 'helm_release.odysseus', 'helm_release.capacity', 'helm_release.ai', 'helm_release.lifecycle', 'helm_release.argo', 'helm_release.jobs'}
+ADDRESSES = {'helm_release.postgres_operator', 'helm_release.postgres', 'helm_release.tailscale_operator', 'helm_release.pihole', 'helm_release.ollama', 'helm_release.odysseus', 'helm_release.capacity', 'helm_release.ai', 'helm_release.lifecycle', 'helm_release.argo', 'helm_release.jobs'}
 
 
 def run(command, data=None, *, timeout=2400):
@@ -89,6 +89,8 @@ def credentials():
     if len(values['SEARXNG_SECRET']) < 32:
         raise AppError('SearxNG secret must contain at least 32 characters')
     lifecycle_credentials()
+    from postgres_credentials import credentials as postgres_credentials
+    postgres_credentials()
     return values
 
 
@@ -141,7 +143,10 @@ def reconcile_credential_object(kubectl, manifest):
     """
     metadata = manifest['metadata']
     kind, name, namespace = manifest['kind'], metadata['name'], metadata.get('namespace')
-    allowed = {('Secret', 'operator-oauth', 'tailscale'),
+    allowed = {('Namespace', 'homelab-data', None),
+               ('Secret', 'apps-db-backup-db', 'homelab-data'),
+               ('Secret', 'apps-db-backup-identity', 'homelab-data'),
+               ('Secret', 'ghcr-read', 'homelab-data'), ('Secret', 'operator-oauth', 'tailscale'),
                ('Secret', 'pihole-admin', 'homelab-services'),
                ('Secret', 'odysseus-bootstrap', 'homelab-models'),
                ('Secret', 'ghcr-read', 'homelab-models'), ('Namespace', 'tailscale', None),
@@ -160,6 +165,7 @@ def reconcile_credential_object(kubectl, manifest):
             raise AppError('Missing resource version for credential update')
         if kind == 'Secret':
             current['data'], current['type'] = manifest['data'], manifest['type']
+            current['metadata'].setdefault('labels', {}).update(metadata.get('labels', {}))
         else:
             current['metadata'].setdefault('labels', {}).update(metadata.get('labels', {}))
         current.pop('status', None)
@@ -174,6 +180,8 @@ def bootstrap(kubectl):
     if os.environ.get('GITHUB_ACTIONS') != 'true':
         raise AppError('Credential reconciliation only runs in approved CI apply')
     values = credentials()
+    from postgres_credentials import reconcile
+    reconcile(kubectl, reconcile_credential_object)
     # Do not change an independently managed namespace or create a parallel cluster.
     run([kubectl, 'get', 'namespace', 'homelab-services', 'homelab-models'])
     import yaml
@@ -190,6 +198,9 @@ def bootstrap(kubectl):
         manifest = {'apiVersion': 'v1', 'kind': 'Secret', 'metadata': {'name': name, 'namespace': namespace},
                     'type': 'kubernetes.io/dockerconfigjson' if name == 'ghcr-read' else 'Opaque', 'data': {k: base64.b64encode(v.encode()).decode() for k, v in data.items()}}
         reconcile_credential_object(kubectl, manifest)
+        if name == 'ghcr-read':
+            manifest['metadata']['namespace'] = 'homelab-data'
+            reconcile_credential_object(kubectl, manifest)
 
 
 def reviewed_failed_drift(drift, reviews):
@@ -236,6 +247,9 @@ def check_secrets(data, private):
     forbidden = [os.environ.get(name, '') for name in (*SECRET_NAMES[:-1], 'GH_TOKEN', 'GITHUB_TOKEN') if name != 'GHCR_READ_USER']
     if os.environ.get("AI_LIFECYCLE_CREDENTIALS_B64"):
         forbidden.extend(lifecycle_credentials().values())
+    if os.environ.get('POSTGRES_BACKUP_CREDENTIALS_B64'):
+        from postgres_credentials import credentials as postgres_credentials
+        forbidden.extend(postgres_credentials().values())
     # Every credential in kubeconfig must stay out of provider state/plan.
     import yaml
     kube = yaml.safe_load((private / 'kubeconfig').read_text())
@@ -253,7 +267,12 @@ def guard_images(remote=None):
     ollama = yaml.safe_load((CONFIG / 'ollama-values.yaml').read_text())
     workspace = yaml.safe_load((CONFIG / 'workspace-values.yaml').read_text())
     ai = yaml.safe_load((CONFIG / 'ai-values.yaml').read_text())
-    images = list(ai['images'].values()) + [ollama['image'], workspace['image'], workspace['initImage']]
+    postgres = yaml.safe_load((CONFIG / 'postgres-values.yaml').read_text())
+    operator = yaml.safe_load((CONFIG / 'postgres-operator-values.yaml').read_text())
+    pg_images = [postgres['postgresImage'], 'ghcr.io/cloudnative-pg/cloudnative-pg:' + operator['image']['tag']]
+    if postgres['backup']['enabled']:
+        pg_images.append(postgres['backupImage'])
+    images = pg_images + list(ai['images'].values()) + [ollama['image'], workspace['image'], workspace['initImage']]
     images.extend(c['image'] for c in workspace['components'].values() if 'image' in c)
     if any(not re.fullmatch(r'[^\s@]+@sha256:[a-f0-9]{64}', image) for image in images):
         raise AppError('Every workspace image must use a reviewed immutable SHA-256 digest')
@@ -285,6 +304,8 @@ def execute(operation, private):
             raise AppError('Application apply only runs through GitHub CI')
         if hashlib.sha256(plan.read_bytes()).hexdigest() != (private / 'apps-plan.sha256').read_text():
             raise AppError('Saved application plan changed after validation')
+        from postgres_preflight import verify
+        verify(str(Path.home() / '.cache/aws-account-infra/talos/kubectl-v1.36.3'), run)
         try:
             run(command + ['apply', '-input=false', '-lock-timeout=60s', plan])
         except AppError:

@@ -50,10 +50,12 @@ concurrency:
 jobs:
   contracts:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
+    # PR tests use the server; dispatched bootstrap remains independent of ARC.
+    runs-on: ${{ github.event_name == 'pull_request' && 'homelab-talos-checks' || 'ubuntu-latest' }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/talos-runner-setup
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: false

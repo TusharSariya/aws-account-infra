@@ -1,0 +1,51 @@
+{
+  "saved_plans": {
+    "apps-plan-final": {
+      "execution": "local",
+      "plan_sha256": "1d2fd695448aa4f0bb0315f80849f6fee5044b760e9cab49f43478b1fb37705e",
+      "backend": "kubernetes/homelab/terraform.tfstate",
+      "workspace": "default",
+      "apply": "success",
+      "applied_at": "2026-09-17T16:53:44.569014+00:00"
+    },
+    "apps-network-fix": {
+      "execution": "local",
+      "plan_sha256": "e4f3a24ac08afa84e71fbd1890b5e315879150302208112998122877aaad49cc",
+      "backend": "kubernetes/homelab/terraform.tfstate",
+      "workspace": "default",
+      "apply": "success",
+      "applied_at": "2026-09-17T16:55:12.470131+00:00"
+    },
+    "apps-backup-fix": {
+      "execution": "local",
+      "plan_sha256": "e3a25660a0ad6fe264361aad5d57118e1cc99576b930021f8c78500f26ec2c11",
+      "backend": "kubernetes/homelab/terraform.tfstate",
+      "workspace": "default",
+      "apply": "success",
+      "applied_at": "2026-09-17T17:05:33.295020+00:00"
+    },
+    "apps-image-final": {
+      "execution": "local",
+      "plan_sha256": "dedaa41d02d35077838e4f4a8596d5c1acc3316077ef6ff42a9728fb32d0761b",
+      "backend": "kubernetes/homelab/terraform.tfstate",
+      "workspace": "default",
+      "apply": "success",
+      "applied_at": "2026-09-17T17:18:26.097993+00:00"
+    }
+  },
+  "final_backup": {
+    "key": "apps-db/latest.tar.gz",
+    "version_id": "E_wrPT6l4cqKixbfMak6ucw5XUSRPJUa",
+    "sha256": "39fcf0267fbe26df660ed02c42a224882995edd5a7e58b04b4f4666fdc15cc21",
+    "staging_version_id": "RfSX.fBnsP2PsmzP9_X2.AsqJy.LbvBZ"
+  },
+  "cluster": "healthy",
+  "database": "apps",
+  "shared_tables_after_fixture_cleanup": 0,
+  "test_app_roles_after_fixture_cleanup": 0,
+  "AI_state": "intentionally Off; no workload interrupted",
+  "post_apply_plan": {
+    "changes": [],
+    "drift": []
+  }
+}

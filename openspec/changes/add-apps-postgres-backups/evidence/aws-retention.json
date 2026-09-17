@@ -1,0 +1,51 @@
+{
+  "postgres_lifecycle": {
+    "TransitionDefaultMinimumObjectSize": "all_storage_classes_128K",
+    "Rules": [
+      {
+        "ID": "latest-superseded-seven-days",
+        "Filter": {
+          "Prefix": "apps-db/latest.tar.gz"
+        },
+        "Status": "Enabled",
+        "NoncurrentVersionExpiration": {
+          "NoncurrentDays": 7
+        }
+      },
+      {
+        "Expiration": {
+          "Days": 1
+        },
+        "ID": "staging-one-day",
+        "Filter": {
+          "Prefix": "staging/"
+        },
+        "Status": "Enabled",
+        "NoncurrentVersionExpiration": {
+          "NoncurrentDays": 1
+        }
+      },
+      {
+        "ID": "abort-incomplete-one-day",
+        "Filter": {
+          "Prefix": ""
+        },
+        "Status": "Enabled",
+        "AbortIncompleteMultipartUpload": {
+          "DaysAfterInitiation": 1
+        }
+      }
+    ]
+  },
+  "existing_recovery_object_lock": {
+    "ObjectLockConfiguration": {
+      "ObjectLockEnabled": "Enabled",
+      "Rule": {
+        "DefaultRetention": {
+          "Mode": "GOVERNANCE",
+          "Days": 30
+        }
+      }
+    }
+  }
+}

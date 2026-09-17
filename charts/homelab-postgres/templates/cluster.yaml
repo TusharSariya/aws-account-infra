@@ -1,0 +1,83 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: apps-db
+  namespace: homelab-data
+  annotations: {helm.sh/resource-policy: keep}
+spec:
+  instances: 1
+  imageName: {{ .Values.postgresImage | quote }}
+  enableSuperuserAccess: false
+  affinity:
+    nodeSelector:
+      kubernetes.io/hostname: {{ .Values.node }}
+  resources:
+    requests: {cpu: "1", memory: 4Gi}
+    limits: {cpu: "1", memory: 4Gi}
+  storage:
+    size: 32Gi
+    storageClass: worker-local-retain
+    resizeInUseVolumes: false
+  bootstrap:
+    initdb:
+      database: apps
+      owner: apps_owner
+      postInitApplicationSQL:
+        - ALTER ROLE apps_owner NOLOGIN
+        - REVOKE ALL ON DATABASE apps FROM PUBLIC
+        - REVOKE ALL ON SCHEMA public FROM PUBLIC
+        - CREATE SCHEMA shared AUTHORIZATION apps_owner
+        - ALTER DEFAULT PRIVILEGES FOR ROLE apps_owner REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC
+        - ALTER DEFAULT PRIVILEGES FOR ROLE apps_owner REVOKE USAGE ON TYPES FROM PUBLIC
+        - CREATE ROLE apps_backup LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION BYPASSRLS
+        - GRANT pg_read_all_data TO apps_backup
+        - GRANT CONNECT ON DATABASE apps TO apps_backup
+        - GRANT EXECUTE ON FUNCTION pg_catalog.pg_control_system() TO apps_backup
+  managed:
+    services:
+      disabledDefaultServices: [r, ro]
+    roles:
+      - name: apps_owner
+        login: false
+      - name: apps_backup
+        login: true
+        superuser: false
+        createdb: false
+        createrole: false
+        replication: false
+        bypassrls: true
+        inRoles: [pg_read_all_data]
+        passwordSecret: {name: apps-db-backup-db}
+  postgresql:
+    parameters:
+      shared_buffers: 1GB
+      max_connections: "100"
+      password_encryption: scram-sha-256
+    pg_hba:
+      - hostnossl all all all reject
+      - hostssl apps all all scram-sha-256
+      - host all all all reject
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: apps-db-backup-scratch
+  namespace: homelab-data
+  annotations: {helm.sh/resource-policy: keep}
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: worker-local-retain
+  resources:
+    requests: {storage: 64Gi}
+---
+# Admission bounds manual/scheduled overlap as well as the running database.
+# A second backup cannot consume another reservation while waiting for its lock.
+apiVersion: v1
+kind: ResourceQuota
+metadata: {name: apps-db-compute, namespace: homelab-data}
+spec:
+  hard:
+    requests.cpu: 1600m
+    requests.memory: 5248Mi
+    limits.cpu: 1600m
+    limits.memory: 5248Mi
