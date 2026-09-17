@@ -246,4 +246,4 @@ Factory reset, log deletion, NMI, firmware updates, activation keys, configurati
 
 ## 5. Delivery boundary
 
-Delivered: this reference, official-source research, full advertised CLI help and read-only evidence. No MCP service, credentials file, port exposure, account change, power action, firmware update, monitoring deployment or automatic remediation has been installed. A future implementation can use this document as its capability contract while validating untested functions incrementally.
+Delivered: this reference, official-source research, full advertised CLI help and read-only evidence. No MCP service, credentials file, port exposure, account change, firmware update, monitoring deployment or automatic remediation has been installed. The separately authorized graceful shutdown and its delayed completion are recorded above. A future implementation can use this document as its capability contract while validating untested functions incrementally.
