@@ -33,9 +33,8 @@ Both guests use OVMF, Q35, host CPU, VirtIO NICs on vmbr0, virtio-scsi-pci, raw 
 The IP fields document external DHCP reservations; the provider does not configure IPs inside a blank guest. Guest boot/lease verification remains separate. The disk boots before the ISO so an installed OS takes precedence; a blank disk falls through to its installer. ISO detachment is a later reviewed update.
 
 `started` and `on_boot` default to false for newly defined guests. The current
-homelab inputs explicitly set `started = true` and `on_boot = true` for both
-guests, with control-plane startup order 1 and worker order 2. Automatic startup
-was verified during the [2026-09-17 cold start](../../../docs/research/imm2-management-reference.md#observed-cold-start-and-platform-recovery). Set the desired values explicitly in each guest input during the corresponding reviewed boot/startup task. Do not apply false values to an already running platform expecting OpenTofu to ignore them. `prevent_destroy` blocks normal planned replacement/deletion while this resource definition remains in configuration; it does not substitute for backups.
+homelab inputs explicitly set `started = true` for both approved maintenance
+boots, while `on_boot` remains false. Set the desired values explicitly in each guest input during the corresponding reviewed boot/startup task. Do not apply false values to an already running platform expecting OpenTofu to ignore them. `prevent_destroy` blocks normal planned replacement/deletion while this resource definition remains in configuration; it does not substitute for backups.
 
 ## Before live provisioning
 
