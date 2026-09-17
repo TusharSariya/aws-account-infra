@@ -38,11 +38,11 @@ Never force-add these files or paste their contents into logs or tickets.
 Settings:
 
 - Talos v1.13.9, Kubernetes v1.36.3, CNI `none`, kube-proxy retained.
-- Kubernetes endpoint `https://10.42.0.224:6443`, advertised only by the control
+- Kubernetes endpoint `https://10.0.0.231:6443`, advertised only by the control
   plane. This VIP becomes available after etcd bootstrap. Talos administration
-  uses the actual control-plane address `10.42.0.220`.
-- DHCP on the NIC selected by its reserved MAC; laptop reservations supply
-  `.220`, `.222`. The laptop must provide the documented DHCP/NAT/DNS.
+  uses the actual control-plane address `10.0.0.220`.
+- DHCP on the NIC selected by its reserved MAC; LAN router reservations supply
+  `10.0.0.220`, `10.0.0.222`. The gateway is `10.0.0.1`; Proxmox uses `10.0.0.92` directly.
 - All install targets `/dev/sda`, corresponding to scsi0 on
   each Talos VM; the worker data disk is scsi1 (/dev/sdb). Verify this mapping in maintenance mode before applying.
 - Bootstrap ISOs retain their original pins. The worker installer adds binfmt-misc to gVisor and QEMU guest agent for ARM CI; its dedicated maintenance is documented in `docs/homelab-ci-arm-maintenance.md`. OCI index digests are pinned in

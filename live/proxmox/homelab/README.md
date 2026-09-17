@@ -23,8 +23,8 @@ OpenTofu 1.11.5 and `bpg/proxmox` 0.112.0 were used. Retain `.terraform.lock.hcl
 
 | Guest | ID | vCPU | RAM (GiB) | Primary disks (GiB) | Reserved IPv4 | Startup order |
 |---|---:|---:|---:|---|---|---:|
-| talos-cp-01 | 100 | 2 | 4 | 100 | 10.42.0.220 | 1 |
-| talos-worker-01 | 102 | 38 | 172 | 128 OS + 1200 data | 10.42.0.222 | 2 |
+| talos-cp-01 | 100 | 2 | 4 | 100 | 10.0.0.220 | 1 |
+| talos-worker-01 | 102 | 38 | 172 | 192 OS + 1200 data | 10.0.0.222 | 2 |
 
 Primary disks total 1,428 GiB plus two EFI volumes, leaving approximately 367.992 GiB before auxiliary allocations. Guest RAM totals 176 GiB, leaving approximately 12 GiB of observed host RAM. These budgets must be measured under load; CPU affinity and NUMA tuning are deferred.
 
@@ -43,7 +43,7 @@ The default `vm_creation_approved = false` precondition deliberately blocks unap
 - Network and recovery input checks have been reviewed. The operator deferred the clean-machine restore test; this remains untested rather than completed.
 - CPU/NUMA tuning is deferred and is no longer a creation prerequisite. No dedicated core or locality guarantee is implemented.
 - Talos configuration and static checks in 3.3/3.4 are ready.
-- Proxmox API permissions, independently recoverable credentials, trusted HTTPS connectivity through the laptop network and a recoverable state backend are configured. Environment variables `PROXMOX_VE_ENDPOINT` and `PROXMOX_VE_API_TOKEN` are supported by the provider; do not put credentials into tracked tfvars. TLS verification remains enabled.
+- Proxmox API permissions, independently recoverable credentials, trusted HTTPS connectivity through the direct LAN or Proxmox Tailscale and a recoverable state backend are configured. Environment variables `PROXMOX_VE_ENDPOINT` and `PROXMOX_VE_API_TOKEN` are supported by the provider; do not put credentials into tracked tfvars. TLS verification remains enabled.
 - A current live storage/identity/ISO check and reviewed plan resolve all VM and disk targets.
 
 The S3 backend now uses `proxmox/homelab/terraform.tfstate` in the existing independent state bucket, with the existing DynamoDB lock table. Live initialization and a speculative plan passed. The first apply will persist VM state; a state restore rehearsal remains untested. `init -backend=false` remains for offline validation only. See ACCESS.md for credentials and recovery.
@@ -59,19 +59,19 @@ The S3 backend now uses `proxmox/homelab/terraform.tfstate` in the existing inde
 Deploy the reviewed `started = true` change through the GitHub `apply` label.
 Expect two in-place updates and no disk changes or replacements. Open each VM's
 Proxmox console and verify maintenance mode and its reserved IP: VM 100 at
-10.42.0.220, VM 102 at 10.42.0.222. The attached pinned ISOs boot from the blank
+10.0.0.220, VM 102 at 10.0.0.222. The attached pinned ISOs boot from the blank
 OS disks' fallback path; machine configuration and installation are later steps.
 
 From an administration machine with the approved Tailscale subnet route and
 the pinned Talos v1.13.9 CLI, verify both nodes without installing anything:
 
 ```bash
-talosctl -n 10.42.0.220 get links --insecure
-talosctl -n 10.42.0.220 get addresses --insecure
-talosctl -n 10.42.0.220 get disks --insecure
-talosctl -n 10.42.0.222 get links --insecure
-talosctl -n 10.42.0.222 get addresses --insecure
-talosctl -n 10.42.0.222 get disks --insecure
+talosctl -n 10.0.0.220 get links --insecure
+talosctl -n 10.0.0.220 get addresses --insecure
+talosctl -n 10.0.0.220 get disks --insecure
+talosctl -n 10.0.0.222 get links --insecure
+talosctl -n 10.0.0.222 get addresses --insecure
+talosctl -n 10.0.0.222 get disks --insecure
 ```
 
 Match the NIC MACs to the versioned reservations. Expect a 100-GiB OS disk on

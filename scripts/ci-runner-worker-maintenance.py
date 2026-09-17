@@ -76,7 +76,7 @@ def main():
             raise ValueError('Control plane is not Ready')
         evidence = {'source_tree_sha256': tree_digest(), 'started_at': time.time(), 'phase': 'shutdown-requested'}
         receipt.write_text(json.dumps(evidence, indent=2))
-        talos = [str(cli()), '--talosconfig', str(args.talosconfig), '--endpoints', '10.42.0.220', '--nodes', '10.42.0.222']
+        talos = [str(cli()), '--talosconfig', str(args.talosconfig), '--endpoints', '10.0.0.220', '--nodes', '10.0.0.222']
         def volumes():
             return {d['metadata']['id']: d['spec'] for d in yaml.safe_load_all(run(talos + ['get', 'volumestatus', '-o', 'yaml'])) if d and d.get('spec', {}).get('filesystem') == 'xfs'}
         before_volumes = volumes() if args.grow_os_disk else {}

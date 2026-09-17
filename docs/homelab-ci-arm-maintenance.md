@@ -4,7 +4,7 @@ Status: executed successfully on 2026-09-15; private receipt `arm-maintenance-20
 
 ## Exact change
 
-Target only `talos-worker-01`, VM 102, `10.42.0.222`, Talos v1.13.9. Keep its 38 CPUs, 172-GiB RAM, `/dev/sda` system disk and retained 1200-GiB `/dev/sdb` data disk.
+Target only `talos-worker-01`, VM 102, `10.0.0.222`, Talos v1.13.9. Keep its 38 CPUs, 172-GiB RAM, `/dev/sda` system disk and retained 1200-GiB `/dev/sdb` data disk.
 
 Add `siderolabs/binfmt-misc` to the existing `siderolabs/gvisor` and `siderolabs/qemu-guest-agent` extensions. The image factory generated schematic `3b7472aeaf4f801ab6c24b777111445a0dcbb77b2be8e36e8d712cc2f9dc3dc9` from exactly those three extensions. Verified v1.13.9 installer index digest: `sha256:e5e30232d1069b02db72e5b0e9d502cad7dc13b7af2cb3e087a244550291be10`. The amd64 manifest is `sha256:5e997eefa44ceea678ddfde92917622fc61ea3578ae899466d99a37a6b3045c5`.
 

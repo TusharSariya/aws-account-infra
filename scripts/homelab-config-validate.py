@@ -36,16 +36,16 @@ def check(vms, inventory, documents):
     require({n['name'] for n in inventory['nodes']} == set(vms) and len(inventory['nodes']) == 2,
             'Talos and Proxmox node sets differ')
     require(inventory['kubernetes_version'] == 'v1.36.3', 'Kubernetes pin drift')
-    require(inventory['endpoint'] == 'https://10.42.0.224:6443' and inventory['talos_endpoint'] == '10.42.0.220', 'Endpoint drift')
+    require(inventory['endpoint'] == 'https://10.0.0.231:6443' and inventory['talos_endpoint'] == '10.0.0.220', 'Endpoint drift')
     for node in inventory['nodes']:
         name = node['name']
         cp = name == CP
         vm = vms[name]
         require((vm['vcpus'], vm['memory_gib'], vm['disks_gib']) ==
-                ((2, 4, [100]) if cp else (38, 172, [128, 1200])), name + ': capacity drift')
+                ((2, 4, [100]) if cp else (38, 172, [192, 1200])), name + ': capacity drift')
         require((vm['vm_id'], vm['ipv4_address'], vm['mac_address'], vm['startup_order']) ==
-                ((100, '10.42.0.220', '02:42:00:00:01:00', 1) if cp else
-                 (102, '10.42.0.222', '02:42:00:00:01:02', 2)), name + ': identity drift')
+                ((100, '10.0.0.220', '02:42:00:00:01:00', 1) if cp else
+                 (102, '10.0.0.222', '02:42:00:00:01:02', 2)), name + ': identity drift')
         suffix = 'qemu' if cp else 'qemu-gvisor'
         require(vm['iso_file_id'] == f'local:iso/talos-v1.13.9-{suffix}-amd64.iso' and vm['guest_agent'], name + ': ISO/agent drift')
         docs = documents[name]
@@ -74,7 +74,7 @@ def check(vms, inventory, documents):
         require(kinds['DHCPv4Config']['clientIdentifier'] == 'mac', name + ': DHCP identity drift')
         require(('Layer2VIPConfig' in kinds) == cp, name + ': VIP placement drift')
         if cp:
-            require(kinds['Layer2VIPConfig']['name'] == '10.42.0.224' and kinds['Layer2VIPConfig']['link'] == 'homelab', 'VIP identity drift')
+            require(kinds['Layer2VIPConfig']['name'] == '10.0.0.231' and kinds['Layer2VIPConfig']['link'] == 'homelab', 'VIP identity drift')
         require(not machine.get('network', {}).get('kubespan', {}).get('enabled', False) and 'KubeSpanConfig' not in kinds, 'KubeSpan unexpectedly enabled')
 
 
@@ -107,7 +107,7 @@ def main():
     client_path = generated / 'talosconfig'
     require(not client_path.is_symlink() and client_path.stat().st_mode & 0o077 == 0, 'Talos client config permissions are too broad')
     context = yaml.safe_load(client_path.read_text())['contexts'][inventory['name']]
-    require(context['endpoints'] == ['10.42.0.220'] and context['nodes'] == ['10.42.0.220'], 'Talos client must use the actual control plane')
+    require(context['endpoints'] == ['10.0.0.220'] and context['nodes'] == ['10.0.0.220'], 'Talos client must use the actual control plane')
     for filename in ['talos-secrets.yaml', 'talosconfig', CP + '.machineconfig.yaml', WORKER + '.machineconfig.yaml']:
         require(subprocess.run(['git', 'check-ignore', '--quiet', '--no-index', filename], cwd=ROOT).returncode == 0, 'Missing secret exclusion')
     tracked = subprocess.check_output(['git', 'ls-files'], cwd=ROOT, text=True).splitlines()

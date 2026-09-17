@@ -130,7 +130,7 @@ separately. No sandbox isolation is claimed until task 5.5 installs policies.
 The wrapper retrieves a temporary admin kubeconfig through the authenticated
 Talos API. Its path is an ephemeral provider input; client credentials are
 checked against state after apply and are never printed or uploaded. The API
-at 10.42.0.224:6443 must be reachable through the existing Tailscale subnet
+at 10.0.0.231:6443 must be reachable through the existing Tailscale subnet
 route. No additional GitHub secret or IAM role is needed.
 
 For affected changes, a separate acceptance job runs scripts/homelab-cilium-validate.sh using checksum-pinned

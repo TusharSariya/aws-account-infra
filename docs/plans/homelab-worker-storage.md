@@ -33,10 +33,10 @@ quota or application-data backup is provided by this filesystem alone.
 Read-only inspection, with the restored private TALOSCONFIG environment set:
 
 ```bash
-talosctl -n 10.42.0.222 get disks sdb -o yaml
-talosctl -n 10.42.0.222 get discoveredvolumes sdb1 -o yaml
-talosctl -n 10.42.0.222 get volumestatus u-local-path-provisioner -o yaml
-talosctl -n 10.42.0.222 get mountstatus u-local-path-provisioner -o yaml
+talosctl -n 10.0.0.222 get disks sdb -o yaml
+talosctl -n 10.0.0.222 get discoveredvolumes sdb1 -o yaml
+talosctl -n 10.0.0.222 get volumestatus u-local-path-provisioner -o yaml
+talosctl -n 10.0.0.222 get mountstatus u-local-path-provisioner -o yaml
 ```
 
 ## Recovery

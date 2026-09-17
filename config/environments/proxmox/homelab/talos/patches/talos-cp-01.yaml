@@ -1,7 +1,20 @@
 machine:
+  certSANs:
+    - 10.0.0.220
+  kubelet:
+    nodeIP:
+      validSubnets:
+        - 10.0.0.220/32
   nodeLabels:
     workload.security/trusted: "true"
 cluster:
+  apiServer:
+    certSANs:
+      - 10.0.0.220
+      - 10.0.0.231
+  etcd:
+    advertisedSubnets:
+      - 10.0.0.220/32
   allowSchedulingOnControlPlanes: false
 ---
 apiVersion: v1alpha1
@@ -22,5 +35,5 @@ clientIdentifier: mac
 ---
 apiVersion: v1alpha1
 kind: Layer2VIPConfig
-name: 10.42.0.224
+name: 10.0.0.231
 link: homelab

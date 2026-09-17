@@ -45,7 +45,7 @@ def main():
         if path.is_symlink() or path.stat().st_mode & 0o077 or path.stat().st_uid != os.getuid():
             raise ValueError('Private regular credentials required')
     kube = ['kubectl', '--kubeconfig', str(args.kubeconfig)]
-    talos = [str(cli()), '--talosconfig', str(args.talosconfig), '--endpoints', '10.42.0.220', '--nodes', '10.42.0.222']
+    talos = [str(cli()), '--talosconfig', str(args.talosconfig), '--endpoints', '10.0.0.220', '--nodes', '10.0.0.222']
     def run(command, filename, timeout=120):
         path = directory / filename
         if path.exists():

@@ -177,3 +177,12 @@ resume on attempt two, while the original one-attempt setting fails with EOF.
 This preserves the two-cache/three-upstream ceiling and does not extend the
 separate BuildKit retry exception. Deployment, fresh job success, concurrency
 and final acceptance remain unverified until new runtime evidence exists.
+
+## Direct LAN reconciliation, 2026-09-16
+The user removed the laptop hop and confirmed Proxmox `10.0.0.92`, Talos nodes
+`10.0.0.220`/`10.0.0.222` and API VIP `10.0.0.231`. Operational configuration
+and recovery use these addresses. Preserve the existing four Tailscale host
+routes rather than advertising the full LAN. Retired laptop DHCP/NAT mutation
+commands refuse execution. Historical receipts retain their original addresses.
+Live authenticated VIP readiness and both Ready nodes are verified; guarded
+plans must reconcile the new desired network before deployment.
