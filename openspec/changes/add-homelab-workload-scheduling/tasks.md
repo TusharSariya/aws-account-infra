@@ -21,7 +21,7 @@
 - [x] 2.6 Verify data persists across stop/start and full Pod stays Pending with insufficient resources while Pi-hole answers UDP/TCP DNS; record explicit acceptance evidence.
 - [x] 2.7 Run rendering, unit/integration, OpenTofu, lint/security and strict OpenSpec checks; deliver and review packaging PR after storage PR succeeds.
 
-## 3. Lifecycle and scheduling review stack
+## 3. Lifecycle and scheduling delivery
 
 - [x] 3.1 Implement durable desired state/revision, optimistic concurrency and Lease leadership; race/recovery tests prove no stale command reversal.
 - [x] 3.2 Implement authenticated Start, Stop, Force Stop and Status with admission closure, graceful drain and observed termination; pending-start cancellation and repeated/concurrent operation tests pass.
@@ -32,7 +32,7 @@
 - [x] 3.7 Install pinned checksum-verified Argo chart, private Tailscale HTTPS client-token authentication and namespace RBAC; render and unauthorized-access tests pass.
 - [x] 3.8 Publish reviewed operation/job templates and suspended UTC smoke schedule with Forbid and shared per-job mutexes; test manual/API/scheduled execution, cancellation, overlap and independent concurrency.
 - [x] 3.9 Extend manifest watch paths and required acceptance for all charts/code/images/config/tests; cancellations and unexpected skips demonstrably fail the gate.
-- [ ] 3.10 Run local validation and explicit lifecycle/scheduling acceptance; deliver, review and merge the lifecycle PR stack after packaging PR succeeds, preserving all deployment safeguards.
+- [ ] 3.10 Reconcile exact-source local validation, required GitHub checks and explicit lifecycle/scheduling acceptance against the incorporated implementation and current budgets; attach missing evidence while preserving all deployment safeguards. Source delivery is recorded below; no further merge of the superseded stack is required.
 
 ## 4. Operational evidence
 
@@ -52,4 +52,6 @@ Independent read-only verification after reset found the original Pi-hole PVC UI
 
 ## Current completion boundary
 
-Local records e/f provide the retained isolated restore and successful five-minute configured idle proof described in the implementation log. Tasks 4.2 and 4.3 are complete. Task 3.10 remains open only for final required GitHub checks and bottom-up merges of #70 → #71 → #72 → #73 → #74 → #75 → #76 → #69; local execution does not waive that gate. Earlier paragraphs above are historical snapshots, not current unchecked-task claims.
+Local records e/f provide the retained isolated restore and successful five-minute configured idle proof described in the implementation log. Tasks 4.2 and 4.3 retain their recorded completion. The implementation was incorporated through [PR #79](https://github.com/TusharSariyaOrg/aws-account-infra/pull/79), merge `6a2d681189d20349d7321e9c66e82d9d5434c029`, with subsequent updates including [#82](https://github.com/TusharSariyaOrg/aws-account-infra/pull/82), merge `bbfd6706190a20a82ad978a336a4291b5c29835f`. The old eight-PR merge sequence is retired; #70-#76 and #69 are superseded history.
+
+Task 3.10 stays open for outstanding exact-source checks and acceptance reconciliation, not obsolete bottom-up merges. Local evidence is not GitHub check evidence. Revised-budget restart/contention, cache verification, provisional sizing, global routing and spending-budget restoration remain tracked in [CI acceptance #85](https://github.com/TusharSariyaOrg/aws-account-infra/issues/85) and [add-homelab-self-hosted-ci/tasks.md](../add-homelab-self-hosted-ci/tasks.md). Preserve the expiry waiver, accepted BuildKit retry exception and provisional-sizing authorization; none establishes the remaining acceptance. Earlier paragraphs are dated snapshots.

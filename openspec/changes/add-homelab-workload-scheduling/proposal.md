@@ -6,7 +6,7 @@ AI services currently reserve resources continuously and use shared local-path s
 
 - Install pinned Argo Workflows through existing OpenTofu/Helm CI, exposing authenticated private Tailscale UI/API and reusable manual, API and scheduled jobs.
 - Add Start AI, Stop AI, Force Stop AI and Status operations with durable controller-owned state, graceful draining and shutdown after a configurable interval of verified inactivity (30 minutes by default).
-- **BREAKING**: migrate the four AI services into one Pod, initially off, reserving 35.75 CPU and 77 GiB RAM; Ollama reserves 34 CPU and 64 GiB. Preserve VM CPU/RAM and independent Pi-hole operation.
+- **BREAKING**: migrate the four AI services into one Pod, initially off, reserving 31.25 CPU and 77 GiB RAM; Ollama reserves 29.5 CPU and 64 GiB. Preserve VM CPU/RAM and independent Pi-hole operation.
 - Enforce shared-XFS project-quota AI storage boundaries, retained static volumes, bounded temporary storage and fail-closed guest/physical capacity checks. Reset only models, workspace and vector application data.
 - Reconcile deployment evidence, preserving unverified benchmarks, interaction and recovery tests.
 
@@ -25,4 +25,4 @@ These two capabilities currently exist in active changes, not archived main spec
 
 ## Impact
 
-Talos quota configuration and existing Proxmox disk safeguards, application Helm releases, deployment health checks, private credentials, lifecycle instrumentation and job acceptance. Deliver storage foundation, AI packaging/resource controls, then scheduler/lifecycle integration in dependency order. The lifecycle delivery is reviewed as the eight-layer stack #70, #71, #72, #73, #74, #75, #76 and #69; earlier storage and packaging PRs #67 and #68 are already merged. Queue autoscaling and advanced fairness remain deferred.
+Talos quota configuration and existing Proxmox disk safeguards, application Helm releases, deployment health checks, private credentials, lifecycle instrumentation and job acceptance. Deliver storage foundation, AI packaging/resource controls, then scheduler/lifecycle integration in dependency order. Storage and packaging PRs #67 and #68 are merged. The lifecycle implementation was incorporated through PR #79, with subsequent updates including #82. The former review stack #70-#76 and #69 is superseded and must not be merged or deployed again. Queue integration is tracked in add-homelab-self-hosted-ci; advanced fairness remains deferred.
