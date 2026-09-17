@@ -6,7 +6,6 @@ import platform
 import shutil
 import subprocess
 import sys
-import time
 import uuid
 import zipfile
 from datetime import datetime
@@ -126,18 +125,17 @@ def stack(tmp_path_factory):
             Environment={"Variables": _lambda_env(parameter_name)},
         )
     try:
-        lam.get_waiter("function_active").wait(FunctionName=function_name)
-    except Exception:
-        time.sleep(2)
-    yield {"function_name": function_name, "parameter_name": parameter_name, "suffix": suffix}
-    try:
-        lam.delete_function(FunctionName=function_name)
-    except Exception:
-        pass
-    try:
-        ssm.delete_parameter(Name=parameter_name)
-    except Exception:
-        pass
+        # A fresh Docker daemon may still be downloading the Lambda runtime.
+        # Never continue with a Pending function when the readiness wait fails.
+        lam.get_waiter("function_active_v2").wait(
+            FunctionName=function_name, WaiterConfig={"Delay": 5, "MaxAttempts": 120}
+        )
+        yield {"function_name": function_name, "parameter_name": parameter_name, "suffix": suffix}
+    finally:
+        try:
+            lam.delete_function(FunctionName=function_name)
+        finally:
+            ssm.delete_parameter(Name=parameter_name)
 
 
 def _invoke(function_name: str, payload: dict, *, allow_error: bool = False) -> dict:
@@ -170,14 +168,21 @@ def test_auth_fail_does_not_reserve(stack):
         FunctionName=stack["function_name"],
         Environment={"Variables": _lambda_env(stack["parameter_name"], scenario="auth_fail")},
     )
-    time.sleep(1)
-    body = _invoke(stack["function_name"], WEEKLY_PAYLOAD, allow_error=True)
-    assert body["status"] == "auth_fail"
-    assert body["reserve_clicks"] == 0
-    lam.update_function_configuration(
-        FunctionName=stack["function_name"],
-        Environment={"Variables": _lambda_env(stack["parameter_name"])},
-    )
+    try:
+        lam.get_waiter("function_updated_v2").wait(
+            FunctionName=stack["function_name"], WaiterConfig={"Delay": 2, "MaxAttempts": 60}
+        )
+        body = _invoke(stack["function_name"], WEEKLY_PAYLOAD, allow_error=True)
+        assert body["status"] == "auth_fail"
+        assert body["reserve_clicks"] == 0
+    finally:
+        lam.update_function_configuration(
+            FunctionName=stack["function_name"],
+            Environment={"Variables": _lambda_env(stack["parameter_name"])},
+        )
+        lam.get_waiter("function_updated_v2").wait(
+            FunctionName=stack["function_name"], WaiterConfig={"Delay": 2, "MaxAttempts": 60}
+        )
 
 
 def test_scheduler_target_has_zero_retries_and_same_payload(stack):

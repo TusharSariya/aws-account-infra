@@ -113,7 +113,7 @@ def guard_storage_config(configs):
 
 def guard_storage_disks(disks, volumes):
     disks = {d['metadata']['id']: d['spec'] for d in disks}
-    if disks.get('sda', {}).get('size') != 128 * 1024**3:
+    if disks.get('sda', {}).get('size') != 320 * 1024**3:
         raise StageError('Worker OS disk identity/size mismatch')
     data = disks.get('sdb', {})
     if (data.get('size') != 1200 * 1024**3 or data.get('dev_path') != '/dev/sdb'
@@ -214,8 +214,8 @@ class Session:
         self.env['TALOSCTL'] = str(binary)
         self.env['TALOSCONFIG'] = str(self.output / 'talosconfig')
         self.env['KUBECTL'] = str(binary.parent / 'kubectl-v1.36.3')
-        self.tc = [binary, '--talosconfig', self.output / 'talosconfig', '-n', '10.42.0.220']
-        self.worker_tc = [binary, '--talosconfig', self.output / 'talosconfig', '-n', '10.42.0.222']
+        self.tc = [binary, '--talosconfig', self.output / 'talosconfig', '-n', '10.0.0.220']
+        self.worker_tc = [binary, '--talosconfig', self.output / 'talosconfig', '-n', '10.0.0.222']
 
     def run(self, command):
         return run_private(command, self.env)
@@ -230,7 +230,7 @@ class Session:
         self.run(self.tc + ['etcd', 'members'])
         self.run(self.tc + ['kubeconfig', self.private / 'kubeconfig', '--merge=false'])
         kube = yaml.safe_load((self.private / 'kubeconfig').read_text())
-        if kube['clusters'][0]['cluster']['server'] != 'https://10.42.0.224:6443':
+        if kube['clusters'][0]['cluster']['server'] != 'https://10.0.0.231:6443':
             raise StageError('Unexpected Kubernetes API target')
     def preflight(self):
         self.connect()

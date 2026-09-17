@@ -21,7 +21,7 @@ it does not bootstrap SSH or install Tailscale. On a replacement administration
 machine, supply its explicitly verified SSH target instead of assuming an alias.
 
 ```bash
-python3 scripts/proxmox-provider-bootstrap.py --ssh-target server-10-42
+python3 scripts/proxmox-provider-bootstrap.py --ssh-target root@10.0.0.92
 ```
 
 This creates `homelab-tofu@pve` with no login password, custom roles, and the

@@ -1,0 +1,67 @@
+{
+  "observed_at": "2026-09-16T15:05:59.477421+00:00",
+  "failed_initial_run": 35112050437,
+  "initial_failure": "upstream tool setup URLError before post-reboot verification",
+  "successful_resume_run": 35112768379,
+  "proof": {
+    "boot_after": "e48bc1e3-6d29-4495-bb74-7d66b6e6a488",
+    "boot_before": "aedee153-d4d9-46d1-99e6-06324011d3b0",
+    "completed_at": 1789571103.1008873,
+    "filesystem": "86f3ada1-17e4-4f74-9d73-a18c1774cc31",
+    "node_uid": "09343bc7-dd2e-4d8e-81f2-d1201f2fb28f",
+    "phase": "completed",
+    "revision": "49d833c87b6f457ea1cd66535422f3f418bdb144f239e0b08f185e2cffd37e49",
+    "run_id": "42bf88d1eea84c4ea93f89d2e8d34713",
+    "source_commit": "d99c04a991d89badc8a3c3e73c823dcd9c090d58",
+    "started_at": 1789570676.5577352
+  },
+  "node_boot": "e48bc1e3-6d29-4495-bb74-7d66b6e6a488",
+  "node_ready": "True",
+  "cache_pods": [
+    {
+      "name": "nexus-5bb87d89bb-6flzs",
+      "uid": "e02bea54-5c7c-4749-a79f-9ea61694ba09",
+      "phase": "Running",
+      "containers": [
+        {
+          "name": "nexus",
+          "ready": true,
+          "restart_count": 1
+        }
+      ]
+    },
+    {
+      "name": "nexus-postgres-86d56f88bc-6g4gs",
+      "uid": "56738381-b9b1-4705-9542-b344124e1cd0",
+      "phase": "Running",
+      "containers": [
+        {
+          "name": "postgres",
+          "ready": true,
+          "restart_count": 0
+        }
+      ]
+    },
+    {
+      "name": "nexus-postgres-86d56f88bc-dcpqv",
+      "uid": "0ddc8bb9-310a-4e73-b8e8-97d956b06e1f",
+      "phase": "Succeeded",
+      "containers": [
+        {
+          "name": "postgres",
+          "ready": false,
+          "restart_count": 0
+        }
+      ]
+    }
+  ],
+  "ai_replicas": {
+    "ai-runtime": 0,
+    "chromadb": 0,
+    "odysseus": 0,
+    "ollama": 0,
+    "searxng": 0
+  },
+  "workloads": 0,
+  "pihole_dns_workflow_check": "success"
+}

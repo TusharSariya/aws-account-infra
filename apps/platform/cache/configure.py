@@ -25,6 +25,15 @@ def request(path, method='GET', value=None, password=None, text=False):
         return json.loads(body) if body else None
 
 
+def contains_settings(observed, desired):
+    """Compare managed fields while allowing Nexus-populated defaults."""
+    if isinstance(desired, dict):
+        return isinstance(observed, dict) and all(
+            key in observed and contains_settings(observed[key], value)
+            for key, value in desired.items())
+    return observed == desired
+
+
 def reconcile():
     config = json.loads(Path('/config/repositories.json').read_text())
     try:
@@ -58,7 +67,7 @@ def reconcile():
             body['storage']['writePolicy'] = 'ALLOW'
         if fmt == 'apt': body['apt'] = {'distribution':repo['distribution'], 'flat':False}
         if fmt == 'docker':
-            body['docker']={'v1Enabled':False,'forceBasicAuth':kind=='hosted','httpPort':repo['port']}
+            body['docker']={'v1Enabled':False,'forceBasicAuth':False,'httpPort':repo['port']}
             if kind=='proxy': body['dockerProxy']={'indexType': 'HUB' if name=='docker-hub' else 'REGISTRY', 'cacheForeignLayers':False}
         endpoint = f'repositories/{fmt}/{kind}'
         if name in existing:
@@ -67,7 +76,8 @@ def reconcile():
             observed=request(endpoint+'/'+name)
             # CE cleanup is intentionally managed in the supported UI. Preserve it.
             if observed.get('cleanup'):body['cleanup']=observed['cleanup']
-            request(endpoint+'/'+name,'PUT',body)
+            if not contains_settings(observed, body):
+                request(endpoint+'/'+name,'PUT',body)
         else: request(endpoint,'POST',body)
         read.extend(f'nx-repository-view-{fmt}-{name}-{action}' for action in ('browse','read'))
     roles={r['id'] for r in request('security/roles')}
@@ -82,8 +92,10 @@ def reconcile():
         request('security/roles'+('/'+identity if identity in roles else ''),'PUT' if identity in roles else 'POST',body)
     users={u['userId']:u for u in request('security/users')}
     for identity,role in [('anonymous','cache-reader'),('cache-build-writer','cache-build-writer'),('cache-monitor','cache-monitor')]:
-        body={'userId':identity,'firstName':'Cache','lastName':identity,'email':'cache@localhost.invalid','status':'active','roles':[role]}
-        if identity in users:request('security/users/'+identity,'PUT',body)
+        body={'userId':identity,'firstName':'Cache','lastName':identity,'emailAddress':'cache@localhost.invalid','status':'active','roles':[role]}
+        if identity in users:
+            body['source'] = users[identity]['source']
+            request('security/users/'+identity,'PUT',body)
         else:
             body['password']=Path('/credentials/' + ('metrics-password' if identity == 'cache-monitor' else 'build-password')).read_text().strip()
             request('security/users','POST',body)

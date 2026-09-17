@@ -10,6 +10,7 @@ from pathlib import Path
 import subprocess
 import sys
 import time
+import urllib.request
 import yaml
 from kueue_capacity import verify
 from local_lifecycle_record import execution_lock, guard_environment, tree_digest
@@ -195,12 +196,42 @@ def enroll_cache(kube, source):
         run(kube + ['apply','--server-side','--field-manager=homelab-cache-credentials','-f','-'],json.dumps(manifest).encode())
 
 
+
+def enroll_registry(kube, source):
+    if (not source or source.is_symlink() or source.stat().st_mode & 0o077
+            or source.stat().st_uid != os.getuid()):
+        raise ValueError('Private owned registry configuration file required')
+    value = json.loads(source.read_text())
+    if set(value) != {'auths'} or set(value['auths']) != {'ghcr.io'}:
+        raise ValueError('Only the reviewed GHCR registry may be enrolled')
+    entry = value['auths']['ghcr.io']
+    if set(entry) != {'auth'}:
+        raise ValueError('A single GHCR Basic credential is required')
+    identity, token = base64.b64decode(entry['auth'], validate=True).decode().split(':', 1)
+    if not identity or not token:
+        raise ValueError('Registry identity and token required')
+    request = urllib.request.Request('https://api.github.com/user', headers={
+        'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json'})
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, *args): return None
+    with urllib.request.build_opener(NoRedirect()).open(request, timeout=15) as response:
+        scopes = {scope.strip() for scope in response.headers.get('X-OAuth-Scopes', '').split(',') if scope.strip()}
+        if scopes != {'read:packages'}:
+            raise ValueError('Runner image pull credential must have only read:packages scope')
+    secret = {'apiVersion': 'v1', 'kind': 'Secret',
+              'metadata': {'name': 'ghcr-read', 'namespace': 'arc-runners'},
+              'type': 'kubernetes.io/dockerconfigjson',
+              'data': {'.dockerconfigjson': base64.b64encode(json.dumps(value).encode()).decode()}}
+    run(kube + ['apply', '--server-side', '--field-manager=homelab-ci-credentials', '-f', '-'], json.dumps(secret).encode())
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('operation', choices=['setup','plan','apply','enroll','enroll-cache','status'])
+    parser.add_argument('operation', choices=['setup','plan','apply','enroll','enroll-cache','enroll-registry','status'])
     parser.add_argument('--private', type=Path)
     parser.add_argument('--app-json', type=Path)
     parser.add_argument('--cache-json', type=Path)
+    parser.add_argument('--registry-json', type=Path)
     args = parser.parse_args()
     os.umask(0o077)
     guard_environment()
@@ -242,6 +273,10 @@ def main():
         print(json.dumps({'waiting_fifo': sorted(waiting, key=lambda w: (w['waiting_position'] is None, w['waiting_position'] or 0)), 'reserved': reserved}, indent=2))
         return
     with execution_lock():
+        if args.operation == 'enroll-registry':
+            enroll_registry(kube, args.registry_json)
+            print('PASS: read-only runner image credential enrolled privately')
+            return
         if args.operation == 'enroll-cache':
             enroll_cache(kube, args.cache_json)
             print('PASS: cache credentials enrolled privately')

@@ -27,12 +27,13 @@ template:
   spec:
     schedulingGates: [{name: kueue.x-k8s.io/admission}]
     nodeSelector: {kubernetes.io/hostname: talos-worker-01}
+    imagePullSecrets: [{name: ghcr-read}]
     automountServiceAccountToken: false
     terminationGracePeriodSeconds: 30
     restartPolicy: Never
     initContainers:
       - name: init-dind-externals
-        image: ghcr.io/actions/actions-runner:2.337.0@sha256:e5496277be5d09bc968b3d64911b74e219ac4a3f2edce956a3ecf9271bea1ef4
+        image: ghcr.io/tusharsariyaorg/homelab-ci-runner@sha256:ad674f57f1a60d4cf048eab6c85c043cba14c4f415faddd9be348b0bce78c6d8
         command: [cp, -r, /home/runner/externals/., /home/runner/tmpDir/]
         resources:
           requests: {cpu: 100m, memory: 128Mi, ephemeral-storage: 1Gi}
@@ -45,8 +46,18 @@ template:
         command: [/bin/sh, -ec]
         args:
           - |
+            parent=$(sed -n 's/^0:://p' /proc/self/cgroup)
+            parent=${parent%/*}
+            case "$parent" in
+              "/kubepods/pod$HOMELAB_RUNNER_POD_UID") ;;
+              *) echo 'Expected the guaranteed Talos Pod cgroup' >&2; exit 1 ;;
+            esac
+            printf '%s\n' "$parent" > /var/run/homelab-pod-cgroup
             mount -t binfmt_misc binfmt_misc /proc/sys/fs/binfmt_misc
-            exec dockerd-entrypoint.sh dockerd --host=unix:///var/run/docker.sock --group=123 --data-root=/scratch/docker
+            exec dockerd-entrypoint.sh dockerd --host=unix:///var/run/docker.sock --group=123 --data-root=/scratch/docker --cgroup-parent="$parent" --registry-mirror=http://nexus.homelab-cache.svc.cluster.local:5000 --max-download-attempts=2
+        env:
+          - name: HOMELAB_RUNNER_POD_UID
+            valueFrom: {fieldRef: {fieldPath: metadata.uid}}
         securityContext: {privileged: true}
         restartPolicy: Always
         startupProbe:
@@ -65,9 +76,11 @@ template:
       - name: runner
         # Required for job-specific Tailscale TUN; isolated from host namespaces/mounts.
         securityContext: {privileged: true}
-        image: ghcr.io/actions/actions-runner:2.337.0@sha256:e5496277be5d09bc968b3d64911b74e219ac4a3f2edce956a3ecf9271bea1ef4
+        image: ghcr.io/tusharsariyaorg/homelab-ci-runner@sha256:ad674f57f1a60d4cf048eab6c85c043cba14c4f415faddd9be348b0bce78c6d8
         command: [/home/runner/run.sh]
         env:
+          - name: HOMELAB_RUNNER_POD_UID
+            valueFrom: {fieldRef: {fieldPath: metadata.uid}}
           - {name: DOCKER_HOST, value: 'unix:///var/run/docker.sock'}
           - {name: RUNNER_WAIT_FOR_DOCKER_IN_SECONDS, value: '120'}
         resources:

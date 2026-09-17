@@ -1,0 +1,153 @@
+{
+  "observed_at": "2026-09-16T16:19:28.550220+00:00",
+  "source_revision": "655152cccc9cfecfc4bd9f886ebeaae25e9d8dd1",
+  "runner_name": "homelab-talos-cfm7k-runner-b6mzl",
+  "runner_uid": "db1dee11-015d-4379-a634-fc3e5bdfc10c",
+  "images": [
+    {
+      "name": "runner",
+      "image": "sha256:6256723f3c84e5c1f11d09fe1362ffaca4cdfc30d8637610a55636cb45b2f4a1",
+      "imageID": "ghcr.io/tusharsariyaorg/homelab-ci-runner@sha256:ad674f57f1a60d4cf048eab6c85c043cba14c4f415faddd9be348b0bce78c6d8"
+    }
+  ],
+  "reads": [
+    {
+      "route": "/pypi/simple/pip/",
+      "source": "cache",
+      "attempts": 1,
+      "bytes": 99317
+    },
+    {
+      "route": "/pypi/packages/pip/26.2.1/pip-26.2.1-py3-none-any.whl.metadata",
+      "source": "cache",
+      "attempts": 1,
+      "bytes": 4617
+    },
+    {
+      "route": "/pypi/packages/pip/26.2.1/pip-26.2.1-py3-none-any.whl",
+      "source": "cache",
+      "attempts": 1,
+      "bytes": 1816632
+    },
+    {
+      "route": "/pypi/simple/pip/",
+      "source": "cache",
+      "attempts": 1,
+      "bytes": 99317
+    },
+    {
+      "route": "/pypi/simple/pytest/",
+      "source": "cache",
+      "attempts": 1,
+      "bytes": 125595
+    },
+    {
+      "route": "/pypi/packages/pytest/9.1.1/pytest-9.1.1-py3-none-any.whl.metadata",
+      "source": "cache",
+      "attempts": 1,
+      "bytes": 7586
+    },
+    {
+      "route": "/pypi/simple/pyyaml/",
+      "source": "cache",
+      "attempts": 1,
+      "bytes": 285460
+    },
+    {
+      "route": "/pypi/packages/pyyaml/6.0.3/pyyaml-6.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata",
+      "source": "cache",
+      "attempts": 1,
+      "bytes": 2351
+    },
+    {
+      "route": "/pypi/simple/iniconfig/",
+      "source": "cache",
+      "attempts": 1,
+      "bytes": 5377
+    },
+    {
+      "route": "/pypi/packages/iniconfig/2.3.0/iniconfig-2.3.0-py3-none-any.whl.metadata",
+      "source": "cache",
+      "attempts": 1,
+      "bytes": 2526
+    },
+    {
+      "route": "/pypi/simple/packaging/",
+      "source": "cache",
+      "attempts": 1,
+      "bytes": 40192
+    },
+    {
+      "route": "/pypi/packages/packaging/26.3/packaging-26.3-py3-none-any.whl.metadata",
+      "source": "cache",
+      "attempts": 1,
+      "bytes": 3544
+    },
+    {
+      "route": "/pypi/simple/pluggy/",
+      "source": "cache",
+      "attempts": 1,
+      "bytes": 18372
+    },
+    {
+      "route": "/pypi/packages/pluggy/1.6.0/pluggy-1.6.0-py3-none-any.whl.metadata",
+      "source": "cache",
+      "attempts": 1,
+      "bytes": 4811
+    },
+    {
+      "route": "/pypi/simple/pygments/",
+      "source": "cache",
+      "attempts": 1,
+      "bytes": 55907
+    },
+    {
+      "route": "/pypi/packages/pygments/2.21.0/pygments-2.21.0-py3-none-any.whl.metadata",
+      "source": "cache",
+      "attempts": 1,
+      "bytes": 2527
+    },
+    {
+      "route": "/pypi/packages/pytest/9.1.1/pytest-9.1.1-py3-none-any.whl",
+      "source": "cache",
+      "attempts": 1,
+      "bytes": 386536
+    },
+    {
+      "route": "/pypi/packages/pluggy/1.6.0/pluggy-1.6.0-py3-none-any.whl",
+      "source": "cache",
+      "attempts": 1,
+      "bytes": 20538
+    },
+    {
+      "route": "/pypi/packages/pyyaml/6.0.3/pyyaml-6.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+      "source": "cache",
+      "attempts": 1,
+      "bytes": 807870
+    },
+    {
+      "route": "/pypi/packages/iniconfig/2.3.0/iniconfig-2.3.0-py3-none-any.whl",
+      "source": "cache",
+      "attempts": 1,
+      "bytes": 7484
+    },
+    {
+      "route": "/pypi/packages/packaging/26.3/packaging-26.3-py3-none-any.whl",
+      "source": "cache",
+      "attempts": 1,
+      "bytes": 129956
+    },
+    {
+      "route": "/pypi/packages/pygments/2.21.0/pygments-2.21.0-py3-none-any.whl",
+      "source": "cache",
+      "attempts": 1,
+      "bytes": 1250147
+    }
+  ],
+  "job_success_verified": true,
+  "sizing_qualified": false,
+  "nexus_upstream_bytes_verified": false,
+  "run_id": 35120882318,
+  "job_id": 104878068365,
+  "completed_at": "2026-09-16T16:23:13Z"
+}

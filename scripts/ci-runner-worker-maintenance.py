@@ -10,6 +10,7 @@ import time
 from pathlib import Path
 from local_lifecycle_record import execution_lock, tree_digest
 from talos_tools import cli, private_dir
+from worker_disk_plan import BEFORE_GIB, AFTER_GIB
 
 
 def run(command):
@@ -17,7 +18,7 @@ def run(command):
 
 
 def host(command):
-    return run(['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', 'server-10-42', command])
+    return run(['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', 'root@10.0.0.92', command])
 
 
 def main():
@@ -64,7 +65,7 @@ def main():
         elif not (args.restore_for_kueue or args.grow_os_disk) and status(103)['status'] != 'stopped':
             raise ValueError('CI manager must remain stopped during worker resize')
         config = json.loads(host('pvesh get /nodes/pve/qemu/102/config --output-format json'))
-        if args.grow_os_disk and ('size=128G' not in config['scsi0'].split(',') or 'size=1200G' not in config['scsi1'].split(',')):
+        if args.grow_os_disk and (f'size={AFTER_GIB}G' not in config['scsi0'].split(',') or 'size=1200G' not in config['scsi1'].split(',')):
             raise ValueError('Expected expanded OS disk and unchanged data disk')
         if int(config['memory']) != target_gib * 1024 or int(config['cores']) != 38:
             raise ValueError('Expected pending worker memory configuration')
@@ -75,7 +76,7 @@ def main():
             raise ValueError('Control plane is not Ready')
         evidence = {'source_tree_sha256': tree_digest(), 'started_at': time.time(), 'phase': 'shutdown-requested'}
         receipt.write_text(json.dumps(evidence, indent=2))
-        talos = [str(cli()), '--talosconfig', str(args.talosconfig), '--endpoints', '10.42.0.220', '--nodes', '10.42.0.222']
+        talos = [str(cli()), '--talosconfig', str(args.talosconfig), '--endpoints', '10.0.0.220', '--nodes', '10.0.0.222']
         def volumes():
             return {d['metadata']['id']: d['spec'] for d in yaml.safe_load_all(run(talos + ['get', 'volumestatus', '-o', 'yaml'])) if d and d.get('spec', {}).get('filesystem') == 'xfs'}
         before_volumes = volumes() if args.grow_os_disk else {}
@@ -123,8 +124,8 @@ def main():
                         raise ValueError('Filesystem identity changed: ' + name)
                 if name != 'EPHEMERAL' and before['size'] != after['size']:
                     raise ValueError('Retained data volume changed size')
-            if after_volumes['EPHEMERAL']['size'] - before_volumes['EPHEMERAL']['size'] != 28 * 1024**3:
-                raise ValueError('Expected exactly 28 GiB EPHEMERAL growth')
+            if after_volumes['EPHEMERAL']['size'] - before_volumes['EPHEMERAL']['size'] != (AFTER_GIB - BEFORE_GIB) * 1024**3:
+                raise ValueError(f'Expected exactly {AFTER_GIB - BEFORE_GIB} GiB EPHEMERAL growth')
             evidence['after_volumes'] = after_volumes
         run(kube + ['-n', 'homelab-services', 'rollout', 'status', 'deployment/pihole', '--timeout=300s'])
         run(kube + ['-n', 'homelab-services', 'wait', 'service/pihole-dns',

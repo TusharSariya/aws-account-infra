@@ -93,7 +93,11 @@ case "$TARGET" in
   typescript-fetch)
     # Install build deps from the public registry. CodeArtifact has no npmjs
     # upstream (one repo also holds PyPI packages, one external connection max).
-    (cd "$OUT" && npm install --registry https://registry.npmjs.org)
+    dependency_registry=https://registry.npmjs.org
+    if [[ "${HOMELAB_DEPENDENCY_CACHE:-}" == 1 ]]; then
+      dependency_registry=http://127.0.0.1:18082/npm/
+    fi
+    (cd "$OUT" && npm install --registry "$dependency_registry")
     login npm
     (cd "$OUT" && npm publish --ignore-scripts)
     ;;

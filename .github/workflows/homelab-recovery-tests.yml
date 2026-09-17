@@ -33,7 +33,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/talos-runner-setup
-      - uses: opentofu/setup-opentofu@v1
+      - uses: ./.github/actions/setup-opentofu
         with:
           tofu_version: 1.11.5
           tofu_wrapper: false

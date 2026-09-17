@@ -1,5 +1,32 @@
 {
-  "homelab-talos": {"cpu": 4, "memory": 16384, "scratch": 30720, "docker": true},
-  "homelab-talos-light": {"cpu": 1, "memory": 2048, "scratch": 2048, "docker": false},
-  "homelab-talos-checks": {"cpu": 2, "memory": 4096, "scratch": 4096, "docker": false}
+  "homelab-talos": {
+    "cpu": 4,
+    "memory": 16384,
+    "scratch": 30720,
+    "docker": true
+  },
+  "homelab-talos-light": {
+    "cpu": 1,
+    "memory": 2048,
+    "scratch": 2048,
+    "docker": false
+  },
+  "homelab-talos-checks": {
+    "cpu": 2,
+    "memory": 4096,
+    "scratch": 4096,
+    "docker": false
+  },
+  "homelab-talos-docker-small": {
+    "cpu": 4,
+    "memory": 16384,
+    "scratch": 12288,
+    "docker": true
+  },
+  "homelab-talos-build": {
+    "cpu": 4,
+    "memory": 16384,
+    "scratch": 24576,
+    "docker": true
+  }
 }

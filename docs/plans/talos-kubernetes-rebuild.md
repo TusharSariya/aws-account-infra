@@ -99,9 +99,8 @@ Before creating the cluster:
 - Retain SMT. CPU affinity and NUMA tuning are deferred; no exclusive cores or physical workload isolation are claimed.
 - Keep the existing `vmbr0` 1 GbE network for the first deployment.
 - Do not enable virtual-disk discard.
-- Reserve a fixed Kubernetes API address outside `10.42.0.231-253`, which
-  remains the MetalLB pool.
-- Protect Proxmox management access with the trusted LAN and host-level Tailscale. The operator reports Tailscale installed on pve; verify enrollment, service persistence and access from outside home. Plan scoped subnet routing through pve for Talos administration, with route approval and firewall tests. Retain local fallback and independent re-enrollment instructions; the laptop remains the required internet gateway. See tasks 2.9-2.11 in the provisioning change.
+- Reserve a fixed Kubernetes API address at `10.0.0.231`; any future service pool must exclude that API address. Do not reuse the API VIP in a MetalLB pool.
+- Protect Proxmox management access with the trusted LAN and host-level Tailscale. The operator reports Tailscale installed on pve; verify enrollment, service persistence and access from outside home. Plan scoped subnet routing through pve for Talos administration, with route approval and firewall tests. Retain local fallback and independent re-enrollment instructions; the LAN router at `10.0.0.1` is the gateway and Proxmox connects directly. See tasks 2.9-2.11 in the provisioning change.
 
 ### VM allocation
 

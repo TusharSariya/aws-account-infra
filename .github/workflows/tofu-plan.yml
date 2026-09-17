@@ -56,7 +56,7 @@ jobs:
         with:
           role-to-assume: ${{ vars.TOFU_PLAN_ROLE_ARN }}
           aws-region: ${{ matrix.unit.region }}
-      - uses: opentofu/setup-opentofu@v1
+      - uses: ./.github/actions/setup-opentofu
         with:
           tofu_version: 1.11.5
           tofu_wrapper: false
@@ -120,7 +120,7 @@ jobs:
           tags: tag:github-ci
           version: 1.102.4
           hostname: gh-proxmox-plan-${{ github.run_id }}-${{ github.run_attempt }}
-      - uses: opentofu/setup-opentofu@v1
+      - uses: ./.github/actions/setup-opentofu
         with:
           tofu_version: 1.11.5
           tofu_wrapper: false
@@ -172,7 +172,7 @@ jobs:
           hostname: gh-talos-plan-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Accept homelab subnet route
         run: sudo tailscale set --accept-routes=true
-      - uses: opentofu/setup-opentofu@v1
+      - uses: ./.github/actions/setup-opentofu
         with:
           tofu_version: 1.11.5
           tofu_wrapper: false
@@ -222,7 +222,7 @@ jobs:
           hostname: gh-apps-plan-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Accept homelab subnet route
         run: sudo tailscale set --accept-routes=true --accept-dns=false
-      - uses: opentofu/setup-opentofu@v1
+      - uses: ./.github/actions/setup-opentofu
         with:
           tofu_version: 1.11.5
           tofu_wrapper: false

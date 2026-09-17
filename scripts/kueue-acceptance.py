@@ -53,8 +53,8 @@ def main():
         budgets = {
             'cpu': [('4', '1Gi', '16Mi'), ('33.25', '77Gi', '16Mi')],
             'memory': [('100m', '32Gi', '16Mi'), ('100m', '140Gi', '16Mi')],
-            'ephemeral-storage': [('100m', '64Mi', '30Gi'), ('100m', '64Mi', '40Gi')],
-            'combined': [('4', '32Gi', '30Gi'), ('33.25', '140Gi', '40Gi')],
+            'ephemeral-storage': [('100m', '64Mi', '30Gi'), ('100m', '64Mi', '220Gi')],
+            'combined': [('4', '32Gi', '30Gi'), ('33.25', '140Gi', '220Gi')],
         }
         first, second = budgets[args.scenario]
         blocker=create('blocker', *first[:2], scratch=first[2])

@@ -1,4 +1,10 @@
 machine:
+  certSANs:
+    - 10.0.0.222
+  kubelet:
+    nodeIP:
+      validSubnets:
+        - 10.0.0.222/32
   kernel:
     modules:
       - name: binfmt_misc

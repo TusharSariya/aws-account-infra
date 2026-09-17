@@ -92,7 +92,7 @@ def main():
             if maintenance.get('phase') != 'success' or maintenance.get('worker_memory_bytes') != 156 * 1024**3:
                 raise ValueError('Worker maintenance has not verified the approved memory')
             maintenance_sha = digest(args.maintenance_record)
-            live = json.loads(subprocess.check_output(['ssh', '-o', 'BatchMode=yes', 'server-10-42',
+            live = json.loads(subprocess.check_output(['ssh', '-o', 'BatchMode=yes', 'root@10.0.0.92',
                 'pvesh get /nodes/pve/qemu/102/status/current --output-format json'], timeout=30))
             if live['status'] != 'running' or int(live['maxmem']) != 156 * 1024**3:
                 raise ValueError('Live worker memory/readiness prerequisite changed')

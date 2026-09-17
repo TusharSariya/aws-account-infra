@@ -1,0 +1,2 @@
+PASS: memory exhaustion, strict FIFO and queued cancellation observed
+PASS: all acceptance Pods and Workloads removed; run 7c65cbff1736

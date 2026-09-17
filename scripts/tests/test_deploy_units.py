@@ -18,7 +18,8 @@ class SelectionTests(unittest.TestCase):
     def test_every_workflow_and_runner_setup_select_no_infrastructure(self):
         root = Path(__file__).resolve().parents[2]
         paths = [str(p.relative_to(root)) for p in (root / '.github/workflows').glob('*.yml')]
-        paths.append('.github/actions/talos-runner-setup/action.yml')
+        paths.extend(['.github/actions/talos-runner-setup/action.yml',
+                      '.github/actions/setup-opentofu/action.yml'])
         for path in paths:
             self.assertEqual(units.select_units([path], units.load_units()), [], path)
 

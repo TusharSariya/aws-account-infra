@@ -1,0 +1,181 @@
+{
+  "observed_at": "2026-09-16T16:47:03.918698+00:00",
+  "reason": "Nested BuildKit outside Pod cgroup; stop owned acceptance batch before repairing resource isolation",
+  "runs": [
+    {
+      "databaseId": 35121721773,
+      "headSha": "860d8620bba01fab29f8185cfc8a10022575b55a",
+      "status": "pending",
+      "workflowName": "tofu-apply",
+      "cancel_requested": true
+    },
+    {
+      "databaseId": 35121721396,
+      "headSha": "860d8620bba01fab29f8185cfc8a10022575b55a",
+      "status": "queued",
+      "workflowName": "trivy",
+      "cancel_requested": true
+    },
+    {
+      "databaseId": 35121721304,
+      "headSha": "860d8620bba01fab29f8185cfc8a10022575b55a",
+      "status": "queued",
+      "workflowName": "homelab-arc-acceptance",
+      "cancel_requested": true
+    },
+    {
+      "databaseId": 35121721323,
+      "headSha": "860d8620bba01fab29f8185cfc8a10022575b55a",
+      "status": "queued",
+      "workflowName": "sdk",
+      "cancel_requested": true
+    },
+    {
+      "databaseId": 35121721207,
+      "headSha": "860d8620bba01fab29f8185cfc8a10022575b55a",
+      "status": "queued",
+      "workflowName": "ansible",
+      "cancel_requested": true
+    },
+    {
+      "databaseId": 35121721373,
+      "headSha": "860d8620bba01fab29f8185cfc8a10022575b55a",
+      "status": "queued",
+      "workflowName": "runner-catalog",
+      "cancel_requested": true
+    },
+    {
+      "databaseId": 35121721364,
+      "headSha": "860d8620bba01fab29f8185cfc8a10022575b55a",
+      "status": "queued",
+      "workflowName": "checkov",
+      "cancel_requested": true
+    },
+    {
+      "databaseId": 35121721392,
+      "headSha": "860d8620bba01fab29f8185cfc8a10022575b55a",
+      "status": "queued",
+      "workflowName": "localstack",
+      "cancel_requested": true
+    },
+    {
+      "databaseId": 35121721282,
+      "headSha": "860d8620bba01fab29f8185cfc8a10022575b55a",
+      "status": "pending",
+      "workflowName": "odysseus-image",
+      "cancel_requested": true
+    },
+    {
+      "databaseId": 35121721330,
+      "headSha": "860d8620bba01fab29f8185cfc8a10022575b55a",
+      "status": "pending",
+      "workflowName": "ecr-push",
+      "cancel_requested": true
+    },
+    {
+      "databaseId": 35121721233,
+      "headSha": "860d8620bba01fab29f8185cfc8a10022575b55a",
+      "status": "queued",
+      "workflowName": "tflint",
+      "cancel_requested": true
+    },
+    {
+      "databaseId": 35121721225,
+      "headSha": "860d8620bba01fab29f8185cfc8a10022575b55a",
+      "status": "queued",
+      "workflowName": "homelab-recovery-tests",
+      "cancel_requested": true
+    },
+    {
+      "databaseId": 35121721313,
+      "headSha": "860d8620bba01fab29f8185cfc8a10022575b55a",
+      "status": "queued",
+      "workflowName": "gitleaks",
+      "cancel_requested": true
+    },
+    {
+      "databaseId": 35121721328,
+      "headSha": "860d8620bba01fab29f8185cfc8a10022575b55a",
+      "status": "queued",
+      "workflowName": "homelab-apps-tests",
+      "cancel_requested": true
+    },
+    {
+      "databaseId": 35121721198,
+      "headSha": "860d8620bba01fab29f8185cfc8a10022575b55a",
+      "status": "queued",
+      "workflowName": "homelab-config-tests",
+      "cancel_requested": true
+    },
+    {
+      "databaseId": 35121721273,
+      "headSha": "860d8620bba01fab29f8185cfc8a10022575b55a",
+      "status": "pending",
+      "workflowName": "sdk-publish-stable",
+      "cancel_requested": true
+    },
+    {
+      "databaseId": 35121721191,
+      "headSha": "860d8620bba01fab29f8185cfc8a10022575b55a",
+      "status": "pending",
+      "workflowName": "lambda-package",
+      "cancel_requested": true
+    },
+    {
+      "databaseId": 35121721253,
+      "headSha": "860d8620bba01fab29f8185cfc8a10022575b55a",
+      "status": "pending",
+      "workflowName": "ollama-image",
+      "cancel_requested": true
+    },
+    {
+      "databaseId": 35121721196,
+      "headSha": "860d8620bba01fab29f8185cfc8a10022575b55a",
+      "status": "pending",
+      "workflowName": "tofu-plan",
+      "cancel_requested": true
+    },
+    {
+      "databaseId": 35120886217,
+      "headSha": "655152cccc9cfecfc4bd9f886ebeaae25e9d8dd1",
+      "status": "queued",
+      "workflowName": "tofu-apply",
+      "cancel_requested": true
+    },
+    {
+      "databaseId": 35120882253,
+      "headSha": "655152cccc9cfecfc4bd9f886ebeaae25e9d8dd1",
+      "status": "queued",
+      "workflowName": "ollama-image",
+      "cancel_requested": true
+    },
+    {
+      "databaseId": 35120882415,
+      "headSha": "655152cccc9cfecfc4bd9f886ebeaae25e9d8dd1",
+      "status": "in_progress",
+      "workflowName": "odysseus-image",
+      "cancel_requested": true
+    },
+    {
+      "databaseId": 35120882440,
+      "headSha": "655152cccc9cfecfc4bd9f886ebeaae25e9d8dd1",
+      "status": "queued",
+      "workflowName": "ecr-push",
+      "cancel_requested": true
+    },
+    {
+      "databaseId": 35120882493,
+      "headSha": "655152cccc9cfecfc4bd9f886ebeaae25e9d8dd1",
+      "status": "queued",
+      "workflowName": "sdk-publish-stable",
+      "cancel_requested": true
+    },
+    {
+      "databaseId": 35120882395,
+      "headSha": "655152cccc9cfecfc4bd9f886ebeaae25e9d8dd1",
+      "status": "in_progress",
+      "workflowName": "lambda-package",
+      "cancel_requested": true
+    }
+  ]
+}

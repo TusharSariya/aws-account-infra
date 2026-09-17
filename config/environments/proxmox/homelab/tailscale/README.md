@@ -5,7 +5,7 @@ This candidate is not a deployment prerequisite and must not be automatically ap
 
 `policy.json` is a proposed full replacement for the operator-supplied default
 allow-all policy, not an applied policy. It permits the administrator account's
-user-owned devices to reach Proxmox SSH/HTTPS, laptop Ethernet SSH, the Talos API
+user-owned devices to reach Proxmox SSH/HTTPS, the Talos API
 and Kubernetes API. Other connections need explicit future grants. It does not
 configure Kubernetes node-to-node networking or expose future application ports.
 
@@ -37,3 +37,7 @@ administration account must remain recoverable independently of Kubernetes.
 
 Sources: https://tailscale.com/docs/reference/syntax/grants and
 https://tailscale.com/kb/1337/policy-syntax.
+
+Current Proxmox advertisements are the four host routes `10.0.0.92/32`,
+`10.0.0.220/32`, `10.0.0.222/32`, and `10.0.0.231/32`. Preserve this scope;
+do not advertise the entire home LAN as part of CI recovery.

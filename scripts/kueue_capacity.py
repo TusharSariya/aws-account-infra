@@ -86,7 +86,7 @@ def verify_storage(node, pods, summary, config, catalog):
                     and 'kueue.x-k8s.io/queue-name' not in p['metadata'].get('labels', {})), Decimal(0))
     if (pool + max(used, platform) + headroom > allocatable
             or pool + headroom > min(quantity(fs['availableBytes']), quantity(image_fs['availableBytes']))):
-        raise ValueError('60-GiB compute scratch plus measured platform/images and eviction headroom do not fit; review storage budget')
+        raise ValueError('Configured compute scratch plus measured platform/images and eviction headroom do not fit; review storage budget')
     live = sum(p['spec'].get('nodeName') == node['metadata']['name'] and
                p.get('status', {}).get('phase') not in ('Succeeded', 'Failed') for p in pods)
     # Upper bound across any mixture of catalog runners; allow ordinary Argo

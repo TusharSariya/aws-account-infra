@@ -76,7 +76,7 @@ def local_existing_credentials(record_dir):
     receipt = directory / 'capacity-host.json'
     if receipt.exists():
         raise ValueError('Use a fresh local capacity record directory')
-    ssh = ['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', 'server-10-42']
+    ssh = ['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', 'root@10.0.0.92']
     def run(command, data=None):
         result = subprocess.run(ssh + [command], input=data, capture_output=True, timeout=180)
         (directory / 'last-command.log').write_bytes(result.stdout + b'\n' + result.stderr)

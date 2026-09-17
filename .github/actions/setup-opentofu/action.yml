@@ -1,0 +1,41 @@
+name: Set up pinned OpenTofu
+description: Verify the pinned archive through Nexus on Talos; retain hosted upstream setup
+inputs:
+  tofu_version:
+    default: '1.11.5'
+    description: Reviewed OpenTofu version
+  tofu_wrapper:
+    default: 'false'
+    description: Hosted wrapper setting; Talos uses the verified binary directly
+runs:
+  using: composite
+  steps:
+    - uses: opentofu/setup-opentofu@v1
+      if: runner.environment != 'self-hosted' || !startsWith(runner.name, 'homelab-talos-')
+      with:
+        tofu_version: ${{ inputs.tofu_version }}
+        tofu_wrapper: ${{ inputs.tofu_wrapper }}
+        cache: false
+    - name: Install verified OpenTofu on Talos
+      if: runner.environment == 'self-hosted' && startsWith(runner.name, 'homelab-talos-')
+      shell: bash
+      env:
+        TOFU_VERSION: ${{ inputs.tofu_version }}
+        TOFU_WRAPPER: ${{ inputs.tofu_wrapper }}
+      run: |
+        set -euo pipefail
+        test "$RUNNER_OS" = Linux
+        test "$RUNNER_ARCH" = X64
+        test "$TOFU_VERSION" = 1.11.5
+        test "$TOFU_WRAPPER" = false
+        install_dir=$(mktemp -d "$RUNNER_TEMP/tofu.XXXXXXXX")
+        trap 'rm -rf "$install_dir"' ERR
+        python3 "$GITHUB_ACTION_PATH/../../../scripts/cache_download.py" \
+          https://github.com/opentofu/opentofu/releases/download/v1.11.5/tofu_1.11.5_linux_amd64.zip \
+          901121681e751574d739de5208cad059eddf9bd739b575745cf9e3c961b28a13 \
+          "$install_dir/tofu.zip" --cache
+        unzip -p "$install_dir/tofu.zip" tofu > "$install_dir/tofu"
+        chmod 755 "$install_dir/tofu"
+        "$install_dir/tofu" version -json | python3 -c 'import json,sys; assert json.load(sys.stdin)["terraform_version"] == "1.11.5"'
+        rm "$install_dir/tofu.zip"
+        printf '%s\n' "$install_dir" >> "$GITHUB_PATH"

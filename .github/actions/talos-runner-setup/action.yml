@@ -24,9 +24,12 @@ runs:
         NEED_DOCKER: ${{ inputs.docker }}
         NEED_AWS: ${{ inputs.aws }}
         NEED_TAILSCALE: ${{ inputs.tailscale }}
+        RUNNER_ENVIRONMENT: ${{ runner.environment }}
       run: |
         set -euo pipefail
         test "$RUNNER_OS" = Linux
+        printf 'HOMELAB_DEPENDENCY_CACHE=1\n' >> "$GITHUB_ENV"
+        bash "$GITHUB_ACTION_PATH/../../../scripts/talos-cache-setup.sh"
         read -r -a extras <<< "$EXTRA_PACKAGES"
         requested=(python3 jq curl git unzip "${extras[@]}")
         if [[ "$NEED_DOCKER" == true ]]; then requested+=(docker-compose-v2); fi
@@ -43,15 +46,17 @@ runs:
           sudo rm -rf /var/lib/apt/lists/*
         fi
         if [[ "$NEED_AWS" == true ]]; then
-          test "$(uname -m)" = x86_64
-          aws_install_dir=$(mktemp -d "$RUNNER_TEMP/aws-cli.XXXXXXXX")
-          trap 'rm -rf "$aws_install_dir"' EXIT
-          curl --fail --silent --show-error --location --retry 3 \
-            https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.36.45.zip \
-            --output "$aws_install_dir/aws.zip"
-          printf '%s  %s\n' 0f02381483b0a5ca127a4cb379e656a73007b346561a5e41d3249d3bc1861226 "$aws_install_dir/aws.zip" | sha256sum --check --strict
-          unzip -q "$aws_install_dir/aws.zip" -d "$aws_install_dir"
-          sudo "$aws_install_dir/aws/install" --update
+          if [[ "$(aws --version 2>/dev/null || true)" != aws-cli/2.36.45\ * ]]; then
+            test "$(uname -m)" = x86_64
+            aws_install_dir=$(mktemp -d "$RUNNER_TEMP/aws-cli.XXXXXXXX")
+            trap 'rm -rf "$aws_install_dir"' EXIT
+            python3 "$GITHUB_ACTION_PATH/../../../scripts/cache_download.py" \
+              https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.36.45.zip \
+              0f02381483b0a5ca127a4cb379e656a73007b346561a5e41d3249d3bc1861226 \
+              "$aws_install_dir/aws.zip" --cache
+            unzip -q "$aws_install_dir/aws.zip" -d "$aws_install_dir"
+            sudo "$aws_install_dir/aws/install" --update
+          fi
           aws --version
         fi
         if [[ "$NEED_TAILSCALE" == true ]]; then

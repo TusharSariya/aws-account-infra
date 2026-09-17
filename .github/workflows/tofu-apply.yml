@@ -68,7 +68,7 @@ jobs:
         with:
           role-to-assume: ${{ vars.TOFU_APPLY_ROLE_ARN }}
           aws-region: us-east-1
-      - uses: opentofu/setup-opentofu@v1
+      - uses: ./.github/actions/setup-opentofu
         with:
           tofu_version: 1.11.5
           tofu_wrapper: false
@@ -213,7 +213,7 @@ jobs:
 
   enable-auto-merge:
     needs: [apply, apply-gate, acceptance, worker-maintenance]
-    if: ${{ !cancelled() && needs.apply.result == 'success' && needs.apply-gate.result == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+    if: ${{ !cancelled() && !github.event.pull_request.draft && needs.apply.result == 'success' && needs.apply-gate.result == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
     runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-light"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
     permissions:
       contents: write

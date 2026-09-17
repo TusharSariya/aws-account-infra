@@ -1,0 +1,76 @@
+{
+  "recorded_at": "2026-09-17T02:49:00.047166+00:00",
+  "source_commit": "2e19178",
+  "hardware": {
+    "apply": "success",
+    "post_plan_empty": true,
+    "changes": [
+      "proxmox_virtual_environment_vm.guest[\"talos-worker-01\"]"
+    ],
+    "os_disk_before_gib": 192,
+    "os_disk_after_gib": 320,
+    "data_disk_gib": 1200
+  },
+  "maintenance": {
+    "phase": "success",
+    "ephemeral_growth_bytes": 137438953472,
+    "retained_identities": "Verified unchanged UUID, partition UUID, parent and location for every retained XFS volume",
+    "recovery": "Worker Ready at 172 GiB; Pi-hole UDP/TCP recovered; Nexus and PostgreSQL Ready"
+  },
+  "ci": {
+    "apply": "success",
+    "post_plan_empty": true,
+    "changes": [
+      "helm_release.queue"
+    ],
+    "capacity": {
+      "cpu": {
+        "allocatable": "37.950",
+        "platform_observed": "3.806",
+        "platform_reserved": "4.000",
+        "pool": "33.5"
+      },
+      "memory": {
+        "allocatable": "180865306624",
+        "platform_observed": "12431917056",
+        "platform_reserved": "19327352832",
+        "pool": "150Gi"
+      },
+      "cache_storage": {
+        "committed_bytes": "423058472960",
+        "cache_bytes": "68719476736",
+        "filesystem_available_bytes": 1242407702528,
+        "thin_pool_available_bytes": 1787849239796
+      },
+      "storage_and_slots": {
+        "pool": "257698037760",
+        "measured_used_with_images": "27382001664",
+        "platform_requests": "520093696",
+        "headroom": "8589934592",
+        "allocatable": "306828856017",
+        "projected_platform_pods": 28,
+        "runner_slots": 33,
+        "pod_headroom": 10
+      }
+    }
+  },
+  "scratch_acceptance": {
+    "run": "ea672103778e",
+    "result": "PASS: ephemeral-storage exhaustion, StrictFIFO, queued cancellation, normal completion, and all owned Pod/Workload cleanup"
+  },
+  "remaining": "Fresh ordinary CI concurrency and remaining cache/full rollout acceptance; global routing unchanged.",
+  "additional_acceptance": {
+    "cpu": {
+      "result": "PASS",
+      "run": "ad9d4e513946"
+    },
+    "memory": {
+      "result": "PASS",
+      "run": "dae3a490a7e4"
+    },
+    "combined": {
+      "result": "PASS",
+      "run": "4aec6fffa729"
+    }
+  }
+}

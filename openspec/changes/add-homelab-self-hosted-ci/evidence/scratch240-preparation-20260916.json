@@ -1,0 +1,40 @@
+{
+  "recorded_at": "2026-09-17T02:27:14.668716+00:00",
+  "status": "prepared, not deployed",
+  "source_base": "1e66ff6",
+  "worker_os_gib": {
+    "before": 192,
+    "after": 320
+  },
+  "shared_scratch_gib": {
+    "before": 120,
+    "after": 240
+  },
+  "per_job_limits": "unchanged and provisional",
+  "physical_preflight": {
+    "pool_bytes": 1928431927296,
+    "thin_allocated_bytes": 1602031190016,
+    "data_percent": 7.19,
+    "metadata_percent": 0.41,
+    "growth_gib": 128,
+    "additional_physical_reserve_gib": 64,
+    "result": "PASS"
+  },
+  "tests": {
+    "disk_guard": 2,
+    "talos": 33,
+    "proxmox": 5,
+    "kueue": 25,
+    "cel": 16,
+    "openspec_strict": "PASS"
+  },
+  "remaining": [
+    "fresh saved plan and pre-apply checks",
+    "drain compute",
+    "exact disk apply",
+    "retained identity and EPHEMERAL growth verification",
+    "image-inclusive capacity verification",
+    "guarded quota apply",
+    "fresh empty plans and runtime concurrency/FIFO/cancellation proof"
+  ]
+}

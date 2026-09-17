@@ -1,0 +1,74 @@
+{
+  "source": "55a02fbad9247e7e10e0b7969a64fc8096ed576801e79735879a68a33e2a6da1",
+  "plan": "653ab8f9f8a405ea86caffd08884bbe7dffe0d248ee97c9d4658779b29bc4e78",
+  "time": 1789577690.888245,
+  "apply": "success",
+  "post_plan_empty": true,
+  "capacity": {
+    "cpu": {
+      "allocatable": "37.950",
+      "platform_observed": "3.706",
+      "platform_reserved": "4.000",
+      "pool": "33.5"
+    },
+    "memory": {
+      "allocatable": "180865314816",
+      "platform_observed": "12297699328",
+      "platform_reserved": "19327352832",
+      "pool": "150Gi"
+    },
+    "cache_storage": {
+      "committed_bytes": "423058472960",
+      "cache_bytes": "68719476736",
+      "filesystem_available_bytes": 1258761723904,
+      "thin_pool_available_bytes": 1834710135629
+    },
+    "storage_and_slots": {
+      "pool": "64424509440",
+      "measured_used_with_images": "23418904576",
+      "platform_requests": "520093696",
+      "headroom": "8589934592",
+      "allocatable": "121286269137",
+      "projected_platform_pods": 26,
+      "runner_slots": 30,
+      "pod_headroom": 10
+    }
+  },
+  "changes": [
+    "helm_release.runners[\"homelab-talos\"]"
+  ],
+  "runtime_fixture": {
+    "name": "ci-cgroup-proof-20260916",
+    "uid": "80e89526-69c2-43a5-845a-b9510f5751b8"
+  },
+  "cgroups": {
+    "pod": {
+      "cpu.max": "400000 100000",
+      "memory.max": "17179869184",
+      "cgroup.procs": ""
+    },
+    "/f1a70eb5c10a842597fad196af0a7c36e5a239621f8ae69860a357ea0ac380e0": {
+      "cpu.max": "max 100000",
+      "memory.max": "max",
+      "cgroup.procs": ""
+    },
+    "/71989d351803da9d436ce4964fe759f1683a25cb1bad9a4bd1ab432530e0099d": {
+      "cpu.max": "max 100000",
+      "memory.max": "max",
+      "cgroup.procs": "8979"
+    }
+  },
+  "observed_at": "2026-09-16T17:01:39.238095+00:00",
+  "qualification": "Container ancestry verified; job sizing and rollout acceptance remain open",
+  "nested_build_processes": {
+    "buildkit/cgroup.procs": "",
+    "buildkit/lo29wh5nvlg0cnu3z8jcho1qe/cgroup.procs": "9904",
+    "cgroup.procs": "",
+    "init/cgroup.procs": "8352\n8672\n9672\n9889"
+  },
+  "nested_build_exit_code": 0,
+  "fixture_deleted": true,
+  "pod_cgroup_removed": true,
+  "reserving_workloads_after_cleanup": 0,
+  "admitted_workloads_after_cleanup": 0
+}

@@ -4,7 +4,8 @@ USER root
 WORKDIR /var/task
 
 COPY requirements.txt /var/task/requirements.txt
-RUN pip install --no-cache-dir -r /var/task/requirements.txt
+RUN --mount=type=secret,id=dependency-env --mount=type=secret,id=dependency-apt \
+    set -a; if [ ! -f /run/secrets/dependency-env ]; then :; else . /run/secrets/dependency-env; fi; set +a; pip install --no-cache-dir -r /var/task/requirements.txt
 
 COPY booker /var/task/booker
 COPY bookings.yaml /var/task/bookings.yaml

@@ -9,7 +9,20 @@ on:
       - 'apps/platform/cache/**'
       - 'apps/platform/storage/**'
       - 'scripts/cache_capacity.py'
+      - 'scripts/cache_download.py'
+      - 'scripts/cache_transport.py'
+      - 'scripts/build_cache.py'
+      - 'scripts/nexus_observation.py'
+      - 'scripts/tests/test_build_cache.py'
+      - 'scripts/tests/test_nexus_observation.py'
+      - 'scripts/talos-cache-setup.sh'
+      - 'scripts/tests/test_cache_transport.py'
+      - 'scripts/tests/test_cache_download.py'
+      - 'scripts/tests/test_registry_enrollment.py'
       - 'scripts/ci_scratch.py'
+      - 'scripts/ci_measure.py'
+      - 'scripts/ci_pod_usage.py'
+      - 'scripts/tests/test_ci_pod_usage.py'
       - 'scripts/tests/test_local_cache.py'
       - 'scripts/tests/test_capacity_*.py'
       - 'scripts/homelab-ci.py'
@@ -52,7 +65,7 @@ jobs:
           cache: false
           go-version: '1.26.1'
           cache-dependency-path: scripts/tests/kueue_cel/go.sum
-      - uses: opentofu/setup-opentofu@v1
+      - uses: ./.github/actions/setup-opentofu
         with:
           tofu_version: 1.11.5
           tofu_wrapper: false
@@ -61,7 +74,7 @@ jobs:
           uv run --with PyYAML==6.0.3 python scripts/homelab-ci.py setup
           uv run --with PyYAML==6.0.3 python scripts/runner_catalog.py
           PYTHONPATH=scripts uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p 'test_kueue_*.py'
-          for pattern in 'test_local_cache.py' 'test_capacity_*.py'; do
+          for pattern in 'test_local_cache.py' 'test_capacity_*.py' 'test_cache_download.py' 'test_cache_transport.py' 'test_build_cache.py' 'test_nexus_observation.py' 'test_registry_enrollment.py' 'test_ci_pod_usage.py'; do
             PYTHONPATH=scripts uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p "$pattern"
           done
           uv run --with PyYAML==6.0.3 python scripts/tests/kueue_cel/generate.py "$RUNNER_TEMP/cel-cases.json"
@@ -88,7 +101,7 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: false
-      - uses: opentofu/setup-opentofu@v1
+      - uses: ./.github/actions/setup-opentofu
         with:
           tofu_version: 1.11.5
           tofu_wrapper: false

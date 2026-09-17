@@ -1,0 +1,110 @@
+{
+  "scope": "local Mac integration only; not fresh-runner sizing or Nexus upstream-byte acceptance",
+  "normal": [
+    {
+      "route": "/npm/is-number",
+      "source": "cache",
+      "attempts": 1,
+      "bytes": 36183
+    },
+    {
+      "route": "/npm/is-number/-/is-number-7.0.0.tgz",
+      "source": "cache",
+      "attempts": 1,
+      "bytes": 3730
+    },
+    {
+      "route": "/pypi/simple/pyyaml/",
+      "source": "cache",
+      "attempts": 1,
+      "bytes": 285460
+    },
+    {
+      "route": "/pypi/packages/pyyaml/6.0.3/pyyaml-6.0.3-cp313-cp313-macosx_11_0_arm64.whl.metadata",
+      "source": "cache",
+      "attempts": 1,
+      "bytes": 2351
+    },
+    {
+      "route": "/pypi/packages/pyyaml/6.0.3/pyyaml-6.0.3-cp313-cp313-macosx_11_0_arm64.whl",
+      "source": "cache",
+      "attempts": 1,
+      "bytes": 173252
+    },
+    {
+      "route": "/go/golang.org/x/text/@v/v0.3.8.info",
+      "source": "cache",
+      "attempts": 1,
+      "bytes": 189
+    },
+    {
+      "route": "/go/golang.org/x/text/@v/v0.3.8.mod",
+      "source": "cache",
+      "attempts": 1,
+      "bytes": 234
+    },
+    {
+      "route": "/go/golang.org/x/text/@v/v0.3.8.zip",
+      "source": "cache",
+      "attempts": 1,
+      "bytes": 8615981
+    }
+  ],
+  "unavailable_cache": [
+    {
+      "route": "/npm/is-number",
+      "source": "upstream",
+      "attempts": 1,
+      "bytes": 36183
+    },
+    {
+      "route": "/npm/is-number/-/is-number-7.0.0.tgz",
+      "source": "upstream",
+      "attempts": 1,
+      "bytes": 3730
+    },
+    {
+      "route": "/pypi/simple/pyyaml/",
+      "source": "upstream",
+      "attempts": 1,
+      "bytes": 295716
+    },
+    {
+      "route": "/raw-python-files/packages/b1/16/95309993f1d3748cd644e02e38b75d50cbc0d9561d21f390a76242ce073f/pyyaml-6.0.3-cp313-cp313-macosx_11_0_arm64.whl.metadata",
+      "source": "upstream",
+      "attempts": 1,
+      "bytes": 2351
+    },
+    {
+      "route": "/raw-python-files/packages/b1/16/95309993f1d3748cd644e02e38b75d50cbc0d9561d21f390a76242ce073f/pyyaml-6.0.3-cp313-cp313-macosx_11_0_arm64.whl",
+      "source": "upstream",
+      "attempts": 1,
+      "bytes": 173252
+    },
+    {
+      "route": "/go/golang.org/x/text/@v/v0.3.8.info",
+      "source": "upstream",
+      "attempts": 1,
+      "bytes": 189
+    },
+    {
+      "route": "/go/golang.org/x/text/@v/v0.3.8.mod",
+      "source": "upstream",
+      "attempts": 1,
+      "bytes": 234
+    },
+    {
+      "route": "/go/golang.org/x/text/@v/v0.3.8.zip",
+      "source": "upstream",
+      "attempts": 1,
+      "bytes": 8615981
+    }
+  ],
+  "clients": [
+    "npm is-number@7.0.0 with fresh local cache",
+    "uv PyYAML==6.0.3 with fresh local cache",
+    "go golang.org/x/text@v0.3.8 with fresh GOMODCACHE"
+  ],
+  "go_sum": "h1:nAL+RVCQ9uMn3vJZbV+MRnydTJFPf8qqY42YiA6MrqY=",
+  "go_mod_sum": "h1:E6s5w1FMmriuDzIBO73fBruAKo1PCIq6d2Q6DHfQ8WQ="
+}

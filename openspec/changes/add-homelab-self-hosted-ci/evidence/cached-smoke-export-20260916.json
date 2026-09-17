@@ -1,0 +1,28 @@
+{
+  "date": "2026-09-16",
+  "trigger": {
+    "run_id": 35137554891,
+    "failure": "GHCR 3.56-GB layer returned EOF after both Docker attempts; retry observed at 19:15:18Z and final EOF at 19:25:39Z"
+  },
+  "change": "Keep original push with provenance/SBOM; separately load the same cached build result before smoke by published immutable reference",
+  "verification": {
+    "engine": "Docker 28.5.2 overlay2",
+    "buildkit": "moby/buildkit@sha256:28a898719c18a33f4e8000685287fa36fd0dd9560c6440227d3a732d79bb41d8",
+    "fixture": "disposable local registry and DinD; tiny scratch image",
+    "combined_export": "rejected with manifest-list error on classic store; not adopted",
+    "separate_export": "success",
+    "published_and_loaded_config": "sha256:fa250d79e1a83e951662bbf086ae01cd1ebeaebd4a17efcba98c674c415c3c68",
+    "published_attestations": [
+      "https://spdx.dev/Document",
+      "https://slsa.dev/provenance/v1"
+    ],
+    "immutable_digest_pull": "success",
+    "blob_gets_during_pull": 0
+  },
+  "additional_runtime_evidence": {
+    "run_id": 35140057224,
+    "result": "success",
+    "opentofu": "33821623 verified bytes from Nexus on cache attempt 1"
+  },
+  "remaining": "Full-size fresh Talos smoke and provisional scratch validation; network failures remain separately recorded"
+}

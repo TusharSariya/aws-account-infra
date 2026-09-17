@@ -110,7 +110,7 @@ def main():
                     time.sleep(2)
                 else:
                     raise RuntimeError('Retain PV did not enter Released phase')
-                assert run([TC, '-n', '10.42.0.222', 'read', path + '/proof']).stdout == proof
+                assert run([TC, '-n', '10.0.0.222', 'read', path + '/proof']).stdout == proof
             else:
                 run([K, 'wait', '--for=delete', 'pv/' + pv['metadata']['name'], '--timeout=120s'])
             print('PASS: ' + suffix + ' PVC worker placement, pod-recreation persistence and reclaim behavior')

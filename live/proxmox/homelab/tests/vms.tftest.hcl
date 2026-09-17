@@ -19,7 +19,7 @@ run "approved_vm_plan" {
   assert {
     condition = (
       output.capacity.vcpus == 40 && output.capacity.memory_gib == 176 &&
-      output.capacity.primary_disks_gib == 1428 && output.capacity.efi_disk_count == 2
+      output.capacity.primary_disks_gib == 1620 && output.capacity.efi_disk_count == 2
     )
     error_message = "Initial capacity must match the approved two-VM table, plus two EFI volumes."
   }
@@ -47,7 +47,7 @@ run "approved_vm_plan" {
   assert {
     condition = (
       length(proxmox_virtual_environment_vm.guest["talos-worker-01"].disk) == 2 &&
-      proxmox_virtual_environment_vm.guest["talos-worker-01"].disk[0].size == 128 &&
+      proxmox_virtual_environment_vm.guest["talos-worker-01"].disk[0].size == 320 &&
       proxmox_virtual_environment_vm.guest["talos-worker-01"].disk[0].interface == "scsi0" &&
       proxmox_virtual_environment_vm.guest["talos-worker-01"].disk[1].size == 1200 &&
       proxmox_virtual_environment_vm.guest["talos-worker-01"].disk[1].interface == "scsi1" &&

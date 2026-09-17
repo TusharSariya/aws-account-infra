@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Prepare checksum-pinned Ollama plus reviewed admission/activity hooks."""
 import argparse
-import hashlib
-import io
 import json
 from pathlib import Path
 import shutil
 import tarfile
-import urllib.request
+import os
+import tempfile
+from cache_download import fetch
+from build_cache import cache_run_prefix
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = ROOT / 'apps/containers/ollama'
@@ -15,12 +16,13 @@ PACKAGE = ROOT / 'apps/containers/ollama'
 
 def prepare(destination):
     lock = json.loads((PACKAGE / 'source.lock.json').read_text())
-    data = urllib.request.urlopen(lock['archive_url'], timeout=120).read()
-    if hashlib.sha256(data).hexdigest() != lock['archive_sha256']:
-        raise ValueError('Upstream source checksum mismatch')
-    destination.mkdir(parents=True, exist_ok=False)
-    with tarfile.open(fileobj=io.BytesIO(data), mode='r:gz') as archive:
-        archive.extractall(destination, filter='data')
+    with tempfile.TemporaryDirectory() as temporary:
+        archive_path = Path(temporary) / 'source.tar.gz'
+        fetch(lock['archive_url'], lock['archive_sha256'], archive_path,
+              use_cache=os.environ.get('HOMELAB_DEPENDENCY_CACHE') == '1')
+        destination.mkdir(parents=True, exist_ok=False)
+        with tarfile.open(archive_path, mode='r:gz') as archive:
+            archive.extractall(destination, filter='data')
     roots = list(destination.iterdir())
     if len(roots) != 1 or not roots[0].is_dir():
         raise ValueError('Expected one upstream source directory')
@@ -37,6 +39,8 @@ FROM {lock['runtime_image']}
 COPY --from=build /out/ollama /bin/ollama
 ENV OLLAMA_NOPRUNE=true OLLAMA_NO_CLOUD=true
 '''
+    dockerfile = '\n'.join(cache_run_prefix() + line[4:] if line.startswith('RUN ') else line
+                           for line in dockerfile.split('\n'))
     (source / 'Dockerfile').write_text(dockerfile)
     print(source)
 

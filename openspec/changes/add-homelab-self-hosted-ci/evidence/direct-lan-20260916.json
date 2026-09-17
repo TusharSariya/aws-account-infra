@@ -1,0 +1,74 @@
+{
+  "recorded_at": "2026-09-17T02:09:05.276148+00:00",
+  "authorization": "User confirmed API/VIP 10.0.0.231 and removal of old network references.",
+  "network": {
+    "proxmox": "10.0.0.92",
+    "gateway": "10.0.0.1",
+    "control_plane": "10.0.0.220",
+    "worker": "10.0.0.222",
+    "api_vip": "10.0.0.231",
+    "ssh_proxyjump": null,
+    "physical_link": "1000Mb/s Full",
+    "tailscale_advertisements": [
+      "10.0.0.92/32",
+      "10.0.0.220/32",
+      "10.0.0.222/32",
+      "10.0.0.231/32"
+    ]
+  },
+  "observations": {
+    "nodes": "Both Ready",
+    "authenticated_vip_readyz": "ok",
+    "direct_lan_validation": "PASS",
+    "proxmox_ecr_unauthenticated": {
+      "http_status": 401,
+      "elapsed_seconds": 0.317148
+    },
+    "proxmox_helm_download": {
+      "bytes": 17986975,
+      "seconds": 1.336727,
+      "bytes_per_second": 13455982
+    },
+    "worker_helm_download": {
+      "bytes": 17986975,
+      "seconds": 1.467589,
+      "bytes_per_second": 12256139
+    },
+    "direct_ssh_proxmox_to_mac": {
+      "bytes": 67108864,
+      "seconds": 6.479,
+      "megabits_per_second": 82.87,
+      "compression": false
+    },
+    "ecr_fresh_runner": {
+      "run_id": 35141976225,
+      "attempt": 2,
+      "conclusion": "success",
+      "scratch_gib": 24
+    },
+    "tailscale_host_route_validation": "PASS: four advertised routes, authenticated SSH to Tailscale IP and host-to-VIP reachability"
+  },
+  "limits": [
+    "Single samples, not line-rate capacity measurements.",
+    "No comparable old complete bandwidth measurement; no precise before/after speedup claimed.",
+    "Historical evidence retains historical addresses."
+  ],
+  "image_receipts": {
+    "ollama": {
+      "run_id": 35141976505,
+      "artifact_id": 10465494313
+    },
+    "odysseus": {
+      "run_id": 35141976535,
+      "artifact_id": 10467741959
+    }
+  },
+  "verification": "Remote successful workflows, artifact SHA256, source input hashes and immutable image selections verified; six lifecycle image tests passed.",
+  "validation": {
+    "talos_tests": 33,
+    "application_tests": 24,
+    "deploy_unit_tests": 25,
+    "proxmox_mock_tests": 5,
+    "generated_configs": "Two pinned Talos configs strictly validated; capacity, networking, identity and negative drift checks passed."
+  }
+}

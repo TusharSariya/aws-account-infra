@@ -1,0 +1,26 @@
+{
+  "date": "2026-09-16",
+  "user_authorized": {
+    "shared_scratch_gib": 120,
+    "provisional_limits_then_fresh_validation": true
+  },
+  "sizing_status": "provisional, not measured or four-run verified",
+  "configurations": {
+    "homelab-talos-docker-small": {
+      "scratch_gib": 12,
+      "rationale": "Conservative initial limit for SDK generation, LocalStack, contract tests, scanners and packaging; existing CPU/RAM and Docker requirements retained"
+    },
+    "homelab-talos-build": {
+      "scratch_gib": 24,
+      "rationale": "Initial image-build limit above the observed unqualified approximately 15-GiB sample; complete peak coverage not claimed"
+    }
+  },
+  "docker_resume_fixture": {
+    "image": "docker:28.5.2-dind@sha256:2a232a42256f70d78e3cc5d2b5d6b3276710a0de0596c145f627ecfae90282ac",
+    "attempts_1": "failed with unexpected EOF",
+    "attempts_2": "success",
+    "second_request_offset": 32845,
+    "host": "local disposable Docker fixture, not Talos acceptance",
+    "cleanup": "both dind containers, registry container, anonymous volumes and fixture network removed"
+  }
+}

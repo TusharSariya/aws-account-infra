@@ -1,0 +1,18 @@
+{
+  "date": "2026-09-16",
+  "run_id": 35120882415,
+  "source_revision": "655152cccc9cfecfc4bd9f886ebeaae25e9d8dd1",
+  "pod_uid": "edb2ab4c-354a-4966-8f0b-9e4643619db6",
+  "pod_name": "homelab-talos-cfm7k-runner-c7v5l",
+  "builder_container_id": "02d9c8eb94357be79fbf0bed00fd52349908dbf1488853f8f16dd99391050d74",
+  "builder_cgroup_parent": "/docker/buildx",
+  "builder_cpu_max": "max 100000",
+  "builder_memory_max": "max",
+  "builder_memory_peak_bytes": 13112320000,
+  "pod_cpu_max": "400000 100000",
+  "pod_memory_max": "17179869184",
+  "pod_memory_peak_bytes_excluding_escaped_builder": 1770233856,
+  "conclusion": "Stock buildx container escaped the runner Pod cgroup; existing whole-Pod CPU/RAM samples exclude its usage",
+  "sizing_qualified": false,
+  "repair_verified": false
+}

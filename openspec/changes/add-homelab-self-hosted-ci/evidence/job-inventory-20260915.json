@@ -1,0 +1,766 @@
+{
+  "baseline": "d99c04a991d89badc8a3c3e73c823dcd9c090d58",
+  "notes": [
+    "Inventory includes hosted and reusable jobs so exceptions remain visible.",
+    "Dynamic tofu-plan unit selection is retained explicitly; it is not a completed measurement.",
+    "No cold/warm/declared-limit runs have been performed."
+  ],
+  "jobs": [
+    {
+      "workflow": "ansible.yml",
+      "job": "shell",
+      "variant": {},
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos-light\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": false
+    },
+    {
+      "workflow": "ansible.yml",
+      "job": "lint",
+      "variant": {},
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos-checks\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": false
+    },
+    {
+      "workflow": "api-docs.yml",
+      "job": "build",
+      "variant": {},
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos-checks\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": false
+    },
+    {
+      "workflow": "api-docs.yml",
+      "job": "comment",
+      "variant": {},
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos-light\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "(github.event_name == 'pull_request') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": false
+    },
+    {
+      "workflow": "api-docs.yml",
+      "job": "deploy",
+      "variant": {},
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos-light\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "(github.event_name == 'push' && github.ref == 'refs/heads/main') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": false
+    },
+    {
+      "workflow": "checkov.yml",
+      "job": "checkov",
+      "variant": {},
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": true
+    },
+    {
+      "workflow": "ecr-push.yml",
+      "job": "detect",
+      "variant": {},
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos-light\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": false
+    },
+    {
+      "workflow": "ecr-push.yml",
+      "job": "push",
+      "variant": {
+        "name": "court-booker"
+      },
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-24.04-arm\",\"talos\":\"homelab-talos\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "(needs.detect.outputs.images != '[]') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": true
+    },
+    {
+      "workflow": "gitleaks.yml",
+      "job": "gitleaks",
+      "variant": {},
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos-light\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": false
+    },
+    {
+      "workflow": "homelab-acceptance.yml",
+      "job": "acceptance",
+      "variant": {
+        "suite": "network"
+      },
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos-checks\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "(github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": false
+    },
+    {
+      "workflow": "homelab-acceptance.yml",
+      "job": "acceptance",
+      "variant": {
+        "suite": "pvc"
+      },
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos-checks\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "(github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": false
+    },
+    {
+      "workflow": "homelab-acceptance.yml",
+      "job": "acceptance",
+      "variant": {
+        "suite": "capacity"
+      },
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos-checks\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "(github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": false
+    },
+    {
+      "workflow": "homelab-acceptance.yml",
+      "job": "acceptance",
+      "variant": {
+        "suite": "lifecycle"
+      },
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos-checks\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "(github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": false
+    },
+    {
+      "workflow": "homelab-ai-migration.yml",
+      "job": "reset",
+      "variant": {},
+      "runs_on": "ubuntu-latest",
+      "reusable_workflow": null,
+      "condition": "github.ref == 'refs/heads/main'",
+      "measurement_status": "unmeasured",
+      "routing_eligible": false,
+      "docker_declared": false
+    },
+    {
+      "workflow": "homelab-apps-tests.yml",
+      "job": "application-contracts",
+      "variant": {},
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": true
+    },
+    {
+      "workflow": "homelab-arc-acceptance.yml",
+      "job": "runner",
+      "variant": {},
+      "runs_on": "homelab-talos",
+      "reusable_workflow": null,
+      "condition": "(github.event_name == 'workflow_dispatch' && inputs.scenario != 'expiry' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'arc-acceptance'))",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": true
+    },
+    {
+      "workflow": "homelab-arc-acceptance.yml",
+      "job": "sized-runners",
+      "variant": {
+        "runner": "homelab-talos-light",
+        "cpu": "1",
+        "memory": "2147483648"
+      },
+      "runs_on": "${{ matrix.runner }}",
+      "reusable_workflow": null,
+      "condition": "(github.event_name == 'workflow_dispatch' && inputs.scenario != 'expiry' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'arc-acceptance'))",
+      "measurement_status": "unmeasured",
+      "routing_eligible": false,
+      "docker_declared": false
+    },
+    {
+      "workflow": "homelab-arc-acceptance.yml",
+      "job": "sized-runners",
+      "variant": {
+        "runner": "homelab-talos-checks",
+        "cpu": "2",
+        "memory": "4294967296"
+      },
+      "runs_on": "${{ matrix.runner }}",
+      "reusable_workflow": null,
+      "condition": "(github.event_name == 'workflow_dispatch' && inputs.scenario != 'expiry' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'arc-acceptance'))",
+      "measurement_status": "unmeasured",
+      "routing_eligible": false,
+      "docker_declared": false
+    },
+    {
+      "workflow": "homelab-arc-acceptance.yml",
+      "job": "expiry",
+      "variant": {},
+      "runs_on": "homelab-talos-light",
+      "reusable_workflow": null,
+      "condition": "github.event_name == 'workflow_dispatch' && inputs.scenario == 'expiry' && inputs.confirm == 'observe-24h-expiry'",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": false
+    },
+    {
+      "workflow": "homelab-capacity-host.yml",
+      "job": "reconcile",
+      "variant": {},
+      "runs_on": "ubuntu-latest",
+      "reusable_workflow": null,
+      "condition": "github.ref == 'refs/heads/main'",
+      "measurement_status": "unmeasured",
+      "routing_eligible": false,
+      "docker_declared": false
+    },
+    {
+      "workflow": "homelab-ci-admission.yml",
+      "job": "contracts",
+      "variant": {},
+      "runs_on": "ubuntu-latest",
+      "reusable_workflow": null,
+      "condition": "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository",
+      "measurement_status": "unmeasured",
+      "routing_eligible": false,
+      "docker_declared": false
+    },
+    {
+      "workflow": "homelab-ci-admission.yml",
+      "job": "admission",
+      "variant": {},
+      "runs_on": "ubuntu-latest",
+      "reusable_workflow": null,
+      "condition": "(github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')",
+      "measurement_status": "unmeasured",
+      "routing_eligible": false,
+      "docker_declared": false
+    },
+    {
+      "workflow": "homelab-config-tests.yml",
+      "job": "offline-validation",
+      "variant": {},
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": true
+    },
+    {
+      "workflow": "homelab-etcd-backup.yml",
+      "job": "backup",
+      "variant": {},
+      "runs_on": "ubuntu-latest",
+      "reusable_workflow": null,
+      "condition": "github.ref == 'refs/heads/main'",
+      "measurement_status": "unmeasured",
+      "routing_eligible": false,
+      "docker_declared": false
+    },
+    {
+      "workflow": "homelab-lifecycle-maintenance.yml",
+      "job": "proof",
+      "variant": {},
+      "runs_on": "ubuntu-latest",
+      "reusable_workflow": null,
+      "condition": "github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main'",
+      "measurement_status": "unmeasured",
+      "routing_eligible": false,
+      "docker_declared": false
+    },
+    {
+      "workflow": "homelab-quota-acceptance.yml",
+      "job": "proof",
+      "variant": {},
+      "runs_on": "ubuntu-latest",
+      "reusable_workflow": null,
+      "condition": "github.ref == 'refs/heads/main'",
+      "measurement_status": "unmeasured",
+      "routing_eligible": false,
+      "docker_declared": false
+    },
+    {
+      "workflow": "homelab-recovery-tests.yml",
+      "job": "backup-contracts",
+      "variant": {},
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos-light\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": false
+    },
+    {
+      "workflow": "homelab-recovery-tests.yml",
+      "job": "identity",
+      "variant": {},
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos-light\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": false
+    },
+    {
+      "workflow": "homelab-worker-maintenance.yml",
+      "job": "worker-reboot",
+      "variant": {},
+      "runs_on": "ubuntu-latest",
+      "reusable_workflow": null,
+      "condition": "github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/main'",
+      "measurement_status": "unmeasured",
+      "routing_eligible": false,
+      "docker_declared": false
+    },
+    {
+      "workflow": "lambda-package.yml",
+      "job": "package",
+      "variant": {},
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-24.04-arm\",\"talos\":\"homelab-talos\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": true
+    },
+    {
+      "workflow": "localstack.yml",
+      "job": "smoke",
+      "variant": {},
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": true
+    },
+    {
+      "workflow": "odysseus-image.yml",
+      "job": "build",
+      "variant": {},
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos\"}')[(inputs.talos_acceptance || contains(github.event.pull_request.labels.*.name, 'arc-acceptance')) && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": true
+    },
+    {
+      "workflow": "ollama-image.yml",
+      "job": "build",
+      "variant": {},
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos\"}')[(inputs.talos_acceptance || contains(github.event.pull_request.labels.*.name, 'arc-acceptance')) && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": true
+    },
+    {
+      "workflow": "runner-catalog.yml",
+      "job": "catalog",
+      "variant": {},
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos-light\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "github.event.pull_request.head.repo.full_name == github.repository",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": false
+    },
+    {
+      "workflow": "sdk-publish-stable.yml",
+      "job": "detect",
+      "variant": {},
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos-light\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": false
+    },
+    {
+      "workflow": "sdk-publish-stable.yml",
+      "job": "publish-stable",
+      "variant": {
+        "spec": "upace",
+        "target": "python"
+      },
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "(needs.detect.outputs.required == 'true' && contains(github.event.pull_request.labels.*.name, 'publish-stable')) && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": true
+    },
+    {
+      "workflow": "sdk-publish-stable.yml",
+      "job": "publish-stable",
+      "variant": {
+        "spec": "upace",
+        "target": "typescript-fetch"
+      },
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "(needs.detect.outputs.required == 'true' && contains(github.event.pull_request.labels.*.name, 'publish-stable')) && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": true
+    },
+    {
+      "workflow": "sdk-publish-stable.yml",
+      "job": "publish-gate",
+      "variant": {},
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos-light\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "${{ !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": false
+    },
+    {
+      "workflow": "sdk-publish-stable.yml",
+      "job": "enable-auto-merge",
+      "variant": {},
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos-light\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "(needs.publish-stable.result == 'success') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": false
+    },
+    {
+      "workflow": "sdk.yml",
+      "job": "lint",
+      "variant": {},
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos-light\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": false
+    },
+    {
+      "workflow": "sdk.yml",
+      "job": "generate",
+      "variant": {
+        "spec": "upace",
+        "target": "python",
+        "runtime": "3.12"
+      },
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": true
+    },
+    {
+      "workflow": "sdk.yml",
+      "job": "generate",
+      "variant": {
+        "spec": "upace",
+        "target": "typescript-fetch",
+        "runtime": "20"
+      },
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": true
+    },
+    {
+      "workflow": "sdk.yml",
+      "job": "smoke",
+      "variant": {
+        "spec": "upace",
+        "target": "python",
+        "runtime": "3.12"
+      },
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos-checks\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": false
+    },
+    {
+      "workflow": "sdk.yml",
+      "job": "smoke",
+      "variant": {
+        "spec": "upace",
+        "target": "typescript-fetch",
+        "runtime": "20"
+      },
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos-checks\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": false
+    },
+    {
+      "workflow": "sdk.yml",
+      "job": "publish-candidate",
+      "variant": {
+        "spec": "upace",
+        "target": "python",
+        "ecosystem": "python"
+      },
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "(github.event_name == 'pull_request') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": true
+    },
+    {
+      "workflow": "sdk.yml",
+      "job": "publish-candidate",
+      "variant": {
+        "spec": "upace",
+        "target": "typescript-fetch",
+        "ecosystem": "npm"
+      },
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "(github.event_name == 'pull_request') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": true
+    },
+    {
+      "workflow": "sdk.yml",
+      "job": "comment-candidate",
+      "variant": {},
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos-light\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "${{ (!cancelled() && github.event_name == 'pull_request' && needs.publish-candidate.result != 'cancelled') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": false
+    },
+    {
+      "workflow": "storage-foundation.yml",
+      "job": "isolated",
+      "variant": {},
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": true
+    },
+    {
+      "workflow": "tflint.yml",
+      "job": "tflint",
+      "variant": {},
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos-checks\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": false
+    },
+    {
+      "workflow": "tofu-apply.yml",
+      "job": "detect",
+      "variant": {},
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos-light\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "(github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": false
+    },
+    {
+      "workflow": "tofu-apply.yml",
+      "job": "apply",
+      "variant": {},
+      "runs_on": "${{ (contains(fromJSON(needs.detect.outputs.units).*.id, 'proxmox-homelab') || contains(fromJSON(needs.detect.outputs.units).*.id, 'talos-homelab')) && 'ubuntu-latest' || fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos-checks\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "needs.detect.outputs.units != '[]' && contains(github.event.pull_request.labels.*.name, 'apply') && github.event.pull_request.head.repo.full_name == github.repository",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": false
+    },
+    {
+      "workflow": "tofu-apply.yml",
+      "job": "worker-maintenance",
+      "variant": {},
+      "runs_on": null,
+      "reusable_workflow": "./.github/workflows/homelab-worker-maintenance.yml",
+      "condition": "needs.apply.result == 'success' && contains(fromJSON(needs.detect.outputs.units).*.id, 'talos-homelab') && contains(github.event.pull_request.labels.*.name, 'worker-reboot')",
+      "measurement_status": "unmeasured",
+      "routing_eligible": false,
+      "docker_declared": false
+    },
+    {
+      "workflow": "tofu-apply.yml",
+      "job": "acceptance",
+      "variant": {},
+      "runs_on": null,
+      "reusable_workflow": "./.github/workflows/homelab-acceptance.yml",
+      "condition": "${{ !cancelled() && needs.detect.result == 'success' && needs.detect.outputs.suite != 'none' && github.event.pull_request.head.repo.full_name == github.repository && (needs.apply.result == 'success' ||\n (needs.apply.result == 'skipped' && (!contains(github.event.pull_request.labels.*.name, 'apply') || needs.detect.outputs.units == '[]'))) &&\n(needs.worker-maintenance.result == 'success' || needs.worker-maintenance.result == 'skipped') }}",
+      "measurement_status": "unmeasured",
+      "routing_eligible": false,
+      "docker_declared": false
+    },
+    {
+      "workflow": "tofu-apply.yml",
+      "job": "lifecycle-maintenance",
+      "variant": {},
+      "runs_on": null,
+      "reusable_workflow": "./.github/workflows/homelab-lifecycle-maintenance.yml",
+      "condition": "${{ !cancelled() && needs.detect.result == 'success' && needs.apply.result == 'success' && needs.acceptance.result == 'success' && contains(github.event.pull_request.labels.*.name, 'lifecycle-maintenance') }}",
+      "measurement_status": "unmeasured",
+      "routing_eligible": false,
+      "docker_declared": false
+    },
+    {
+      "workflow": "tofu-apply.yml",
+      "job": "storage-foundation",
+      "variant": {},
+      "runs_on": null,
+      "reusable_workflow": "./.github/workflows/storage-foundation.yml",
+      "condition": "needs.detect.outputs.storage == 'true'",
+      "measurement_status": "unmeasured",
+      "routing_eligible": false,
+      "docker_declared": false
+    },
+    {
+      "workflow": "tofu-apply.yml",
+      "job": "apply-gate",
+      "variant": {},
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos-light\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "${{ !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": false
+    },
+    {
+      "workflow": "tofu-apply.yml",
+      "job": "enable-auto-merge",
+      "variant": {},
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos-light\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "${{ !cancelled() && needs.apply.result == 'success' && needs.apply-gate.result == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": false
+    },
+    {
+      "workflow": "tofu-plan.yml",
+      "job": "detect",
+      "variant": {},
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos-light\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "(github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": false
+    },
+    {
+      "workflow": "tofu-plan.yml",
+      "job": "plan",
+      "variant": {
+        "unresolved_matrix": {
+          "unit": "${{ fromJSON(needs.detect.outputs.aws_units) }}"
+        }
+      },
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos-checks\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "needs.detect.outputs.aws_units != '[]' && github.event.pull_request.head.repo.full_name == github.repository",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": false
+    },
+    {
+      "workflow": "tofu-plan.yml",
+      "job": "proxmox-plan",
+      "variant": {},
+      "runs_on": "ubuntu-latest",
+      "reusable_workflow": null,
+      "condition": "contains(fromJSON(needs.detect.outputs.units).*.id, 'proxmox-homelab') && github.event.pull_request.head.repo.full_name == github.repository",
+      "measurement_status": "unmeasured",
+      "routing_eligible": false,
+      "docker_declared": false
+    },
+    {
+      "workflow": "tofu-plan.yml",
+      "job": "talos-plan",
+      "variant": {},
+      "runs_on": "ubuntu-latest",
+      "reusable_workflow": null,
+      "condition": "contains(fromJSON(needs.detect.outputs.units).*.id, 'talos-homelab') && github.event.pull_request.head.repo.full_name == github.repository",
+      "measurement_status": "unmeasured",
+      "routing_eligible": false,
+      "docker_declared": false
+    },
+    {
+      "workflow": "tofu-plan.yml",
+      "job": "applications-plan",
+      "variant": {},
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos-checks\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "contains(fromJSON(needs.detect.outputs.units).*.id, 'kubernetes-homelab') && github.event.pull_request.head.repo.full_name == github.repository",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": false
+    },
+    {
+      "workflow": "tofu-plan.yml",
+      "job": "plan-gate",
+      "variant": {},
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos-light\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "${{ !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": false
+    },
+    {
+      "workflow": "trivy.yml",
+      "job": "trivy",
+      "variant": {},
+      "runs_on": "${{ fromJSON('{\"github-hosted\":\"ubuntu-latest\",\"talos\":\"homelab-talos-checks\"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}",
+      "reusable_workflow": null,
+      "condition": "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository",
+      "measurement_status": "unmeasured",
+      "routing_eligible": true,
+      "docker_declared": false
+    }
+  ]
+}
