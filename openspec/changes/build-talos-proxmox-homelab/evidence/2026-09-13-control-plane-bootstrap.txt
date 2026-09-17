@@ -1,0 +1,70 @@
+Control-plane bootstrap verification 2026-09-13T01:29:20.051666+00:00
+talosctl version
+Client:
+	Tag:         v1.13.9
+	SHA:         3ebd10a7
+	Built:       
+	Go version:  go1.26.6
+	OS/Arch:     darwin/arm64
+Server:
+	NODE:        10.42.0.220
+	Tag:         v1.13.9
+	SHA:         3ebd10a7
+	Built:       
+	Go version:  go1.26.6
+	OS/Arch:     linux/amd64
+	Enabled:     RBAC
+
+talosctl services
+NODE          SERVICE                STATE     HEALTH   LAST CHANGE   LAST EVENT
+10.42.0.220   apid                   Running   OK       4m23s ago     Health check successful
+10.42.0.220   auditd                 Running   OK       4m34s ago     Health check successful
+10.42.0.220   containerd             Running   OK       4m34s ago     Health check successful
+10.42.0.220   cri                    Running   OK       4m23s ago     Health check successful
+10.42.0.220   dashboard              Running   ?        4m24s ago     Process Process(["/sbin/dashboard"]) started with PID 2460
+10.42.0.220   etcd                   Running   OK       3m13s ago     Health check successful
+10.42.0.220   ext-qemu-guest-agent   Running   ?        4m25s ago     Started task ext-qemu-guest-agent (PID 2435) for container ext-qemu-guest-agent
+10.42.0.220   kubelet                Running   OK       3m54s ago     Health check successful
+10.42.0.220   machined               Running   OK       4m34s ago     Health check successful
+10.42.0.220   syslogd                Running   OK       4m33s ago     Health check successful
+10.42.0.220   trustd                 Running   OK       4m23s ago     Health check successful
+10.42.0.220   udevd                  Running   OK       4m26s ago     Health check successful
+
+talosctl etcd members
+NODE          ID                 HOSTNAME      PEER URLS                  CLIENT URLS                LEARNER
+10.42.0.220   5b82cb0d4f649e4f   talos-cp-01   https://10.42.0.220:2380   https://10.42.0.220:2379   false
+
+talosctl get machinestatus -o yaml
+node: 10.42.0.220
+metadata:
+    namespace: runtime
+    type: MachineStatuses.runtime.talos.dev
+    id: machine
+    version: 16
+    owner: runtime.MachineStatusController
+    phase: running
+    created: 2026-09-13T01:24:45Z
+    updated: 2026-09-13T01:27:36Z
+spec:
+    stage: running
+    status:
+        ready: false
+        unmetConditions:
+            - name: nodeReady
+              reason: node "talos-cp-01" is not ready
+
+kubectl get --raw=/readyz
+ok
+kubectl get nodes -o wide
+NAME          STATUS     ROLES           AGE    VERSION   INTERNAL-IP   EXTERNAL-IP   OS-IMAGE          KERNEL-VERSION          CONTAINER-RUNTIME
+talos-cp-01   NotReady   control-plane   105s   v1.36.3   10.42.0.220   <none>        Talos (v1.13.9)   6.18.44-talos (amd64)   containerd://2.2.7
+
+kubectl get pods -n kube-system
+NAME                                  READY   STATUS    RESTARTS        AGE
+coredns-66b7c65bb-5tbsz               0/1     Pending   0               110s
+coredns-66b7c65bb-qrszt               0/1     Pending   0               110s
+kube-apiserver-talos-cp-01            1/1     Running   0               105s
+kube-controller-manager-talos-cp-01   1/1     Running   2 (2m14s ago)   105s
+kube-proxy-wv4xl                      1/1     Running   0               105s
+kube-scheduler-talos-cp-01            1/1     Running   2 (2m16s ago)   105s
+

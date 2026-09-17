@@ -38,20 +38,20 @@ Prerequisite: review the recovery-foundation gaps in 2.7 and 2.8 before guest cr
 
 ## 5. Talos Cluster Foundation
 
-- [ ] 5.1 Apply the control-plane machine configuration to the verified target and disk, bootstrap etcd exactly once, and verify Talos health plus API access at the stable endpoint
-- [ ] 5.2 Apply the shared-worker configuration and verify the node joins with its shared label, expected resources, QEMU Guest Agent and gVisor, without a sandbox NoSchedule taint
-- [ ] 5.4 Install pinned Cilium v1.20.1 in VXLAN mode with kube-proxy retained, and verify node readiness, CoreDNS, pod networking, service routing, and `kubeProxyReplacement=false`
+- [x] 5.1 Apply the control-plane machine configuration to the verified target and disk, bootstrap etcd exactly once, and verify Talos health plus API access at the stable endpoint
+- [x] 5.2 Apply the shared-worker configuration and verify the node joins with its shared label, expected resources, QEMU Guest Agent and gVisor, without a sandbox NoSchedule taint
+- [x] 5.4 Install pinned Cilium v1.20.1 in VXLAN mode with kube-proxy retained, and verify node readiness, CoreDNS, pod networking, service routing, and `kubeProxyReplacement=false`
 - [ ] 5.5 Install the gVisor RuntimeClass and sandbox admission/network/resource controls on the shared worker; verify trusted services can coexist and sandbox pods without the required runtime or safe settings are rejected
-- [ ] 5.6 Capture an encrypted Talos etcd snapshot and reconstruction inputs in their approved off-host locations, then verify the snapshot metadata without committing kubeconfig, `talosconfig`, or machine secrets
+- [x] 5.6 Capture an encrypted Talos etcd snapshot and reconstruction inputs in their approved off-host locations, then verify the snapshot metadata without committing kubeconfig, `talosconfig`, or machine secrets
 
-- [ ] 5.7 Implement and execute daily encrypted etcd backup through GitHub CI with dedicated OIDC permissions; verify exact-version upload/readback, local decryption, independently saved private recovery key and missing-backup monitoring
-- [ ] 5.8 Deploy and verify S3 noncurrent-version expiration after 30 days for daily etcd backups with no current-version expiration; prove successive backups create versions of one key and the runner has no deletion permissions
+- [x] 5.7 Implement and execute daily encrypted etcd backup through GitHub CI with dedicated OIDC permissions; verify exact-version upload/readback, local decryption, independently saved private recovery key and missing-backup monitoring
+- [x] 5.8 Deploy and verify S3 noncurrent-version expiration after 30 days for daily etcd backups with no current-version expiration; prove successive backups create versions of one key and the runner has no deletion permissions
 
 ## 6. Worker-local Storage and Backup Foundation
 
-- [ ] 6.1 Prepare the Talos user-volume configuration selecting the verified worker data disk, mount at /var/mnt/local-path-provisioner and local-path provisioning; validate the config and ensure the OS disk cannot be selected
-- [ ] 6.2 Apply the worker data-volume configuration only after verifying /dev/sdb identity and size; verify the filesystem mount and persistence across a worker reboot without modifying the OS disk
-- [ ] 6.3 Define worker-local storage classes, retention and application capacity limits for model files, Celery services and durable data; verify representative PVC binding and read/write persistence
+- [x] 6.1 Prepare the Talos user-volume configuration selecting the verified worker data disk, mount at /var/mnt/local-path-provisioner and local-path provisioning; validate the config and ensure the OS disk cannot be selected
+- [x] 6.2 Apply the worker data-volume configuration only after verifying /dev/sdb identity and size; verify the filesystem mount and persistence across a worker reboot without modifying the OS disk
+- [x] 6.3 Define worker-local storage classes, retention and application capacity limits for model files, Celery services and durable data; verify representative PVC binding and read/write persistence
 - [ ] 6.4 Configure independent encrypted backups and application-consistent export procedures for accepted worker data; verify backup access does not depend on this cluster and a test backup succeeds
 - [ ] 6.5 Add worker disk/filesystem and Proxmox thin-pool capacity monitoring at 70/80/90 percent plus host memory-pressure monitoring; verify alert behavior without filling storage
 
@@ -65,6 +65,24 @@ Prerequisite: review the recovery-foundation gaps in 2.7 and 2.8 before guest cr
 
 - [ ] 7.6 Rehearse full disaster recovery in isolation from a clean administration environment, assuming the laptop and Proxmox are both lost; recover access/networking, host/storage, guests, cluster and accepted durable data in dependency order, verify service behavior and replayability, and record achieved recovery time/data loss against objectives with all unresolved blockers explicit
 
+## Historical automation work and separate follow-up
+
+The 2026-09-13 responsibility audit (historical task 8.1) is retained in
+[homelab-automation-audit.md](../../../docs/plans/homelab-automation-audit.md).
+Named Talos stages (8.2, PR #61), separate acceptance gates (8.3, PR #62), and
+consolidated backup capture/verification (8.4, PR #63) are merged. LOG-0084,
+LOG-0086, LOG-0087 and the dated reconciliation in
+[implementation-log.md](implementation-log.md) distinguish implementation from
+acceptance. This evidence-only PR adds no new feature requirements.
+
+Remaining migration parity (historical 8.5, deferred by the operator on
+2026-09-13) is tracked in [#83](https://github.com/TusharSariyaOrg/aws-account-infra/issues/83).
+The proposed dashboard (historical 9.1) is tracked separately in
+[#84](https://github.com/TusharSariyaOrg/aws-account-infra/issues/84), under the
+existing [platform roadmap #32](https://github.com/TusharSariyaOrg/aws-account-infra/issues/32).
+Those task IDs are reserved, not reused or claimed complete by this checklist.
+Full recovery, sandbox and foundation acceptance tasks above remain open.
+
 ## Retired task IDs (not completed)
 
 Operator-approved two-VM revision, 2026-09-12: 4.2 (NAS VM), 4.4 (sandbox VM) and 5.3 (sandbox join) are removed from active scope. Task 3.2 (dedicated sibling/NUMA placement) remains deferred tuning, no longer an implementation gate. These tasks were not executed. IDs are not reused. Completed artifact acquisition, including the unused Debian ISO, remains historical evidence. Phase 6 now implements worker-local storage and independent backups; 7.4 tests that recovery.
@@ -73,5 +91,6 @@ Operator-approved two-VM revision, 2026-09-12: 4.2 (NAS VM), 4.4 (sandbox VM) an
 
 - Tailscale account/port-scoped grants and removal of Funnel permission: deferred by operator. Candidate policy is `config/environments/proxmox/homelab/tailscale/policy.json`, not applied. Before future adoption, validate it in Tailscale, test permitted and denied identities and preserve a rollback copy. Revisit when membership or device trust changes.
 
+- Talos soft-reboot reliability: the initial control-plane installation reboot stalled in virtnet_poll after disk sync; a one-time pre-bootstrap Proxmox reset recovered it (LOG-0069). Investigate before relying on unattended reboots; no durable workaround is claimed.
 
 Operator deferral, 2026-09-13: Task 5.5 (gVisor RuntimeClass and sandbox admission/network/resource controls) is deferred at the operator's request. The installed gVisor extension alone does not enforce sandboxing; no untrusted-workload isolation is accepted. Task remains unchecked.

@@ -959,6 +959,20 @@ values in this file.
 - Rollback/recovery: Before installation, deploy started=false through CI to stop guests. Rebuild using the committed two-VM definitions, pinned ISOs and laptop DHCP reservations; rerun the documented maintenance checks. Preserve disks and do not treat this boot evidence as full DR acceptance.
 
 
+### LOG-0069 - Install and bootstrap control plane once
+
+- Timestamp: 2026-09-13T01:29:21.207870+00:00
+- Operator: Codex, after explicit authorization to execute the control-plane install/bootstrap instructions
+- Target: VM 100, talos-cp-01, 10.42.0.220, MAC 02:42:00:00:01:00; verified /dev/sda 107374182400 bytes (100 GiB)
+- Task: 5.1 complete for the pre-CNI control-plane phase
+- Validation: Pinned Talos v1.13.9 strict metal validation passed. Cross-file validation/self-tests passed using the existing backend-initialized administration checkout after the fresh worktree check reported backend initialization required. Capacities, schemes, install disk, endpoints, scheduling and secret exclusions matched the reviewed inputs.
+- Action: Applied the existing private talos-cp-01.machineconfig.yaml with talosctl apply-config --insecure -n 10.42.0.220. The node entered installing. It then reached kexec/reboot, reported disk sync done, and stalled in the kernel with an RCU stall trace in virtnet_poll. A read-only QMP screen dump captured this condition outside Git.
+- Recovery/deviation: Issued one qm reset 100 over trusted root SSH, after confirming this was the pre-bootstrap installation reboot. This operational reset did not change OpenTofu desired power state. A normal disk boot restored authenticated Talos v1.13.9 access and STATE/EPHEMERAL partitions. No host reset, VM recreation, disk wipe flag or kernel-setting change was made. Soft-reboot reliability remains an unresolved follow-up; this recovery is not an automatic procedure for a stateful cluster.
+- Bootstrap: Issued talosctl bootstrap exactly once to .220; command succeeded. Saved admin kubeconfig directly outside Git at ~/.config/aws-account-infra/talos/homelab/two-vm-20260912/kubeconfig with mode 0600. Early API connection refusals and empty node lists resolved during startup without repeating bootstrap.
+- Evidence: evidence/2026-09-13-control-plane-bootstrap.txt records authenticated Talos version/services, a single non-learner etcd member, Kubernetes /readyz=ok at VIP 10.42.0.224:6443 and registered node v1.36.3. Control-plane static pods and kube-proxy run. Node Ready=false specifically reports CNI not initialized; CoreDNS remains Pending. Control-plane NoSchedule taint is present. Full cluster readiness is deferred to task 5.4, not claimed here. Worker remains untouched in maintenance mode.
+- Recovery: Existing encrypted bootstrap archive contains the original Talos secrets/configuration; kubeconfig can be reissued from authenticated Talos access. An etcd snapshot and reconstruction-input backup remain task 5.6. Do not repeat bootstrap, reinstall, reset or delete the control plane as routine retry behavior now that etcd contains state.
+
+
 ### LOG-0070 - Prepare Talos OpenTofu adoption and CI
 
 - Timestamp: 2026-09-13T01:43:50.429951+00:00
@@ -980,6 +994,28 @@ values in this file.
 - CI status: An obsolete plan run remained in progress with an empty-step job and held the PR concurrency queue. Force-cancellation was requested for 34731347735; no live apply was cancelled. Adoption remains pending until the current plan and guarded apply pass.
 
 
+
+### LOG-0072 - Talos CI adoption verified
+
+- Timestamp: 2026-09-13T01:58:18.418219+00:00
+- Operator/target: Codex, authorized Talos OpenTofu migration, existing control plane .220
+- Deployment: PR #54 merged at 1ea90c2. Corrected CI plan run 34731584463 passed all jobs. Added apply label after inspecting the exact adoption plan. Apply run 34731649358 succeeded, importing the existing bootstrap record and adding the control-plane configuration resource with exact existing YAML in no-reboot mode. All five AWS roots and the Proxmox root were no-ops. The later auto-merge step initially reported unstable status; only that failed job was retried and then succeeded.
+- Security/state: CI post-apply check passed for absence of secret-bearing attributes and exact secret/config values in persisted state. Talos state is separate at talos/homelab/terraform.tfstate. Production secret is TALOS_SECRETS_B64, decoded and fingerprint-verified before use; the original cluster identity remains unchanged.
+- Runtime verification: Compared kernel boot ID against the pre-adoption value and confirmed no reboot. Etcd retains the same sole member 5b82cb0d4f649e4f at .220, non-learner. Kubernetes /readyz at .224:6443 returns ok. A fresh authenticated local plan after CI adoption reports no-op for both bootstrap and control-plane configuration resources, with no imports pending. No bootstrap command or worker installation was issued during adoption.
+- Reproducibility: Configuration changes now use public Git patches, pinned private generation, Terraform plan and the apply-label CI path. The worker resource remains disabled pending its installation PR. The stable provider's live-drift/upgrade limits and unresolved soft-reboot issue remain documented. The documentation branch was merged with current main preserving LOG-0069 and LOG-0070/0071, then this entry was appended; historical failures were not removed.
+- Recovery: Private pre-adoption etcd snapshot remains on the Mac; existing encrypted off-site secrets remain unchanged. Follow live/talos/homelab/README.md for state/identity recovery and no-reset rollback boundaries. Full DR and encrypted off-site etcd snapshot verification remain outstanding.
+
+
+### LOG-0073 - Install and join the shared worker through OpenTofu CI
+
+- Timestamp: 2026-09-13T02:13:54.573440+00:00
+- Operator/target/task: Codex, operator-authorized next step; VM 102 / talos-worker-01 / 10.42.0.222; task 5.2.
+- Action: PR #55 enabled worker_enabled in the Talos varfile. Existing cluster secrets and pinned worker installer were reused. Preflight verified maintenance stage, MAC 02:42:00:00:01:02, 100-GiB /dev/sda and 1,200-GiB /dev/sdb. No local machine configuration apply or repeat bootstrap was performed.
+- CI evidence: Plan run 34732325686 showed Proxmox no changes, control-plane configuration and bootstrap no-op, and only worker configuration create. Apply run 34732391888 succeeded, including state secret-exclusion checks. Automatic merge initially hit GitHub unstable status; only the failed merge job was rerun. PR #55 merged successfully. Full-history secret scan (151 commits), six Talos guard tests, repository security/lint checks and CI validation passed.
+- Runtime evidence: Authenticated talosctl get machinestatus reported worker stage running after normal installation reboot. kubectl get nodes reported both nodes with Talos v1.13.9 and Kubernetes v1.36.3. Worker capacity is 38 CPUs and 177122012 KiB RAM (about 168.92 GiB guest-visible from 172 GiB configured); no memory, disk or PID pressure. Shared label workload.security/shared=true is present. The only worker taint is node.kubernetes.io/not-ready:NoSchedule; no sandbox taint is present. get extensions verified gvisor 20260810.0, qemu-guest-agent 11.0.2 and schematic 8e8827b5b91420728f8415f3dc200fbf23b425ec07bf27cdc92a676367ee9edf. qm agent 102 ping succeeded. Both disks remain visible at their expected sizes.
+- Result/limitations: Task 5.2 complete. Both nodes are NotReady specifically because CNI is not initialized; Cilium installation and networking acceptance are task 5.4. The data disk has not been provisioned for workload storage. This worker reboot required no manual reset, but it does not establish that the earlier control-plane soft-reboot failure is resolved.
+- Recovery: Rebuild the same VM and pinned Talos configuration using the independent original cluster secrets and documented state recovery procedure. Never rerun bootstrap against this live cluster or disable worker_enabled as a rollback: prevent_destroy blocks resource deletion. Diagnose a failed installation before any operator-directed reset; no automatic resets are implemented. Earlier full-DR gaps remain open.
+
 ### LOG-0074 - Prepare Cilium deployment and network acceptance through CI
 
 - Timestamp: 2026-09-13T02:37:27.846228+00:00
@@ -989,6 +1025,15 @@ values in this file.
 - Risk/recovery: Cilium changes pod networking on both nodes; VM, host, Talos maintenance and Tailscale management configuration are unchanged. Existing private pre-adoption etcd snapshot and independent original cluster-secret archive remain recovery inputs; full DR is not claimed. Preserve failed-install evidence and correct through a reviewed CI plan. Automatic Helm uninstall is disabled; deletion/replacement is rejected. No task completion is recorded until live checks pass. Hubble is not enabled in this foundation step; sandbox policy enforcement remains task 5.5.
 
 
+
+### LOG-0075 - Cilium deployment and network acceptance verified
+
+- Timestamp: 2026-09-13T02:46:03.807911+00:00
+- Operator/target/task: Codex, authorized Cilium implementation; homelab / 10.42.0.224:6443; task 5.4.
+- Action and CI evidence: PR #56 deployed the Helm release through OpenTofu. Plan run 34733519982 showed only Cilium create, with Proxmox and Talos resources unchanged. Apply run 34733594075 passed, including state secret exclusion and the committed network acceptance script, then automatically merged. No local Helm install or kubectl configuration apply was used to install Cilium.
+- Verification: Both talos-cp-01 and talos-worker-01 are Ready. Both Cilium agents and Envoy pods, the one operator replica, both CoreDNS replicas and both kube-proxy pods are Running/Ready. Live cilium-config confirms kube-proxy-replacement=false, routing-mode=tunnel, tunnel-protocol=vxlan and ipam=kubernetes. Restricted test pods on each node verified direct pod IP and DNS/ClusterIP Service HTTP traffic for all four source/target combinations, including both cross-node directions. Internal Kubernetes DNS and external kubernetes.io DNS resolution passed from each node. Temporary namespace homelab-network-check-g6fxg was deleted by the script.
+- Result: Task 5.4 complete. First image downloads took roughly three minutes; startup probes briefly failed while agents initialized, then all components became healthy with no restarts. Chart checksum, seven plan-guard tests, full-history secret scan, CI security/lint/static validation and LocalStack smoke passed. No reboot or manual reset was needed.
+- Limitations/recovery: This proves initial pod networking, DNS and Service routing, not sandbox policy enforcement or full DR. Task 5.5 remains next for gVisor RuntimeClass and sandbox admission/network/resource controls. Hubble is disabled. Preserve original cluster identity and backend state; change/recover Cilium through the documented Helm resource and guarded CI procedure. No automatic CNI deletion or destructive rollback is enabled. Earlier backup/recovery gaps remain open.
 ### LOG-0076 - Defer sandbox controls and prepare verified etcd recovery bundle
 
 - Timestamp: 2026-09-13T02:58:31.749177+00:00
@@ -1010,6 +1055,16 @@ values in this file.
 - Recovery/rollback: Keep this age identity for all versions encrypted to it. Suspend the workflow to stop new backups; current backup remains indefinitely. Removing the expiry rule stops future eligibility but cannot restore permanently expired versions. No old object was deleted manually, and S3 expiry cannot be proven elapsed until the retention window passes.
 
 
+### LOG-0078 - Daily backup deployment and recovery verification complete
+
+- Timestamp: 2026-09-13T03:30:00Z
+- Operator/target/tasks: Codex, authorized daily encrypted backup implementation; homelab recovery bucket; tasks 5.6, 5.7 and 5.8.
+- Deployment: PR #58 passed plan run 34735181067 and apply run 34735288492, then automatically merged. Dedicated GitHub OIDC role, lifecycle rule and independent CloudWatch alarm were deployed through OpenTofu CI. PR #57 was closed as superseded; its manual snapshot helper is included in #58.
+- Runtime evidence: Main-branch backup runs 34735458909 and 34735520650 both succeeded, including snapshot integrity/status, encrypted upload, exact-version ciphertext readback and success heartbeat. Workflow is active with daily 06:17 UTC schedule. Both runs were manual dispatch verification; the scheduled timer has not yet fired.
+- Recovery verification: Downloaded first version fqPPDlnkWVGPD1ENVa3ze.hPa.FVqnR4 from S3 and decrypted locally with the independently saved age identity. Snapshot file checksum, embedded snapshot checksum and original Talos secret fingerprint matched. Snapshot revision was 12583, with 410 keys and storage version 3.6.0. Temporary plaintext archive was removed. Private encrypted archive and receipt remain under ~/.config/aws-account-infra/recovery/etcd-restore-check-8iy8qtsy/. No private key or snapshot contents are committed.
+- Retention verification: S3 lists latest version XodckGdgJEpJtCGjxVbRrXUhsY1kCl5u and the first version as noncurrent, with zero delete markers. Live etcd-prefix lifecycle has NoncurrentDays=30 and no current expiration. Latest therefore remains even if backups stop. Actual expiry is asynchronous after 30 days since supersession and subject to Object Lock; elapsed deletion has not been observed.
+- Permissions and monitoring: IAM simulation allowed exact-key upload/readback and implicitly denied DeleteObject, DeleteObjectVersion and BypassGovernanceRetention. AWS MCP lacked simulation permission, so the existing admin CLI profile performed that read-only check. CloudWatch alarm uses 30 hourly missing-success periods, FILL(success,0), threshold 1 and the existing confirmed SNS email subscription. New alarm was initially INSUFFICIENT_DATA awaiting evaluation; a 30-hour outage and notification delivery have not been rehearsed.
+- Result/limits: Tasks 5.6-5.8 complete for deployed configuration and successful runtime/integrity checks. Full isolated etcd restore remains task 7.3. Worker application data is outside this backup scope. Preserve this private age key for its retained versions; old passphrase-encrypted bootstrap archives still require their original passphrase. No live restore, reboot or manual backup deletion occurred.
 ### LOG-0079 - Prepare worker data-volume provisioning through Talos CI
 
 - Timestamp: 2026-09-13T03:45:00Z
@@ -1020,6 +1075,16 @@ values in this file.
 - Recovery: docs/plans/homelab-worker-storage.md records reconstruction and existing-volume reuse. No wipe/reset or destructive rollback is implemented. Preserve labeled data and original identity. This prepares the filesystem for local-path provisioning in task 6.3; application data protection remains 6.4. Daily etcd backups do not include worker files.
 
 
+### LOG-0080 - Worker data volume deployed and reboot persistence verified
+
+- Timestamp: 2026-09-13T03:43:24.352865+00:00
+- Operator/target/tasks: Codex, authorized worker storage implementation; VM 102 / talos-worker-01 / 10.42.0.222; tasks 6.1-6.2.
+- CI evidence: PR #59 passed live plan run 34735986592 and apply run 34736051635, including all static/security/LocalStack checks, then merged as 94107cf. Only worker machine configuration changed. No local Talos configuration apply was used.
+- Runtime evidence: u-local-path-provisioner is ready on /dev/sdb1, XFS, size 1288488091648 bytes, mounted read-write at /var/mnt/local-path-provisioner. Filesystem UUID 86f3ada1-17e4-4f74-9d73-a18c1774cc31 and partition UUID 4b94f790-0d84-43ef-ba5b-da4bffc20939 persisted across the CI worker-only powercycle-mode reboot. CI compared all OS/data partition and filesystem UUIDs before/after reboot; no forced reset was needed. OS disk GPT UUID remains a74a1df1-1d2c-49fd-8d94-d769836c469f, matching pre-action inspection.
+- Acceptance: Both nodes Ready. Cilium acceptance passed all four same/cross-node pod and Service paths, internal/external DNS, and system component readiness after reboot. Temporary test namespace cleaned up. A subsequent authenticated plan recognized existing storage and returned no-op for worker, control plane, bootstrap and Cilium. Thirteen guard tests and full-history secret scan passed.
+- Result/limits: Tasks 6.1-6.2 complete for Talos user-volume preparation, formatting/mount and reboot persistence. Dynamic local-path provisioner, StorageClasses/PVC persistence and application capacity controls remain task 6.3. Live MountStatus reports projectQuotaSupport=false; no filesystem quota enforcement is claimed. Worker file/application backups remain 6.4; etcd backups do not contain these files.
+- Correction: LOG-0079's manually entered 03:45 timestamp was inaccurate; preparation was committed around 03:38 UTC, before live plan at 03:39 and apply at 03:40. Its pending status correctly describes the pre-apply state. This entry supplies the completed-operation evidence without rewriting that history.
+- Recovery: Reapply the committed named user volume to the matching disk through CI to reuse existing labeled XFS storage, or provision a blank replacement and restore independently backed-up files. No wipe, disk replacement or volume-name change is a rollback. The earlier control-plane soft-reboot issue remains separate; this worker verification used firmware reboot.
 ### LOG-0081 - Prepare worker PVC provisioning and retention acceptance
 
 - Timestamp: 2026-09-13T03:52:48.489328+00:00
@@ -1028,6 +1093,29 @@ values in this file.
 - Validation: Authenticated plan adds only the two Helm releases; existing Talos/Cilium/bootstrap resources no-op. Local chart lint/render passed. Live application and acceptance pending; task remains unchecked.
 - Scope/limitations: Local-path has no hard per-volume write quota. Namespace requested-capacity budgets do not account for other namespaces or released retained volumes. No application data backup or capacity-monitoring completion is claimed. Sandbox runtime controls remain deferred.
 - Recovery: Preserve retained PV paths/claim metadata and independent application data backups. Change or recover releases through CI; no automatic uninstall or destructive rollback. Test cleanup is restricted to captured test claim UIDs and namespace.
+
+### LOG-0082 - Worker PVC persistence, retention and quota acceptance verified
+
+- Timestamp: 2026-09-13T04:02:03.970022+00:00
+- Operator/target/task: Codex, authorized next storage step; homelab Kubernetes API 10.42.0.224:6443; task 6.3.
+- Deployment: PR #60 passed live plan run 34736617591 and apply run 34736689127, then merged as 0bf06a72ff283327d213002c2bef8ea481c98d95. Only the local-path-provisioner and storage-policy Helm releases were added; existing Talos/Cilium/bootstrap resources were no-op. No node reboot or local configuration apply occurred.
+- Runtime: local-path-provisioner is Ready in local-path-storage. Both explicit worker-local-retain and worker-local-delete classes use WaitForFirstConsumer, worker hostname topology and no automatic expansion. Live ResourceQuota/LimitRange objects match the 800/100/100-GiB model/service/data request budgets, minimum 1-GiB claim and maximum 10 claims per application namespace.
+- Acceptance: Disposable namespace storage-check-4ec277415a exercised two 1-GiB PVCs. Both waited for consumers, bound to worker-affine PVs under the verified data mount, and retained a random proof across pod recreation. Retain PV pvc-186d24a7-2661-4db0-9c4b-2f9fb8fd2419 entered Released after PVC deletion; Talos read confirmed its proof file remained. Delete PV pvc-5e76bccb-1b3c-4c7e-8ad5-a8378b6f67e4 was reclaimed. Excess PVC admission failed with exceeded-quota evidence. Cleanup changed only captured test claim-UID-matched volumes to Delete, removed the test namespace and waited for PV reclamation. Independent kubectl inspection found no remaining PVCs/PVs.
+- Verification: CI also passed node/Cilium/CoreDNS readiness, internal/external DNS and all four same/cross-node pod/Service paths. Fifteen guard tests, chart lint/render, strict OpenSpec validation, full-history secret scan and repository CI checks passed. Subsequent authenticated plan returned no-op for all six Talos/Helm resources.
+- Result/limitations: Task 6.3 complete. Requested-capacity quotas do not enforce bytes written; other namespaces and released retained volumes are outside these live-claim budgets. No hard disk limit, physical HA, application data backup or capacity-monitoring completion is claimed. Task 6.4 is next. The dedicated system provisioner namespace permits required hostPath helper operations; deferred sandbox controls remain unchanged.
+- Recovery: The committed Helm charts/values reconstruct classes, namespaces, budgets and provisioner. Etcd preserves Kubernetes claim/PV metadata, while independent application-file/database backups must restore actual data. Retain preserves directories but is not a backup. Rebinding or disposal of non-test retained volumes requires explicit identification and the documented recovery procedure.
+
+
+
+### LOG-0083 - Automation responsibility and caller audit complete
+
+- Timestamp: 2026-09-13T04:13:10.852818+00:00
+- Operator/target/task: Codex with two explicitly requested read-only sub-agent reviews; repository automation; task 8.1.
+- Action: Reviewed deployment/configuration, backups/recovery and workflow/local callers. Added docs/plans/homelab-automation-audit.md with disposition inventory, caller migration checklist, pinned native-tool compatibility constraints, backup formats, gate/trigger findings and the task 8.2-8.5 sequence.
+- Findings: Routine orchestration and repeated setup can move to native steps; private-input, structural-plan and live-disk checks remain focused helpers. Provider 0.11.0 embeds Talos 1.13.0 while CLI is 1.13.9, so native generation needs private parity proof. Three existing backup layouts/two encryption methods need compatibility. Test-only path selection and apply/merge dependencies require explicit handling when suites move.
+- Verification/result: Cross-checked active workflows, imports, deploy-unit watches and operator instructions against source; primary versioned provider/OpenTofu docs support candidate boundaries. Task 8.1 complete; 28/45 tasks verified. No refactor, live plan/apply, backup upload, secret change or cluster operation performed during this audit.
+- Recovery/deviation: No runtime rollback required. Task 8.2 is next; keep current operational entry points until their replacements and all callers pass the documented migration checks. Existing implementation logs remain historical evidence.
+
 
 ### LOG-0084 - Expose Talos deployment stages and native network validation
 
@@ -1039,6 +1127,18 @@ values in this file.
 - Scope: Task 8.3 separation of affected integration jobs and explicit reboot operations remains pending; this change preserves current acceptance and first-provision reboot behavior. Backup orchestration refactoring remains task 8.4. No live apply or no-change plan is claimed yet.
 - Rollback: Restore main revision 0bf06a7 workflows/helpers through a reviewed PR; retain original Talos identity and existing state. No disk formatting, cluster bootstrap or state reset is part of this refactor.
 
+
+### LOG-0085 - Start stopped Talos VMs and verify staged CI plan
+
+- Timestamp: 2026-09-13T16:34:05.577075+00:00
+- Operator/target/task: Codex, operator explicitly authorized starting both stopped VMs; Proxmox VM 100/102 and task 8.2 verification for PR #61.
+- Finding: Tailscale was running, the Mac accepted subnet routes and pve advertised 10.42.0.0/24. Both VMs were stopped following a recent Proxmox host boot. The first PR #61 live plan failed at authenticated Talos preflight; verified setup/private input preparation succeeded and cleanup ran.
+- Action: Ran qm start 100, then qm start 102 through authenticated SSH to pve.tail2f646b.ts.net. No VM configuration, cluster identity, disk content, state or autostart setting was changed. Reran failed CI jobs in run 34768649355.
+- Runtime evidence: Both VMs running and pingable, both Kubernetes nodes Ready and no longer cordoned, Talos etcd/kubelet/API services healthy. All listed system/storage pods Running and Ready. Worker XFS volume remains mounted from /dev/sdb1 at /var/mnt/local-path-provisioner.
+- Plan evidence: Authenticated local preview and the staged GitHub CI plan each report all six Talos/Helm resources no-op, no imports or destructive changes. Run https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/34768649355 succeeded after the restart. PR #61 offline/security checks pass.
+- Remaining: PR #61 is open for review, without an apply label; the refactored live apply path has not been exercised. Task 8.2 remains unchecked pending deployment acceptance; tasks 8.3-8.5 are not completed by this plan. Existing full DR and control-plane soft-reboot limitations remain.
+- Recovery/rollback: This was normal VM startup, not bootstrap, reset or restore. Preserve existing identity/state and recover through the reviewed runbooks. Prior stopped state is not restored automatically because the operator requested the cluster running.
+
 ### LOG-0086 - Separate acceptance jobs and close skipped-apply merge loophole
 
 - Timestamp: 2026-09-13T17:29:45.832808+00:00
@@ -1049,6 +1149,7 @@ values in this file.
 - Validation: Selection and gate tests reject missing apply, failed/cancelled/skipped selected tests, failed applies and missing first-provision maintenance. Negative tests require explicit reboot consent and prove routine storage does not reboot. Authenticated local plan proposes only worker apply_mode update; the other five Talos/Helm resources are no-op. Live CI acceptance and apply pending; no reboot or infrastructure apply performed for this change.
 - Rollback: Revert to #61's source revision 429190a through a reviewed PR while retaining identity/state. That restores the old workflow behavior, including optional apply gating and implicit first-provision reboot; do not treat rollback as new permission to reboot. No state reset or rebootstrap is required.
 
+
 ### LOG-0087 - Consolidated backup command and compatibility verification
 
 - Timestamp: 2026-09-13T17:56:26.269899+00:00
@@ -1057,3 +1158,15 @@ values in this file.
 - Validation: Offline tests cover all existing archive layouts, original text/JSON receipts, corrupt snapshots, unsafe paths, missing/null versions, exact-version mismatches, failure heartbeat suppression and child environment secret exclusion. Live capture succeeded at etcd revision 34894 (390 keys, embedded checksum valid). The verifier downloaded and decrypted existing S3 version XodckGdgJEpJtCGjxVbRrXUhsY1kCl5u, confirmed original identity and snapshot revision 12760/status/digest. Temporary plaintext was removed after checks.
 - Limits: This is capture and decrypt/integrity verification, not a cluster restore. New daily CI upload awaits reviewed merge; interactive legacy passphrase rehearsal and remaining operational parity are task 8.5. No resource configuration, retention, keys or cluster identity changed.
 - Rollback: Revert this refactor through a reviewed PR to revision 7515e95. No backup conversion or state reset is required.
+
+
+
+
+### Evidence reconciliation - 2026-09-17
+
+- Scope: documentation-only reconciliation against main `bbfd6706190a20a82ad978a336a4291b5c29835f`; no live operation was performed. Dated entries above retain the observations and pending states from their original dates.
+- Incorporation: PR #61 merged at `429190a53e0410f18e599fe4ff3fdcb11d6a1f30`, #62 at `7515e951b329ccd98de5685722c27524c2db605a`, and #63 at `5f75f9405439976d25f9a24bd79a66376d8df4c4` on 2026-09-13. Historical statements that these PRs await merge are not current instructions.
+- Backup execution: [run 35091138634](https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/35091138634), source `d99c04a991d89badc8a3c3e73c823dcd9c090d58`, reports the backup job successful on 2026-09-16. This supersedes the last-observed failure as a status statement; it does not prove full isolated restore, legacy passphrase rehearsal, elapsed retention or outage notification.
+- Historical foundation receipts: LOG-0069 supports 5.1; LOG-0073 supports 5.2; LOG-0075 supports 5.4; LOG-0078 supports 5.6-5.8; LOG-0079/0080 support 6.1-6.2; LOG-0082 supports 6.3. No fresh runtime acceptance is inferred from PR closure or merge.
+- Current addressing comes from repository configuration: control plane `10.0.0.220`, worker `10.0.0.222`, Kubernetes VIP `10.0.0.231:6443`. Earlier `10.42.0.*` addresses and the initial 100-GiB worker OS disk are historical receipts. See the current Talos runbook and VM configuration before operations; do not replay bootstrap commands.
+- Remaining automation parity is tracked in [#83](https://github.com/TusharSariyaOrg/aws-account-infra/issues/83); dashboard selection/delivery in [#84](https://github.com/TusharSariyaOrg/aws-account-infra/issues/84), both under [#32](https://github.com/TusharSariyaOrg/aws-account-infra/issues/32). The 2026-09-13 parity deferral is preserved. Full DR and unchecked acceptance remain unverified.
