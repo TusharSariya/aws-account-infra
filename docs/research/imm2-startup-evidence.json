@@ -1,0 +1,966 @@
+{
+  "date": "2026-09-17",
+  "power_on_requested_at": "2026-09-17T22:15:15.356724+00:00",
+  "power_on_confirmed_at": "2026-09-17T22:15:49.615280+00:00",
+  "timing_note": "Mac UTC for requests and first observations; persisted Kubernetes Ready transition timestamps for service readiness. Client network interruption prevented continuous observation. These are one-boot observations, not SLA guarantees.",
+  "vm_autostart": [
+    {
+      "vmid": 100,
+      "name": "talos-cp-01",
+      "onboot": 1,
+      "startup_order": 1,
+      "host_log_started_at": "2026-09-17T22:19:29Z"
+    },
+    {
+      "vmid": 102,
+      "name": "talos-worker-01",
+      "onboot": 1,
+      "startup_order": 2,
+      "host_log_started_at": "2026-09-17T22:19:33Z"
+    }
+  ],
+  "tcp_observations": [
+    {
+      "timestamp": "2026-09-17T22:19:19.825961+00:00",
+      "milestone": "proxmox_ssh",
+      "address": [
+        "10.0.0.92",
+        22
+      ]
+    },
+    {
+      "timestamp": "2026-09-17T22:19:30.938369+00:00",
+      "milestone": "proxmox_api",
+      "address": [
+        "10.0.0.92",
+        8006
+      ]
+    },
+    {
+      "timestamp": "2026-09-17T22:20:51.047176+00:00",
+      "milestone": "kubernetes_api_tcp",
+      "address": [
+        "10.0.0.231",
+        6443
+      ]
+    }
+  ],
+  "pod_readiness": [
+    {
+      "namespace": "arc-systems",
+      "name": "arc-gha-rs-controller-67f5448dc7-pn2z5",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:21:26Z",
+        "observedGeneration": 1,
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "manager",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:21:26Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "arc-systems",
+      "name": "homelab-talos-build-fbf45466-listener",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:21:32Z",
+        "observedGeneration": 1,
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "listener",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:21:32Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "arc-systems",
+      "name": "homelab-talos-checks-fbf45466-listener",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:21:32Z",
+        "observedGeneration": 1,
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "listener",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:21:32Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "arc-systems",
+      "name": "homelab-talos-docker-small-fbf45466-listener",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:21:31Z",
+        "observedGeneration": 1,
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "listener",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:21:31Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "arc-systems",
+      "name": "homelab-talos-fbf45466-listener",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:21:32Z",
+        "observedGeneration": 1,
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "listener",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:21:32Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "arc-systems",
+      "name": "homelab-talos-light-fbf45466-listener",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:21:32Z",
+        "observedGeneration": 1,
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "listener",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:21:32Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "cnpg-system",
+      "name": "cnpg-6cf9fb88d7-xdtjk",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:21:24Z",
+        "observedGeneration": 1,
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "manager",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:21:20Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "homelab-cache",
+      "name": "nexus-5bb87d89bb-2td6r",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:22:30Z",
+        "observedGeneration": 1,
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "nexus",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:21:32Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "homelab-cache",
+      "name": "nexus-postgres-86d56f88bc-x29px",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:21:30Z",
+        "observedGeneration": 1,
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "postgres",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:21:28Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "homelab-data",
+      "name": "apps-db-1",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:21:16Z",
+        "observedGeneration": 1,
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "postgres",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:21:10Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "homelab-jobs",
+      "name": "argo-workflows-server-5d6d6794d8-56rn8",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:21:49Z",
+        "observedGeneration": 1,
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "argo-server",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:21:29Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "homelab-jobs",
+      "name": "argo-workflows-workflow-controller-7c95c9f589-ghrf9",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:21:22Z",
+        "observedGeneration": 1,
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "controller",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:21:22Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "homelab-network-check-qwq7w",
+      "name": "talos-cp-01",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:21:13Z",
+        "observedGeneration": 1,
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "http",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:21:12Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "homelab-network-check-qwq7w",
+      "name": "talos-worker-01",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:21:13Z",
+        "observedGeneration": 1,
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "http",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:21:11Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "homelab-platform",
+      "name": "ai-lifecycle-64fb994f68-tvl5s",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:21:40Z",
+        "observedGeneration": 1,
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "controller",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:21:29Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "homelab-platform",
+      "name": "guest-capacity-f9c55f8c9-mfjcj",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:21:35Z",
+        "observedGeneration": 1,
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "collector",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:21:25Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "homelab-platform",
+      "name": "physical-capacity-7675494776-sdzj2",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:21:41Z",
+        "observedGeneration": 1,
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "collector",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:21:31Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "homelab-services",
+      "name": "pihole-7fd644dfbb-4p4g5",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:22:21Z",
+        "observedGeneration": 1,
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "pihole",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:21:20Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "kube-system",
+      "name": "cilium-envoy-9bt5r",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:21:13Z",
+        "observedGeneration": 1,
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "cilium-envoy",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:20:58Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "kube-system",
+      "name": "cilium-envoy-cbm55",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:21:06Z",
+        "observedGeneration": 1,
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "cilium-envoy",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:20:56Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "kube-system",
+      "name": "cilium-ff9r9",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:21:09Z",
+        "observedGeneration": 1,
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "cilium-agent",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:21:03Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "kube-system",
+      "name": "cilium-operator-c666fff8c-j5dk6",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:21:24Z",
+        "observedGeneration": 1,
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "cilium-operator",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:21:19Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "kube-system",
+      "name": "cilium-qnsm2",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:21:06Z",
+        "observedGeneration": 1,
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "cilium-agent",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:21:00Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "kube-system",
+      "name": "coredns-5bd684f4c4-gp4hf",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:21:20Z",
+        "observedGeneration": 1,
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "coredns",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:21:20Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "kube-system",
+      "name": "coredns-5bd684f4c4-r465j",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:21:20Z",
+        "observedGeneration": 1,
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "coredns",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:21:20Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "kube-system",
+      "name": "kube-apiserver-talos-cp-01",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:20:27Z",
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "kube-apiserver",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:20:27Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "kube-system",
+      "name": "kube-controller-manager-talos-cp-01",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:21:03Z",
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "kube-controller-manager",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:21:00Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "kube-system",
+      "name": "kube-proxy-6hspr",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:20:56Z",
+        "observedGeneration": 1,
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "kube-proxy",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:20:56Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "kube-system",
+      "name": "kube-proxy-wm8x8",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:20:58Z",
+        "observedGeneration": 1,
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "kube-proxy",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:20:58Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "kube-system",
+      "name": "kube-scheduler-talos-cp-01",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:21:08Z",
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "kube-scheduler",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:21:01Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "kueue-system",
+      "name": "kueue-controller-manager-7666c69bc-dv8l4",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:21:31Z",
+        "observedGeneration": 1,
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "manager",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:21:20Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "local-path-storage",
+      "name": "local-path-provisioner-75cb9d4c46-cm88n",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:21:40Z",
+        "observedGeneration": 1,
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "local-path-provisioner",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:21:30Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "tailscale",
+      "name": "operator-557fc69b8c-mx9pj",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:21:29Z",
+        "observedGeneration": 1,
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "operator",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:21:29Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "tailscale",
+      "name": "ts-ai-lifecycle-mmnvw-0",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:21:31Z",
+        "observedGeneration": 1,
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "tailscale",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:21:31Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "tailscale",
+      "name": "ts-argo-6dd2g-0",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:21:30Z",
+        "observedGeneration": 1,
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "tailscale",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:21:30Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "tailscale",
+      "name": "ts-odysseus-kq5rt-0",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:21:30Z",
+        "observedGeneration": 1,
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "tailscale",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:21:30Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "tailscale",
+      "name": "ts-ollama-fz7fn-0",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:21:29Z",
+        "observedGeneration": 1,
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "tailscale",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:21:29Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "tailscale",
+      "name": "ts-pihole-dns-2jwxv-0",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:21:29Z",
+        "observedGeneration": 1,
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "tailscale",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:21:29Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "namespace": "tailscale",
+      "name": "ts-pihole-tch87-0",
+      "ready": {
+        "lastProbeTime": null,
+        "lastTransitionTime": "2026-09-17T22:21:26Z",
+        "observedGeneration": 1,
+        "status": "True",
+        "type": "Ready"
+      },
+      "containers": [
+        {
+          "name": "tailscale",
+          "state": {
+            "running": {
+              "startedAt": "2026-09-17T22:21:26Z"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "cache_probe": {
+    "verified_at": "2026-09-17T22:39:57.259040+00:00",
+    "registry": "Nexus Docker Hub proxy",
+    "repository": "library/python",
+    "manifest": "sha256:810da6270e43d30a1f3e0e1eabbeb6fbd9d78ad9dd2e754d5297a3d6cb42df46",
+    "config_blob": "sha256:9b84b0c75adf7a34fb1b00b406a50dc9f7bebd3bfbe3e7fd9ff168a6f9d0dfb9",
+    "sha256_verified": true
+  },
+  "kueue_probe": {
+    "started": "2026-09-17T22:40:27.462810+00:00",
+    "initial_gates": [
+      {
+        "name": "kueue.x-k8s.io/admission"
+      },
+      {
+        "name": "kueue.x-k8s.io/topology"
+      }
+    ],
+    "admitted": true,
+    "workload_conditions": [
+      {
+        "lastTransitionTime": "2026-09-17T22:40:27Z",
+        "message": "Quota reserved in ClusterQueue homelab-compute",
+        "observedGeneration": 1,
+        "reason": "QuotaReserved",
+        "status": "True",
+        "type": "QuotaReserved"
+      },
+      {
+        "lastTransitionTime": "2026-09-17T22:40:27Z",
+        "message": "The workload is admitted",
+        "observedGeneration": 1,
+        "reason": "Admitted",
+        "status": "True",
+        "type": "Admitted"
+      },
+      {
+        "lastTransitionTime": "2026-09-17T22:40:46Z",
+        "message": "",
+        "observedGeneration": 1,
+        "reason": "Succeeded",
+        "status": "True",
+        "type": "Finished"
+      },
+      {
+        "lastTransitionTime": "2026-09-17T22:40:45Z",
+        "message": "At least one pod has failed, waiting for recovery",
+        "observedGeneration": 1,
+        "reason": "WaitForRecovery",
+        "status": "False",
+        "type": "PodsReady"
+      }
+    ],
+    "finished": "2026-09-17T22:40:48.558030+00:00",
+    "phase": "Succeeded",
+    "node": "talos-worker-01",
+    "log": "startup admission executed\n"
+  },
+  "functional_checks": {
+    "apps_database": "Primary healthy; temporary CREATE/INSERT/SELECT returned 42; transaction rolled back",
+    "nexus_database": "SQL query succeeded; not in recovery",
+    "pihole": "UDP and TCP example.com queries succeeded in pod and through Tailscale 100.82.190.54",
+    "pihole_web": "HTTPS /admin/ returned 302 with certificate validation and explicit MagicDNS-derived address",
+    "nexus": "status and writable endpoints returned 200; manifest and config blob hashes matched",
+    "capacity": "Guest filesystem/quota and Proxmox thin-pool samples healthy",
+    "kubernetes": "Both nodes Ready, API /readyz ok, enabled Deployments/StatefulSets/DaemonSets ready",
+    "backup_monitor": "Completed successfully; no new backup or restore initiated",
+    "ai": "Intentionally zero replicas; not auto-started"
+  },
+  "limitations": [
+    "Two cache-monitor jobs failed during recovery; later 22:35:15Z job completed successfully.",
+    "Existing storage-check fixture has an unbound delete PVC; production PVCs are Bound.",
+    "Worker Ready transition timestamp predates this boot and is not a valid boot-duration measurement."
+  ],
+  "previous_shutdown": {
+    "worker_timeout_seconds": 180,
+    "worker_task_message": "VM quit/powerdown failed - terminating now with SIGTERM",
+    "host_guest_shutdown_service_duration_seconds": 256,
+    "clean_guest_shutdown_proven": false
+  },
+  "ci_recovery": [
+    {
+      "completed_at": "2026-09-17T22:44:20Z",
+      "conclusion": "success",
+      "html_url": "https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/35283469379/job/105410463115",
+      "name": "lint",
+      "runner_name": "homelab-talos-checks-hs4pd-runner-wf75p",
+      "started_at": "2026-09-17T22:44:08Z",
+      "status": "completed"
+    },
+    {
+      "completed_at": "2026-09-17T22:44:22Z",
+      "conclusion": "success",
+      "html_url": "https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/35283469379/job/105410463364",
+      "name": "shell",
+      "runner_name": "homelab-talos-light-r4czp-runner-qtc9b",
+      "started_at": "2026-09-17T22:44:09Z",
+      "status": "completed"
+    }
+  ]
+}
