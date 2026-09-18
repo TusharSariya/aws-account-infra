@@ -18,4 +18,4 @@
 
 - [x] 4.1 Run ShellCheck, Bats, focused Python tests, workflow validation, Markdown-link checks, secret scanning, and strict OpenSpec validation, recording any unavailable check explicitly
 - [x] 4.2 Verify the deployment selector requests no infrastructure changes and active repository references do not depend on deleted Ansible files
-- [ ] 4.3 Commit the bounded removal branch and open a pull request with the current required checks unchanged, verifying the PR reports passing shell validation
+- [x] 4.3 Commit the bounded removal branch and open a pull request with the current required checks unchanged, verifying the PR reports passing shell validation
