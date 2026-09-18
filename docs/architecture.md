@@ -1,5 +1,8 @@
 # Homelab platform architecture
 
+> [!IMPORTANT]
+> Historical record only. This document describes the retired Ubuntu/kubeadm and Ansible path. Its commands are archival examples and must not be run. Removed sources remain available in the [pre-removal repository tree](https://github.com/TusharSariyaOrg/aws-account-infra/tree/9a5f9720e45e3bbcbb5637e7bd27a8c688d53add/ansible). Current server management uses Talos, OpenTofu, and Helm.
+
 A visual overview of the Kubernetes homelab platform managed from this repo:
 observability, DNS, and Istio Gateway API ingress on a single GPU node.
 
@@ -130,4 +133,3 @@ flowchart LR
   and `docs/superpowers/specs/2026-07-06-istio-grafana-ingress-design.md` for the
   design record.
 ```
-

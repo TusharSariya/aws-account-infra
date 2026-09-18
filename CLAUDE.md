@@ -1,8 +1,8 @@
 # Repository guidance
 
-This repository manages AWS staging infrastructure, local host configuration, and a
-LocalStack sandbox. Kubernetes is documentation-only. GCP and Azure are future provider
-namespaces, not implemented environments.
+This repository manages AWS staging infrastructure, Talos/Proxmox infrastructure,
+Helm-managed cluster workloads, and a LocalStack sandbox. GCP and Azure are future
+provider namespaces, not implemented environments.
 
 ## Commands
 
@@ -13,8 +13,8 @@ namespaces, not implemented environments.
 ./scripts/infra.sh aws-staging-court-booker-api plan
 ./scripts/localstack.sh up
 ./scripts/localstack.sh smoke
-ANSIBLE_CONFIG=ansible/ansible.cfg ansible-playbook ansible/playbooks/workstation.yml --check --diff
-ANSIBLE_CONFIG=ansible/ansible.cfg ansible-playbook ansible/playbooks/compute.yml --check --diff
+tofu -chdir=live/proxmox/homelab plan
+helm lint charts/*
 ```
 
 OpenTofu roots and dependencies are declared in `deploy-units.json`. Update the manifest
@@ -48,12 +48,14 @@ variables live under `config/environments`, and secrets must not be committed.
 
 ## Scope boundaries
 
-- Ansible can manage the Mac workstation and Ubuntu compute baseline. It must not install
-  Kubernetes until `docs/plans/kubernetes.md` has been separately reviewed and approved.
+- Talos VM and Proxmox infrastructure changes belong in the existing OpenTofu root;
+  cluster services and workloads belong in the existing Helm charts.
+- Laptop bootstrap automation is intentionally deferred. Do not add workstation,
+  Homebrew, or MLX setup without a separately reviewed replacement design.
 - LocalStack is for disposable experiments and smoke tests. Live roots must not be
   redirected to its endpoints.
 - Cloud-specific modules are preferred over cross-cloud wrappers.
 
-Before pushing, run relevant formatting, validation, lint, security scans, Ansible syntax
-checks, and LocalStack smoke tests. `.terraform.lock.hcl` files are committed deliberately;
-state, local inventory, Vault password files, plans, and `.terraform/` are ignored.
+Before pushing, run relevant formatting, validation, lint, security scans, shell checks,
+and LocalStack smoke tests. `.terraform.lock.hcl` files are committed deliberately;
+state, retired local inventory, Vault-password files, plans, and `.terraform/` are ignored.

@@ -1,5 +1,8 @@
 # Remote access over the tailnet
 
+> [!IMPORTANT]
+> Historical record only. This document describes the retired Ubuntu/kubeadm and Ansible path. Its commands are archival examples and must not be run. Removed sources remain available in the [pre-removal repository tree](https://github.com/TusharSariyaOrg/aws-account-infra/tree/9a5f9720e45e3bbcbb5637e7bd27a8c688d53add/ansible). Current server management uses Talos, OpenTofu, and Helm.
+
 How `grafana.home.arpa` and `pihole.home.arpa` are reached from outside the
 house, and which parts of that path Ansible owns.
 

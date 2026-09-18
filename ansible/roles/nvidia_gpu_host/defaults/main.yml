@@ -1,3 +1,0 @@
----
-nvidia_gpu_host_driver_package: nvidia-driver-595-open
-nvidia_gpu_host_toolkit_package: nvidia-container-toolkit

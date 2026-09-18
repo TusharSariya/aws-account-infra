@@ -1,5 +1,8 @@
 # Pi-hole DNS query-log analytics → Loki + Grafana
 
+> [!IMPORTANT]
+> Historical record only. This document describes the retired Ubuntu/kubeadm and Ansible path. Its commands are archival examples and must not be run. Removed sources remain available in the [pre-removal repository tree](https://github.com/TusharSariyaOrg/aws-account-infra/tree/9a5f9720e45e3bbcbb5637e7bd27a8c688d53add/ansible). Current server management uses Talos, OpenTofu, and Helm.
+
 Date: 2026-07-06
 Status: implemented (pending live cutover)
 

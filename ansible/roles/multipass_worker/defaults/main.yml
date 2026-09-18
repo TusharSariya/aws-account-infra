@@ -1,9 +1,0 @@
----
-multipass_worker_name: mac-arm-worker
-multipass_worker_image: "26.04"
-multipass_worker_cpus: 4
-multipass_worker_memory: 6G
-multipass_worker_disk: 40G
-multipass_worker_bridged_interface: en0
-multipass_worker_user: tushar
-multipass_worker_ssh_public_key_path: "{{ lookup('env', 'HOME') }}/.ssh/id_ed25519.pub"

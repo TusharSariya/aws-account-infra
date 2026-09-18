@@ -16,7 +16,7 @@ Preserve the repository's existing architecture:
 
 - Proxmox hosts two Talos VMs: a 2-vCPU/4-GiB control plane and a 38-vCPU/172-GiB shared worker with worker-local persistent storage. The dedicated NAS and sandbox VMs were removed by the approved 2026-09-12 revision.
 - Tailscale runs directly on Proxmox for private remote administration independent of Kubernetes; package source, enrollment, enabled service and off-home authenticated HTTPS/SSH are verified (OpenSpec task 2.9). Fresh-machine recovery remains pending.
-- Ansible and Helmfile bootstrap cluster-critical add-ons.
+- Talos machine configuration and Helm bootstrap cluster-critical add-ons.
 - Argo CD reconciles allowlisted applications, not its own dependencies.
 - Helm packages third-party software; Kustomize manages first-party bases and
   overlays.
@@ -53,8 +53,8 @@ records remain in:
 ### Delivery and configuration
 
 - Keep Talos, Cilium, storage, Gateway API, Istio, cert-manager, observability,
-  Kyverno, External Secrets Operator, and Argo CD bootstrap under Ansible plus
-  pinned Helmfile.
+  Kyverno, External Secrets Operator, and Argo CD bootstrap under pinned Helm
+  releases.
 - Run non-HA Argo CD because HA mode requires independent nodes and cannot
   protect against loss of the shared Proxmox host. Argo manages only application
   namespaces through restricted `AppProject` resources. See [Argo CD HA
@@ -91,7 +91,7 @@ records remain in:
   guidance](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/deployment-guides/kubernetes/).
 - Manage Cloudflare DNS and tunnel routes declaratively through OpenTofu.
   Continue managing split-horizon LAN records through the existing Pi-hole and
-  Ansible path. Do not add ExternalDNS initially.
+  Helm bootstrap path. Do not add ExternalDNS initially.
 - Use Cloudflare Access backed by Authentik for approved private applications
   that must be reachable from the internet. Public APIs require application
   authentication, rate limiting, explicit NetworkPolicy, and monitoring.
@@ -276,7 +276,7 @@ Monitor:
   archiving, and point-in-time recovery to a dedicated S3 prefix. See
   [CloudNativePG backup documentation](https://cloudnative-pg.io/docs/1.28/backup/).
 - Maintain three recovery layers:
-  - Git, OpenTofu, Ansible, Helmfile, and Kustomize for desired state.
+  - Git, OpenTofu, Talos machine configuration, Helm, and Kustomize for desired state.
   - Automated off-cluster Talos etcd snapshots.
   - Application-native database and worker-data backups.
 - Use Velero later for Kubernetes API objects and selected non-database volumes
@@ -327,7 +327,7 @@ values.
 | Owner | Responsibility |
 |---|---|
 | OpenTofu | AWS, Cloudflare DNS and tunnel declarations, IAM, and S3 |
-| Ansible and Helmfile | Talos-adjacent bootstrap and cluster platform add-ons |
+| Talos and Helm | Machine configuration, cluster bootstrap, and platform add-ons |
 | Argo CD | Allowlisted application namespace resources |
 | Kustomize | First-party application bases and environment overlays |
 | Helm | Pinned third-party packages and reviewed values |

@@ -1,9 +1,0 @@
----
-ubuntu_compute_packages: []
-
-# Deploy the display toggle (scripts/display-mode.sh) to this host. Opt-in per
-# host, for the same reason ssh_tailnet is: this group also contains
-# ubuntu_laptop_dell_studio, and none of the assumptions the script relies on
-# hold there — no GNOME greeter to stop, no GPU, no tailnet fallback if the
-# console session is lost.
-ubuntu_compute_display_mode_enabled: false

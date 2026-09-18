@@ -437,7 +437,7 @@ Databases, etcd, and live application state continue to use application-native b
 - Scratch and non-allowlisted resources never appear in S3.
 - Authentik, OpenFGA, and broker databases restore into a disposable environment.
 - NAS disk, quota, mirror lag, S3 size, object count, authorization failures, and reconciliation drift are visible in monitoring.
-- Loss of the NAS VM is recoverable from Git, OpenTofu, Ansible, database dumps, and S3 without relying on a Proxmox snapshot.
+- Loss of the NAS VM is recoverable from Git, OpenTofu, Helm, database dumps, and S3 without relying on a Proxmox snapshot.
 
 ## Assumptions
 

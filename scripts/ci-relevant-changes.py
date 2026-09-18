@@ -9,16 +9,14 @@ SCOPES = {
     "checkov": ["**/*.tf", "**/*.tf.json", ".checkov.yaml"],
     "tflint": ["**/*.tf", "**/*.tf.json", ".tflint.hcl"],
     "trivy": ["**/*.tf", "**/*.tf.json", "**/*.yaml", "**/*.yml", "**/Dockerfile*", ".trivyignore"],
-    "ansible": ["ansible/**", ".ansible*"],
     "shell": ["scripts/*.sh", "scripts/git-hooks/*", "mocks/localstack/smoke.sh", "tests/**", ".shellcheckrc"],
     "localstack": ["mocks/localstack/**", "scripts/localstack.sh", "apps/ecr/court-booker/**"],
 }
 
 
 def relevant(scope, paths):
-    workflow = "ansible" if scope in {"ansible", "shell"} else scope
     patterns = SCOPES[scope] + [
-        f".github/workflows/{workflow}.yml",
+        f".github/workflows/{scope}.yml",
         ".github/actions/talos-runner-setup/**",
         ".github/actions/relevant-changes/**",
         "scripts/ci-relevant-changes.py",

@@ -1,8 +1,0 @@
-# Managed by Ansible (kubernetes_node role). AWS config consumed by the
-# ecr-credential-provider plugin via AWS_CONFIG_FILE. The [default] profile sources
-# credentials from IAM Roles Anywhere: aws_signing_helper presents this node's client
-# cert to the trust anchor and returns temporary STS creds in credential_process JSON.
-# No long-lived AWS access key is stored on the node.
-[default]
-region = {{ kubernetes_node_ecr_region }}
-credential_process = {{ kubernetes_node_aws_signing_helper_bin }} credential-process --certificate {{ kubernetes_node_ecr_rolesanywhere_cert_file }} --private-key {{ kubernetes_node_ecr_rolesanywhere_key_file }} --trust-anchor-arn {{ kubernetes_node_ecr_rolesanywhere_trust_anchor_arn }} --profile-arn {{ kubernetes_node_ecr_rolesanywhere_profile_arn }} --role-arn {{ kubernetes_node_ecr_rolesanywhere_role_arn }} --region {{ kubernetes_node_ecr_region }}

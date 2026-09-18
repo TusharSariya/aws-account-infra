@@ -57,21 +57,10 @@ desktop.csr
 # not repo content — it belongs outside the checkout entirely.
 pihole-etc-backup/
 
-# Machine-specific Ansible inventory and the vault password (never committed).
+# Retired machine-specific inventory and Vault-password files remain private.
 .vault-password
+vault-password
 ansible/inventories/local/
-
-# EXCEPTION: the ansible-vault CIPHERTEXT is encrypted at rest, so it IS committed —
-# that is what makes secrets reproducible after a `git clean -x` or a lost laptop.
-# Git cannot re-include a file whose parent dir is ignored, so re-include each parent
-# on the way down, then the one ciphertext file. Everything else under local/ stays out.
-!ansible/inventories/local/
-ansible/inventories/local/*
-!ansible/inventories/local/group_vars/
-ansible/inventories/local/group_vars/*
-!ansible/inventories/local/group_vars/all/
-ansible/inventories/local/group_vars/all/*
-!ansible/inventories/local/group_vars/all/vault.yml
 
 # Generated Talos secrets stay outside Git.
 talos-secrets.yaml

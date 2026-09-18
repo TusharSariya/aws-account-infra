@@ -1,6 +1,6 @@
 # infrastructure
 
-Infrastructure-as-code and host configuration for personal environments. The current
+Infrastructure-as-code and cluster configuration for personal environments. The current
 live cloud environment is AWS staging account `992382747916` in `us-east-1`; the layout
 allows additional accounts and provider-specific GCP/Azure roots without pretending
 their resources share one abstraction.
@@ -13,7 +13,8 @@ their resources share one abstraction.
 | `live/aws/staging/` | State bootstrap, account baseline, and staging workloads |
 | `modules/aws/` | Reusable AWS-only OpenTofu modules |
 | `config/environments/` | Non-secret variables grouped by cloud and environment |
-| `ansible/` | macOS administration workstation and Ubuntu compute configuration |
+| `live/proxmox/homelab/` | Talos VM and Proxmox infrastructure managed by OpenTofu |
+| `charts/` | Helm charts for workloads and cluster services running on Talos |
 | `apps/ecr/` | Container image sources; CI pushes each subdirectory to ECR |
 | `apps/lambda/` | Zip Lambda sources; CI uploads arm64 packages to S3 |
 | `mocks/localstack/` | Disposable local AWS sandbox |
@@ -79,8 +80,13 @@ off; the API zip cron is the live weekly booker.
 
 ## Local systems
 
-See [ansible/README.md](ansible/README.md) for inventory and host configuration. Actual
-inventory is gitignored; the committed inventory contains documentation addresses only.
+Talos VMs and Proxmox resources are managed with OpenTofu under
+[`live/proxmox/homelab/`](live/proxmox/homelab/README.md). Cluster services and workloads
+are managed with Helm charts under [`charts/`](charts/). Standalone operational and
+recovery scripts remain under [`scripts/`](scripts/).
+
+Laptop bootstrap automation is intentionally deferred. This repository does not
+currently install or configure macOS packages, Homebrew bundles, or MLX services.
 
 LocalStack is a sandbox, not a live-stack test backend:
 
@@ -119,5 +125,6 @@ cloud-specific variables under `config/environments/<cloud>/`. Extend CI authent
 for that provider before setting a unit's `ci` field to true. Do not place credentials in
 variable files or create generic modules whose inputs merely mirror provider resources.
 
-Kubernetes remains intentionally deferred. Review and complete every open prerequisite
-in [docs/plans/kubernetes.md](docs/plans/kubernetes.md) before adding automation.
+The Ubuntu/kubeadm plans are retained as historical records only. Current homelab work
+uses Talos; start with [the Talos rebuild plan](docs/plans/talos-kubernetes-rebuild.md)
+and the OpenTofu root documented above.

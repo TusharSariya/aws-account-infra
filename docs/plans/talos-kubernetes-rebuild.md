@@ -179,7 +179,7 @@ Replace the current Ubuntu-only cluster assumptions with two explicit
 management paths:
 
 - Talos machine configuration and cluster lifecycle for the Proxmox VMs.
-- Ansible-managed Ubuntu lifecycle for the external GPU worker.
+- The external Ubuntu GPU worker lifecycle is deferred until a replacement management path is approved.
 
 Add declarative inputs for:
 

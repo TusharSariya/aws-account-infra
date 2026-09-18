@@ -302,7 +302,7 @@ Barman plugin](https://cloudnative-pg.io/plugin-barman-cloud/docs/intro/).
 
 Recovery remains layered:
 
-- Git, OpenTofu, Ansible, Helmfile, and Kustomize for desired state.
+- Git, OpenTofu, Talos machine configuration, Helm, and Kustomize for desired state.
 - Talos etcd snapshots for Kubernetes control-plane recovery.
 - Velero later for Kubernetes resources and supported CSI snapshots.
 - CloudNativePG application-native database backup and restore.

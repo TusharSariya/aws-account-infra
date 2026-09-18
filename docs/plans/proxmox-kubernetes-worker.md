@@ -1,5 +1,8 @@
 # Proxmox Kubernetes worker plan
 
+> [!IMPORTANT]
+> Historical record only. This document describes the retired Ubuntu/kubeadm and Ansible path. Its commands are archival examples and must not be run. Removed sources remain available in the [pre-removal repository tree](https://github.com/TusharSariyaOrg/aws-account-infra/tree/9a5f9720e45e3bbcbb5637e7bd27a8c688d53add/ansible). Current server management uses Talos, OpenTofu, and Helm.
+
 Status: **proposed; hardware discovery and implementation pending**
 
 This plan adds the newly acquired 192 GiB Proxmox server to the existing
@@ -328,4 +331,4 @@ a stable API endpoint.
 - [Cilium system requirements](https://docs.cilium.io/en/stable/operations/system_requirements/)
 - [Proxmox VE administration guide](https://pve.proxmox.com/pve-docs/pve-admin-guide.pdf)
 - [Repository Kubernetes plan](./kubernetes.md)
-- [Repository Ansible guide](../../ansible/README.md)
+- [Retired repository Ansible guide](https://github.com/TusharSariyaOrg/aws-account-infra/blob/9a5f9720e45e3bbcbb5637e7bd27a8c688d53add/ansible/README.md)

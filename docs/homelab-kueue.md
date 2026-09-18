@@ -125,7 +125,7 @@ through the OpenTofu moved block; do not uninstall active runners.
 
 - Light: detection, comments, required result gates, merge helpers, shell checks,
   Gitleaks, recovery unit tests, SDK spec lint and catalog validation.
-- Checks: AWS/application plans and application-only apply, Ansible lint, Trivy,
+- Checks: AWS/application plans and application-only apply, shell validation, Trivy,
   TFLint, SDK smoke, API docs build and reusable live acceptance.
 - Docker: Checkov's Docker action, config/application tests using Docker,
   LocalStack/Compose, SDK generation/publication, image builds/publication,
