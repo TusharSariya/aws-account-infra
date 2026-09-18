@@ -1,9 +1,10 @@
 name: checkov
 
-# Policy-as-code scan of the Terraform/OpenTofu with Checkov's AWS ruleset.
-# Pure file scan — no AWS creds, no OIDC. Reports on every PR; expensive steps run only for affected inputs, so the single
-# `checkov` job is itself a stable required-check context. Suppressions live in
-# /.checkov.yaml (skip-check) or inline `# checkov:skip=<id>:<reason>` comments.
+# Policy-as-code scan of Terraform/OpenTofu with Checkov's AWS ruleset.
+# A stable `checkov` gate reports on every PR. Affected Terraform directories
+# each get a scan job; Checkov configuration or runner changes scan all of them.
+# Suppressions live in /.checkov.yaml (skip-check) or inline
+# `# checkov:skip=<id>:<reason>` comments.
 on:
   pull_request:
 
@@ -15,26 +16,91 @@ permissions:
   contents: read
 
 jobs:
-  checkov:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+  detect:
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-docker-small"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
+    outputs:
+      directories: ${{ steps.targets.outputs.directories }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/relevant-changes
-        id: changes
-        with:
-          scope: checkov
 
+      - id: targets
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          directories=()
+          global_change=false
+
+          while IFS= read -r -d '' file; do
+            case "$file" in
+              .checkov.yaml|.github/workflows/checkov.yml|\
+              .github/actions/relevant-changes/*|\
+              .github/actions/talos-runner-setup/*|\
+              scripts/ci-relevant-changes.py)
+                global_change=true
+                ;;
+              *.tf|*.tf.json)
+                directory="${file%/*}"
+                [[ "$directory" == "$file" ]] && directory=.
+                [[ -d "$directory" ]] && directories+=("$directory")
+                ;;
+            esac
+          done < <(
+            git diff --name-only --no-renames -z "$BASE_SHA...$HEAD_SHA"
+          )
+
+          if "$global_change"; then
+            mapfile -t directories < <(
+              git ls-files -- '*.tf' '*.tf.json' |
+                while IFS= read -r file; do dirname "$file"; done | sort -u
+            )
+          fi
+
+          if ((${#directories[@]})); then
+            matrix="$(
+              printf '%s\n' "${directories[@]}" | sort -u |
+                jq -Rsc '{include: map({directory: .})}'
+            )"
+          else
+            matrix='{"include":[]}'
+          fi
+          echo "directories=$matrix" >> "$GITHUB_OUTPUT"
+
+  checkov-scan:
+    needs: detect
+    if: >-
+      needs.detect.result == 'success' &&
+      needs.detect.outputs.directories != '{"include":[]}'
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-docker-small"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
+    name: checkov (${{ matrix.directory }})
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.detect.outputs.directories) }}
+    steps:
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/talos-runner-setup
-        if: steps.changes.outputs.run == 'true'
         with:
           docker: 'true'
       - uses: bridgecrewio/checkov-action@v12
-        if: steps.changes.outputs.run == 'true'
         with:
-          directory: .
+          directory: ${{ matrix.directory }}
           framework: terraform
           config_file: .checkov.yaml
           soft_fail: false
+
+  checkov:
+    needs: [detect, checkov-scan]
+    if: always()
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-docker-small"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
+    steps:
+      - name: gate
+        run: |
+          [[ "${{ needs.detect.result }}" != "failure" ]] || exit 1
+          [[ "${{ needs.detect.result }}" != "cancelled" ]] || exit 1
+          [[ "${{ needs.checkov-scan.result }}" != "failure" ]] || exit 1
+          [[ "${{ needs.checkov-scan.result }}" != "cancelled" ]] || exit 1

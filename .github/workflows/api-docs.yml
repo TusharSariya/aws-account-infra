@@ -54,16 +54,19 @@ jobs:
     if: (github.event_name == 'pull_request') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-light"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
     steps:
-      - uses: actions/github-script@v7
-        with:
-          script: |
-            const run = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: `### Spec preview\n\nSwagger UI artifact: [run ${context.runId}](${run}) (download \`swagger-ui\`). After merge: GitHub Pages from \`main\`.`,
-            });
+      - name: Comment with preview artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body-file - <<EOF
+          ### Spec preview
+
+          Swagger UI artifact: [run $GITHUB_RUN_ID]($run_url) (download \`swagger-ui\`).
+
+          After merge: GitHub Pages from \`main\`.
+          EOF
 
   deploy:
     needs: build
