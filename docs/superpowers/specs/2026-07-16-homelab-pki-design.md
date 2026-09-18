@@ -1,5 +1,8 @@
 # Homelab PKI: Let's Encrypt server TLS + IAM Roles Anywhere node identity
 
+> [!IMPORTANT]
+> Historical record only. This document describes the retired Ubuntu/kubeadm and Ansible path. Its commands are archival examples and must not be run. Removed sources remain available in the [pre-removal repository tree](https://github.com/TusharSariyaOrg/aws-account-infra/tree/9a5f9720e45e3bbcbb5637e7bd27a8c688d53add/ansible). Current server management uses Talos, OpenTofu, and Helm.
+
 Date: 2026-07-16
 Status: design approved (Track 1 sections 1–2); **Track 2 not yet reviewed**
 
@@ -22,7 +25,7 @@ Two concrete problems follow:
    internal service is plaintext on the LAN.
 2. **The ECR CA is a single point of failure.** `homelab-ca.key` lives in the
    repo checkout (`~/Projects/aws-account-infra/homelab-ca.key`), gitignored.
-   `docs/plans/ansible-vault.md` documents it at
+   the [retired Vault runbook](https://github.com/TusharSariyaOrg/aws-account-infra/blob/9a5f9720e45e3bbcbb5637e7bd27a8c688d53add/docs/plans/ansible-vault.md) documents it at
    `~/.config/aws-account-infra/homelab-ca.{crt,key}` — "outside the checkout"
    so `git clean -x` can't destroy it — but it was never moved there. Because
    `git clean -x` deletes *ignored* files, the CA does not survive the exact

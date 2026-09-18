@@ -1,2 +1,0 @@
----
-kubernetes_worker_cri_socket: unix:///run/containerd/containerd.sock

@@ -1,8 +1,0 @@
----
-- name: Configure administration workstations
-  hosts: admin_workstations
-  gather_facts: true
-  roles:
-    - homebrew
-    - admin_workstation
-    - mlx_host

@@ -1,5 +1,8 @@
 # Production Architecture, Rollout, Rollback & Lifecycle Audit: PR #30
 
+> [!IMPORTANT]
+> Historical record only. This document describes the retired Ubuntu/kubeadm and Ansible path. Its commands are archival examples and must not be run. Removed sources remain available in the [pre-removal repository tree](https://github.com/TusharSariyaOrg/aws-account-infra/tree/9a5f9720e45e3bbcbb5637e7bd27a8c688d53add/ansible). Current server management uses Talos, OpenTofu, and Helm.
+
 **Pull Request**: [#30 - Add AWS account and Kubernetes service vending](https://github.com/TusharSariyaOrg/aws-account-infra/pull/30)
 **Evaluated Branch**: `agent/aws-account-kubernetes-vending`
 **Classification**: Enterprise Infrastructure & Multi-Tenant Control Plane Audit

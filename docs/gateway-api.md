@@ -1,5 +1,8 @@
 # Gateway API
 
+> [!IMPORTANT]
+> Historical record only. This document describes the retired Ubuntu/kubeadm and Ansible path. Its commands are archival examples and must not be run. Removed sources remain available in the [pre-removal repository tree](https://github.com/TusharSariyaOrg/aws-account-infra/tree/9a5f9720e45e3bbcbb5637e7bd27a8c688d53add/ansible). Current server management uses Talos, OpenTofu, and Helm.
+
 The cluster uses Istio (sidecar mode) as its Gateway API implementation. Istio
 provides north-south ingress over the existing Cilium/kube-proxy datapath, so it
 replaced both the retired ingress-nginx controller and an interim Envoy Gateway

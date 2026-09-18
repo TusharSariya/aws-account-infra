@@ -218,7 +218,7 @@ spec:
   exposure: private
 ```
 
-Today the service catalog, broker, Ansible, and OpenTofu already own those
+Today the service catalog, broker, Helm charts, and OpenTofu already own those
 responsibilities. Adding Crossplane now would create competing state ownership
 and place powerful AWS permissions inside the cluster. Keep OpenTofu as the AWS
 account authority. Reconsider Crossplane only when a specific self-service API
@@ -234,7 +234,7 @@ repeatable clusters, not one statically sized Proxmox cluster.
 
 Reconsider it when the homelab needs several persistent or disposable Talos
 clusters and a separate management cluster. Until then, the Talos API,
-OpenTofu, and Ansible are simpler and avoid a management-cluster bootstrap
+OpenTofu, and Talos are simpler and avoid a management-cluster bootstrap
 dependency. See [Cluster API](https://cluster-api.sigs.k8s.io/).
 
 ### Developer portals and platform products

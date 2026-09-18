@@ -1,0 +1,37 @@
+name: shell
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  # display-mode.sh is the first root-privileged shell script in this repo that
+  # stops system units, on a host whose only remote access is tailnet SSH. The
+  # bats suite covers the greeter-UID guards, which are what stand between a
+  # normal run and stopping the invoking user's own session manager.
+  shell:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-light"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/relevant-changes
+        id: changes
+        with:
+          scope: shell
+      - uses: ./.github/actions/talos-runner-setup
+        if: steps.changes.outputs.run == 'true'
+      - name: Install shellcheck and bats
+        if: steps.changes.outputs.run == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck bats
+      # Every existing script already passes, so this is a gate that holds the
+      # line rather than one that needs a cleanup first.
+      - run: shellcheck scripts/*.sh scripts/git-hooks/* mocks/localstack/smoke.sh
+        if: steps.changes.outputs.run == 'true'
+      - run: bats tests/
+        if: steps.changes.outputs.run == 'true'

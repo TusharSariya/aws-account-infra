@@ -1,5 +1,8 @@
 # Local Kubernetes implementation plan
 
+> [!IMPORTANT]
+> Historical record only. This document describes the retired Ubuntu/kubeadm and Ansible path. Its commands are archival examples and must not be run. Removed sources remain available in the [pre-removal repository tree](https://github.com/TusharSariyaOrg/aws-account-infra/tree/9a5f9720e45e3bbcbb5637e7bd27a8c688d53add/ansible). Current server management uses Talos, OpenTofu, and Helm.
+
 Status: **node preparation and staged kubeadm runbooks implemented; cluster application pending**
 
 This plan describes a full upstream Kubernetes cluster on two physical Ubuntu hosts.

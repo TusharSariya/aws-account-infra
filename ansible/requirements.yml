@@ -1,7 +1,0 @@
-collections:
-  - name: community.general
-    version: 10.4.0
-  # On-node CSR generation + controller-side CA signing for the ECR-pull node identity
-  # (kubernetes_node role): openssl_privatekey, openssl_csr, x509_certificate (ownca).
-  - name: community.crypto
-    version: 3.2.2

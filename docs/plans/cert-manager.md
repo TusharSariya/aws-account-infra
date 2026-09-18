@@ -1,5 +1,8 @@
 # cert-manager cluster add-on plan
 
+> [!IMPORTANT]
+> Historical record only. This document describes the retired Ubuntu/kubeadm and Ansible path. Its commands are archival examples and must not be run. Removed sources remain available in the [pre-removal repository tree](https://github.com/TusharSariyaOrg/aws-account-infra/tree/9a5f9720e45e3bbcbb5637e7bd27a8c688d53add/ansible). Current server management uses Talos, OpenTofu, and Helm.
+
 Status: **implemented as a pinned `cluster_addons` Helmfile release; pending apply**
 
 This is the separately-reviewed install record required by the repository's
@@ -102,8 +105,8 @@ Before applying, the operator must:
 - **Create a scoped Cloudflare API token.** Permissions `Zone:DNS:Edit` +
   `Zone:Zone:Read`, **restricted to the `tfdraw.dev` zone only**. Not the global
   API key. Store it as `vault_cloudflare_api_token` in the encrypted inventory.
-- **Bootstrap the Ansible vault** if not already done — see
-  `docs/plans/ansible-vault.md`. As of 2026-07-16 the vault password file and
+- **Bootstrap the Ansible vault** if not already done — see the
+  [retired Vault runbook](https://github.com/TusharSariyaOrg/aws-account-infra/blob/9a5f9720e45e3bbcbb5637e7bd27a8c688d53add/docs/plans/ansible-vault.md). As of 2026-07-16 the vault password file and
   `group_vars/all/` layout were only partially in place on the controller; both
   are prerequisites for any `cluster_addons` run.
 - **Verify the chart pin.** Confirm `cluster_addons_cert_manager_version` against
