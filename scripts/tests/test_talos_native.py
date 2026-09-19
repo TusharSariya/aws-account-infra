@@ -49,6 +49,15 @@ variables {
 }
 run "network_contract" {
   command = plan
+  assert {
+    condition = (
+      talos_machine_configuration_apply.control_plane.node == "10.0.0.221" &&
+      talos_machine_configuration_apply.control_plane.endpoint == "10.0.0.221" &&
+      talos_machine_bootstrap.cluster.node == "10.0.0.221" &&
+      talos_machine_bootstrap.cluster.endpoint == "10.0.0.221"
+    )
+    error_message = "Control-plane resources must use the current .221 address."
+  }
   ''' + expected + '\n}\n')
                 result = subprocess.run(['tofu', f'-chdir={tf}', 'test', '-no-color'],
                                         capture_output=True, text=True, timeout=120)

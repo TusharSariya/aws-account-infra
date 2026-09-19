@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 import hashlib
+import json
 
 spec = importlib.util.spec_from_file_location('ci', Path(__file__).resolve().parents[1] / 'talos-ci.py')
 ci = importlib.util.module_from_spec(spec)
@@ -13,6 +14,23 @@ spec.loader.exec_module(ci)
 
 
 class StageTests(unittest.TestCase):
+    def test_session_targets_configured_control_plane_not_retired_address(self):
+        client = {'ca': 'test', 'crt': 'test', 'key': 'test',
+                  'endpoints': ['10.0.0.221'], 'nodes': ['10.0.0.221']}
+        def read(path, *args, **kwargs):
+            if path.name == 'talos-secrets.yaml':
+                return 'test-only'
+            if path.name == 'identity.json':
+                return json.dumps({'secrets_sha256': hashlib.sha256(b'test-only').hexdigest()})
+            if path.name == 'talosconfig':
+                return ci.yaml.safe_dump({'contexts': {'homelab': client}})
+            return 'machine:\n  install:\n    disk: /dev/sda\n'
+        with patch.object(Path, 'read_text', read), patch.object(ci, 'guard_storage_config'), \
+                patch.object(ci, 'cli', return_value=Path('/test/talosctl')):
+            session = ci.Session(Path('/test/private'))
+        self.assertEqual(session.tc[-2:], ['-n', '10.0.0.221'])
+        self.assertEqual(session.worker_tc[-2:], ['-n', '10.0.0.222'])
+
     def test_environment_overrides_and_secret_are_not_inherited(self):
         poisoned = {'TF_CLI_ARGS_plan': '-destroy', 'TF_LOG': 'TRACE', 'TOFU_LOG': 'TRACE',
                     'TF_VAR_machine_configurations': 'wrong', 'TF_DATA_DIR': '/wrong',

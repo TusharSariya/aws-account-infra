@@ -1,3 +1,57 @@
+## Superseding two-worker decision, 2026-09-19
+
+This decision supersedes the earlier single-172-GiB-worker allocation wherever
+it appears below. Primary PVE 10.0.0.224 retains talos-cp-01 (4 GiB) and
+talos-worker-01 (112 GiB, primary-local storage label). Secondary PVE
+10.0.0.223 hosts talos-worker-02 (112 GiB, stateless label) as ID 103 at
+10.0.0.225. Both workers have one 320-GiB OS disk and fixed memory. Worker-01
+also retains its 1,200-GiB primary-local data disk. The API VIP
+remains 10.0.0.231. No DHCP reservation is created for .225.
+
+Kueue uses primary and secondary ResourceFlavors, each capped at 31.5 CPU,
+92 GiB memory, and 200 GiB ephemeral storage, with ci and argo general queues.
+Persistent storage is explicit primary-local only. AI runtime workloads and
+their PVC/PV data are intentionally retired without backup after protected-PVC
+verification. The control plane remains one member pending an independently
+recoverable move to an always-on third physical machine. IMM2 capacity control
+is specified only as a future, always-on-controller design.
+
+The current operation joins only worker-02 to the existing cluster. Preserve
+the authoritative single-member control plane and existing primary-local
+Pi-hole, CNPG/PostgreSQL, Nexus and Nexus PostgreSQL workloads. Do not bootstrap
+etcd again, reapply primary bootstrap configs, or retire workloads during this
+join. The operator confirmed the physical DIMM move on 2026-09-19. Both hosts
+booted with 128 GiB installed and zero reported EDAC CE/UE counts. Worker-02
+joined successfully and secondary capacity passed live acceptance that day
+(LOG-0090 through LOG-0094). Primary worker RAM was corrected while stopped;
+its 320-GiB OS and 1,200-GiB data disks were preserved.
+
+The 200-GiB secondary Nexus OCI cache disk, cache instance, Docker Hub/ECR
+proxying, registry mirrors, Roles Anywhere refresher and
+`cache-registry.homelab.tfdraw.dev` are explicitly deferred. Worker-02 has no
+local-storage label, user data volume or StorageClass. Its capacity becomes
+active only after Ready, Talos/resource/extension, Cilium, stateless placement,
+VIP continuity and protected-PVC acceptance checks pass. Those checks passed:
+all 17 PVCs and 16 PVs retained identities/bindings and protected consumers
+remained on worker-01. The temporary gVisor test resources were removed.
+
+Secondary CacheVault CVPM02 reports failed/replacement required, while the
+RAID5 array reports optimal with 16 online disks. Operation retains protective
+write-through, disabled disk cache and Cache When BBU Bad off. Replacement is
+an unresolved hardware maintenance item; do not force write-back. The operator
+was informed of this limitation before requesting join closeout.
+
+Worker-02 requires `machine.sysctls.user.max_user_namespaces: "11255"` for
+gVisor. This relaxes Talos's zero user-namespace default; runtime/admission and
+resource controls remain necessary. The first sandbox failed before that
+setting was applied; the successful test reported `4.19.0-gvisor`. A temporary
+RuntimeClass verified the runtime, not a permanent sandbox policy rollout.
+
+The following original foundation design describes historical planning where
+it conflicts with this superseding decision. Broader recovery acceptance is
+still open; successful join acceptance does not mean full DR or archive readiness.
+
+
 ## Context
 
 See `proposal.md` for motivation and `specs/homelab-provisioning/spec.md` for the behavior contract. The target is one IBM System x3550 M4 running Proxmox with 24 physical cores, 48 logical CPUs with SMT enabled, two NUMA nodes, 188 GiB usable memory, and an approximately 1.75 TiB LVM-thin pool backed by an aging ServeRAID array. The current branch documents the target but contains locally validated Proxmox definitions and Talos generation tooling, with no live deployment.

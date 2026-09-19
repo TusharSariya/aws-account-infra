@@ -75,3 +75,28 @@ Operator-approved two-VM revision, 2026-09-12: 4.2 (NAS VM), 4.4 (sandbox VM) an
 
 
 Operator deferral, 2026-09-13: Task 5.5 (gVisor RuntimeClass and sandbox admission/network/resource controls) is deferred at the operator's request. The installed gVisor extension alone does not enforce sandboxing; no untrusted-workload isolation is accepted. Task remains unchecked.
+
+## Two-worker revision, 2026-09-19
+
+The 172-GiB memory allocation is superseded; worker-01's 1,200-GiB data disk
+remains primary-local storage and MUST be preserved. The desired topology is
+worker-01 primary-local and worker-02 secondary-stateless. The operator
+confirmed the physical RAM move on 2026-09-19; post-boot memory/ECC validation
+passed (LOG-0090). Secondary CacheVault replacement remains maintenance under
+protective write-through operation (LOG-0091/0068). AI retirement and Kueue
+changes are outside this join.
+
+## 9. Secondary join acceptance, 2026-09-19
+
+- [x] 9.1 Verify both hosts after boot, IMM/PVE reachability, installed RAM, ECC, host reserves, storage/ISO readiness, trusted Talos/Kubernetes access and protected PVC/Pod baseline
+- [x] 9.2 Verify VM 103 and .225 vacancy immediately before creation, create only worker-02 with the approved hardware, and verify maintenance-mode identity and /dev/sda-only disk mapping
+- [x] 9.3 Apply only worker-02's config using existing secrets; verify Ready, unique IP/identity, labels, resources/extensions, Talos health, VIP continuity, Cilium pod/Service connectivity and a stateless placement test without re-bootstrapping etcd
+- [x] 9.4 Verify protected primary-local PVC/PV identities and consuming Pods remain primary-pinned, with no new secondary PVC/local PV/StorageClass/cache workload; record secondary capacity as active in inventory, runbook and PVE README
+
+Evidence: LOG-0090/0065 for post-boot preflight and protected baseline,
+LOG-0092 for creation, LOG-0093/0068 for join, corrections, acceptance and
+cleanup. Secondary join scope is complete; the broader unchecked foundation,
+backup and recovery tasks are not implied complete. Historical tasks retain their original evidence.
+
+The 200-GiB secondary Nexus cache, proxies, mirrors, Roles Anywhere refresher
+and cache-registry.homelab.tfdraw.dev remain deferred.

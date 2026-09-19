@@ -18,7 +18,7 @@ run "approved_vm_plan" {
 
   assert {
     condition = (
-      output.capacity.vcpus == 40 && output.capacity.memory_gib == 176 &&
+      output.capacity.vcpus == 40 && output.capacity.memory_gib == 116 &&
       output.capacity.primary_disks_gib == 1620 && output.capacity.efi_disk_count == 2
     )
     error_message = "Initial capacity must match the approved two-VM table, plus two EFI volumes."
@@ -39,7 +39,7 @@ run "approved_vm_plan" {
     condition = (
       proxmox_virtual_environment_vm.guest["talos-cp-01"].cpu[0].cores == 2 &&
       proxmox_virtual_environment_vm.guest["talos-worker-01"].cpu[0].cores == 38 &&
-      proxmox_virtual_environment_vm.guest["talos-worker-01"].memory[0].dedicated == 172 * 1024 &&
+      proxmox_virtual_environment_vm.guest["talos-worker-01"].memory[0].dedicated == 112 * 1024 &&
       proxmox_virtual_environment_vm.guest["talos-cp-01"].memory[0].dedicated == 4 * 1024
     )
     error_message = "CPU and RAM must match the approved two-VM allocation."

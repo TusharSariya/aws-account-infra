@@ -178,3 +178,29 @@ AI models, workspace and vector data SHALL use separate project-quota directorie
 #### Scenario: Storage evidence unavailable
 - **WHEN** physical capacity or mount identity cannot be verified
 - **THEN** AI startup is rejected instead of assuming thin provisioning or a directory constitutes usable capacity
+
+### Requirement: Secondary join preserves the existing cluster and storage
+The secondary worker SHALL join using the existing cluster secrets and API VIP
+10.0.0.231 without reinstalling the control plane or repeating etcd bootstrap.
+It SHALL retain worker-role=secondary and stateless-compute=true under the
+homelab.tfdraw.dev label prefix, with no local-storage label, local PV or
+secondary StorageClass. The 200-GiB secondary Nexus OCI cache disk and instance,
+Docker Hub/ECR proxying, registry mirrors, Roles Anywhere refresher and
+cache-registry.homelab.tfdraw.dev SHALL remain deferred.
+
+#### Scenario: Secondary creation is attempted
+- **WHEN** VM 103 is about to be created
+- **THEN** power, IMM/PVE access, host memory reserves, ECC and storage health are verified, VM ID 103 is unused, and same-LAN checks immediately before creation confirm .225 is unused
+
+#### Scenario: Secondary capacity is accepted
+- **WHEN** worker-02 is declared active
+- **THEN** it is Ready with unique identity/IP, expected resources and extensions, Talos health, successful Cilium pod-to-pod and Service connectivity, a successful stateless placement test and continuous access through the API VIP
+
+#### Scenario: Protected storage is checked after joining
+- **WHEN** the join acceptance inventory is compared with the preflight inventory
+- **THEN** Pi-hole, CNPG/PostgreSQL, Nexus and Nexus PostgreSQL PVC/PV identities and bindings are preserved, their consuming Pods remain primary-pinned, and no new PVC, local PV or Nexus cache workload is created on worker-02
+
+#### Scenario: Secondary gVisor execution is accepted
+- **WHEN** a stateless acceptance Pod is scheduled onto worker-02 using the runsc handler
+- **THEN** worker-02 has the extension prerequisite user.max_user_namespaces=11255, the Pod starts under gVisor with restricted privileges and resource limits, bidirectional cross-node Pod and Service requests succeed, and temporary test resources are removed afterward
+- **AND** the user-namespace hardening trade-off is documented without claiming a permanent sandbox admission or network-policy rollout

@@ -24,8 +24,8 @@ variable "worker_enabled" {
 # Stable provider adoption reapplies identical configuration in no-reboot mode.
 # It does not reinstall an already configured machine. No resets on destroy.
 resource "talos_machine_configuration_apply" "control_plane" {
-  node                           = "10.0.0.220"
-  endpoint                       = "10.0.0.220"
+  node                           = "10.0.0.221"
+  endpoint                       = "10.0.0.221"
   client_configuration_wo        = var.client_configuration
   machine_configuration_input_wo = var.machine_configurations["talos-cp-01"]
   apply_mode                     = "no_reboot"
@@ -34,8 +34,8 @@ resource "talos_machine_configuration_apply" "control_plane" {
 }
 
 resource "talos_machine_bootstrap" "cluster" {
-  node                    = "10.0.0.220"
-  endpoint                = "10.0.0.220"
+  node                    = "10.0.0.221"
+  endpoint                = "10.0.0.221"
   client_configuration_wo = var.client_configuration
   lifecycle { prevent_destroy = true }
 }

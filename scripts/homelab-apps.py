@@ -203,21 +203,24 @@ def bootstrap(kubectl):
             reconcile_credential_object(kubectl, manifest)
 
 
-def reviewed_failed_drift(drift, reviews):
+def reviewed_capacity_drift(drift, reviews):
     change = drift.get('change', {})
     before, after = change.get('before') or {}, change.get('after') or {}
     changed = {key for key in set(before) | set(after) if before.get(key) != after.get(key)}
     fingerprint = hashlib.sha256(json.dumps(drift, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+    failed_revision = (before.get('status') in {'deployed', 'failed'}
+                       and after.get('status') == 'failed' and changed <= {'metadata', 'status'})
+    repaired_metadata = (before.get('status') == after.get('status') == 'deployed'
+                         and changed == {'metadata'})
     return (drift.get('address') == 'helm_release.capacity' and change.get('actions') == ['update']
-            and before.get('status') in {'deployed', 'failed'} and after.get('status') == 'failed'
-            and changed <= {'metadata', 'status'}
+            and (failed_revision or repaired_metadata)
             and any(review.get('address') == drift['address'] and review.get('fingerprint') == fingerprint
                     for review in reviews))
 
 
 def guard_plan(plan):
     reviews = json.loads((CONFIG / 'reviewed-drift.json').read_text())['reviews']
-    unreviewed = [drift for drift in plan.get('resource_drift', []) if not reviewed_failed_drift(drift, reviews)]
+    unreviewed = [drift for drift in plan.get('resource_drift', []) if not reviewed_capacity_drift(drift, reviews)]
     if unreviewed:
         for drift in unreviewed:
             if drift.get('address') not in ADDRESSES:

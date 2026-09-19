@@ -32,6 +32,15 @@
       "source_commit": "9440abaedfe6b7fed98ecc34d47b8c9413262f7f",
       "reason": "Known cache-directory allowlist rejection caused collector readiness timeout; only release metadata/status changed.",
       "verified_configuration_sha256": "2830d498675fdd02fbd5e2f30b265c875e8e3d1f5faaf24231736bcab0b05e2f"
+    },
+    {
+      "address": "helm_release.capacity",
+      "fingerprint": "52b6a86e8626c17089c265bcf0ee065770209c6ae92a824825fbf1eb292e1e9e",
+      "observed_run": "https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/35449161512",
+      "repaired_revision": 9,
+      "source_commit": "8650ac60690d37d1830833b3ae99671f355cf1e2",
+      "reason": "Verified primary PVE address repair from .92 to .224; release remains deployed and refresh changes only metadata. mTLS and both capacity reports passed.",
+      "verified_manifest_sha256": "f9fc3ccb6b33b184bf5308e4a5578286ceb468a32b57fea375ec6b330c5e42bf"
     }
   ]
 }

@@ -1,0 +1,139 @@
+# Temporary acceptance resources: create after confirming this namespace is unused,
+# run cross-node PodIP and Service requests, then delete this manifest's resources.
+# The RuntimeClass is temporary because the existing cluster has none configured.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: worker02-join-check
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+---
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: worker02-join-check
+handler: runsc
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: primary
+  namespace: worker02-join-check
+  labels:
+    join-check: primary
+spec:
+  automountServiceAccountToken: false
+  nodeSelector:
+    kubernetes.io/hostname: talos-worker-01
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    runAsGroup: 65532
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: http
+      image: docker.io/library/busybox:1.37.0@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0
+      command: [sh, -c, 'echo primary-ok > /tmp/index.html; exec httpd -f -p 8080 -h /tmp']
+      ports:
+        - containerPort: 8080
+      readinessProbe:
+        httpGet:
+          path: /
+          port: 8080
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: [ALL]
+      resources:
+        requests:
+          cpu: 10m
+          memory: 16Mi
+          ephemeral-storage: 8Mi
+        limits:
+          cpu: 100m
+          memory: 64Mi
+          ephemeral-storage: 32Mi
+      volumeMounts:
+        - name: scratch
+          mountPath: /tmp
+  volumes:
+    - name: scratch
+      emptyDir:
+        sizeLimit: 16Mi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: secondary
+  namespace: worker02-join-check
+  labels:
+    join-check: secondary
+spec:
+  runtimeClassName: worker02-join-check
+  automountServiceAccountToken: false
+  nodeSelector:
+    homelab.tfdraw.dev/worker-role: secondary
+    homelab.tfdraw.dev/stateless-compute: "true"
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    runAsGroup: 65532
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: http
+      image: docker.io/library/busybox:1.37.0@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0
+      command: [sh, -c, 'echo secondary-ok > /tmp/index.html; exec httpd -f -p 8080 -h /tmp']
+      ports:
+        - containerPort: 8080
+      readinessProbe:
+        httpGet:
+          path: /
+          port: 8080
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: [ALL]
+      resources:
+        requests:
+          cpu: 10m
+          memory: 16Mi
+          ephemeral-storage: 8Mi
+        limits:
+          cpu: 100m
+          memory: 64Mi
+          ephemeral-storage: 32Mi
+      volumeMounts:
+        - name: scratch
+          mountPath: /tmp
+  volumes:
+    - name: scratch
+      emptyDir:
+        sizeLimit: 16Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: primary
+  namespace: worker02-join-check
+spec:
+  selector:
+    join-check: primary
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: secondary
+  namespace: worker02-join-check
+spec:
+  selector:
+    join-check: secondary
+  ports:
+    - port: 8080
+      targetPort: 8080

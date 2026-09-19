@@ -36,3 +36,20 @@ None.
 - No live infrastructure mutation is authorized by this proposal alone. Execution begins only through the OpenSpec apply workflow and operator-approved manual steps.
 
 The 2026-09-13 backup revision adds daily GitHub-operated etcd snapshots, public-key encryption, dedicated AWS OIDC upload/readback permissions, independent missing-backup monitoring and 30-day noncurrent-version retention while keeping the latest daily backup indefinitely.
+
+## Secondary join revision, 2026-09-19
+
+Worker-02 is active at .225 on secondary PVE: VM 103, 38 vCPU, 112 GiB fixed
+RAM, 320-GiB OS only. Primary worker retains 320-GiB OS and 1,200-GiB data
+disks with 112 GiB RAM. Existing control plane and PVC workloads are preserved.
+
+The 2026-09-19 join scope explicitly defers the 200-GiB secondary Nexus OCI
+cache disk and instance, Docker Hub/ECR proxying, registry mirrors, Roles
+Anywhere refresher and `cache-registry.homelab.tfdraw.dev`. Secondary capacity
+is recorded as active only after live acceptance; static validation is not a
+join result.
+
+Live join acceptance passed on 2026-09-19 (LOG-0093/0068): secondary capacity
+is active, primary-local PVCs are preserved and temporary tests are removed.
+Secondary CacheVault replacement remains hardware maintenance under protective
+write-through operation. Broader recovery/backup acceptance remains open.

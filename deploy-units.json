@@ -217,6 +217,19 @@
         "scripts/cache_capacity.py",
         "apps/platform/cache/"
       ]
+    },
+    {
+      "id": "proxmox-homelab-secondary",
+      "cloud": "proxmox",
+      "environment": "homelab",
+      "path": "live/proxmox/homelab-secondary",
+      "var_file": "config/environments/proxmox/homelab/secondary/vms.tfvars",
+      "dependencies": [],
+      "ci": false,
+      "watch": [
+        "live/proxmox/homelab-secondary/",
+        "config/environments/proxmox/homelab/secondary/"
+      ]
     }
   ]
 }
