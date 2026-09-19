@@ -142,6 +142,19 @@ claims remain bound and primary-pinned. This repository has no tracked AI
 manifests, so the exact release and namespace names must be obtained from the
 live cluster before deletion.
 
+## Future automation
+
+- [ ] Explore a restricted GitHub Actions runner directly on primary PVE, used
+  only for manually triggered creation/recovery of a small, autostarting
+  management VM. That VM would host infrastructure runners and Kubernetes
+  management tools independently of Kubernetes. Keep the Mac as the
+  host-recovery fallback. Prerequisites: measured host headroom, restricted
+  host privileges, appropriate GitHub access controls, and independently
+  recoverable credentials/state. Investigate GitHub Team's private-repository
+  approval limitations before choosing the approval mechanism. This is a
+  deferred design idea, not authorization to provision anything or change
+  existing CI routing.
+
 ## Future IMM2 controller boundary
 
 Do not deploy an IMM2 capacity controller yet. Its eventual controller runs on
