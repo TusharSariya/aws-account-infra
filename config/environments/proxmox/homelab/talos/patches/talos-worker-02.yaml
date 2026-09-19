@@ -1,0 +1,34 @@
+machine:
+  # Required by the gVisor extension. This permits unprivileged user namespaces
+  # instead of Talos's hardened default of zero; scope it to this worker.
+  sysctls:
+    user.max_user_namespaces: "11255"
+  certSANs:
+    - 10.0.0.225
+  kubelet:
+    nodeIP:
+      validSubnets:
+        - 10.0.0.225/32
+  nodeLabels:
+    workload.security/shared: "true"
+    homelab.tfdraw.dev/worker-role: secondary
+    homelab.tfdraw.dev/stateless-compute: "true"
+---
+apiVersion: v1alpha1
+kind: HostnameConfig
+auto: "off"
+hostname: talos-worker-02
+---
+apiVersion: v1alpha1
+kind: LinkAliasConfig
+name: homelab
+selector:
+  match: mac(link.permanent_addr) == "02:42:00:00:01:03"
+---
+apiVersion: v1alpha1
+kind: LinkConfig
+name: homelab
+addresses:
+  - address: 10.0.0.225/24
+routes:
+  - gateway: 10.0.0.1

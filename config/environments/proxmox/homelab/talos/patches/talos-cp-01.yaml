@@ -1,20 +1,19 @@
 machine:
   certSANs:
-    - 10.0.0.220
+    - 10.0.0.221
   kubelet:
     nodeIP:
       validSubnets:
-        - 10.0.0.220/32
+        - 10.0.0.221/32
   nodeLabels:
     workload.security/trusted: "true"
 cluster:
   apiServer:
     certSANs:
-      - 10.0.0.220
-      - 10.0.0.231
+      - 10.0.0.221
   etcd:
     advertisedSubnets:
-      - 10.0.0.220/32
+      - 10.0.0.221/32
   allowSchedulingOnControlPlanes: false
 ---
 apiVersion: v1alpha1
@@ -29,9 +28,12 @@ selector:
   match: mac(link.permanent_addr) == "02:42:00:00:01:00"
 ---
 apiVersion: v1alpha1
-kind: DHCPv4Config
+kind: LinkConfig
 name: homelab
-clientIdentifier: mac
+addresses:
+  - address: 10.0.0.221/24
+routes:
+  - gateway: 10.0.0.1
 ---
 apiVersion: v1alpha1
 kind: Layer2VIPConfig

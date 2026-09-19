@@ -1,3 +1,14 @@
+## Current secondary join status, 2026-09-19
+
+Worker-02 is active / Ready at 10.0.0.225; the API VIP remains .231 and the
+control plane is .221. Both workers have 38 vCPUs and 112 GiB fixed RAM.
+Worker-01 retains its 1,200-GiB data disk; worker-02 has only its 320-GiB OS
+disk. Secondary Nexus cache/storage remains deferred. See the two-worker
+runbook and OpenSpec LOG-0093/0094 for acceptance and CacheVault maintenance.
+Historical allocations/addresses below are superseded by this status. Primary
+storage extensions, volume configuration and running/autostart settings from
+current main are preserved; do not apply older bootstrap snapshots.
+
 # Proxmox homelab VM definitions
 
 Implements OpenSpec task 3.1: declared VM hardware and identity, with locally tested plans. A live authenticated speculative plan has passed; no VM has been created. See [access and state setup](ACCESS.md).
