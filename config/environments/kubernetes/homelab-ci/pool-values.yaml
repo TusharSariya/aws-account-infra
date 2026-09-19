@@ -1,6 +1,7 @@
 worker: talos-worker-01
 cpu: '31.5'
-memory: 144Gi
+# 80 GiB pool + 24 GiB platform reserve fits the 112-GiB guest.
+memory: 80Gi
 scratch: 240Gi
 # Measured root/image usage must fit alongside the pool and eviction headroom.
 storageHeadroom: 8Gi

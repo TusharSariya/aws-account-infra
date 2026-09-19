@@ -12,24 +12,37 @@ class CapacityTests(unittest.TestCase):
         pod = {'spec': {'containers': [c('2')], 'initContainers': [c('1', restartPolicy='Always'), c('4')]}}
         self.assertEqual(requests(pod, 'cpu'), 5)
 
-    def test_observed_restored_worker_capacity(self):
-        node = {'metadata': {'name': 'talos-worker-01'}, 'status': {
-            'conditions': [{'type': 'Ready', 'status': 'True'}], 'capacity': {'memory': '177121916Ki'},
-            'allocatable': {'cpu': '37950m', 'memory': '176626300Ki'}}}
-        verify(node, [], {'cpu': '6', 'memory': '24Gi'})
-        with self.assertRaisesRegex(ValueError, 'allocatable'):
-            verify(node, [], {'cpu': '6', 'memory': '25Gi'})
+    def node(self):
+        return {'metadata': {'name': 'talos-worker-01'}, 'status': {
+            'conditions': [{'type': 'Ready', 'status': 'True'}],
+            'capacity': {'memory': '112Gi'},
+            'allocatable': {'cpu': '37950m', 'memory': '114793124Ki'}}}
 
-    def test_pool_and_platform_must_fit(self):
-        node = {'metadata': {'name': 'talos-worker-01'}, 'status': {
-            'conditions': [{'type': 'Ready', 'status': 'True'}], 'capacity': {'memory': '172Gi'},
-            'allocatable': {'cpu': '37500m', 'memory': '171Gi'}}}
-        verify(node, [], {'cpu': '6', 'memory': '27Gi'})
+    def test_current_worker_fits_committed_pool_and_platform_reserve(self):
+        verify(self.node(), [], {'cpu': '6', 'memory': '24Gi'})
+
+    def test_old_pool_is_rejected_by_actual_allocatable(self):
         with self.assertRaisesRegex(ValueError, 'allocatable'):
-            verify(node, [], {'cpu': '6.1', 'memory': '27Gi'})
-        node['status']['capacity']['memory'] = '156Gi'
-        with self.assertRaisesRegex(ValueError, 'Restore'):
-            verify(node, [], {'cpu': '1', 'memory': '1Gi'})
+            verify(self.node(), [], {'cpu': '6', 'memory': '24Gi'},
+                   {'cpu': '31.5', 'memory': '144Gi'})
+
+    def test_smaller_worker_and_excess_platform_requests_fail(self):
+        node = self.node()
+        node['status']['allocatable']['memory'] = '100Gi'
+        with self.assertRaisesRegex(ValueError, 'allocatable'):
+            verify(node, [], {'cpu': '6', 'memory': '24Gi'})
+        pod = {'metadata': {}, 'spec': {'nodeName': 'talos-worker-01', 'containers': [
+            {'resources': {'requests': {'memory': '25Gi'}}}]}}
+        with self.assertRaisesRegex(ValueError, 'requests'):
+            verify(self.node(), [pod], {'cpu': '6', 'memory': '24Gi'})
+
+    def test_cpu_budget_and_worker_identity_remain_guarded(self):
+        with self.assertRaisesRegex(ValueError, 'allocatable'):
+            verify(self.node(), [], {'cpu': '7', 'memory': '24Gi'})
+        node = self.node()
+        node['metadata']['name'] = 'talos-worker-02'
+        with self.assertRaisesRegex(ValueError, 'Expected'):
+            verify(node, [], {'cpu': '6', 'memory': '24Gi'})
 
 
 class RetirementTests(unittest.TestCase):
