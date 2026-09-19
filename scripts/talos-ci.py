@@ -214,7 +214,10 @@ class Session:
         self.env['TALOSCTL'] = str(binary)
         self.env['TALOSCONFIG'] = str(self.output / 'talosconfig')
         self.env['KUBECTL'] = str(binary.parent / 'kubectl-v1.36.3')
-        self.tc = [binary, '--talosconfig', self.output / 'talosconfig', '-n', '10.0.0.220']
+        nodes = self.client.get('nodes', [])
+        if len(nodes) != 1 or nodes != self.client.get('endpoints'):
+            raise StageError('Expected one matching control-plane node and endpoint')
+        self.tc = [binary, '--talosconfig', self.output / 'talosconfig', '-n', nodes[0]]
         self.worker_tc = [binary, '--talosconfig', self.output / 'talosconfig', '-n', '10.0.0.222']
 
     def run(self, command):

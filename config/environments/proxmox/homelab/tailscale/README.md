@@ -38,6 +38,17 @@ administration account must remain recoverable independently of Kubernetes.
 Sources: https://tailscale.com/docs/reference/syntax/grants and
 https://tailscale.com/kb/1337/policy-syntax.
 
-Current Proxmox advertisements are the four host routes `10.0.0.92/32`,
-`10.0.0.220/32`, `10.0.0.222/32`, and `10.0.0.231/32`. Preserve this scope;
-do not advertise the entire home LAN as part of CI recovery.
+The intended primary host routes are `10.0.0.224/32`, `10.0.0.221/32`,
+`10.0.0.222/32`, and `10.0.0.231/32`. Do not advertise the entire home LAN
+as part of CI recovery. Inspection on 2026-09-19 found the host still advertising
+the old `.92` and `.220` in place of `.224` and `.221`. Updating repository
+scripts does not update live advertisements or approve new routes in the tailnet.
+Perform a separate reviewed route migration, preserving a working local/host
+SSH connection, and verify off-LAN access before claiming recovery connectivity.
+The route setup helper refuses the stale list rather than silently replacing it.
+
+`CI_EXECUTOR=talos` routes most CI jobs to the homelab runner pools. Proxmox and
+Talos plan jobs explicitly retain `ubuntu-latest`; infrastructure apply also uses
+hosted runners for these roots. Their Tailscale path must work independently of
+the cluster they manage. Hosted-runner billing availability is a separate
+prerequisite, not fixed by changing node IPs or the default executor variable.

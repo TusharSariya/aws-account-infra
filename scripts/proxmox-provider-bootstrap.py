@@ -91,7 +91,7 @@ def remote():
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--ssh-target', default='root@10.0.0.92')
+    parser.add_argument('--ssh-target', default='root@10.0.0.224')
     parser.add_argument('--plan', '--read-only', dest='plan', action='store_true',
                         help='Create CI plan identity (includes VM.Config.Disk for volume inspection; not strictly read-only)')
     parser.add_argument('--output', type=Path,

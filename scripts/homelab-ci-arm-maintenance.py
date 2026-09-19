@@ -45,7 +45,7 @@ def main():
         if path.is_symlink() or path.stat().st_mode & 0o077 or path.stat().st_uid != os.getuid():
             raise ValueError('Private regular credentials required')
     kube = ['kubectl', '--kubeconfig', str(args.kubeconfig)]
-    talos = [str(cli()), '--talosconfig', str(args.talosconfig), '--endpoints', '10.0.0.220', '--nodes', '10.0.0.222']
+    talos = [str(cli()), '--talosconfig', str(args.talosconfig), '--endpoints', '10.0.0.221', '--nodes', '10.0.0.222']
     def run(command, filename, timeout=120):
         path = directory / filename
         if path.exists():
@@ -74,14 +74,14 @@ def main():
             raise ValueError('All compute must finish before worker maintenance')
         if any(not c['spec'].get('suspend') for c in get('get','cronworkflows','-n','homelab-jobs')['items']):
             raise ValueError('Suspend ordinary schedules before maintenance')
-        cfg = json.loads(run(['ssh','root@10.0.0.92','pvesh get /nodes/pve/qemu/102/config --output-format json'],'vm.json'))
+        cfg = json.loads(run(['ssh','root@10.0.0.224','pvesh get /nodes/pve/qemu/102/config --output-format json'],'vm.json'))
         if cfg['name'] != 'talos-worker-01' or int(cfg['memory']) != 172*1024 or int(cfg['cores']) != 38 or 'size=1200G' not in cfg['scsi1'] or '02:42:00:00:01:02' not in cfg['net0']:
             raise ValueError('Worker VM identity/capacity mismatch')
         run(kube+['-n','homelab-services','rollout','status','deployment/pihole','--timeout=60s'],'dns-before.log')
         if int(cfg.get('onboot', 0)) != 1:
             raise ValueError('Worker automatic boot must remain enabled')
-        cp_config = json.loads(run(['ssh','root@10.0.0.92','pvesh get /nodes/pve/qemu/100/config --output-format json'],'control-plane-vm.json'))
-        effective = json.loads(run(['ssh','root@10.0.0.92','pvesh get /nodes/pve/qemu/102/status/current --output-format json'],'worker-status.json'))
+        cp_config = json.loads(run(['ssh','root@10.0.0.224','pvesh get /nodes/pve/qemu/100/config --output-format json'],'control-plane-vm.json'))
+        effective = json.loads(run(['ssh','root@10.0.0.224','pvesh get /nodes/pve/qemu/102/status/current --output-format json'],'worker-status.json'))
         if int(cp_config.get('onboot',0)) != 1 or cp_config['name'] != 'talos-cp-01' or effective['status'] != 'running' or int(effective['maxmem']) != 172*1024**3:
             raise ValueError('Platform boot flags or effective worker RAM differ')
         volumes = sorted([{'uid':v['metadata']['uid'],'spec':v['spec']} for v in get('get','persistentvolumes')['items']],key=lambda v:v['uid'])
