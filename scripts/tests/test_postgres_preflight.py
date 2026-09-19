@@ -23,7 +23,7 @@ class DeploymentPreflightTests(unittest.TestCase):
             elif 'deployment' in command: value = {'spec': {'replicas': 0}}
             elif 'clusterqueue' in command:
                 value = {'spec': {'resourceGroups': [{'flavors': [{'resources': [
-                    {'name': 'cpu', 'nominalQuota': '31.5'}, {'name': 'memory', 'nominalQuota': '144Gi'}]}]}]}}
+                    {'name': 'cpu', 'nominalQuota': '31.5'}, {'name': 'memory', 'nominalQuota': '80Gi'}]}]}]}}
             elif 'storageclass' in command: value = {'reclaimPolicy': 'Retain', 'allowVolumeExpansion': False}
             else: value = {'mounted': True, 'free': 200 * 1024**3}
             return json.dumps(value).encode()
