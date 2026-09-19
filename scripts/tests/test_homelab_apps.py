@@ -53,20 +53,20 @@ class GuardTests(unittest.TestCase):
                  'after': {'status': 'failed', 'metadata': {'revision': 2}, 'values': 'unchanged'}}}
         reviews = [{'address': drift['address'], 'fingerprint': hashlib.sha256(
                     json.dumps(drift, sort_keys=True, separators=(',', ':')).encode()).hexdigest()}]
-        self.assertTrue(apps.reviewed_failed_drift(drift, reviews))
-        self.assertFalse(apps.reviewed_failed_drift(drift, []))
+        self.assertTrue(apps.reviewed_capacity_drift(drift, reviews))
+        self.assertFalse(apps.reviewed_capacity_drift(drift, []))
         for field, value in [('status', 'pending-upgrade'), ('values', 'unreviewed change'),
                              ('metadata', {'revision': 3})]:
             changed = deepcopy(drift)
             changed['change']['after'][field] = value
-            self.assertFalse(apps.reviewed_failed_drift(changed, reviews))
+            self.assertFalse(apps.reviewed_capacity_drift(changed, reviews))
         for address in ('helm_release.ollama', 'helm_release.ai'):
             changed = {**drift, 'address': address}
-            self.assertFalse(apps.reviewed_failed_drift(changed, reviews))
+            self.assertFalse(apps.reviewed_capacity_drift(changed, reviews))
         for actions in (['delete'], ['delete', 'create']):
             changed = deepcopy(drift)
             changed['change']['actions'] = actions
-            self.assertFalse(apps.reviewed_failed_drift(changed, reviews))
+            self.assertFalse(apps.reviewed_capacity_drift(changed, reviews))
 
     def test_failed_revision_metadata_recovery_remains_exact(self):
         drift = {'address': 'helm_release.capacity', 'change': {'actions': ['update'],
@@ -75,16 +75,42 @@ class GuardTests(unittest.TestCase):
         def review(value):
             return [{'address': value['address'], 'fingerprint': hashlib.sha256(
                 json.dumps(value, sort_keys=True, separators=(',', ':')).encode()).hexdigest()}]
-        self.assertTrue(apps.reviewed_failed_drift(drift, review(drift)))
-        self.assertFalse(apps.reviewed_failed_drift(drift, []))
+        self.assertTrue(apps.reviewed_capacity_drift(drift, review(drift)))
+        self.assertFalse(apps.reviewed_capacity_drift(drift, []))
         changed = deepcopy(drift)
         changed['change']['after']['metadata']['revision'] = 4
-        self.assertFalse(apps.reviewed_failed_drift(changed, review(drift)))
+        self.assertFalse(apps.reviewed_capacity_drift(changed, review(drift)))
         changed['change']['after']['values'] = 'configuration drift'
-        self.assertFalse(apps.reviewed_failed_drift(changed, review(changed)))
+        self.assertFalse(apps.reviewed_capacity_drift(changed, review(changed)))
         changed = deepcopy(drift)
         changed['change']['before']['status'] = 'pending-upgrade'
-        self.assertFalse(apps.reviewed_failed_drift(changed, review(changed)))
+        self.assertFalse(apps.reviewed_capacity_drift(changed, review(changed)))
+
+    def test_deployed_capacity_metadata_repair_requires_exact_review(self):
+        drift = {'address': 'helm_release.capacity', 'change': {'actions': ['update'],
+                 'before': {'status': 'deployed', 'metadata': {'revision': 8}, 'values': 'unchanged'},
+                 'after': {'status': 'deployed', 'metadata': {'revision': 9}, 'values': 'unchanged'}}}
+        def reviews(value):
+            return json.dumps({'reviews': [{'address': value['address'], 'fingerprint': hashlib.sha256(
+                json.dumps(value, sort_keys=True, separators=(',', ':')).encode()).hexdigest()}]})
+        plan = self.plan(['no-op'])
+        plan['resource_drift'] = [drift]
+        with patch.object(Path, 'read_text', return_value=reviews(drift)):
+            self.assertEqual(len(apps.guard_plan(plan)), len(apps.ADDRESSES))
+            changed = deepcopy(plan)
+            changed['resource_drift'][0]['change']['after']['metadata']['revision'] = 10
+            with self.assertRaises(apps.AppError):
+                apps.guard_plan(changed)
+        with patch.object(Path, 'read_text', return_value='{"reviews": []}'):
+            with self.assertRaises(apps.AppError):
+                apps.guard_plan(plan)
+        # Even explicitly fingerprinted changes may not expand this metadata-only exception.
+        for field, value in [('values', 'configuration drift'), ('status', 'pending-upgrade')]:
+            changed = deepcopy(plan)
+            changed['resource_drift'][0]['change']['after'][field] = value
+            with patch.object(Path, 'read_text', return_value=reviews(changed['resource_drift'][0])):
+                with self.assertRaises(apps.AppError):
+                    apps.guard_plan(changed)
 
     def test_missing_credentials_prevent_any_cluster_mutation(self):
         with patch.dict(apps.os.environ, {'GITHUB_ACTIONS': 'true', **dict.fromkeys(apps.SECRET_NAMES, '')}), patch.object(apps, 'run') as run:
