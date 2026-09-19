@@ -16,7 +16,7 @@ run "secondary_worker_plan" {
   }
 
   assert {
-    condition = output.capacity.vcpus == 38 && output.capacity.memory_gib == 112 && output.capacity.primary_disks_gib == 320 && output.capacity.efi_disk_count == 1
+    condition     = output.capacity.vcpus == 38 && output.capacity.memory_gib == 112 && output.capacity.primary_disks_gib == 320 && output.capacity.efi_disk_count == 1
     error_message = "Secondary worker must retain its 16-GiB host reserve."
   }
   assert {
