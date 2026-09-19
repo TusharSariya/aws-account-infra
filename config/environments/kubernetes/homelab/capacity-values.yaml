@@ -3,6 +3,6 @@
 enabled: true
 config:
   filesystemUUID: '86f3ada1-17e4-4f74-9d73-a18c1774cc31'
-  physicalURL: 'https://10.0.0.92:9443/capacity'
+  physicalURL: 'https://10.0.0.224:9443/capacity'
   physicalPool: 'pve/data'
-physicalAddress: '10.0.0.92/32'
+physicalAddress: '10.0.0.224/32'

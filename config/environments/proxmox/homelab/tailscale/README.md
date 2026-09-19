@@ -40,12 +40,13 @@ https://tailscale.com/kb/1337/policy-syntax.
 
 The intended primary host routes are `10.0.0.224/32`, `10.0.0.221/32`,
 `10.0.0.222/32`, and `10.0.0.231/32`. Do not advertise the entire home LAN
-as part of CI recovery. Inspection on 2026-09-19 found the host still advertising
-the old `.92` and `.220` in place of `.224` and `.221`. Updating repository
-scripts does not update live advertisements or approve new routes in the tailnet.
-Perform a separate reviewed route migration, preserving a working local/host
-SSH connection, and verify off-LAN access before claiming recovery connectivity.
-The route setup helper refuses the stale list rather than silently replacing it.
+as part of CI recovery. On 2026-09-19, the stale `.92` and `.220` advertisements
+were replaced with `.224` and `.221` through a verified local SSH connection.
+The replacement routes were approved in Tailscale and both retired approvals
+removed. Hosted GitHub run `35447273846` then passed authenticated Talos
+preflight and planning. Updating repository scripts alone does not update live
+advertisements or approvals. The setup helper refuses unrelated routes and
+compares route sets because Tailscale sorts advertisements.
 
 `CI_EXECUTOR=talos` routes most CI jobs to the homelab runner pools. Proxmox and
 Talos plan jobs explicitly retain `ubuntu-latest`; infrastructure apply also uses

@@ -97,6 +97,27 @@ separately because the server-side health check skips those two checks.
    worker-02. Update the inventory and audit log to active only after all live
    acceptance checks pass. Kueue and AI retirement are separate operations.
 
+## CI recovery after the address migration
+
+On 2026-09-19, hosted Talos planning failed because primary PVE still advertised
+`10.0.0.220/32` instead of the control plane's current `10.0.0.221/32`.
+The four intended host routes are now advertised and approved; retired `.92`
+and `.220` approvals were removed. Hosted run `35447273846` passed afterward.
+
+Physical capacity acceptance separately failed because the exporter still bound
+to `.92`. The host bind, server certificate IP SAN, collector endpoint and
+network-policy destination now use primary PVE `.224`. Existing CA, server key,
+client identity and client trust were retained. The `prod`
+`CAPACITY_HOST_CREDENTIALS_B64` bundle was updated to prevent a later host
+reconciliation from restoring `.92`. Only the capacity Helm release was
+reconciled; authenticated mTLS and both fresh capacity reports passed.
+Private rollback inputs are retained outside Git in
+`~/.config/aws-account-infra/ci-repair-20260919` and on PVE under
+`/root/ci-repair-20260919`.
+
+The required `apply-gate` remains distinct from these repairs: infrastructure
+PRs require the `apply` label and successful CI reconciliation before merge.
+
 ## Deferred secondary cache
 
 The 200-GiB secondary Nexus OCI cache disk, Nexus cache instance, Docker Hub/ECR
