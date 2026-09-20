@@ -1,0 +1,41 @@
+# Isolated prototype only. Credentials are supplied in an existing Secret.
+existingConfigSecret: prototype105-proxmox
+logVerbosityLevel: 2
+nodeSelector:
+  node-role.kubernetes.io/control-plane: ''
+node:
+  nodeSelector:
+    prototype.homelab/csi-worker: 'true'
+  plugin:
+    image:
+      tag: v0.20.0@sha256:e0151137a1c5fa4faea9b4622436b203f1dc246ea37a3a77d09d3855c70aabd1
+controller:
+  plugin:
+    image:
+      tag: v0.20.0@sha256:95ef74cce03e89a1706d9b32888a84bf44e0db439c4fe2a4334ce123728d4c3b
+hostAliases:
+  - ip: 10.0.0.223
+    hostnames: [pve.proxmox.local]
+extraVolumes:
+  - name: pve-ca
+    secret:
+      secretName: prototype105-pve-ca
+extraVolumeMounts:
+  - name: pve-ca
+    mountPath: /etc/ssl/certs/ca-certificates.crt
+    subPath: ca.crt
+    readOnly: true
+storageClass:
+  - name: prototype105-retain
+    storage: local-lvm
+    reclaimPolicy: Retain
+    fstype: ext4
+    volumeBindingMode: WaitForFirstConsumer
+    extraParameters:
+      csi.proxmox.sinextra.dev/lifecycle: keep
+    allowedTopologies:
+      - matchLabelExpressions:
+          - key: topology.kubernetes.io/region
+            values: [prototype-secondary]
+          - key: topology.kubernetes.io/zone
+            values: [pve]
