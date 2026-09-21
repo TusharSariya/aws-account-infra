@@ -1,0 +1,20 @@
+[
+  {
+    "name": "consolidation-a-5b4cfdb587-5qw8h",
+    "uid": "17556bc0-3fd9-4188-9017-31c42f1ab753",
+    "node": "talos-pz8-98c",
+    "phase": "Running"
+  },
+  {
+    "name": "consolidation-b-5f78ffd67b-xzh8q",
+    "uid": "330e5ad6-f955-462b-bfd4-e6b2b072fb17",
+    "node": "talos-pz8-98c",
+    "phase": "Running"
+  },
+  {
+    "name": "consolidation-cancel-mg5cr",
+    "uid": "a5a51150-8dc3-4c90-b266-18a78ec1c912",
+    "node": "talos-9mg-j21",
+    "phase": "Running"
+  }
+]

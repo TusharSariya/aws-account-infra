@@ -1,0 +1,40 @@
+{
+  "primary": {
+    "uid": "4db139a6-6f1b-4e1e-ae79-1662575dcfcf",
+    "phase": "active",
+    "idleSince": null,
+    "cancelShutdown": true,
+    "rewakeQueued": false,
+    "node": "talos-9mg-j21",
+    "reopened": true,
+    "blockers": [
+      "not-controller-cordoned",
+      "queued-workload:job-consolidation-cancel-08da9"
+    ],
+    "physicalPowerOffEnabled": false,
+    "shutdownBlockers": [
+      "production-host-services-not-migrated",
+      "automatic-retirement-disabled"
+    ]
+  },
+  "secondary": {
+    "uid": "0f95ac3f-24da-432f-8ea0-9d8db6a51e5f",
+    "phase": "active",
+    "idleSince": null,
+    "cancelShutdown": true,
+    "rewakeQueued": false,
+    "node": "talos-pz8-98c",
+    "reopened": false,
+    "blockers": [
+      "active-workloads",
+      "volume-attachments",
+      "not-controller-cordoned",
+      "queued-workload:job-consolidation-cancel-08da9"
+    ],
+    "physicalPowerOffEnabled": false,
+    "shutdownBlockers": [
+      "production-host-services-not-migrated",
+      "automatic-retirement-disabled"
+    ]
+  }
+}
