@@ -23,6 +23,12 @@ metadata:
     k8s-app: cluster-autoscaler
   name: prototype-slot-cluster-autoscaler
 rules:
+- apiGroups: [autoscaling.x-k8s.io]
+  resources: [provisioningrequests, provisioningrequests/status]
+  verbs: [watch, list, get, create, update, patch, delete]
+- apiGroups: [""]
+  resources: [podtemplates]
+  verbs: [watch, list, get]
 - apiGroups:
   - ''
   resources:

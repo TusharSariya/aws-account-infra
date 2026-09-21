@@ -2,6 +2,8 @@
 
 Throwaway scale-up integration for [issue106](https://github.com/TusharSariyaOrg/aws-account-infra/issues/106). The runtime owns only secondary prototype VM9105 and empty template9106. Production VMs100/102/103 and retained-volume prototype9104 are excluded. Deletion and physical shutdown RPCs are disabled.
 
+The subsequent [Kueue extension](kueue/README.md) adds suspended-Job capacity requests and negative fit checks to this same isolated provider. The ordinary-Job evidence below describes the earlier baseline.
+
 ## Boundaries
 
 - Upstream Cluster Autoscaler1.36.1 runs through the included Helm chart in the isolated `laptop-wifi-PROTOTYPE` cluster. Its image is pinned by digest; scale-down is disabled.
@@ -37,6 +39,6 @@ Live results are recorded in [evidence.md](evidence.md), with machine-readable K
 
 `go test ./...` checks group/instance ownership, duplicate size requests, deletion refusal and the node-template protobuf. Python readiness tests cover the CSI creation/registration race. Power adapter tests cover transport result validation and safe idempotence. Helm lint validates the chart.
 
-Follow-on work remains: Kueue ProvisioningRequest integration, ordinary unsatisfiable-demand cases, two-slot placement, retained storage through the runtime deletion path, per-app policy, one30-minute idle window, cancellation/maintenance coordination, power-off guards and phased OpenTofu ownership migration. Production deployment is not complete.
+Follow-on work remains: ordinary unsatisfiable-demand cases beyond the Kueue extension, two-slot placement, retained storage through the runtime deletion path, per-app policy, one30-minute idle window, cancellation/maintenance coordination, power-off guards and phased OpenTofu ownership migration. Production deployment is not complete.
 
 Vendored generated protobuf files come unchanged from Kubernetes Autoscaler tag `cluster-autoscaler-1.36.1`, commit `6f44b4d18e49ca03e14f9d2637d769570c4acab7`, under the Apache2.0 notices retained in each file. [Upstream provider contract](https://github.com/kubernetes/autoscaler/blob/cluster-autoscaler-1.36.1/cluster-autoscaler/cloudprovider/externalgrpc/README.md).
