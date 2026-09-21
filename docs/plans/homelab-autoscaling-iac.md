@@ -95,7 +95,7 @@ Use separate ownership manifests for disposable guest disks and durable volume I
 
 ## Outstanding technical evidence
 
-External-gRPC/provider integration for independent endpoints; template cloning with fresh identity; retained-volume lifecycle through the actual runtime controller on both hosts; measured laptop controller footprint; exact worker budgets and node-template resources. These are implementation-fit questions, not new user preference questions. Backup/restore, redundancy and hardware-failure drills remain deferred.
+The [one-slot prototype](../../prototypes/one-slot-autoscaler/evidence.md) proves external-gRPC scale-up and fresh Talos enrollment for an ordinary Job on the secondary endpoint. Kueue admission, cold physical wake and two-endpoint integration remain unproven; retained-volume lifecycle through the actual runtime controller on both hosts; measured laptop controller footprint; exact worker budgets and node-template resources. These are implementation-fit questions, not new user preference questions. Backup/restore, redundancy and hardware-failure drills remain deferred.
 
 Primary-source provider and storage findings: [autoscaling research](../research/homelab-power-autoscaling.md), copied from research commit7207381.
 

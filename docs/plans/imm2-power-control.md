@@ -53,6 +53,6 @@ For routine shutdown, the coordinator drains workloads, releases retained storag
 
 Sources: [Paramiko SSH client](https://docs.paramiko.org/en/stable/api/client.html), [Lenovo IMM2 users command](https://pubs.lenovo.com/imm2/dw1lm_r_userscommand), [Lenovo IMM2 IPMI support](https://pubs.lenovo.com/imm2/dw1lm_t_managingtheimmwithipmi), and the repository's [captured firmware CLI help](../research/imm2-cli-help.md).
 
-## Next implementation slice
+## Implementation progress
 
-Build and test the bounded power adapter against both controllers from management capacity, with response-parser tests for actual on/off/UEFI/error responses. Then connect it to one isolated worker slot: zero-worker demand -> host wake -> PVE ready -> fresh worker creation/join -> networking and CSI ready -> workload execution. Keep this slice separate from production ownership transfer. The full build sequence and policy contract are in [the IaC plan](homelab-autoscaling-iac.md).
+The bounded pyghmi power adapter passed live status and idempotent ensure-on checks against both controllers from the laptop. The isolated one-slot external-gRPC prototype also passed ordinary pending-Job demand -> fresh VM creation/join -> networking and CSI readiness -> workload completion, including a second fresh identity. The physical host was already on; cold physical wake and Kueue admission were not part of this proof. See [recorded evidence](../../prototypes/one-slot-autoscaler/evidence.md). Production ownership transfer remains separate. The full build sequence and policy contract are in [the IaC plan](homelab-autoscaling-iac.md).

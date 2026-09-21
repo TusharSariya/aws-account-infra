@@ -1,0 +1,4 @@
+apiVersion: v2
+name: prototype-one-slot-autoscaler
+version: 0.1.0
+description: Isolated external-gRPC scale-up proof, deletion disabled
