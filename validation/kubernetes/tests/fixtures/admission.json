@@ -1,0 +1,6 @@
+[
+  {"elapsed": 0, "node_ready": false, "suspend": true, "complete": false},
+  {"elapsed": 899, "node_ready": true, "suspend": true, "complete": false},
+  {"elapsed": 930, "node_ready": true, "suspend": false, "complete": false},
+  {"elapsed": 935, "node_ready": true, "suspend": false, "complete": true}
+]

@@ -1,0 +1,93 @@
+[
+  {
+    "id": "physical-scale-to-zero",
+    "prerequisite": "Migrate host services and approve physical shutdown",
+    "acceptance": "Control/API/DNS remain available with both execution hosts off; queued demand recovers service",
+    "issue": "https://github.com/TusharSariyaOrg/aws-account-infra/issues/113"
+  },
+  {
+    "id": "generalized-two-host-lifecycle",
+    "prerequisite": "Generalized secondary lifecycle and cold resume adapter",
+    "acceptance": "Independent fresh worker generations; paused hosts stay unchanged",
+    "issue": "https://github.com/TusharSariyaOrg/aws-account-infra/issues/113"
+  },
+  {
+    "id": "ci-demand",
+    "prerequisite": "Approved CI demand integration on always-on capacity",
+    "acceptance": "CI queues wake eligible workers; cancellation releases capacity",
+    "issue": "https://github.com/TusharSariyaOrg/aws-account-infra/issues/97"
+  },
+  {
+    "id": "scheduled-demand",
+    "prerequisite": "Approved schedule/deadline demand adapter",
+    "acceptance": "Scheduled work starts within its approved awake window",
+    "issue": "https://github.com/TusharSariyaOrg/aws-account-infra/issues/113"
+  },
+  {
+    "id": "app-url-demand",
+    "prerequisite": "Approved URL wake adapter and application readiness contract",
+    "acceptance": "Wake page/503 Retry-After until ready, without replaying mutations",
+    "issue": "https://github.com/TusharSariyaOrg/aws-account-infra/issues/41"
+  },
+  {
+    "id": "application-policy",
+    "prerequisite": "General application policy API beyond prototype annotations",
+    "acceptance": "Persistent/session-protected workloads block movement; opted-in apps move",
+    "issue": "https://github.com/TusharSariyaOrg/aws-account-infra/issues/113"
+  },
+  {
+    "id": "automatic-consolidation",
+    "prerequisite": "Approved automatic candidate selection and policy enforcement",
+    "acceptance": "Eligible workloads consolidate with PDB protection and one cancelable timer",
+    "issue": "https://github.com/TusharSariyaOrg/aws-account-infra/issues/113"
+  },
+  {
+    "id": "cross-host-stateful",
+    "prerequisite": "CSI storage ownership and cross-host topology support",
+    "acceptance": "Fresh marker survives movement and single-writer attachment is enforced",
+    "issue": "https://github.com/TusharSariyaOrg/aws-account-infra/issues/113"
+  },
+  {
+    "id": "worker-recreation-storage",
+    "prerequisite": "Disposable class and supported lifecycle/reattachment path",
+    "acceptance": "Fresh PVC marker survives worker replacement; old proof volume untouched",
+    "issue": "https://github.com/TusharSariyaOrg/aws-account-infra/issues/113",
+    "proof_issue": "https://github.com/TusharSariyaOrg/aws-account-infra/issues/108"
+  },
+  {
+    "id": "production-budgets",
+    "prerequisite": "Measured headroom and approved production quotas",
+    "acceptance": "Admission respects approved CPU/memory/scratch budgets on both endpoints",
+    "issue": "https://github.com/TusharSariyaOrg/aws-account-infra/issues/100"
+  },
+  {
+    "id": "performance-gates",
+    "prerequisite": "Representative baselines and reviewed latency/throughput thresholds",
+    "acceptance": "Repeatable reports meet reviewed thresholds",
+    "issue": "https://github.com/TusharSariyaOrg/aws-account-infra/issues/113"
+  },
+  {
+    "id": "larger-stress",
+    "prerequisite": "Separately approved stress budgets and isolated target",
+    "acceptance": "Larger bursts complete without exceeding approved limits",
+    "issue": "https://github.com/TusharSariyaOrg/aws-account-infra/issues/113"
+  },
+  {
+    "id": "upstream-conformance",
+    "prerequisite": "Pinned upstream conformance suite and isolated target",
+    "acceptance": "Full upstream conformance report",
+    "issue": "https://github.com/TusharSariyaOrg/aws-account-infra/issues/113"
+  },
+  {
+    "id": "backup-restore",
+    "prerequisite": "Separate approval to resume deferred durability programme (#39)",
+    "acceptance": "Isolated restore meets approved RPO/RTO with measured data loss",
+    "issue": "https://github.com/TusharSariyaOrg/aws-account-infra/issues/39"
+  },
+  {
+    "id": "outage-redundancy",
+    "prerequisite": "Separately approved hardware/provider outage and redundancy scenarios",
+    "acceptance": "Measured failover/recovery; GitHub/Tailscale independence remains out of scope",
+    "issue": "https://github.com/TusharSariyaOrg/aws-account-infra/issues/113"
+  }
+]
