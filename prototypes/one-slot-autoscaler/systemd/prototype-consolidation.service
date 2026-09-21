@@ -3,6 +3,7 @@ Description=Prototype idle eligibility and demand cancellation (no power-off)
 After=network-online.target
 
 [Service]
+EnvironmentFile=-%h/.config/homelab-capacity/lifecycle.env
 Environment=PYTHONPATH=%h/.local/share/homelab-capacity/source/src
 ExecStart=%h/.local/share/homelab-capacity/venv/bin/python %h/.local/share/homelab-capacity/consolidate.py observe --watch
 Restart=on-failure

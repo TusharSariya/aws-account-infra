@@ -169,3 +169,19 @@ def test_stale_annotation_on_schedulable_node_cannot_start_idle(monkeypatch,tmp_
     result=actor.observe()
     assert result['primary']['phase']=='active'
     assert 'not-controller-cordoned' in result['primary']['blockers']
+
+
+@pytest.mark.parametrize('value',['0','-1','five','1.5','Infinity',''])
+def test_idle_configuration_rejects_invalid_windows(value):
+    with pytest.raises(ValueError):p.configured_idle_seconds(value)
+
+
+def test_changed_window_restarts_timer_and_five_minutes_is_exact(monkeypatch):
+    previous=p.idle_transition({},'uid',100,True)
+    monkeypatch.setattr(p,'IDLE_SECONDS',p.configured_idle_seconds('300'))
+    state=p.idle_transition(previous,'uid',110,True)
+    assert state['idleSince']==110 and state['deadline']==410
+    for now in range(120,410,10):
+        state=p.idle_transition(state,'uid',now,True)
+        assert state['phase']=='idle'
+    assert p.idle_transition(state,'uid',410,True)['phase']=='retirement-eligible'

@@ -140,7 +140,7 @@ def observe():
             blockers.extend(pending)
             state=policy.idle_transition(previous.get(slot,{}),uid,time.time(),not blockers,bool(pending))
             report[slot]={**state,'node':name,'reopened':reopened,'blockers':blockers,
-                          'physicalPowerOffEnabled':False,'shutdownBlockers':['production-host-services-not-migrated','automatic-retirement-disabled']}
+                          'physicalPowerOffEnabled':False,'shutdownBlockers':['production-host-services-not-migrated','physical-power-off-disabled']}
         tmp=path.with_suffix('.tmp');tmp.write_text(json.dumps(report,indent=2)+'\n');tmp.replace(path)
         print(json.dumps(report),flush=True)
         return report

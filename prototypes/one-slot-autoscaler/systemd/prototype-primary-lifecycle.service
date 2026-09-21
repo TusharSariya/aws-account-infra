@@ -1,0 +1,18 @@
+[Unit]
+Description=Primary prototype idle retirement and queued-demand recreation
+After=network-online.target prototype-slot-provider.service
+
+[Service]
+EnvironmentFile=-%h/.config/homelab-capacity/lifecycle.env
+Environment=HOMELAB_PROTOTYPE_SLOT=primary
+Environment=PYTHONPATH=%h/.local/share/homelab-capacity/source/src
+ExecStart=%h/.local/share/homelab-capacity/venv/bin/python %h/.local/share/homelab-capacity/idle_lifecycle.py
+Restart=on-failure
+RestartSec=10
+MemoryMax=192M
+TasksMax=48
+NoNewPrivileges=yes
+UMask=0077
+
+[Install]
+WantedBy=default.target

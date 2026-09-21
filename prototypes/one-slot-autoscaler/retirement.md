@@ -1,5 +1,7 @@
 # Explicit runtime retirement prototype
 
+The later [idle lifecycle integration](lifecycle/README.md) invokes this guarded path automatically for the stateless primary prototype only, after its configured idle window. The explicit command below remains useful for the separate storage proof.
+
 Implements the next bounded gate in [issue 108](https://github.com/TusharSariyaOrg/aws-account-infra/issues/108). `retire.py` runs on the Ubuntu laptop and owns only VM 9105 in the isolated cluster. This is an explicit runtime operation; CA automatic deletion RPCs and physical host shutdown remain disabled.
 
 ## Safety contract

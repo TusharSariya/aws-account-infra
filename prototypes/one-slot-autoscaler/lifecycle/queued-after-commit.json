@@ -1,0 +1,7 @@
+{
+  "phase": "shutdown-committed",
+  "name": "talos-9mg-j21",
+  "uid": "4db139a6-6f1b-4e1e-ae79-1662575dcfcf",
+  "rewakeQueued": true,
+  "trigger": "idle-window"
+}

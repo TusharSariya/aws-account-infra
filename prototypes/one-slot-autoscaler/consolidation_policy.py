@@ -1,8 +1,15 @@
 """Conservative prototype policy. Unsupported constraints block movement."""
 from decimal import Decimal
 import re
+import os
 
-IDLE_SECONDS = 1800
+def configured_idle_seconds(value):
+    if not str(value).isascii() or not str(value).isdecimal() or int(value)<=0:
+        raise ValueError('HOMELAB_IDLE_SECONDS must be a positive integer')
+    return int(value)
+
+
+IDLE_SECONDS = configured_idle_seconds(os.environ.get('HOMELAB_IDLE_SECONDS','1800'))
 POLICY = 'prototype.homelab/policy'
 MOVE = 'prototype.homelab/allow-move'
 OWNER = 'prototype.homelab/consolidation-owner'
@@ -149,6 +156,7 @@ def idle_transition(previous,uid,now,eligible,new_demand=False,committed=False):
     if not eligible or new_demand:
         return {'uid':uid,'phase':'active','idleSince':None,'cancelShutdown':bool(new_demand),'rewakeQueued':False}
     since=previous.get('idleSince') if previous.get('uid')==uid else None
-    if since is None or since>now or now-previous.get('lastObserved',now)>45:since=now
+    if (since is None or since>now or now-previous.get('lastObserved',now)>45 or
+        previous.get('idleSeconds')!=IDLE_SECONDS):since=now
     return {'uid':uid,'phase':'retirement-eligible' if now-since>=IDLE_SECONDS else 'idle',
-            'idleSince':since,'lastObserved':now,'deadline':since+IDLE_SECONDS,'cancelShutdown':False,'rewakeQueued':False}
+            'idleSince':since,'idleSeconds':IDLE_SECONDS,'lastObserved':now,'deadline':since+IDLE_SECONDS,'cancelShutdown':False,'rewakeQueued':False}

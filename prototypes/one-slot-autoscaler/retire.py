@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Explicit retirement of the isolated slot; no automatic idle policy or host power-off."""
+"""Guarded isolated-slot retirement; optional idle eligibility gate, no host power-off."""
 import argparse
 import fcntl
 import json
@@ -15,7 +15,7 @@ def owned_node(node, name, uid):
         raise RuntimeError('Refusing foreign/replaced/control-plane node')
 
 
-def retire(name, uid):
+def retire(name, uid, idle=False):
     cfg=json.loads(run(K+['config','view','--minify','-o','json']))['clusters'][0]
     if cfg['name']!='laptop-wifi-PROTOTYPE' or cfg['cluster']['server']!='https://10.0.2.15:6443':
         raise RuntimeError('Not the isolated prototype cluster')
@@ -32,42 +32,55 @@ def retire(name, uid):
         if (addresses != [vm['ip']] or
             node['status']['nodeInfo'].get('systemUUID','').lower() != vm['uuid'].lower()):
             raise RuntimeError('Node/VM address or hardware generation mismatch')
-        record('draining',name=name,uid=uid,vm_uuid=vm['uuid'])
-        run(K+['drain',name,'--ignore-daemonsets','--delete-emptydir-data','--timeout=60s'],timeout=80)
-        deadline=time.monotonic()+120
-        while True:
+        gate=None
+        if idle:
+            from idle_lifecycle import RetirementGate
+            gate=RetirementGate(name,uid)
+        try:
+            if gate:gate.prepare()
+            record('draining',name=name,uid=uid,vm_uuid=vm['uuid'])
+            run(K+['drain',name,'--ignore-daemonsets','--delete-emptydir-data','--timeout=60s'],timeout=80)
+            deadline=time.monotonic()+120
+            while True:
+                attachments=json.loads(run(K+['get','volumeattachments','-o','json']))['items']
+                if not any(v['spec']['nodeName']==name for v in attachments):break
+                if time.monotonic()>deadline:raise TimeoutError('Retained volume detach deadline')
+                time.sleep(2)
+            owned_node(json.loads(run(K+['get','node',name,'-o','json'])),name,uid)
+            if gate:gate.commit()
+            record('stopping',name=name,uid=uid,vm_uuid=vm['uuid'])
+            run([str(PROTOTYPE/'talosctl'),'--talosconfig',str(PROTOTYPE/'private/talosconfig'),'--endpoints','10.0.2.15','--nodes',vm['ip'],'shutdown','--wait=false'])
+            deadline=time.monotonic()+180
+            while True:
+                if gate:gate.poll()
+                current=json.loads(run(PVE+['inspect']))
+                if current.get('uuid')!=vm['uuid']:raise RuntimeError('VM generation changed')
+                if current['status']=='stopped':break
+                if time.monotonic()>deadline:raise TimeoutError('Graceful stop deadline')
+                time.sleep(3)
+            # Recheck storage immediately before the host's independent disk ownership guard.
             attachments=json.loads(run(K+['get','volumeattachments','-o','json']))['items']
-            if not any(v['spec']['nodeName']==name for v in attachments):break
-            if time.monotonic()>deadline:raise TimeoutError('Retained volume detach deadline')
-            time.sleep(2)
-        owned_node(json.loads(run(K+['get','node',name,'-o','json'])),name,uid)
-        record('stopping',name=name,uid=uid,vm_uuid=vm['uuid'])
-        run([str(PROTOTYPE/'talosctl'),'--talosconfig',str(PROTOTYPE/'private/talosconfig'),'--endpoints','10.0.2.15','--nodes',vm['ip'],'shutdown','--wait=false'])
-        deadline=time.monotonic()+180
-        while True:
-            current=json.loads(run(PVE+['inspect']))
-            if current.get('uuid')!=vm['uuid']:raise RuntimeError('VM generation changed')
-            if current['status']=='stopped':break
-            if time.monotonic()>deadline:raise TimeoutError('Graceful stop deadline')
-            time.sleep(3)
-        # Recheck storage immediately before the host's independent disk ownership guard.
-        attachments=json.loads(run(K+['get','volumeattachments','-o','json']))['items']
-        if any(v['spec']['nodeName']==name for v in attachments):raise RuntimeError('Attachment reappeared')
-        result=json.loads(run(PVE+['retire '+vm['uuid']],timeout=180))
-        if result.get('retired_uuid')!=vm['uuid'] or result.get('status')!='absent':
-            raise RuntimeError('Unexpected retirement result')
-        owned_node(json.loads(run(K+['get','node',name,'-o','json'])),name,uid)
-        run(K+['delete','node',name])
-        tmp=STATE/'desired.tmp';tmp.write_text('{"target":0}\n');tmp.replace(STATE/'desired.json')
-        record('retired',name=name,uid=uid,vm_uuid=vm['uuid'])
+            if any(v['spec']['nodeName']==name for v in attachments):raise RuntimeError('Attachment reappeared')
+            result=json.loads(run(PVE+['retire '+vm['uuid']],timeout=180))
+            if result.get('retired_uuid')!=vm['uuid'] or result.get('status')!='absent':
+                raise RuntimeError('Unexpected retirement result')
+            owned_node(json.loads(run(K+['get','node',name,'-o','json'])),name,uid)
+            run(K+['delete','node',name])
+            tmp=STATE/'desired.tmp';tmp.write_text('{"target":0}\n');tmp.replace(STATE/'desired.json')
+            record('retired',name=name,uid=uid,vm_uuid=vm['uuid'])
+            if gate:gate.finish()
+        except Exception as exc:
+            if gate:gate.fail(exc)
+            raise
 
 
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--node',required=True);p.add_argument('--uid',required=True)
+    p.add_argument('--idle',action='store_true',help='Require the complete configured idle window')
     a=p.parse_args()
     try:
-        retire(a.node,a.uid)
+        retire(a.node,a.uid,idle=a.idle)
     except Exception as exc:
         print(json.dumps({"phase":"retirement-failed", "name":a.node, "error":type(exc).__name__}), flush=True)
         raise
