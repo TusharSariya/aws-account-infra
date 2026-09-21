@@ -8,7 +8,7 @@ from pathlib import Path
 SCOPES = {
     "checkov": ["**/*.tf", "**/*.tf.json", ".checkov.yaml"],
     "tflint": ["**/*.tf", "**/*.tf.json", ".tflint.hcl"],
-    "trivy": ["**/*.tf", "**/*.tf.json", "**/*.yaml", "**/*.yml", "**/Dockerfile*", ".trivyignore"],
+    "trivy": ["**/*.tf", "**/*.tf.json", "**/*.yaml", "**/*.yml", "**/Dockerfile*", ".trivyignore", ".trivyignore.yaml"],
     "shell": ["scripts/*.sh", "scripts/git-hooks/*", "mocks/localstack/smoke.sh", "tests/**", ".shellcheckrc"],
     "localstack": ["mocks/localstack/**", "scripts/localstack.sh", "apps/ecr/court-booker/**"],
 }

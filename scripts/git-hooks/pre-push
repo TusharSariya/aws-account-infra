@@ -36,7 +36,7 @@ tofu fmt -check -recursive || fail "formatting — run: tofu fmt -recursive"
 
 echo "▶ trivy (config, HIGH/CRITICAL)"
 docker run --rm -v "$REPO_ROOT:/src" -w /src "$TRIVY_IMAGE" \
-  config --severity HIGH,CRITICAL --skip-dirs "**/.terraform" --exit-code 1 --quiet . \
+  config --ignorefile .trivyignore.yaml --severity HIGH,CRITICAL --skip-dirs "**/.terraform" --exit-code 1 --quiet . \
   || fail "trivy found HIGH/CRITICAL misconfigurations."
 
 echo "▶ checkov (terraform)"
