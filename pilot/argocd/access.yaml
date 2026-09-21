@@ -1,0 +1,59 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pilot-argocd
+  namespace: pilot-app
+rules:
+  - apiGroups: ['apps']
+    resources: ['deployments', 'replicasets']
+    verbs: ['get', 'list', 'watch', 'create', 'patch', 'update', 'delete']
+  - apiGroups: ['']
+    resources: ['services']
+    verbs: ['get', 'list', 'watch', 'create', 'patch', 'update', 'delete']
+  - apiGroups: ['']
+    resources: ['pods', 'events']
+    verbs: ['get', 'list', 'watch']
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pilot-argocd
+  namespace: pilot-app
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: pilot-argocd
+subjects:
+  - kind: ServiceAccount
+    name: argocd-application-controller
+    namespace: pilot-argocd
+  - kind: ServiceAccount
+    name: argocd-server
+    namespace: pilot-argocd
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: pilot-local-cluster
+  namespace: pilot-argocd
+  labels:
+    argocd.argoproj.io/secret-type: cluster
+stringData:
+  name: pilot
+  server: https://kubernetes.default.svc
+  namespaces: pilot-app
+  clusterResources: 'false'
+  config: '{}'
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: default
+  namespace: pilot-argocd
+spec:
+  sourceRepos: []
+  destinations: []
+  clusterResourceWhitelist: []
+  namespaceResourceBlacklist:
+    - group: '*'
+      kind: '*'

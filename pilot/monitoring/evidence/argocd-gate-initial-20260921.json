@@ -1,0 +1,48 @@
+{
+  "time": 1790029738.108227,
+  "passed": false,
+  "samples": [
+    {
+      "time": 1790029676.462409,
+      "management_available": 2204778496,
+      "management_cpu_free": 2.103332346,
+      "request_memory_free": 3390873600.0,
+      "request_cpu_free": 1.73,
+      "laptop_available": 1747058688
+    },
+    {
+      "time": 1790029691.846829,
+      "management_available": 2171756544,
+      "management_cpu_free": 2.17897336,
+      "request_memory_free": 3390873600.0,
+      "request_cpu_free": 1.73,
+      "laptop_available": 1762533376
+    },
+    {
+      "time": 1790029707.292253,
+      "management_available": 2172129280,
+      "management_cpu_free": 2.0758294490000004,
+      "request_memory_free": 3390873600.0,
+      "request_cpu_free": 1.73,
+      "laptop_available": 1771368448
+    },
+    {
+      "time": 1790029722.6717606,
+      "management_available": 2143981568,
+      "management_cpu_free": 2.15812259,
+      "request_memory_free": 3390873600.0,
+      "request_cpu_free": 1.73,
+      "laptop_available": 1768783872
+    },
+    {
+      "time": 1790029738.1077926,
+      "management_available": 2163310592,
+      "management_cpu_free": 2.1624253510000004,
+      "request_memory_free": 3390873600.0,
+      "request_cpu_free": 1.73,
+      "laptop_available": 1743343616
+    }
+  ],
+  "required_management_available_bytes": 2147483648,
+  "reason": "1536 MiB active Argo CD limits plus 512 MiB management reserve; 650m requests plus 250m CPU reserve"
+}

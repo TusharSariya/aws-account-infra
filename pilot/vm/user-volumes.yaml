@@ -1,0 +1,58 @@
+apiVersion: v1alpha1
+kind: UserVolumeConfig
+name: pilot-prometheus
+provisioning:
+  diskSelector:
+    match: disk.serial == 'PILOT-MONITORING-01' && !system_disk
+  minSize: 2GiB
+  maxSize: 2GiB
+filesystem:
+  type: ext4
+
+---
+apiVersion: v1alpha1
+kind: UserVolumeConfig
+name: pilot-loki
+provisioning:
+  diskSelector:
+    match: disk.serial == 'PILOT-MONITORING-01' && !system_disk
+  minSize: 2GiB
+  maxSize: 2GiB
+filesystem:
+  type: ext4
+
+---
+apiVersion: v1alpha1
+kind: UserVolumeConfig
+name: pilot-grafana
+provisioning:
+  diskSelector:
+    match: disk.serial == 'PILOT-MONITORING-01' && !system_disk
+  minSize: 1GiB
+  maxSize: 1GiB
+filesystem:
+  type: ext4
+
+---
+apiVersion: v1alpha1
+kind: UserVolumeConfig
+name: pilot-alloy
+provisioning:
+  diskSelector:
+    match: disk.serial == 'PILOT-MONITORING-01' && !system_disk
+  minSize: 512MiB
+  maxSize: 512MiB
+filesystem:
+  type: ext4
+
+---
+apiVersion: v1alpha1
+kind: UserVolumeConfig
+name: pilot-alertmanager
+provisioning:
+  diskSelector:
+    match: disk.serial == 'PILOT-MONITORING-01' && !system_disk
+  minSize: 256MiB
+  maxSize: 256MiB
+filesystem:
+  type: ext4

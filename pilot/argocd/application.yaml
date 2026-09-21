@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: pilot-http
+  namespace: pilot-argocd
+spec:
+  project: pilot
+  source:
+    repoURL: https://github.com/TusharSariyaOrg/aws-account-infra.git
+    targetRevision: main
+    path: pilot/application/manifests
+    directory:
+      include: app.json
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: pilot-app
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=false
+      - Prune=false

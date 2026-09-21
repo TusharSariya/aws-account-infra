@@ -66,3 +66,11 @@ ansible/inventories/local/
 talos-secrets.yaml
 *.machineconfig.yaml
 talosconfig
+
+# Private pilot VM disks, archives, and cluster recovery state.
+*.qcow2
+pilot-*.tar.gz
+pilot-*.tar.partial
+pilot-recovery*/
+etcd.snapshot
+kubeconfig

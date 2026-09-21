@@ -3,7 +3,7 @@ name: trivy
 # Static IaC misconfig scan (public buckets, unencrypted resources, broad IAM, …).
 # Pure file scan — no AWS creds, no OIDC. Reports on every PR; expensive steps run only for affected inputs, so the single
 # `trivy` job is itself a stable required-check context (no detect/gate scaffolding
-# needed like the tofu workflows). Suppressions live in /.trivyignore.
+# needed like the tofu workflows). Suppressions live in /.trivyignore.yaml.
 on:
   pull_request:
 
@@ -37,5 +37,5 @@ jobs:
           # Block only on the high-signal findings; lower this later if desired.
           severity: HIGH,CRITICAL
           exit-code: "1"
-          trivyignores: .trivyignore
+          trivyignores: .trivyignore.yaml
           skip-dirs: "**/.terraform"

@@ -1,0 +1,61 @@
+{
+  "services": {
+    "pilot-prometheus": {
+      "ActiveState": "active",
+      "NRestarts": "0",
+      "MemoryCurrent": "70299648"
+    },
+    "pilot-loki": {
+      "ActiveState": "active",
+      "NRestarts": "0",
+      "MemoryCurrent": "81776640"
+    },
+    "pilot-alloy": {
+      "ActiveState": "active",
+      "NRestarts": "0",
+      "MemoryCurrent": "43880448"
+    },
+    "pilot-exporter": {
+      "ActiveState": "active",
+      "NRestarts": "0",
+      "MemoryCurrent": "14712832"
+    },
+    "pilot-grafana": {
+      "ActiveState": "active",
+      "NRestarts": "0",
+      "MemoryCurrent": "436006912"
+    },
+    "pilot-alertmanager": {
+      "ActiveState": "active",
+      "NRestarts": "0",
+      "MemoryCurrent": "11567104"
+    },
+    "prototype-primary-lifecycle": {
+      "ActiveState": "active",
+      "NRestarts": "0",
+      "MemoryCurrent": "10506240"
+    },
+    "prototype-slot-provider": {
+      "ActiveState": "active",
+      "NRestarts": "0",
+      "MemoryCurrent": "12881920"
+    },
+    "prototype-slot-placement": {
+      "ActiveState": "active",
+      "NRestarts": "0",
+      "MemoryCurrent": "29425664"
+    },
+    "prototype-consolidation": {
+      "ActiveState": "active",
+      "NRestarts": "0",
+      "MemoryCurrent": "16404480"
+    }
+  },
+  "secondary_paused": true,
+  "swap": {
+    "pswpin": 0,
+    "pswpout": 238
+  },
+  "active_alerts": [],
+  "proof_rules_remaining": []
+}

@@ -1,0 +1,27 @@
+{
+  "prometheus": {
+    "version": "v3.14.0",
+    "url": "https://github.com/prometheus/prometheus/releases/download/v3.14.0/prometheus-3.14.0.linux-amd64.tar.gz",
+    "sha256": "f665c6da19eb7ba399c915d30c7d9793c9b417bf8a749b504bc470678631478d"
+  },
+  "loki": {
+    "version": "v3.7.8",
+    "url": "https://github.com/grafana/loki/releases/download/v3.7.8/loki-linux-amd64.zip",
+    "sha256": "62aea42c9cba52cd1642b3666ab37019a0ce4c24ab50b07e85dccc8d812f7d61"
+  },
+  "alloy": {
+    "version": "v1.19.2",
+    "url": "https://github.com/grafana/alloy/releases/download/v1.19.2/alloy-linux-amd64.zip",
+    "sha256": "3694ea4e1044b367e1c21ffe28117f209c5989fa5e604d000321809f871ab701"
+  },
+  "alertmanager": {
+    "version": "v0.34.1",
+    "url": "https://github.com/prometheus/alertmanager/releases/download/v0.34.1/alertmanager-0.34.1.linux-amd64.tar.gz",
+    "sha256": "265b9d1e55ef0d5306a436018af6d2b686c2ce051f03d968f7464ecb1372a7e8"
+  },
+  "grafana": {
+    "version": "13.2.2",
+    "url": "https://dl.grafana.com/oss/release/grafana-13.2.2.linux-amd64.tar.gz",
+    "sha256": "9662c838a09824fdb072e5f6fbdd45b62cf541b20f3d609ea5011e6e5f544c8f"
+  }
+}

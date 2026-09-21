@@ -1,0 +1,14 @@
+# Reviewed exceptions; pilot findings are limited to these exact files.
+# https://trivy.dev/docs/v0.58/configuration/filtering/#trivyignoreyaml
+misconfigurations:
+  # Preserve the existing repository exception without changing its scope.
+  - id: AVD-AWS-0095
+    statement: CloudWatch cannot publish through alias/aws/sns; a customer-managed key adds a monthly charge for weekly alarm JSON.
+  - id: AVD-KSV-0056
+    paths:
+      - pilot/argocd/access.yaml
+    statement: The namespace-only GitOps Role must manage the application Service in pilot-app. It cannot modify endpoints, ingresses or network policies. Offline validation locks down this rule and namespace.
+  - id: AVD-KSV-0118
+    paths:
+      - pilot/argocd/vendor/namespace-install.yaml
+    statement: Checksum-pinned upstream manifests enforce runAsNonRoot at container level where pod-level context is absent. Offline validation checks effective non-root settings for every container and init container; vendor bytes remain unchanged.

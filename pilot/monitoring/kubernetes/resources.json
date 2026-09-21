@@ -1,0 +1,1716 @@
+{
+  "apiVersion": "v1",
+  "kind": "List",
+  "items": [
+    {
+      "apiVersion": "v1",
+      "kind": "Namespace",
+      "metadata": {
+        "name": "pilot-monitoring",
+        "labels": {
+          "pod-security.kubernetes.io/enforce": "restricted"
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "ConfigMap",
+      "metadata": {
+        "name": "delivery-proof",
+        "namespace": "pilot-monitoring"
+      },
+      "data": {
+        "delivery.yml": "{\"groups\": []}"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "ServiceAccount",
+      "metadata": {
+        "name": "prometheus",
+        "namespace": "pilot-monitoring"
+      },
+      "automountServiceAccountToken": false
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "ConfigMap",
+      "metadata": {
+        "name": "prometheus",
+        "namespace": "pilot-monitoring"
+      },
+      "data": {
+        "prometheus.yml": "global:\n  scrape_interval: 15s\n  evaluation_interval: 15s\nrule_files:\n  - '/etc/pilot/alerts.yml'\n  - '/etc/proofs/*.yml'\nalerting:\n  alertmanagers:\n    - static_configs:\n        - targets: ['alertmanager:9093']\nscrape_configs:\n  - job_name: pilot\n    scheme: https\n    authorization:\n      credentials_file: /etc/host/token\n    tls_config:\n      ca_file: /etc/host/ca.crt\n    scrape_timeout: 5s\n    sample_limit: 5000\n    static_configs:\n      - targets: ['10.0.2.2:9810']\n  - job_name: prometheus\n    static_configs:\n      - targets: ['prometheus:9090']\n  - job_name: loki\n    static_configs:\n      - targets: ['loki:3100']\n  - job_name: alloy\n    static_configs:\n      - targets: ['alloy:12345']\n  - job_name: pilot-http\n    sample_limit: 100\n    static_configs:\n      - targets: ['pilot-http.pilot-app.svc:8080']\n  - job_name: volume-metrics\n    metric_relabel_configs:\n      - source_labels: [__name__, namespace]\n        regex: 'kubelet_volume_stats_.*;pilot-monitoring'\n        action: keep\n    scheme: https\n    metrics_path: /metrics\n    authorization:\n      credentials_file: /var/run/secrets/kubernetes.io/serviceaccount/token\n    tls_config:\n      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt\n    static_configs:\n      - targets: ['10.0.2.15:10250']\n  - job_name: grafana\n    static_configs:\n      - targets: ['grafana:3000']\n  - job_name: alertmanager\n    static_configs:\n      - targets: ['alertmanager:9093']\n",
+        "alerts.yml": "groups:\n  - name: pilot\n    rules:\n      - alert: PilotCollectorUnavailable\n        expr: up{job=\"pilot\"} == 0 or pilot_collection_success == 0\n        for: 2m\n        labels: {severity: warning}\n        annotations: {summary: 'Pilot metadata collection is unavailable'}\n      - alert: PilotControllerUnavailable\n        expr: pilot_controller_up == 0\n        for: 2m\n        labels: {severity: critical}\n        annotations: {summary: 'An existing pilot controller has stopped'}\n      - alert: PilotControllerRestarting\n        expr: increase(pilot_controller_restarts_total[10m]) > 2\n        labels: {severity: warning}\n        annotations: {summary: 'A pilot controller is repeatedly restarting'}\n      - alert: PilotWorkerUnavailable\n        expr: (pilot_worker_desired == 1) and on(slot) (pilot_worker_paused == 0) and on(slot) (pilot_worker_ready == 0)\n        for: 15m\n        labels: {severity: warning}\n        annotations: {summary: 'Requested unpaused worker has not become Ready in 15 minutes'}\n      - alert: PilotSwapping\n        expr: rate(pilot_host_swap_pages_total[5m]) > 0\n        for: 5m\n        labels: {severity: warning}\n        annotations: {summary: 'Laptop is sustaining swap activity; stop adding services'}\n      - alert: PilotMemoryLow\n        expr: pilot_host_memory_bytes{kind=\"MemAvailable\"} < 536870912\n        for: 5m\n        labels: {severity: warning}\n        annotations: {summary: 'Laptop available memory is below the 512 MiB reserve'}\n      - alert: PilotDiskBudget\n        expr: (kubelet_volume_stats_available_bytes{namespace=\"pilot-monitoring\"} / kubelet_volume_stats_capacity_bytes{namespace=\"pilot-monitoring\"}) < 0.2 or pilot_host_disk_free_bytes < 5368709120\n        for: 2m\n        labels: {severity: warning}\n        annotations: {summary: 'Pilot log budget or laptop disk reserve needs attention'}\n      - alert: PilotCollectionStale\n        expr: time() - pilot_collection_timestamp_seconds > 120\n        for: 1m\n        labels: {severity: warning}\n        annotations: {summary: 'Pilot metadata collection stopped updating'}\n      - alert: PilotMonitoringUnavailable\n        expr: up{job=~\"loki|alloy|prometheus|pilot\"} == 0\n        for: 2m\n        labels: {severity: warning}\n        annotations: {summary: 'A pilot monitoring service has stopped; check disk budget and journal'}\n      - alert: PilotKubernetesControllerUnavailable\n        expr: pilot_kubernetes_controller_available < 1\n        for: 2m\n        labels: {severity: warning}\n        annotations: {summary: 'A named pilot Kubernetes controller is unavailable'}\n"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "name": "pilot-monitoring-prometheus"
+      },
+      "spec": {
+        "capacity": {
+          "storage": "2Gi"
+        },
+        "volumeMode": "Filesystem",
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "persistentVolumeReclaimPolicy": "Retain",
+        "storageClassName": "",
+        "claimRef": {
+          "namespace": "pilot-monitoring",
+          "name": "prometheus"
+        },
+        "local": {
+          "path": "/var/mnt/pilot-prometheus"
+        },
+        "nodeAffinity": {
+          "required": {
+            "nodeSelectorTerms": [
+              {
+                "matchExpressions": [
+                  {
+                    "key": "kubernetes.io/hostname",
+                    "operator": "In",
+                    "values": [
+                      "talos-v93-t3u"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "name": "prometheus",
+        "namespace": "pilot-monitoring"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "storageClassName": "",
+        "volumeName": "pilot-monitoring-prometheus",
+        "resources": {
+          "requests": {
+            "storage": "2Gi"
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Service",
+      "metadata": {
+        "name": "prometheus",
+        "namespace": "pilot-monitoring"
+      },
+      "spec": {
+        "type": "ClusterIP",
+        "selector": {
+          "app": "prometheus"
+        },
+        "ports": [
+          {
+            "name": "http",
+            "port": 9090,
+            "targetPort": 9090
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "metadata": {
+        "name": "prometheus",
+        "namespace": "pilot-monitoring"
+      },
+      "spec": {
+        "replicas": 1,
+        "strategy": {
+          "type": "Recreate"
+        },
+        "selector": {
+          "matchLabels": {
+            "app": "prometheus"
+          }
+        },
+        "template": {
+          "metadata": {
+            "labels": {
+              "app": "prometheus"
+            }
+          },
+          "spec": {
+            "serviceAccountName": "prometheus",
+            "automountServiceAccountToken": true,
+            "nodeSelector": {
+              "kubernetes.io/hostname": "talos-v93-t3u",
+              "node-role.kubernetes.io/control-plane": ""
+            },
+            "tolerations": [
+              {
+                "key": "node-role.kubernetes.io/control-plane",
+                "operator": "Exists",
+                "effect": "NoSchedule"
+              }
+            ],
+            "securityContext": {
+              "runAsNonRoot": true,
+              "runAsUser": 65534,
+              "runAsGroup": 65534,
+              "fsGroup": 65534,
+              "fsGroupChangePolicy": "OnRootMismatch",
+              "seccompProfile": {
+                "type": "RuntimeDefault"
+              }
+            },
+            "containers": [
+              {
+                "name": "prometheus",
+                "image": "docker.io/prom/prometheus:v3.14.0@sha256:5ce7540c3c00ef4ab0c9d2c995c6a5b9c421f44b4a115d97a2c7af3b1c21cbb0",
+                "args": [
+                  "--config.file=/etc/pilot/prometheus.yml",
+                  "--storage.tsdb.path=/data",
+                  "--storage.tsdb.retention.time=48h",
+                  "--storage.tsdb.retention.size=1GB",
+                  "--web.enable-lifecycle"
+                ],
+                "ports": [
+                  {
+                    "containerPort": 9090
+                  }
+                ],
+                "resources": {
+                  "requests": {
+                    "cpu": "150m",
+                    "memory": "128Mi"
+                  },
+                  "limits": {
+                    "cpu": "1",
+                    "memory": "384Mi"
+                  }
+                },
+                "securityContext": {
+                  "allowPrivilegeEscalation": false,
+                  "readOnlyRootFilesystem": true,
+                  "capabilities": {
+                    "drop": [
+                      "ALL"
+                    ]
+                  }
+                },
+                "volumeMounts": [
+                  {
+                    "name": "data",
+                    "mountPath": "/data"
+                  },
+                  {
+                    "name": "config",
+                    "mountPath": "/etc/pilot",
+                    "readOnly": true
+                  },
+                  {
+                    "name": "tmp",
+                    "mountPath": "/tmp"
+                  },
+                  {
+                    "name": "host",
+                    "mountPath": "/etc/host",
+                    "readOnly": true
+                  },
+                  {
+                    "name": "proofs",
+                    "mountPath": "/etc/proofs",
+                    "readOnly": true
+                  }
+                ],
+                "readinessProbe": {
+                  "httpGet": {
+                    "path": "/-/ready",
+                    "port": 9090
+                  },
+                  "periodSeconds": 10
+                },
+                "livenessProbe": {
+                  "httpGet": {
+                    "path": "/-/healthy",
+                    "port": 9090
+                  },
+                  "periodSeconds": 20,
+                  "failureThreshold": 6
+                },
+                "startupProbe": {
+                  "httpGet": {
+                    "path": "/-/ready",
+                    "port": 9090
+                  },
+                  "periodSeconds": 5,
+                  "failureThreshold": 60
+                }
+              }
+            ],
+            "volumes": [
+              {
+                "name": "data",
+                "persistentVolumeClaim": {
+                  "claimName": "prometheus"
+                }
+              },
+              {
+                "name": "config",
+                "configMap": {
+                  "name": "prometheus"
+                }
+              },
+              {
+                "name": "tmp",
+                "emptyDir": {
+                  "sizeLimit": "32Mi"
+                }
+              },
+              {
+                "name": "host",
+                "secret": {
+                  "secretName": "host-telemetry"
+                }
+              },
+              {
+                "name": "proofs",
+                "configMap": {
+                  "name": "delivery-proof"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "ServiceAccount",
+      "metadata": {
+        "name": "loki",
+        "namespace": "pilot-monitoring"
+      },
+      "automountServiceAccountToken": false
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "ConfigMap",
+      "metadata": {
+        "name": "loki",
+        "namespace": "pilot-monitoring"
+      },
+      "data": {
+        "loki.yml": "auth_enabled: false\nserver:\n  log_level: warn\n  http_listen_address: 0.0.0.0\n  http_listen_port: 3100\n  grpc_listen_address: 127.0.0.1\n  grpc_listen_port: 9096\ncommon:\n  instance_addr: 127.0.0.1\n  path_prefix: '/data'\n  storage:\n    filesystem:\n      chunks_directory: '/data/chunks'\n      rules_directory: '/data/rules'\n  replication_factor: 1\n  ring:\n    kvstore:\n      store: inmemory\nschema_config:\n  configs:\n    - from: 2024-01-01\n      store: tsdb\n      object_store: filesystem\n      schema: v13\n      index:\n        prefix: index_\n        period: 24h\ncompactor:\n  working_directory: '/data/compactor'\n  retention_enabled: true\n  delete_request_store: filesystem\n  retention_delete_delay: 1h\nlimits_config:\n  retention_period: 48h\n  ingestion_rate_mb: 1\n  ingestion_burst_size_mb: 2\n  max_global_streams_per_user: 200\n  max_line_size: 4096\n  max_query_parallelism: 2\n  split_queries_by_interval: 1h\n  max_query_lookback: 48h\n  reject_old_samples: true\n  reject_old_samples_max_age: 48h\nquerier:\n  max_concurrent: 1\nquery_range:\n  cache_results: false\nanalytics:\n  reporting_enabled: false\n"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "name": "pilot-monitoring-loki"
+      },
+      "spec": {
+        "capacity": {
+          "storage": "2Gi"
+        },
+        "volumeMode": "Filesystem",
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "persistentVolumeReclaimPolicy": "Retain",
+        "storageClassName": "",
+        "claimRef": {
+          "namespace": "pilot-monitoring",
+          "name": "loki"
+        },
+        "local": {
+          "path": "/var/mnt/pilot-loki"
+        },
+        "nodeAffinity": {
+          "required": {
+            "nodeSelectorTerms": [
+              {
+                "matchExpressions": [
+                  {
+                    "key": "kubernetes.io/hostname",
+                    "operator": "In",
+                    "values": [
+                      "talos-v93-t3u"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "name": "loki",
+        "namespace": "pilot-monitoring"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "storageClassName": "",
+        "volumeName": "pilot-monitoring-loki",
+        "resources": {
+          "requests": {
+            "storage": "2Gi"
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Service",
+      "metadata": {
+        "name": "loki",
+        "namespace": "pilot-monitoring"
+      },
+      "spec": {
+        "type": "ClusterIP",
+        "selector": {
+          "app": "loki"
+        },
+        "ports": [
+          {
+            "name": "http",
+            "port": 3100,
+            "targetPort": 3100
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "metadata": {
+        "name": "loki",
+        "namespace": "pilot-monitoring"
+      },
+      "spec": {
+        "replicas": 1,
+        "strategy": {
+          "type": "Recreate"
+        },
+        "selector": {
+          "matchLabels": {
+            "app": "loki"
+          }
+        },
+        "template": {
+          "metadata": {
+            "labels": {
+              "app": "loki"
+            }
+          },
+          "spec": {
+            "serviceAccountName": "loki",
+            "automountServiceAccountToken": false,
+            "nodeSelector": {
+              "kubernetes.io/hostname": "talos-v93-t3u",
+              "node-role.kubernetes.io/control-plane": ""
+            },
+            "tolerations": [
+              {
+                "key": "node-role.kubernetes.io/control-plane",
+                "operator": "Exists",
+                "effect": "NoSchedule"
+              }
+            ],
+            "securityContext": {
+              "runAsNonRoot": true,
+              "runAsUser": 65534,
+              "runAsGroup": 65534,
+              "fsGroup": 65534,
+              "fsGroupChangePolicy": "OnRootMismatch",
+              "seccompProfile": {
+                "type": "RuntimeDefault"
+              }
+            },
+            "containers": [
+              {
+                "name": "loki",
+                "image": "docker.io/grafana/loki:3.7.8@sha256:1107dd5274e0ada47e42472b7a7e71f3b2a2fe878878108f3e2f9e51528f0193",
+                "args": [
+                  "-config.file=/etc/pilot/loki.yml"
+                ],
+                "ports": [
+                  {
+                    "containerPort": 3100
+                  }
+                ],
+                "resources": {
+                  "requests": {
+                    "cpu": "100m",
+                    "memory": "128Mi"
+                  },
+                  "limits": {
+                    "cpu": "1",
+                    "memory": "384Mi"
+                  }
+                },
+                "securityContext": {
+                  "allowPrivilegeEscalation": false,
+                  "readOnlyRootFilesystem": true,
+                  "capabilities": {
+                    "drop": [
+                      "ALL"
+                    ]
+                  }
+                },
+                "volumeMounts": [
+                  {
+                    "name": "data",
+                    "mountPath": "/data"
+                  },
+                  {
+                    "name": "config",
+                    "mountPath": "/etc/pilot",
+                    "readOnly": true
+                  },
+                  {
+                    "name": "tmp",
+                    "mountPath": "/tmp"
+                  }
+                ],
+                "readinessProbe": {
+                  "httpGet": {
+                    "path": "/ready",
+                    "port": 3100
+                  },
+                  "periodSeconds": 10
+                },
+                "livenessProbe": {
+                  "httpGet": {
+                    "path": "/ready",
+                    "port": 3100
+                  },
+                  "periodSeconds": 20,
+                  "failureThreshold": 6
+                },
+                "startupProbe": {
+                  "httpGet": {
+                    "path": "/ready",
+                    "port": 3100
+                  },
+                  "periodSeconds": 5,
+                  "failureThreshold": 60
+                }
+              }
+            ],
+            "volumes": [
+              {
+                "name": "data",
+                "persistentVolumeClaim": {
+                  "claimName": "loki"
+                }
+              },
+              {
+                "name": "config",
+                "configMap": {
+                  "name": "loki"
+                }
+              },
+              {
+                "name": "tmp",
+                "emptyDir": {
+                  "sizeLimit": "32Mi"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "ServiceAccount",
+      "metadata": {
+        "name": "grafana",
+        "namespace": "pilot-monitoring"
+      },
+      "automountServiceAccountToken": false
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "ConfigMap",
+      "metadata": {
+        "name": "grafana",
+        "namespace": "pilot-monitoring"
+      },
+      "data": {
+        "datasources.yml": "apiVersion: 1\ndatasources:\n  - name: Pilot Prometheus\n    uid: pilot-prometheus\n    type: prometheus\n    access: proxy\n    url: http://prometheus:9090\n    isDefault: true\n    editable: false\n  - name: Pilot Loki\n    uid: pilot-loki\n    type: loki\n    access: proxy\n    url: http://loki:3100\n    editable: false\n",
+        "dashboards.yml": "apiVersion: 1\nproviders:\n  - name: pilot\n    type: file\n    orgId: 1\n    disableDeletion: true\n    editable: false\n    options:\n      path: /etc/pilot\n",
+        "dashboard.json": "{\n  \"uid\": \"isolated-pilot\",\n  \"title\": \"Isolated pilot\",\n  \"schemaVersion\": 39,\n  \"version\": 1,\n  \"refresh\": \"15s\",\n  \"time\": {\n    \"from\": \"now-1h\",\n    \"to\": \"now\"\n  },\n  \"panels\": [\n    {\n      \"id\": 1,\n      \"title\": \"Pending work\",\n      \"type\": \"timeseries\",\n      \"datasource\": {\n        \"type\": \"prometheus\",\n        \"uid\": \"pilot-prometheus\"\n      },\n      \"gridPos\": {\n        \"x\": 0,\n        \"y\": 0,\n        \"w\": 12,\n        \"h\": 8\n      },\n      \"targets\": [\n        {\n          \"expr\": \"pilot_pending_workloads\",\n          \"refId\": \"A\"\n        }\n      ]\n    },\n    {\n      \"id\": 2,\n      \"title\": \"Admission delay p95 (seconds)\",\n      \"type\": \"timeseries\",\n      \"datasource\": {\n        \"type\": \"prometheus\",\n        \"uid\": \"pilot-prometheus\"\n      },\n      \"gridPos\": {\n        \"x\": 12,\n        \"y\": 0,\n        \"w\": 12,\n        \"h\": 8\n      },\n      \"targets\": [\n        {\n          \"expr\": \"histogram_quantile(0.95, sum by(le) (rate(pilot_admission_delay_seconds_bucket[15m])))\",\n          \"refId\": \"A\"\n        }\n      ],\n      \"fieldConfig\": {\n        \"defaults\": {\n          \"unit\": \"s\"\n        },\n        \"overrides\": []\n      }\n    },\n    {\n      \"id\": 3,\n      \"title\": \"Worker ready transitions / retirement requests\",\n      \"type\": \"timeseries\",\n      \"datasource\": {\n        \"type\": \"prometheus\",\n        \"uid\": \"pilot-prometheus\"\n      },\n      \"gridPos\": {\n        \"x\": 0,\n        \"y\": 8,\n        \"w\": 12,\n        \"h\": 8\n      },\n      \"targets\": [\n        {\n          \"expr\": \"pilot_worker_ready_transitions_total\",\n          \"refId\": \"A\"\n        },\n        {\n          \"expr\": \"pilot_worker_retirement_requests_total\",\n          \"refId\": \"B\"\n        }\n      ]\n    },\n    {\n      \"id\": 4,\n      \"title\": \"Controller health\",\n      \"type\": \"timeseries\",\n      \"datasource\": {\n        \"type\": \"prometheus\",\n        \"uid\": \"pilot-prometheus\"\n      },\n      \"gridPos\": {\n        \"x\": 12,\n        \"y\": 8,\n        \"w\": 12,\n        \"h\": 8\n      },\n      \"targets\": [\n        {\n          \"expr\": \"pilot_controller_up\",\n          \"refId\": \"A\"\n        }\n      ]\n    },\n    {\n      \"id\": 5,\n      \"title\": \"Controller restarts\",\n      \"type\": \"timeseries\",\n      \"datasource\": {\n        \"type\": \"prometheus\",\n        \"uid\": \"pilot-prometheus\"\n      },\n      \"gridPos\": {\n        \"x\": 0,\n        \"y\": 16,\n        \"w\": 12,\n        \"h\": 8\n      },\n      \"targets\": [\n        {\n          \"expr\": \"increase(pilot_controller_restarts_total[15m])\",\n          \"refId\": \"A\"\n        }\n      ]\n    },\n    {\n      \"id\": 6,\n      \"title\": \"Host available memory\",\n      \"type\": \"timeseries\",\n      \"datasource\": {\n        \"type\": \"prometheus\",\n        \"uid\": \"pilot-prometheus\"\n      },\n      \"gridPos\": {\n        \"x\": 12,\n        \"y\": 16,\n        \"w\": 12,\n        \"h\": 8\n      },\n      \"targets\": [\n        {\n          \"expr\": \"pilot_host_memory_bytes{kind=\\\"MemAvailable\\\"}\",\n          \"refId\": \"A\"\n        }\n      ],\n      \"fieldConfig\": {\n        \"defaults\": {\n          \"unit\": \"bytes\"\n        },\n        \"overrides\": []\n      }\n    },\n    {\n      \"id\": 7,\n      \"title\": \"Swap pages / second\",\n      \"type\": \"timeseries\",\n      \"datasource\": {\n        \"type\": \"prometheus\",\n        \"uid\": \"pilot-prometheus\"\n      },\n      \"gridPos\": {\n        \"x\": 0,\n        \"y\": 24,\n        \"w\": 12,\n        \"h\": 8\n      },\n      \"targets\": [\n        {\n          \"expr\": \"rate(pilot_host_swap_pages_total[5m])\",\n          \"refId\": \"A\"\n        }\n      ]\n    },\n    {\n      \"id\": 8,\n      \"title\": \"Pilot Pod counts\",\n      \"type\": \"timeseries\",\n      \"datasource\": {\n        \"type\": \"prometheus\",\n        \"uid\": \"pilot-prometheus\"\n      },\n      \"gridPos\": {\n        \"x\": 12,\n        \"y\": 24,\n        \"w\": 12,\n        \"h\": 8\n      },\n      \"targets\": [\n        {\n          \"expr\": \"pilot_pods\",\n          \"refId\": \"A\"\n        }\n      ]\n    },\n    {\n      \"id\": 9,\n      \"title\": \"Collection health\",\n      \"type\": \"timeseries\",\n      \"datasource\": {\n        \"type\": \"prometheus\",\n        \"uid\": \"pilot-prometheus\"\n      },\n      \"gridPos\": {\n        \"x\": 0,\n        \"y\": 32,\n        \"w\": 12,\n        \"h\": 8\n      },\n      \"targets\": [\n        {\n          \"expr\": \"pilot_collection_success\",\n          \"refId\": \"A\"\n        }\n      ]\n    },\n    {\n      \"id\": 10,\n      \"title\": \"Storage budget consumption\",\n      \"type\": \"timeseries\",\n      \"datasource\": {\n        \"type\": \"prometheus\",\n        \"uid\": \"pilot-prometheus\"\n      },\n      \"gridPos\": {\n        \"x\": 12,\n        \"y\": 32,\n        \"w\": 12,\n        \"h\": 8\n      },\n      \"targets\": [\n        {\n          \"expr\": \"kubelet_volume_stats_used_bytes{namespace=\\\"pilot-monitoring\\\"}\",\n          \"refId\": \"A\"\n        }\n      ],\n      \"fieldConfig\": {\n        \"defaults\": {\n          \"unit\": \"bytes\"\n        },\n        \"overrides\": []\n      }\n    },\n    {\n      \"id\": 11,\n      \"title\": \"Worker desired / paused / ready\",\n      \"type\": \"timeseries\",\n      \"datasource\": {\n        \"type\": \"prometheus\",\n        \"uid\": \"pilot-prometheus\"\n      },\n      \"gridPos\": {\n        \"x\": 0,\n        \"y\": 40,\n        \"w\": 12,\n        \"h\": 8\n      },\n      \"targets\": [\n        {\n          \"expr\": \"pilot_worker_desired\",\n          \"refId\": \"A\"\n        },\n        {\n          \"expr\": \"pilot_worker_paused\",\n          \"refId\": \"B\"\n        },\n        {\n          \"expr\": \"pilot_worker_ready\",\n          \"refId\": \"C\"\n        }\n      ]\n    },\n    {\n      \"id\": 99,\n      \"title\": \"Sanitized lifecycle events\",\n      \"type\": \"logs\",\n      \"datasource\": {\n        \"type\": \"loki\",\n        \"uid\": \"pilot-loki\"\n      },\n      \"gridPos\": {\n        \"x\": 0,\n        \"y\": 48,\n        \"w\": 24,\n        \"h\": 8\n      },\n      \"targets\": [\n        {\n          \"expr\": \"{service=\\\"prototype-primary-lifecycle\\\"}\",\n          \"refId\": \"A\"\n        }\n      ]\n    },\n    {\n      \"id\": 100,\n      \"title\": \"Monitoring process memory\",\n      \"type\": \"timeseries\",\n      \"datasource\": {\n        \"type\": \"prometheus\",\n        \"uid\": \"pilot-prometheus\"\n      },\n      \"gridPos\": {\n        \"x\": 0,\n        \"y\": 56,\n        \"w\": 24,\n        \"h\": 8\n      },\n      \"targets\": [\n        {\n          \"expr\": \"process_resident_memory_bytes{job=~\\\"prometheus|loki|alloy|grafana|alertmanager\\\"}\",\n          \"refId\": \"A\"\n        }\n      ],\n      \"fieldConfig\": {\n        \"defaults\": {\n          \"unit\": \"bytes\"\n        },\n        \"overrides\": []\n      }\n    },\n    {\n      \"id\": 101,\n      \"title\": \"Monitoring CPU cores\",\n      \"type\": \"timeseries\",\n      \"datasource\": {\n        \"type\": \"prometheus\",\n        \"uid\": \"pilot-prometheus\"\n      },\n      \"gridPos\": {\n        \"x\": 0,\n        \"y\": 64,\n        \"w\": 24,\n        \"h\": 8\n      },\n      \"targets\": [\n        {\n          \"expr\": \"rate(process_cpu_seconds_total{job=~\\\"prometheus|loki|alloy|grafana|alertmanager\\\"}[5m])\",\n          \"refId\": \"A\"\n        }\n      ]\n    },\n    {\n      \"id\": 102,\n      \"title\": \"Lifecycle error events (sanitized journal)\",\n      \"type\": \"timeseries\",\n      \"datasource\": {\n        \"type\": \"loki\",\n        \"uid\": \"pilot-loki\"\n      },\n      \"gridPos\": {\n        \"x\": 0,\n        \"y\": 72,\n        \"w\": 24,\n        \"h\": 8\n      },\n      \"targets\": [\n        {\n          \"expr\": \"sum(count_over_time({service=\\\"prototype-primary-lifecycle\\\"} |~ \\\"error|failed|No route to host\\\" [5m]))\",\n          \"refId\": \"A\",\n          \"queryType\": \"range\"\n        }\n      ]\n    }\n  ]\n}"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "name": "pilot-monitoring-grafana"
+      },
+      "spec": {
+        "capacity": {
+          "storage": "1Gi"
+        },
+        "volumeMode": "Filesystem",
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "persistentVolumeReclaimPolicy": "Retain",
+        "storageClassName": "",
+        "claimRef": {
+          "namespace": "pilot-monitoring",
+          "name": "grafana"
+        },
+        "local": {
+          "path": "/var/mnt/pilot-grafana"
+        },
+        "nodeAffinity": {
+          "required": {
+            "nodeSelectorTerms": [
+              {
+                "matchExpressions": [
+                  {
+                    "key": "kubernetes.io/hostname",
+                    "operator": "In",
+                    "values": [
+                      "talos-v93-t3u"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "name": "grafana",
+        "namespace": "pilot-monitoring"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "storageClassName": "",
+        "volumeName": "pilot-monitoring-grafana",
+        "resources": {
+          "requests": {
+            "storage": "1Gi"
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Service",
+      "metadata": {
+        "name": "grafana",
+        "namespace": "pilot-monitoring"
+      },
+      "spec": {
+        "type": "ClusterIP",
+        "selector": {
+          "app": "grafana"
+        },
+        "ports": [
+          {
+            "name": "http",
+            "port": 3000,
+            "targetPort": 3000
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "metadata": {
+        "name": "grafana",
+        "namespace": "pilot-monitoring"
+      },
+      "spec": {
+        "replicas": 1,
+        "strategy": {
+          "type": "Recreate"
+        },
+        "selector": {
+          "matchLabels": {
+            "app": "grafana"
+          }
+        },
+        "template": {
+          "metadata": {
+            "labels": {
+              "app": "grafana"
+            }
+          },
+          "spec": {
+            "serviceAccountName": "grafana",
+            "automountServiceAccountToken": false,
+            "nodeSelector": {
+              "kubernetes.io/hostname": "talos-v93-t3u",
+              "node-role.kubernetes.io/control-plane": ""
+            },
+            "tolerations": [
+              {
+                "key": "node-role.kubernetes.io/control-plane",
+                "operator": "Exists",
+                "effect": "NoSchedule"
+              }
+            ],
+            "securityContext": {
+              "runAsNonRoot": true,
+              "runAsUser": 65534,
+              "runAsGroup": 65534,
+              "fsGroup": 65534,
+              "fsGroupChangePolicy": "OnRootMismatch",
+              "seccompProfile": {
+                "type": "RuntimeDefault"
+              }
+            },
+            "containers": [
+              {
+                "name": "grafana",
+                "image": "docker.io/grafana/grafana:13.2.2@sha256:ac461fb352abc50da10a51c7d02462e9c05488f11f53f14b3ad79a8145f638a0",
+                "args": [],
+                "ports": [
+                  {
+                    "containerPort": 3000
+                  }
+                ],
+                "resources": {
+                  "requests": {
+                    "cpu": "100m",
+                    "memory": "256Mi"
+                  },
+                  "limits": {
+                    "cpu": "1",
+                    "memory": "512Mi"
+                  }
+                },
+                "securityContext": {
+                  "allowPrivilegeEscalation": false,
+                  "readOnlyRootFilesystem": true,
+                  "capabilities": {
+                    "drop": [
+                      "ALL"
+                    ]
+                  }
+                },
+                "volumeMounts": [
+                  {
+                    "name": "data",
+                    "mountPath": "/data"
+                  },
+                  {
+                    "name": "config",
+                    "mountPath": "/etc/pilot",
+                    "readOnly": true
+                  },
+                  {
+                    "name": "tmp",
+                    "mountPath": "/tmp"
+                  },
+                  {
+                    "name": "config",
+                    "mountPath": "/etc/grafana/provisioning/datasources/pilot.yml",
+                    "subPath": "datasources.yml",
+                    "readOnly": true
+                  },
+                  {
+                    "name": "config",
+                    "mountPath": "/etc/grafana/provisioning/dashboards/pilot.yml",
+                    "subPath": "dashboards.yml",
+                    "readOnly": true
+                  }
+                ],
+                "readinessProbe": {
+                  "httpGet": {
+                    "path": "/api/health",
+                    "port": 3000
+                  },
+                  "periodSeconds": 10
+                },
+                "livenessProbe": {
+                  "httpGet": {
+                    "path": "/api/health",
+                    "port": 3000
+                  },
+                  "periodSeconds": 20,
+                  "failureThreshold": 6
+                },
+                "startupProbe": {
+                  "httpGet": {
+                    "path": "/api/health",
+                    "port": 3000
+                  },
+                  "periodSeconds": 5,
+                  "failureThreshold": 60
+                },
+                "env": [
+                  {
+                    "name": "GF_PATHS_DATA",
+                    "value": "/data"
+                  },
+                  {
+                    "name": "GF_PATHS_LOGS",
+                    "value": "/data/logs"
+                  },
+                  {
+                    "name": "GF_PATHS_PLUGINS",
+                    "value": "/data/plugins"
+                  },
+                  {
+                    "name": "GF_ANALYTICS_REPORTING_ENABLED",
+                    "value": "false"
+                  },
+                  {
+                    "name": "GF_ANALYTICS_CHECK_FOR_UPDATES",
+                    "value": "false"
+                  },
+                  {
+                    "name": "GF_PLUGINS_PREINSTALL_DISABLED",
+                    "value": "true"
+                  },
+                  {
+                    "name": "GF_USERS_ALLOW_SIGN_UP",
+                    "value": "false"
+                  },
+                  {
+                    "name": "GF_METRICS_ENABLED",
+                    "value": "true"
+                  },
+                  {
+                    "name": "GF_SECURITY_ADMIN_PASSWORD",
+                    "valueFrom": {
+                      "secretKeyRef": {
+                        "name": "grafana-admin",
+                        "key": "password"
+                      }
+                    }
+                  }
+                ]
+              }
+            ],
+            "volumes": [
+              {
+                "name": "data",
+                "persistentVolumeClaim": {
+                  "claimName": "grafana"
+                }
+              },
+              {
+                "name": "config",
+                "configMap": {
+                  "name": "grafana"
+                }
+              },
+              {
+                "name": "tmp",
+                "emptyDir": {
+                  "sizeLimit": "32Mi"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "ServiceAccount",
+      "metadata": {
+        "name": "alloy",
+        "namespace": "pilot-monitoring"
+      },
+      "automountServiceAccountToken": false
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "ConfigMap",
+      "metadata": {
+        "name": "alloy",
+        "namespace": "pilot-monitoring"
+      },
+      "data": {
+        "alloy.alloy": "logging {\n  level = \"warn\"\n}\ndiscovery.kubernetes \"pilot\" {\n  role = \"pod\"\n  namespaces {\n    names = [\"prototype-slot\", \"pilot-app\"]\n  }\n  selectors {\n    role = \"pod\"\n    label = \"monitoring.homelab/pilot-logs=true\"\n  }\n}\ndiscovery.relabel \"pilot\" {\n  targets = discovery.kubernetes.pilot.targets\n  rule {\n    source_labels = [\"__meta_kubernetes_namespace\"]\n    target_label = \"namespace\"\n  }\n  rule {\n    source_labels = [\"__meta_kubernetes_pod_name\"]\n    target_label = \"pod\"\n  }\n  rule {\n    source_labels = [\"__meta_kubernetes_pod_container_name\"]\n    target_label = \"container\"\n  }\n}\nloki.source.kubernetes \"pilot\" {\n  targets = discovery.relabel.pilot.output\n  forward_to = [loki.process.pilot.receiver]\n}\nloki.process \"pilot\" {\n  // Only fixed-format diagnostic markers are stored. Request bodies and ordinary\n  // workload output never enter Loki, even on an opted-in Pod.\n  stage.match {\n    selector = \"{namespace=~\\\".+\\\"} !~ \\\"^pilot-observe [a-zA-Z0-9_-]{1,80}[[:space:]]*$\\\"\"\n    action = \"drop\"\n  }\n  forward_to = [loki.write.local.receiver]\n}\nloki.write \"local\" {\n  endpoint {\n    url = \"http://loki:3100/loki/api/v1/push\"\n  }\n}\n"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "name": "pilot-monitoring-alloy"
+      },
+      "spec": {
+        "capacity": {
+          "storage": "512Mi"
+        },
+        "volumeMode": "Filesystem",
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "persistentVolumeReclaimPolicy": "Retain",
+        "storageClassName": "",
+        "claimRef": {
+          "namespace": "pilot-monitoring",
+          "name": "alloy"
+        },
+        "local": {
+          "path": "/var/mnt/pilot-alloy"
+        },
+        "nodeAffinity": {
+          "required": {
+            "nodeSelectorTerms": [
+              {
+                "matchExpressions": [
+                  {
+                    "key": "kubernetes.io/hostname",
+                    "operator": "In",
+                    "values": [
+                      "talos-v93-t3u"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "name": "alloy",
+        "namespace": "pilot-monitoring"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "storageClassName": "",
+        "volumeName": "pilot-monitoring-alloy",
+        "resources": {
+          "requests": {
+            "storage": "512Mi"
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Service",
+      "metadata": {
+        "name": "alloy",
+        "namespace": "pilot-monitoring"
+      },
+      "spec": {
+        "type": "ClusterIP",
+        "selector": {
+          "app": "alloy"
+        },
+        "ports": [
+          {
+            "name": "http",
+            "port": 12345,
+            "targetPort": 12345
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "metadata": {
+        "name": "alloy",
+        "namespace": "pilot-monitoring"
+      },
+      "spec": {
+        "replicas": 1,
+        "strategy": {
+          "type": "Recreate"
+        },
+        "selector": {
+          "matchLabels": {
+            "app": "alloy"
+          }
+        },
+        "template": {
+          "metadata": {
+            "labels": {
+              "app": "alloy"
+            }
+          },
+          "spec": {
+            "serviceAccountName": "alloy",
+            "automountServiceAccountToken": true,
+            "nodeSelector": {
+              "kubernetes.io/hostname": "talos-v93-t3u",
+              "node-role.kubernetes.io/control-plane": ""
+            },
+            "tolerations": [
+              {
+                "key": "node-role.kubernetes.io/control-plane",
+                "operator": "Exists",
+                "effect": "NoSchedule"
+              }
+            ],
+            "securityContext": {
+              "runAsNonRoot": true,
+              "runAsUser": 65534,
+              "runAsGroup": 65534,
+              "fsGroup": 65534,
+              "fsGroupChangePolicy": "OnRootMismatch",
+              "seccompProfile": {
+                "type": "RuntimeDefault"
+              }
+            },
+            "containers": [
+              {
+                "name": "alloy",
+                "image": "docker.io/grafana/alloy:v1.19.2@sha256:b8ec653c44235fbe910879145dac3597d66b0aaecf60bcbbe82580767771a839",
+                "args": [
+                  "run",
+                  "--server.http.listen-addr=0.0.0.0:12345",
+                  "--storage.path=/data",
+                  "/etc/pilot/alloy.alloy"
+                ],
+                "ports": [
+                  {
+                    "containerPort": 12345
+                  }
+                ],
+                "resources": {
+                  "requests": {
+                    "cpu": "100m",
+                    "memory": "64Mi"
+                  },
+                  "limits": {
+                    "cpu": "1",
+                    "memory": "256Mi"
+                  }
+                },
+                "securityContext": {
+                  "allowPrivilegeEscalation": false,
+                  "readOnlyRootFilesystem": true,
+                  "capabilities": {
+                    "drop": [
+                      "ALL"
+                    ]
+                  }
+                },
+                "volumeMounts": [
+                  {
+                    "name": "data",
+                    "mountPath": "/data"
+                  },
+                  {
+                    "name": "config",
+                    "mountPath": "/etc/pilot",
+                    "readOnly": true
+                  },
+                  {
+                    "name": "tmp",
+                    "mountPath": "/tmp"
+                  }
+                ],
+                "readinessProbe": {
+                  "httpGet": {
+                    "path": "/-/ready",
+                    "port": 12345
+                  },
+                  "periodSeconds": 10
+                },
+                "livenessProbe": {
+                  "httpGet": {
+                    "path": "/-/healthy",
+                    "port": 12345
+                  },
+                  "periodSeconds": 20,
+                  "failureThreshold": 6
+                },
+                "startupProbe": {
+                  "httpGet": {
+                    "path": "/-/ready",
+                    "port": 12345
+                  },
+                  "periodSeconds": 5,
+                  "failureThreshold": 60
+                }
+              }
+            ],
+            "volumes": [
+              {
+                "name": "data",
+                "persistentVolumeClaim": {
+                  "claimName": "alloy"
+                }
+              },
+              {
+                "name": "config",
+                "configMap": {
+                  "name": "alloy"
+                }
+              },
+              {
+                "name": "tmp",
+                "emptyDir": {
+                  "sizeLimit": "32Mi"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "ServiceAccount",
+      "metadata": {
+        "name": "alertmanager",
+        "namespace": "pilot-monitoring"
+      },
+      "automountServiceAccountToken": false
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "ConfigMap",
+      "metadata": {
+        "name": "alertmanager",
+        "namespace": "pilot-monitoring"
+      },
+      "data": {
+        "alertmanager.yml": "global:\n  resolve_timeout: 1m\nroute:\n  receiver: local\n  group_by: [alertname]\n  group_wait: 1s\n  group_interval: 5s\n  repeat_interval: 4h\nreceivers:\n  - name: local\n    webhook_configs:\n      - url: https://10.0.2.2:9810/alerts\n        send_resolved: true\n        http_config:\n          authorization:\n            credentials_file: /etc/host/token\n          tls_config:\n            ca_file: /etc/host/ca.crt\n"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolume",
+      "metadata": {
+        "name": "pilot-monitoring-alertmanager"
+      },
+      "spec": {
+        "capacity": {
+          "storage": "256Mi"
+        },
+        "volumeMode": "Filesystem",
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "persistentVolumeReclaimPolicy": "Retain",
+        "storageClassName": "",
+        "claimRef": {
+          "namespace": "pilot-monitoring",
+          "name": "alertmanager"
+        },
+        "local": {
+          "path": "/var/mnt/pilot-alertmanager"
+        },
+        "nodeAffinity": {
+          "required": {
+            "nodeSelectorTerms": [
+              {
+                "matchExpressions": [
+                  {
+                    "key": "kubernetes.io/hostname",
+                    "operator": "In",
+                    "values": [
+                      "talos-v93-t3u"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "PersistentVolumeClaim",
+      "metadata": {
+        "name": "alertmanager",
+        "namespace": "pilot-monitoring"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "storageClassName": "",
+        "volumeName": "pilot-monitoring-alertmanager",
+        "resources": {
+          "requests": {
+            "storage": "256Mi"
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Service",
+      "metadata": {
+        "name": "alertmanager",
+        "namespace": "pilot-monitoring"
+      },
+      "spec": {
+        "type": "ClusterIP",
+        "selector": {
+          "app": "alertmanager"
+        },
+        "ports": [
+          {
+            "name": "http",
+            "port": 9093,
+            "targetPort": 9093
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "metadata": {
+        "name": "alertmanager",
+        "namespace": "pilot-monitoring"
+      },
+      "spec": {
+        "replicas": 1,
+        "strategy": {
+          "type": "Recreate"
+        },
+        "selector": {
+          "matchLabels": {
+            "app": "alertmanager"
+          }
+        },
+        "template": {
+          "metadata": {
+            "labels": {
+              "app": "alertmanager"
+            }
+          },
+          "spec": {
+            "serviceAccountName": "alertmanager",
+            "automountServiceAccountToken": false,
+            "nodeSelector": {
+              "kubernetes.io/hostname": "talos-v93-t3u",
+              "node-role.kubernetes.io/control-plane": ""
+            },
+            "tolerations": [
+              {
+                "key": "node-role.kubernetes.io/control-plane",
+                "operator": "Exists",
+                "effect": "NoSchedule"
+              }
+            ],
+            "securityContext": {
+              "runAsNonRoot": true,
+              "runAsUser": 65534,
+              "runAsGroup": 65534,
+              "fsGroup": 65534,
+              "fsGroupChangePolicy": "OnRootMismatch",
+              "seccompProfile": {
+                "type": "RuntimeDefault"
+              }
+            },
+            "containers": [
+              {
+                "name": "alertmanager",
+                "image": "docker.io/prom/alertmanager:v0.34.1@sha256:e9733bafb1bdef9b00e25a21f8f99dc26a22224bf16641ad754d1649f4c3357a",
+                "args": [
+                  "--config.file=/etc/pilot/alertmanager.yml",
+                  "--storage.path=/data",
+                  "--data.retention=48h",
+                  "--cluster.listen-address="
+                ],
+                "ports": [
+                  {
+                    "containerPort": 9093
+                  }
+                ],
+                "resources": {
+                  "requests": {
+                    "cpu": "50m",
+                    "memory": "32Mi"
+                  },
+                  "limits": {
+                    "cpu": "1",
+                    "memory": "96Mi"
+                  }
+                },
+                "securityContext": {
+                  "allowPrivilegeEscalation": false,
+                  "readOnlyRootFilesystem": true,
+                  "capabilities": {
+                    "drop": [
+                      "ALL"
+                    ]
+                  }
+                },
+                "volumeMounts": [
+                  {
+                    "name": "data",
+                    "mountPath": "/data"
+                  },
+                  {
+                    "name": "config",
+                    "mountPath": "/etc/pilot",
+                    "readOnly": true
+                  },
+                  {
+                    "name": "tmp",
+                    "mountPath": "/tmp"
+                  },
+                  {
+                    "name": "host",
+                    "mountPath": "/etc/host",
+                    "readOnly": true
+                  }
+                ],
+                "readinessProbe": {
+                  "httpGet": {
+                    "path": "/-/ready",
+                    "port": 9093
+                  },
+                  "periodSeconds": 10
+                },
+                "livenessProbe": {
+                  "httpGet": {
+                    "path": "/-/healthy",
+                    "port": 9093
+                  },
+                  "periodSeconds": 20,
+                  "failureThreshold": 6
+                },
+                "startupProbe": {
+                  "httpGet": {
+                    "path": "/-/ready",
+                    "port": 9093
+                  },
+                  "periodSeconds": 5,
+                  "failureThreshold": 60
+                }
+              }
+            ],
+            "volumes": [
+              {
+                "name": "data",
+                "persistentVolumeClaim": {
+                  "claimName": "alertmanager"
+                }
+              },
+              {
+                "name": "config",
+                "configMap": {
+                  "name": "alertmanager"
+                }
+              },
+              {
+                "name": "tmp",
+                "emptyDir": {
+                  "sizeLimit": "32Mi"
+                }
+              },
+              {
+                "name": "host",
+                "secret": {
+                  "secretName": "host-telemetry"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "rbac.authorization.k8s.io/v1",
+      "kind": "Role",
+      "metadata": {
+        "name": "pilot-host-health",
+        "namespace": "pilot-monitoring"
+      },
+      "rules": [
+        {
+          "apiGroups": [
+            ""
+          ],
+          "resources": [
+            "pods"
+          ],
+          "verbs": [
+            "get",
+            "list"
+          ]
+        }
+      ]
+    },
+    {
+      "apiVersion": "rbac.authorization.k8s.io/v1",
+      "kind": "RoleBinding",
+      "metadata": {
+        "name": "pilot-host-health",
+        "namespace": "pilot-monitoring"
+      },
+      "subjects": [
+        {
+          "kind": "User",
+          "name": "pilot-monitoring-reader",
+          "apiGroup": "rbac.authorization.k8s.io"
+        }
+      ],
+      "roleRef": {
+        "apiGroup": "rbac.authorization.k8s.io",
+        "kind": "Role",
+        "name": "pilot-host-health"
+      }
+    },
+    {
+      "apiVersion": "rbac.authorization.k8s.io/v1",
+      "kind": "Role",
+      "metadata": {
+        "name": "pilot-log-reader",
+        "namespace": "prototype-slot"
+      },
+      "rules": [
+        {
+          "apiGroups": [
+            ""
+          ],
+          "resources": [
+            "pods",
+            "pods/log"
+          ],
+          "verbs": [
+            "get",
+            "list",
+            "watch"
+          ]
+        }
+      ]
+    },
+    {
+      "apiVersion": "rbac.authorization.k8s.io/v1",
+      "kind": "RoleBinding",
+      "metadata": {
+        "name": "pilot-log-reader",
+        "namespace": "prototype-slot"
+      },
+      "subjects": [
+        {
+          "kind": "ServiceAccount",
+          "name": "alloy",
+          "namespace": "pilot-monitoring"
+        }
+      ],
+      "roleRef": {
+        "apiGroup": "rbac.authorization.k8s.io",
+        "kind": "Role",
+        "name": "pilot-log-reader"
+      }
+    },
+    {
+      "apiVersion": "rbac.authorization.k8s.io/v1",
+      "kind": "Role",
+      "metadata": {
+        "name": "pilot-log-reader",
+        "namespace": "pilot-app"
+      },
+      "rules": [
+        {
+          "apiGroups": [
+            ""
+          ],
+          "resources": [
+            "pods",
+            "pods/log"
+          ],
+          "verbs": [
+            "get",
+            "list",
+            "watch"
+          ]
+        }
+      ]
+    },
+    {
+      "apiVersion": "rbac.authorization.k8s.io/v1",
+      "kind": "RoleBinding",
+      "metadata": {
+        "name": "pilot-log-reader",
+        "namespace": "pilot-app"
+      },
+      "subjects": [
+        {
+          "kind": "ServiceAccount",
+          "name": "alloy",
+          "namespace": "pilot-monitoring"
+        }
+      ],
+      "roleRef": {
+        "apiGroup": "rbac.authorization.k8s.io",
+        "kind": "Role",
+        "name": "pilot-log-reader"
+      }
+    },
+    {
+      "apiVersion": "rbac.authorization.k8s.io/v1",
+      "kind": "ClusterRole",
+      "metadata": {
+        "name": "pilot-volume-metrics"
+      },
+      "rules": [
+        {
+          "apiGroups": [
+            ""
+          ],
+          "resources": [
+            "nodes/metrics"
+          ],
+          "resourceNames": [
+            "talos-v93-t3u"
+          ],
+          "verbs": [
+            "get"
+          ]
+        }
+      ]
+    },
+    {
+      "apiVersion": "rbac.authorization.k8s.io/v1",
+      "kind": "ClusterRoleBinding",
+      "metadata": {
+        "name": "pilot-volume-metrics"
+      },
+      "subjects": [
+        {
+          "kind": "ServiceAccount",
+          "name": "prometheus",
+          "namespace": "pilot-monitoring"
+        }
+      ],
+      "roleRef": {
+        "apiGroup": "rbac.authorization.k8s.io",
+        "kind": "ClusterRole",
+        "name": "pilot-volume-metrics"
+      }
+    },
+    {
+      "apiVersion": "networking.k8s.io/v1",
+      "kind": "NetworkPolicy",
+      "metadata": {
+        "name": "private-monitoring",
+        "namespace": "pilot-monitoring"
+      },
+      "spec": {
+        "podSelector": {},
+        "policyTypes": [
+          "Ingress",
+          "Egress"
+        ],
+        "ingress": [
+          {
+            "from": [
+              {
+                "podSelector": {}
+              }
+            ]
+          }
+        ],
+        "egress": [
+          {
+            "to": [
+              {
+                "ipBlock": {
+                  "cidr": "10.96.0.1/32"
+                }
+              }
+            ],
+            "ports": [
+              {
+                "port": 443
+              }
+            ]
+          },
+          {
+            "to": [
+              {
+                "podSelector": {}
+              }
+            ]
+          },
+          {
+            "to": [
+              {
+                "namespaceSelector": {
+                  "matchLabels": {
+                    "kubernetes.io/metadata.name": "kube-system"
+                  }
+                },
+                "podSelector": {
+                  "matchLabels": {
+                    "k8s-app": "kube-dns"
+                  }
+                }
+              }
+            ],
+            "ports": [
+              {
+                "protocol": "UDP",
+                "port": 53
+              },
+              {
+                "protocol": "TCP",
+                "port": 53
+              }
+            ]
+          },
+          {
+            "to": [
+              {
+                "ipBlock": {
+                  "cidr": "10.0.2.15/32"
+                }
+              }
+            ],
+            "ports": [
+              {
+                "port": 6443
+              },
+              {
+                "port": 10250
+              }
+            ]
+          },
+          {
+            "to": [
+              {
+                "ipBlock": {
+                  "cidr": "10.0.2.2/32"
+                }
+              }
+            ],
+            "ports": [
+              {
+                "port": 9810
+              }
+            ]
+          },
+          {
+            "to": [
+              {
+                "namespaceSelector": {
+                  "matchLabels": {
+                    "kubernetes.io/metadata.name": "pilot-app"
+                  }
+                },
+                "podSelector": {
+                  "matchLabels": {
+                    "app": "pilot-http"
+                  }
+                }
+              }
+            ],
+            "ports": [
+              {
+                "port": 8080
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "cilium.io/v2",
+      "kind": "CiliumNetworkPolicy",
+      "metadata": {
+        "name": "alloy-api",
+        "namespace": "pilot-monitoring"
+      },
+      "spec": {
+        "endpointSelector": {
+          "matchLabels": {
+            "app": "alloy"
+          }
+        },
+        "egress": [
+          {
+            "toEntities": [
+              "kube-apiserver"
+            ],
+            "toPorts": [
+              {
+                "ports": [
+                  {
+                    "port": "443",
+                    "protocol": "TCP"
+                  },
+                  {
+                    "port": "6443",
+                    "protocol": "TCP"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "cilium.io/v2",
+      "kind": "CiliumNetworkPolicy",
+      "metadata": {
+        "name": "prometheus-kubelet",
+        "namespace": "pilot-monitoring"
+      },
+      "spec": {
+        "endpointSelector": {
+          "matchLabels": {
+            "app": "prometheus"
+          }
+        },
+        "egress": [
+          {
+            "toEntities": [
+              "host"
+            ],
+            "toPorts": [
+              {
+                "ports": [
+                  {
+                    "port": "10250",
+                    "protocol": "TCP"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

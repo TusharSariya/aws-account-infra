@@ -1,0 +1,21 @@
+{
+  "version": "v3.5.3",
+  "files": {
+    "namespace-install.yaml": {
+      "url": "https://raw.githubusercontent.com/argoproj/argo-cd/v3.5.3/manifests/namespace-install.yaml",
+      "sha256": "df727dfc83666dbcc78dceef969505cf9c1659af774c64f9c08a204b09bd7dba"
+    },
+    "application-crd.yaml": {
+      "url": "https://raw.githubusercontent.com/argoproj/argo-cd/v3.5.3/manifests/crds/application-crd.yaml",
+      "sha256": "5dde0e229249b6b707beb98674c1deae3949d5c319a6c45b9f5a80c99618e40c"
+    },
+    "appproject-crd.yaml": {
+      "url": "https://raw.githubusercontent.com/argoproj/argo-cd/v3.5.3/manifests/crds/appproject-crd.yaml",
+      "sha256": "ab225266944322750136f1198d93786e4a79a0e43c8d149abfba44da30a3eac8"
+    },
+    "applicationset-crd.yaml": {
+      "url": "https://raw.githubusercontent.com/argoproj/argo-cd/v3.5.3/manifests/crds/applicationset-crd.yaml",
+      "sha256": "7d282054f41ca2b71a22bab04a8caf0000e07e53a62432e6ea292dae5ab4f07d"
+    }
+  }
+}

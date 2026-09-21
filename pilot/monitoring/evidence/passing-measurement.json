@@ -1,0 +1,17 @@
+{
+  "run": "kv-1e523c0c9bbbfcda",
+  "duration_seconds": 978.8995506763458,
+  "load_passed": true,
+  "load_returncode": 0,
+  "minimum_available_bytes": 2019680256,
+  "swap_start": {
+    "pswpin": 0,
+    "pswpout": 238
+  },
+  "swap_end": {
+    "pswpin": 0,
+    "pswpout": 238
+  },
+  "all_controllers_active": true,
+  "samples": 66
+}
