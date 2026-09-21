@@ -2,6 +2,12 @@
 
 Status: technical design, 2026-09-20. No deployment or production ownership transfer is performed by this plan. User decisions supersede the earlier retained-worker research recommendation. Ordinary scaling validation is in scope; restore/failure drills and redundancy remain deferred.
 
+## Evidence and immediate next step
+
+The isolated same-host retained-volume proof passed in [issue105](https://github.com/TusharSariyaOrg/aws-account-infra/issues/105): old worker and OS disks deleted, fresh node identity created, original PVC/PV/backend handle and marker verified. This used a manual harness and ISO installation, not the future autoscaler or template clone path.
+
+[IMM2 key access and startup](imm2-power-control.md) are now verified for both physical servers from the Mac. Paramiko is the recommended SSH transport for a small power adapter; the Ubuntu laptop still needs its own controller key/account and the library integration needs testing. Next build the bounded adapter and one isolated zero-to-one worker integration before expanding to both slots.
+
 ## Target
 
 The Ubuntu laptop stays on and hosts the Talos control-plane VM, household DNS and management/demand components. Each physical PVE host supplies at most one main Talos worker VM. That VM is created from a local versioned template on demand and deleted when its capacity is no longer needed. There is no bootstrap management VM. Workloads share the worker; CI runner Pods remain disposable.
@@ -65,7 +71,7 @@ The user accepts durable data bound to one physical server, provided a replaceme
 
 Current local-path volumes and cache PVs are pinned to talos-worker-01. Its1200-GiB data disk is part of the existing guest definition. Keeping a Kubernetes PV or setting `Retain` alone does not prove the PVE VM deletion path preserves its underlying disk. Treat the existing guest/disk as protected until migration to a proven independent volume lifecycle is complete.
 
-Evaluate a Proxmox CSI storage path with separate endpoint identities/topology. Its documentation describes multiple regions/endpoints and a PVE clustering prerequisite (including singleton clusters); verify that prerequisite against the current hosts rather than assuming it or changing host topology automatically. Validate the driver's support for this exact standalone-host setup, Talos integration, local thin storage, detach semantics and VM deletion behavior. A successful disposable-volume test must precede any real app-volume migration. Do not rely on merely unlinking a disk from a VM and assuming it is safe to destroy the VM.
+Proxmox CSI0.20.0 (chart0.5.12) passed the ordinary retained-volume lifecycle on standalone secondary PVE9.2.2 with Talos1.13.9, verified TLS, local thin storage and separate owner ID9199. No PVE cluster conversion was needed for that tested path. Validate primary-host topology and the actual controller deletion path before migrating apps; the manual proof does not cover those integrations. Inspect both attached and unused disk references before VM destruction. See [storage evidence](../../prototypes/disposable-worker-storage/evidence.md).
 
 Use separate ownership manifests for disposable guest disks and durable volume IDs. Single-writer attachment must be enforced across old/new worker identities. Attach completion and the expected filesystem/data must be verified before scheduling stateful apps. Node labels describe physical storage domains; fresh Kubernetes node names must not strand local PV affinity. Existing local-path data may require migration to a new volume; this is normal storage migration, not a deferred recovery exercise.
 
@@ -89,6 +95,17 @@ Use separate ownership manifests for disposable guest disks and durable volume I
 
 ## Outstanding technical evidence
 
-Provider selection for independent endpoints; storage-driver compatibility and ordinary volume reattachment; measured laptop controller footprint; exact worker budgets and node-template resources. These are implementation-fit questions, not new user preference questions. Backup/restore, redundancy and hardware-failure drills remain deferred.
+External-gRPC/provider integration for independent endpoints; template cloning with fresh identity; retained-volume lifecycle through the actual runtime controller on both hosts; laptop SSH credential enrollment and Paramiko compatibility; measured laptop controller footprint; exact worker budgets and node-template resources. These are implementation-fit questions, not new user preference questions. Backup/restore, redundancy and hardware-failure drills remain deferred.
 
 Primary-source provider and storage findings: [autoscaling research](../research/homelab-power-autoscaling.md), copied from research commit7207381.
+
+## Build sequence and acceptance
+
+1. **Power adapter:** strict host trust, separate laptop credential, observed-state parsing, idempotent wake and bounded errors. No forced-off path.
+2. **Worker provisioning:** versioned local templates, fresh Talos identity, two distinct endpoint/slot identities, exclusive ownership, retain/detach checks before deletion. Prove one isolated slot first.
+3. **Demand and admission:** Kueue-gated jobs and ordinary pending work request capacity through CA external gRPC. ARC listeners remain on always-on capacity. Fit includes CPU, RAM, scratch and storage locality; correct current RAM budgets.
+4. **App wake policies:** every app declares scheduled, on-invoke or persistent; unclassified experimental work is gracefully disposable. LAN/Tailscale URL wakes show a waiting page; APIs return503/Retry-After, without replaying mutations. Scheduled work declares its deadline or awake-window deferral policy.
+5. **Consolidation and sleep:** prefer awake eligible capacity, respect per-app movement/completion and host blockers, one30-minute idle timer, cancellation before shutdown commit and queued re-wake afterwards. Demonstrate feasible consolidation across both slots.
+6. **IaC and migration:** OpenTofu owns stable infrastructure/templates/permissions; Helm deploys versioned controllers and policy. Runtime owns disposable workers. Move essential DNS/management to laptop capacity, migrate protected storage explicitly, then transfer worker ownership in reviewed phases.
+
+GitHub remains the execution tracker, principally [placement97](https://github.com/TusharSariyaOrg/aws-account-infra/issues/97), [admission100](https://github.com/TusharSariyaOrg/aws-account-infra/issues/100), and [migration99](https://github.com/TusharSariyaOrg/aws-account-infra/issues/99). These documents hold the detailed contract and evidence; no backup/restore drill or redundancy prerequisite is added.

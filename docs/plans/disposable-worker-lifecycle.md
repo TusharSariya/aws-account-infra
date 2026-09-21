@@ -22,8 +22,8 @@ The current local-path provisioner and cache PVs are tied to talos-worker-01; Po
 
 The first prototype recommendation is upstream Cluster Autoscaler with an external gRPC adapter for the two independent Proxmox endpoints. Its justification is endpoint topology and the two fixed worker slots, not retaining VMs. Cluster API + Proxmox/Talos providers remain alternatives pending topology and controller-ownership compatibility. Physical-host wake, shutdown coordination and power-aware host selection remain separate requirements. No provider or production deployment is selected by this note.
 
-## Pending tracker synchronization
+## Tracker and evidence
 
-GitHub API access returned 'no route to host' during this update. When reachable, record the superseding decision on the placement discussion and map, and link the revised provider research. Earlier retained-VM recommendations must not be presented as current.
+GitHub synchronization completed: map92 and placement97 record the superseding create/delete decision; research104 marks its retained-worker recommendation obsolete. Storage proof105 passed and is closed. [IMM2 startup and SSH enrollment](imm2-power-control.md) are verified; automatic power/provisioning integration remains to be built.
 
 Technical mechanics and ownership: [IaC autoscaling plan](homelab-autoscaling-iac.md).
