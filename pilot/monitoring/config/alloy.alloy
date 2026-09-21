@@ -1,0 +1,70 @@
+logging {
+  level = "warn"
+}
+discovery.kubernetes "pilot" {
+  role = "pod"
+  kubeconfig_file = "@BASE@/private/reader.kubeconfig"
+  namespaces {
+    names = ["prototype-slot", "pilot-app"]
+  }
+  selectors {
+    role = "pod"
+    label = "monitoring.homelab/pilot-logs=true"
+  }
+}
+discovery.relabel "pilot" {
+  targets = discovery.kubernetes.pilot.targets
+  rule {
+    source_labels = ["__meta_kubernetes_namespace"]
+    target_label = "namespace"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_pod_name"]
+    target_label = "pod"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_pod_container_name"]
+    target_label = "container"
+  }
+}
+loki.source.kubernetes "pilot" {
+  targets = discovery.relabel.pilot.output
+  forward_to = [loki.process.pilot.receiver]
+  client {
+    kubeconfig_file = "@BASE@/private/reader.kubeconfig"
+  }
+}
+loki.process "pilot" {
+  // Only fixed-format diagnostic markers are stored. Request bodies and ordinary
+  // workload output never enter Loki, even on an opted-in Pod.
+  stage.match {
+    selector = "{namespace=~\".+\"} !~ \"^pilot-observe [a-zA-Z0-9_-]{1,80}[[:space:]]*$\""
+    action = "drop"
+  }
+  forward_to = [loki.write.local.receiver]
+}
+loki.source.journal "lifecycle" {
+  matches = "_SYSTEMD_USER_UNIT=prototype-primary-lifecycle.service"
+  max_age = "24h"
+  labels = {service = "prototype-primary-lifecycle"}
+  forward_to = [loki.process.lifecycle.receiver]
+}
+loki.process "lifecycle" {
+  // Preserve only a known state word; raw messages can contain provider details.
+  stage.regex {
+    expression = "(?P<phase>ready|retiring|retired|paused|error|failed|No route to host)"
+  }
+  stage.template {
+    source = "safe"
+    template = "controller-event {{ if .phase }}{{ .phase }}{{ else }}other{{ end }}"
+  }
+  stage.output {
+    source = "safe"
+  }
+  forward_to = [loki.write.local.receiver]
+}
+loki.write "local" {
+  endpoint {
+    url = "http://127.0.0.1:3100/loki/api/v1/push"
+  }
+}

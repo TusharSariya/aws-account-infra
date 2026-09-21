@@ -1,0 +1,36 @@
+rule_files:
+  - alerts.yml
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'pilot_worker_desired{slot="secondary"}'
+        values: '1+0x20'
+      - series: 'pilot_worker_paused{slot="secondary"}'
+        values: '1+0x20'
+      - series: 'pilot_worker_ready{slot="secondary"}'
+        values: '0+0x20'
+      - series: 'pilot_worker_desired{slot="primary"}'
+        values: '0+0x20'
+      - series: 'pilot_worker_paused{slot="primary"}'
+        values: '0+0x20'
+      - series: 'pilot_worker_ready{slot="primary"}'
+        values: '0+0x20'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: PilotWorkerUnavailable
+        exp_alerts: []
+  - interval: 1m
+    input_series:
+      - series: 'pilot_worker_desired{slot="primary"}'
+        values: '1+0x20'
+      - series: 'pilot_worker_paused{slot="primary"}'
+        values: '0+0x20'
+      - series: 'pilot_worker_ready{slot="primary"}'
+        values: '0+0x20'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: PilotWorkerUnavailable
+        exp_alerts:
+          - exp_labels: {slot: primary, severity: warning}
+            exp_annotations: {summary: 'Requested unpaused worker has not become Ready in 15 minutes'}

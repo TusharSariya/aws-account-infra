@@ -1,0 +1,53 @@
+{
+  "passed": true,
+  "time": 1790033397.3011518,
+  "argocd_present": false,
+  "retained_persistence_proof": true,
+  "secondary_paused": true,
+  "old_host_units": {
+    "pilot-prometheus": {
+      "enabled": "disabled",
+      "active": "inactive"
+    },
+    "pilot-loki": {
+      "enabled": "disabled",
+      "active": "inactive"
+    },
+    "pilot-alloy": {
+      "enabled": "disabled",
+      "active": "inactive"
+    },
+    "pilot-grafana": {
+      "enabled": "disabled",
+      "active": "inactive"
+    },
+    "pilot-alertmanager": {
+      "enabled": "disabled",
+      "active": "inactive"
+    }
+  },
+  "graphical_default": "graphical.target",
+  "capacity": {
+    "kubernetes_controllers": {
+      "prototype-kueue-controller-manager": true,
+      "prototype-binpack": true,
+      "prototype-slot-ca": true
+    },
+    "guest_available": 3332886528,
+    "ooms": 0,
+    "pods_ready": true,
+    "time": 1790033397.2324376,
+    "page_size": 4096,
+    "available": 784838656,
+    "swap": {
+      "pswpin": 63102,
+      "pswpout": 351111
+    },
+    "controllers": {
+      "prototype-slot-provider": "active",
+      "prototype-slot-placement": "active",
+      "prototype-consolidation": "active",
+      "prototype-primary-lifecycle": "active"
+    }
+  }
+}

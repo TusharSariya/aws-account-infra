@@ -1,0 +1,73 @@
+{
+  "name": "isolated-laptop-pilot",
+  "cluster": "laptop-wifi-PROTOTYPE",
+  "server": "https://10.0.2.15:6443",
+  "kube_system_uid": "507117e6-f7ed-4307-a016-4ecc9a28b519",
+  "kubeconfig": "~/talos-wifi-prototype/private/kubeconfig",
+  "kubectl": "~/talos-wifi-prototype/kubectl",
+  "kube_burner": "~/.local/bin/kube-burner",
+  "kube_burner_version": "2.8.5",
+  "namespace": "prototype-slot",
+  "queue": "prototype-shared",
+  "cluster_queue": "prototype-shared",
+  "scheduler": "homelab-binpack",
+  "worker_selector": {
+    "prototype.homelab/pool": "workers"
+  },
+  "slot_label": "prototype.homelab/slot",
+  "slots": {
+    "primary": {
+      "provider_id": "proxmox://prototype-primary/9107",
+      "state": "~/.local/share/homelab-capacity/slot-primary"
+    },
+    "secondary": {
+      "provider_id": "proxmox://prototype-secondary/9105",
+      "state": "~/.local/share/homelab-capacity/slot-state"
+    }
+  },
+  "default_slot": "primary",
+  "controller": "~/.local/share/homelab-capacity/consolidate.py",
+  "controller_python": "~/.local/share/homelab-capacity/venv/bin/python",
+  "controller_pythonpath": "~/.local/share/homelab-capacity/source/src",
+  "idle_state": "~/.local/share/homelab-capacity/consolidation/idle.json",
+  "idle_env": "~/.config/homelab-capacity/lifecycle.env",
+  "consolidation_namespace": "prototype-consolidation",
+  "storage": {
+    "class": null,
+    "selector": {
+      "prototype.homelab/slot": "secondary"
+    },
+    "size": "1Gi",
+    "reclaim_policy": "Delete"
+  },
+  "image": "docker.io/library/busybox:1.37.0@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0",
+  "budgets": {
+    "cpu": "3",
+    "memory": "4Gi",
+    "ephemeral-storage": "20Gi",
+    "max_jobs": 16
+  },
+  "load": {
+    "bursts": [
+      4,
+      8,
+      16
+    ],
+    "cpu": "250m",
+    "memory": "128Mi",
+    "scratch": "64Mi",
+    "job_seconds": 30,
+    "sustained_seconds": 600,
+    "sustained_jobs": 4
+  },
+  "timeouts": {
+    "capacity": 900,
+    "admission": 120,
+    "completion": 180,
+    "idle": 300,
+    "retirement_margin": 300,
+    "negative": 75,
+    "cleanup": 180,
+    "poll": 2
+  }
+}

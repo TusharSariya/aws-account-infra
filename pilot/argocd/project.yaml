@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: pilot
+  namespace: pilot-argocd
+spec:
+  description: Isolated pilot HTTP application with manual delivery
+  sourceRepos:
+    - https://github.com/TusharSariyaOrg/aws-account-infra.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: pilot-app
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - group: apps
+      kind: Deployment
+    - group: ''
+      kind: Service
+  orphanedResources:
+    warn: true

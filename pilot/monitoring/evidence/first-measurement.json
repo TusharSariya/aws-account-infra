@@ -1,0 +1,18 @@
+{
+  "run": "kv-23d0b2fe51162ece",
+  "duration_seconds": 979.1604013442993,
+  "load_passed": false,
+  "sustained_passed": true,
+  "burst_failure": "Admission timeout after usable capacity at burst-3-6",
+  "minimum_available_bytes": 1620570112,
+  "swap_start": {
+    "pswpin": 0,
+    "pswpout": 238
+  },
+  "swap_end": {
+    "pswpin": 0,
+    "pswpout": 238
+  },
+  "all_controllers_active": true,
+  "cleanup_passed": true
+}

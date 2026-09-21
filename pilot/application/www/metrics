@@ -1,0 +1,3 @@
+# HELP pilot_http_build_info Static pilot image version.
+# TYPE pilot_http_build_info gauge
+pilot_http_build_info{version="v1"} 1

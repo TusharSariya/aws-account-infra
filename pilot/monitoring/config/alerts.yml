@@ -1,0 +1,52 @@
+groups:
+  - name: pilot
+    rules:
+      - alert: PilotCollectorUnavailable
+        expr: up{job="pilot"} == 0 or pilot_collection_success == 0
+        for: 2m
+        labels: {severity: warning}
+        annotations: {summary: 'Pilot metadata collection is unavailable'}
+      - alert: PilotControllerUnavailable
+        expr: pilot_controller_up == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations: {summary: 'An existing pilot controller has stopped'}
+      - alert: PilotControllerRestarting
+        expr: increase(pilot_controller_restarts_total[10m]) > 2
+        labels: {severity: warning}
+        annotations: {summary: 'A pilot controller is repeatedly restarting'}
+      - alert: PilotWorkerUnavailable
+        expr: (pilot_worker_desired == 1) and on(slot) (pilot_worker_paused == 0) and on(slot) (pilot_worker_ready == 0)
+        for: 15m
+        labels: {severity: warning}
+        annotations: {summary: 'Requested unpaused worker has not become Ready in 15 minutes'}
+      - alert: PilotSwapping
+        expr: rate(pilot_host_swap_pages_total[5m]) > 0
+        for: 5m
+        labels: {severity: warning}
+        annotations: {summary: 'Laptop is sustaining swap activity; stop adding services'}
+      - alert: PilotMemoryLow
+        expr: pilot_host_memory_bytes{kind="MemAvailable"} < 536870912
+        for: 5m
+        labels: {severity: warning}
+        annotations: {summary: 'Laptop available memory is below the 512 MiB reserve'}
+      - alert: PilotDiskBudget
+        expr: pilot_data_bytes{service="loki"} > 1610612736 or pilot_host_disk_free_bytes < 10737418240
+        for: 2m
+        labels: {severity: warning}
+        annotations: {summary: 'Pilot log budget or laptop disk reserve needs attention'}
+      - alert: PilotCollectionStale
+        expr: time() - pilot_collection_timestamp_seconds > 120
+        for: 1m
+        labels: {severity: warning}
+        annotations: {summary: 'Pilot metadata collection stopped updating'}
+      - alert: PilotMonitoringUnavailable
+        expr: pilot_monitoring_up{unit=~"pilot-(loki|alloy|prometheus|exporter)"} == 0
+        for: 2m
+        labels: {severity: warning}
+        annotations: {summary: 'A pilot monitoring service has stopped; check disk budget and journal'}
+      - alert: PilotKubernetesControllerUnavailable
+        expr: pilot_kubernetes_controller_available < 1
+        for: 2m
+        labels: {severity: warning}
+        annotations: {summary: 'A named pilot Kubernetes controller is unavailable'}

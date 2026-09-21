@@ -1,0 +1,19 @@
+{
+  "talos_version": "v1.13.9",
+  "kubernetes_version": "v1.36.3",
+  "architecture": "amd64",
+  "files": {
+    "metal-amd64.iso": {
+      "url": "https://github.com/siderolabs/talos/releases/download/v1.13.9/metal-amd64.iso",
+      "sha256": "d7df972af66d3c907800859b81241889e9dae1fcc6fe3460c0472b4909db4ab3"
+    },
+    "talosctl": {
+      "url": "https://github.com/siderolabs/talos/releases/download/v1.13.9/talosctl-linux-amd64",
+      "sha256": "7e1d4b7d5846964bdcf63a794e3c8161bb6ef2983d5ace58ea5322f3bf32a27e"
+    },
+    "kubectl": {
+      "url": "https://dl.k8s.io/release/v1.36.3/bin/linux/amd64/kubectl",
+      "sha256": "ebbd080e7c2e275093b55915722043257eb24004363e20acb3c4d71919f88336"
+    }
+  }
+}

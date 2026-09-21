@@ -1,0 +1,1403 @@
+{
+  "mode": "kubernetes",
+  "kube_system_uid": "507117e6-f7ed-4307-a016-4ecc9a28b519",
+  "started": 1790028664.6606658,
+  "ended": 1790029648.2812636,
+  "passed": true,
+  "load_returncode": 0,
+  "no_swap": false,
+  "paging": {
+    "valid": true,
+    "no_sustained_swap": true,
+    "total_bytes": 321617920,
+    "peak_bytes_per_second": 3127088.4342330717,
+    "longest_sustained_seconds": 50.00405836105347,
+    "policy": {
+      "bytes_per_second": 65536,
+      "seconds": 60,
+      "max_sample_gap_seconds": 45
+    }
+  },
+  "samples": [
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2475659264,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790028665.83695,
+      "page_size": 4096,
+      "available": 1535651840,
+      "swap": {
+        "pswpin": 6647,
+        "pswpout": 46381
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2407702528,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790028682.0192857,
+      "page_size": 4096,
+      "available": 1540378624,
+      "swap": {
+        "pswpin": 6647,
+        "pswpout": 46381
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2264952832,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790028698.3901377,
+      "page_size": 4096,
+      "available": 1469644800,
+      "swap": {
+        "pswpin": 6647,
+        "pswpout": 46381
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2286080000,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790028714.8335276,
+      "page_size": 4096,
+      "available": 1446768640,
+      "swap": {
+        "pswpin": 6647,
+        "pswpout": 46381
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2360643584,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790028732.085476,
+      "page_size": 4096,
+      "available": 1479942144,
+      "swap": {
+        "pswpin": 6735,
+        "pswpout": 58343
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2322382848,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790028748.843285,
+      "page_size": 4096,
+      "available": 1478578176,
+      "swap": {
+        "pswpin": 6890,
+        "pswpout": 58426
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2279256064,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790028765.4470787,
+      "page_size": 4096,
+      "available": 1489526784,
+      "swap": {
+        "pswpin": 7216,
+        "pswpout": 62325
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2248396800,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790028782.6835594,
+      "page_size": 4096,
+      "available": 1454809088,
+      "swap": {
+        "pswpin": 7397,
+        "pswpout": 62349
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2234400768,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790028799.2736704,
+      "page_size": 4096,
+      "available": 1471819776,
+      "swap": {
+        "pswpin": 7418,
+        "pswpout": 62349
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2230435840,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790028815.7771957,
+      "page_size": 4096,
+      "available": 1495379968,
+      "swap": {
+        "pswpin": 7443,
+        "pswpout": 62349
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2236628992,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790028833.0880792,
+      "page_size": 4096,
+      "available": 1458892800,
+      "swap": {
+        "pswpin": 7550,
+        "pswpout": 62349
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2139738112,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790028849.3542159,
+      "page_size": 4096,
+      "available": 1440120832,
+      "swap": {
+        "pswpin": 7570,
+        "pswpout": 62355
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2137952256,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790028865.8326232,
+      "page_size": 4096,
+      "available": 1432612864,
+      "swap": {
+        "pswpin": 7585,
+        "pswpout": 62355
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2295181312,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790028883.511183,
+      "page_size": 4096,
+      "available": 1401040896,
+      "swap": {
+        "pswpin": 7764,
+        "pswpout": 62355
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2161131520,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790028900.0219069,
+      "page_size": 4096,
+      "available": 1375596544,
+      "swap": {
+        "pswpin": 7801,
+        "pswpout": 62355
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2258968576,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790028916.7082894,
+      "page_size": 4096,
+      "available": 1405886464,
+      "swap": {
+        "pswpin": 7838,
+        "pswpout": 62355
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2422714368,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790028933.254281,
+      "page_size": 4096,
+      "available": 1393623040,
+      "swap": {
+        "pswpin": 7864,
+        "pswpout": 62355
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2366672896,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790028949.978855,
+      "page_size": 4096,
+      "available": 1414574080,
+      "swap": {
+        "pswpin": 7867,
+        "pswpout": 62355
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2304593920,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790028966.4373555,
+      "page_size": 4096,
+      "available": 1330561024,
+      "swap": {
+        "pswpin": 7868,
+        "pswpout": 62355
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2325667840,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790028983.2309594,
+      "page_size": 4096,
+      "available": 1385488384,
+      "swap": {
+        "pswpin": 7900,
+        "pswpout": 62355
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2349346816,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029000.3839636,
+      "page_size": 4096,
+      "available": 1367502848,
+      "swap": {
+        "pswpin": 7938,
+        "pswpout": 62355
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2381795328,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029016.8773983,
+      "page_size": 4096,
+      "available": 1412976640,
+      "swap": {
+        "pswpin": 7945,
+        "pswpout": 62355
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2425253888,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029033.322792,
+      "page_size": 4096,
+      "available": 1389682688,
+      "swap": {
+        "pswpin": 7949,
+        "pswpout": 62355
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2419830784,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029049.9031954,
+      "page_size": 4096,
+      "available": 1359364096,
+      "swap": {
+        "pswpin": 7952,
+        "pswpout": 62355
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2383175680,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029066.8465273,
+      "page_size": 4096,
+      "available": 1350520832,
+      "swap": {
+        "pswpin": 7966,
+        "pswpout": 62355
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2328416256,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029083.7331567,
+      "page_size": 4096,
+      "available": 1317855232,
+      "swap": {
+        "pswpin": 7972,
+        "pswpout": 62355
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2167853056,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029101.308774,
+      "page_size": 4096,
+      "available": 1363726336,
+      "swap": {
+        "pswpin": 7978,
+        "pswpout": 62355
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2167902208,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029118.569846,
+      "page_size": 4096,
+      "available": 1330819072,
+      "swap": {
+        "pswpin": 7992,
+        "pswpout": 62355
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2282622976,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029135.7337258,
+      "page_size": 4096,
+      "available": 1348550656,
+      "swap": {
+        "pswpin": 8269,
+        "pswpout": 62355
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2210865152,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029152.9191763,
+      "page_size": 4096,
+      "available": 1338630144,
+      "swap": {
+        "pswpin": 8296,
+        "pswpout": 62355
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2212835328,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029169.4616203,
+      "page_size": 4096,
+      "available": 1354993664,
+      "swap": {
+        "pswpin": 8362,
+        "pswpout": 62355
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2185154560,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029185.6059165,
+      "page_size": 4096,
+      "available": 1375059968,
+      "swap": {
+        "pswpin": 8370,
+        "pswpout": 62355
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2242969600,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029202.219668,
+      "page_size": 4096,
+      "available": 1354588160,
+      "swap": {
+        "pswpin": 8778,
+        "pswpout": 62355
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2253377536,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029218.7632983,
+      "page_size": 4096,
+      "available": 1363402752,
+      "swap": {
+        "pswpin": 8778,
+        "pswpout": 62355
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2252685312,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029235.5353534,
+      "page_size": 4096,
+      "available": 1325543424,
+      "swap": {
+        "pswpin": 8794,
+        "pswpout": 62355
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2207555584,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029252.1705375,
+      "page_size": 4096,
+      "available": 1362817024,
+      "swap": {
+        "pswpin": 8802,
+        "pswpout": 62355
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2163445760,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029268.9873588,
+      "page_size": 4096,
+      "available": 1354575872,
+      "swap": {
+        "pswpin": 8807,
+        "pswpout": 62355
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2162032640,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029285.3248265,
+      "page_size": 4096,
+      "available": 1353584640,
+      "swap": {
+        "pswpin": 8807,
+        "pswpout": 62355
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2163757056,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029301.5119333,
+      "page_size": 4096,
+      "available": 1351122944,
+      "swap": {
+        "pswpin": 8808,
+        "pswpout": 62355
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2175311872,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029317.5960155,
+      "page_size": 4096,
+      "available": 1450827776,
+      "swap": {
+        "pswpin": 8810,
+        "pswpout": 70178
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2184593408,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029334.2608023,
+      "page_size": 4096,
+      "available": 1504727040,
+      "swap": {
+        "pswpin": 8811,
+        "pswpout": 80459
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2184847360,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029350.7858338,
+      "page_size": 4096,
+      "available": 1492664320,
+      "swap": {
+        "pswpin": 8811,
+        "pswpout": 80459
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2225422336,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029367.4709885,
+      "page_size": 4096,
+      "available": 1474469888,
+      "swap": {
+        "pswpin": 8813,
+        "pswpout": 87212
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2267082752,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029384.3089845,
+      "page_size": 4096,
+      "available": 1499430912,
+      "swap": {
+        "pswpin": 8819,
+        "pswpout": 90286
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2284449792,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029400.7898922,
+      "page_size": 4096,
+      "available": 1526251520,
+      "swap": {
+        "pswpin": 8819,
+        "pswpout": 102062
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2283450368,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029417.6461835,
+      "page_size": 4096,
+      "available": 1561272320,
+      "swap": {
+        "pswpin": 8819,
+        "pswpout": 102063
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2185424896,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029433.8386433,
+      "page_size": 4096,
+      "available": 1571454976,
+      "swap": {
+        "pswpin": 8819,
+        "pswpout": 109743
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2233835520,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029450.0078635,
+      "page_size": 4096,
+      "available": 1585459200,
+      "swap": {
+        "pswpin": 8820,
+        "pswpout": 109743
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2232926208,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029466.1835265,
+      "page_size": 4096,
+      "available": 1562316800,
+      "swap": {
+        "pswpin": 8825,
+        "pswpout": 109743
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2226925568,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029482.4519546,
+      "page_size": 4096,
+      "available": 1579835392,
+      "swap": {
+        "pswpin": 8826,
+        "pswpout": 109743
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2297225216,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029498.9402783,
+      "page_size": 4096,
+      "available": 1591111680,
+      "swap": {
+        "pswpin": 8827,
+        "pswpout": 109743
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2171621376,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029515.7089093,
+      "page_size": 4096,
+      "available": 1645699072,
+      "swap": {
+        "pswpin": 8829,
+        "pswpout": 122543
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2154409984,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029532.3663502,
+      "page_size": 4096,
+      "available": 1581326336,
+      "swap": {
+        "pswpin": 8837,
+        "pswpout": 122543
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2209980416,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029548.9275663,
+      "page_size": 4096,
+      "available": 1581969408,
+      "swap": {
+        "pswpin": 8838,
+        "pswpout": 122543
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2236579840,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029565.4016483,
+      "page_size": 4096,
+      "available": 1585651712,
+      "swap": {
+        "pswpin": 8858,
+        "pswpout": 122543
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2264223744,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029581.9386988,
+      "page_size": 4096,
+      "available": 1605795840,
+      "swap": {
+        "pswpin": 8858,
+        "pswpout": 122543
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2265776128,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029598.3738556,
+      "page_size": 4096,
+      "available": 1584963584,
+      "swap": {
+        "pswpin": 8858,
+        "pswpout": 122543
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2180993024,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029614.9718976,
+      "page_size": 4096,
+      "available": 1589280768,
+      "swap": {
+        "pswpin": 8858,
+        "pswpout": 122543
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2231271424,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029632.0794845,
+      "page_size": 4096,
+      "available": 1613828096,
+      "swap": {
+        "pswpin": 8862,
+        "pswpout": 122543
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    },
+    {
+      "kubernetes_controllers": {
+        "prototype-kueue-controller-manager": true,
+        "prototype-binpack": true,
+        "prototype-slot-ca": true
+      },
+      "guest_available": 2231721984,
+      "ooms": 0,
+      "pods_ready": true,
+      "time": 1790029648.207889,
+      "page_size": 4096,
+      "available": 1728598016,
+      "swap": {
+        "pswpin": 9005,
+        "pswpout": 122543
+      },
+      "controllers": {
+        "prototype-slot-provider": "active",
+        "prototype-slot-placement": "active",
+        "prototype-consolidation": "active",
+        "prototype-primary-lifecycle": "active"
+      }
+    }
+  ]
+}

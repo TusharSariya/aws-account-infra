@@ -1,0 +1,33 @@
+{
+  "passed": true,
+  "argocd_included": false,
+  "ended": 1790031055.3407867,
+  "pod_replacement": true,
+  "vm_restart": true,
+  "logs_after_deletion": true,
+  "alert_firing_resolution": true,
+  "dashboard": true,
+  "final_capacity": {
+    "kubernetes_controllers": {
+      "prototype-kueue-controller-manager": true,
+      "prototype-binpack": true,
+      "prototype-slot-ca": true
+    },
+    "guest_available": 2463436800,
+    "ooms": 0,
+    "pods_ready": true,
+    "time": 1790031054.5446608,
+    "page_size": 4096,
+    "available": 1647964160,
+    "swap": {
+      "pswpin": 12357,
+      "pswpout": 187675
+    },
+    "controllers": {
+      "prototype-slot-provider": "active",
+      "prototype-slot-placement": "active",
+      "prototype-consolidation": "active",
+      "prototype-primary-lifecycle": "active"
+    }
+  }
+}

@@ -1,0 +1,83 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: pilot-argocd
+resources:
+  - vendor/namespace-install.yaml
+patches:
+  - target:
+      kind: Deployment
+      name: argocd-(applicationset-controller|dex-server|notifications-controller)
+    patch: |-
+      - op: add
+        path: /spec/replicas
+        value: 0
+  - target:
+      kind: Deployment
+      name: argocd-(repo-server|server|redis)
+    patch: |-
+      - op: add
+        path: /spec/template/spec/nodeSelector
+        value:
+          node-role.kubernetes.io/control-plane: ""
+      - op: add
+        path: /spec/template/spec/tolerations
+        value:
+          - key: node-role.kubernetes.io/control-plane
+            operator: Exists
+            effect: NoSchedule
+      - op: add
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests: {cpu: 100m, memory: 256Mi}
+          limits: {cpu: '1', memory: 256Mi}
+  - target:
+      kind: Deployment
+      name: argocd-repo-server
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests: {cpu: 200m, memory: 256Mi}
+          limits: {cpu: '1', memory: 512Mi}
+  - target:
+      kind: StatefulSet
+      name: argocd-application-controller
+    patch: |-
+      - op: add
+        path: /spec/template/spec/nodeSelector
+        value:
+          node-role.kubernetes.io/control-plane: ""
+      - op: add
+        path: /spec/template/spec/tolerations
+        value:
+          - key: node-role.kubernetes.io/control-plane
+            operator: Exists
+            effect: NoSchedule
+      - op: add
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests: {cpu: 250m, memory: 256Mi}
+          limits: {cpu: '1', memory: 512Mi}
+  - target:
+      kind: ConfigMap
+      name: argocd-cm
+    patch: |-
+      - op: add
+        path: /data
+        value:
+          resource.inclusions: |
+            - apiGroups: [apps]
+              kinds: [Deployment, ReplicaSet]
+              clusters: ['*']
+            - apiGroups: ['']
+              kinds: [Service, Pod, Event]
+              clusters: ['*']
+  - target:
+      kind: Deployment
+      name: argocd-(repo-server|redis)
+    patch: |-
+      - op: add
+        path: /spec/template/spec/initContainers/0/resources
+        value:
+          requests: {cpu: 50m, memory: 64Mi}
+          limits: {cpu: '1', memory: 256Mi}

@@ -1,0 +1,37 @@
+{
+  "checked": 1790026698.0144513,
+  "rollback_verified": true,
+  "identity_workers_storage_controllers_verified": true,
+  "control_plane_capacity": {
+    "cpu": "2",
+    "ephemeral-storage": "22308Mi",
+    "hugepages-2Mi": "0",
+    "memory": "3987604Ki",
+    "pods": "110"
+  },
+  "host_available_bytes": 2713133056,
+  "health": {
+    "9090": 200,
+    "3100": 200,
+    "12345": 200,
+    "3000": 200,
+    "9093": 200
+  },
+  "services": {
+    "pilot-prometheus": "active",
+    "pilot-loki": "active",
+    "pilot-alloy": "active",
+    "pilot-grafana": "active",
+    "pilot-alertmanager": "active",
+    "prototype-slot-provider": "active",
+    "prototype-slot-placement": "active",
+    "prototype-consolidation": "active",
+    "prototype-primary-lifecycle": "active",
+    "pilot-exporter": "active"
+  },
+  "secondary_paused": true,
+  "default_target": "graphical.target",
+  "desktop_active": "inactive",
+  "monitoring_pods": 0,
+  "kubernetes_mode": false
+}

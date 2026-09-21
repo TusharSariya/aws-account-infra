@@ -1,0 +1,37 @@
+name: pilot-platform
+on:
+  pull_request:
+    paths: ['pilot/**', '.github/workflows/pilot-platform.yml']
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python3 -m unittest discover -s pilot/monitoring/tests -v
+      - run: pip install ruff==0.12.12 pyyaml==6.0.2
+      - run: ruff check pilot --exclude vendor && ruff format --check pilot --exclude vendor
+      - name: Validate portable monitoring and shell helpers
+        run: |
+          python3 pilot/monitoring/kubernetes/validate.py
+          kubectl kustomize pilot/monitoring/kubernetes > /tmp/monitoring.yaml
+          for file in pilot/vm/*.sh; do bash -n "$file"; done
+      - name: Verify vendored Argo CD checksums and management placement
+        run: |
+          kubectl kustomize pilot/argocd > /tmp/argocd.yaml
+          python3 pilot/argocd/validate.py /tmp/argocd.yaml
+      - name: Validate Prometheus alert rules with the pinned release
+        run: |
+          python3 - <<'PYTHON'
+          import sys, subprocess
+          from pathlib import Path
+          sys.path.insert(0, 'pilot/monitoring')
+          from install import binary
+          promtool = binary('prometheus', 'promtool')
+          subprocess.run([str(promtool), 'check', 'rules', 'pilot/monitoring/config/alerts.yml'], check=True)
+          subprocess.run([str(promtool), 'test', 'rules', 'alert-tests.yml'], cwd='pilot/monitoring/config', check=True)
+          PYTHON
