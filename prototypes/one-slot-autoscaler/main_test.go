@@ -114,3 +114,17 @@ func TestTwoSlotsHaveIndependentStateAndIdentity(t *testing.T) {
 		t.Fatal(n)
 	}
 }
+
+func TestPauseRejectsScaleUpWithoutChangingTarget(t *testing.T) {
+	s := &service{dir: t.TempDir()}
+	if err := os.WriteFile(filepath.Join(s.dir, "maintenance"), nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.NodeGroupIncreaseSize(context.Background(), &pb.NodeGroupIncreaseSizeRequest{Id: group, Delta: 1}); err == nil {
+		t.Fatal("paused slot accepted scale-up")
+	}
+	n, err := s.readTarget()
+	if err != nil || n != 0 {
+		t.Fatal("paused target changed", n, err)
+	}
+}

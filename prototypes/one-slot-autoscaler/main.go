@@ -134,6 +134,11 @@ func (s *service) NodeGroupIncreaseSize(_ context.Context, r *pb.NodeGroupIncrea
 		return nil, status.Error(codes.Unavailable, "slot lifecycle operation in progress")
 	}
 	defer syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
+	if _, err := os.Stat(filepath.Join(s.dir, "maintenance")); err == nil {
+		return nil, status.Error(codes.FailedPrecondition, "slot is paused")
+	} else if !os.IsNotExist(err) {
+		return nil, status.Error(codes.Unavailable, "cannot verify pause state")
+	}
 	n, e := s.readTarget()
 	if e != nil {
 		return nil, e

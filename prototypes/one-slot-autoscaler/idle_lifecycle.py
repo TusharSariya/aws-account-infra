@@ -105,6 +105,8 @@ def tick():
             if phase!='blocked':write(journal_path(),{**state,'phase':'blocked','error':'interrupted-operation'})
             return
         if (runtime.STATE/'maintenance').exists():return
+        import cold_start
+        if cold_start.tick():return
         target=read(runtime.STATE/'desired.json').get('target')
         if target==1 and phase in ('retired','wake-requested'):
             write(journal_path(),{**state,'phase':'creating'})

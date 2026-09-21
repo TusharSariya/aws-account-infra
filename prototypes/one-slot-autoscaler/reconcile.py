@@ -49,6 +49,7 @@ def wait_talos(ip):
 
 
 def reconcile():
+    if (STATE/'maintenance').exists():raise RuntimeError('Slot is paused')
     # This cluster check runs before any mutation, including host wake.
     cfg=json.loads(run(K+['config','view','--minify','-o','json']))
     if cfg['clusters'][0]['name']!='laptop-wifi-PROTOTYPE' or cfg['clusters'][0]['cluster']['server']!='https://10.0.2.15:6443':

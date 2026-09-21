@@ -84,6 +84,9 @@ def evict(pod):
 def apply(source,destination):
     check_cluster()
     with locked():
+        for slot in (source,destination):
+            directory=BASE/('slot-primary' if slot=='primary' else 'slot-state')
+            if (directory/'maintenance').exists():raise RuntimeError('Slot is paused')
         initial=policy.plan(**snapshot(),source=source,destination=destination)
         if not initial['allowed']:raise RuntimeError(json.dumps(initial))
         src=get('node',name=initial['source'])
@@ -130,8 +133,10 @@ def observe():
         report={}
         for slot,node in owned.items():
             m=node['metadata'];name=m['name'];uid=m['uid']
-            reopened=cordon(node,False) if pending else False
-            blockers=[]
+            directory=BASE/('slot-primary' if slot=='primary' else 'slot-state')
+            paused=(directory/'maintenance').exists()
+            reopened=cordon(node,False) if pending and not paused else False
+            blockers=['maintenance'] if paused else []
             if not policy.ready(node):blockers.append('node-not-ready')
             if any(policy.active(p) and p['spec'].get('nodeName')==name and not policy.baseline(p) for p in current['pods']):blockers.append('active-workloads')
             if any(v['spec']['nodeName']==name for v in attachments):blockers.append('volume-attachments')

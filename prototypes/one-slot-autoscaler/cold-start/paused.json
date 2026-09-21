@@ -1,0 +1,11 @@
+{
+  "observedAt": 1790003509.7302492,
+  "power": {
+    "primary": "off",
+    "secondary": "off"
+  },
+  "paused": {
+    "primary": true,
+    "secondary": true
+  }
+}

@@ -44,6 +44,8 @@ spec:
             - --cloud-provider=externalgrpc
             - --cloud-config=/config/cloud.yaml
             - --enable-provisioning-requests=true
+            - --provisioning-request-initial-backoff-time={{ .Values.provisioningRequestInitialBackoff }}
+            - --provisioning-request-max-backoff-time={{ .Values.provisioningRequestMaxBackoff }}
             - --expander=priority,least-waste
             - --scale-down-enabled=false
             - --max-node-provision-time=15m

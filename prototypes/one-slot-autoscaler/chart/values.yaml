@@ -1,0 +1,3 @@
+# Keep queued cold-start demand responsive when capacity becomes Ready.
+provisioningRequestInitialBackoff: 10s
+provisioningRequestMaxBackoff: 30s
