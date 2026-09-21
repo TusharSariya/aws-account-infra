@@ -1,0 +1,46 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: consolidation-cancel
+  namespace: prototype-slot
+  labels:
+    kueue.x-k8s.io/queue-name: prototype-shared
+spec:
+  suspend: true
+  backoffLimit: 0
+  template:
+    spec:
+      schedulerName: homelab-binpack
+      restartPolicy: Never
+      nodeSelector:
+        prototype.homelab/pool: workers
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: proof
+        image: docker.io/library/busybox:1.37.0@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0
+        command:
+        - sh
+        - -ec
+        - echo cancellation-proof; sleep 300
+        resources:
+          requests:
+            cpu: 1000m
+            memory: 128Mi
+            ephemeral-storage: 64Mi
+          limits:
+            memory: 256Mi
+            ephemeral-storage: 128Mi
+        securityContext:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+    metadata:
+      annotations:
+        prototype.homelab/policy: on-invoke

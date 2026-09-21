@@ -1,0 +1,15 @@
+[Unit]
+Description=Prototype one-slot autoscaler provider (mTLS, scale-up only)
+After=network-online.target
+
+[Service]
+ExecStart=%h/.local/share/homelab-capacity/prototype-slot-provider --state %h/.local/share/homelab-capacity/slot-state --primary-state %h/.local/share/homelab-capacity/slot-primary --cert %h/.config/homelab-capacity/tls/server.crt --key %h/.config/homelab-capacity/tls/server.key --ca %h/.config/homelab-capacity/tls/ca.crt
+Restart=on-failure
+RestartSec=5
+MemoryMax=128M
+TasksMax=32
+UMask=0077
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=default.target

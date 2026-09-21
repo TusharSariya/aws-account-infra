@@ -1,0 +1,20 @@
+{
+  "oldHardwareUUID": "9b266a41-b165-4120-b2dc-8e99d4396abe",
+  "newHardwareUUID": "d4970c6b-3aba-4032-9628-9551ea7714f5",
+  "restoredACLs": [
+    {
+      "path": "/vms/9105",
+      "propagate": 1,
+      "roleid": "Prototype105Disk",
+      "type": "user",
+      "ugid": "prototype105-csi@pve"
+    },
+    {
+      "path": "/vms/9105",
+      "propagate": 1,
+      "roleid": "Prototype105Disk",
+      "type": "token",
+      "ugid": "prototype105-csi@pve!csi"
+    }
+  ]
+}

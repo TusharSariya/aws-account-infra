@@ -1,0 +1,59 @@
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ResourceFlavor
+metadata:
+  name: prototype-shared
+spec:
+  nodeLabels:
+    prototype.homelab/pool: workers
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ClusterQueue
+metadata:
+  name: prototype-shared
+spec:
+  namespaceSelector:
+    matchLabels:
+      kubernetes.io/metadata.name: prototype-slot
+  queueingStrategy: BestEffortFIFO
+  resourceGroups:
+    - coveredResources: [cpu, memory, ephemeral-storage]
+      flavors:
+        - name: prototype-shared
+          resources:
+            - {name: cpu, nominalQuota: "3"}
+            - {name: memory, nominalQuota: 4Gi}
+            - {name: ephemeral-storage, nominalQuota: 20Gi}
+  admissionChecksStrategy:
+    admissionChecks:
+      - name: prototype-shared
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: LocalQueue
+metadata:
+  name: prototype-shared
+  namespace: prototype-slot
+spec:
+  clusterQueue: prototype-shared
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: AdmissionCheck
+metadata:
+  name: prototype-shared
+spec:
+  controllerName: kueue.x-k8s.io/provisioning-request
+  parameters:
+    apiGroup: kueue.x-k8s.io
+    kind: ProvisioningRequestConfig
+    name: prototype-shared
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ProvisioningRequestConfig
+metadata:
+  name: prototype-shared
+spec:
+  provisioningClassName: best-effort-atomic-scale-up.autoscaling.x-k8s.io
+  managedResources: [cpu, memory, ephemeral-storage]
+  retryStrategy:
+    backoffLimitCount: 2
+    backoffBaseSeconds: 60
+    backoffMaxSeconds: 300

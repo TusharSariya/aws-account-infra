@@ -1,0 +1,56 @@
+[
+  {
+    "observedAt": 1789958474.050545,
+    "phase": "draining",
+    "name": "talos-9mg-j21",
+    "uid": "4db139a6-6f1b-4e1e-ae79-1662575dcfcf",
+    "vm_uuid": "bd190437-33c5-4aab-86e3-8a749b8f7a08"
+  },
+  {
+    "observedAt": 1789958475.125087,
+    "phase": "stopping",
+    "name": "talos-9mg-j21",
+    "uid": "4db139a6-6f1b-4e1e-ae79-1662575dcfcf",
+    "vm_uuid": "bd190437-33c5-4aab-86e3-8a749b8f7a08"
+  },
+  {
+    "observedAt": 1789958510.500199,
+    "phase": "retired",
+    "name": "talos-9mg-j21",
+    "uid": "4db139a6-6f1b-4e1e-ae79-1662575dcfcf",
+    "vm_uuid": "bd190437-33c5-4aab-86e3-8a749b8f7a08"
+  },
+  {
+    "observedAt": 1789958521.14138,
+    "phase": "waking"
+  },
+  {
+    "observedAt": 1789958521.666066,
+    "phase": "waiting-pve"
+  },
+  {
+    "observedAt": 1789958523.881422,
+    "phase": "creating"
+  },
+  {
+    "observedAt": 1789958576.566266,
+    "phase": "configuring",
+    "ip": "10.0.0.11"
+  },
+  {
+    "observedAt": 1789958576.694884,
+    "phase": "waiting-talos",
+    "ip": "10.0.0.11"
+  },
+  {
+    "observedAt": 1789958576.913604,
+    "phase": "joining",
+    "ip": "10.0.0.11"
+  },
+  {
+    "observedAt": 1789958641.591116,
+    "phase": "ready",
+    "name": "talos-ub2-gx6",
+    "ip": "10.0.0.11"
+  }
+]

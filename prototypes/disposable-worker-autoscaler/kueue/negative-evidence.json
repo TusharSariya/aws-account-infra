@@ -1,0 +1,126 @@
+{
+  "observationSeconds": 74,
+  "target": 0,
+  "suspendedJobs": [
+    "kueue-over-quota-proof",
+    "kueue-unfit-proof"
+  ],
+  "jobPodCount": 0,
+  "workloads": [
+    {
+      "name": "job-kueue-over-quota-proof-cbf3f",
+      "status": {
+        "admissionChecks": [
+          {
+            "lastTransitionTime": "2026-09-21T01:25:32Z",
+            "message": "",
+            "name": "prototype-secondary",
+            "state": "Pending"
+          }
+        ],
+        "conditions": [
+          {
+            "lastTransitionTime": "2026-09-21T01:25:31Z",
+            "message": "Not all pods are ready or succeeded",
+            "observedGeneration": 1,
+            "reason": "WaitForStart",
+            "status": "False",
+            "type": "PodsReady"
+          },
+          {
+            "lastTransitionTime": "2026-09-21T01:25:31Z",
+            "message": "couldn't assign flavors to pod set main: insufficient quota for cpu in flavor prototype-secondary, previously considered podsets requests (0) + current podset request (4) > maximum capacity (1500m)",
+            "observedGeneration": 1,
+            "reason": "Pending",
+            "status": "False",
+            "type": "QuotaReserved"
+          }
+        ],
+        "resourceRequests": [
+          {
+            "name": "main",
+            "resources": {
+              "cpu": "4",
+              "ephemeral-storage": "64Mi",
+              "memory": "32Mi"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "job-kueue-unfit-proof-abaa2",
+      "status": {
+        "admission": {
+          "clusterQueue": "prototype-secondary",
+          "podSetAssignments": [
+            {
+              "count": 1,
+              "flavors": {
+                "cpu": "prototype-secondary",
+                "ephemeral-storage": "prototype-secondary",
+                "memory": "prototype-secondary"
+              },
+              "name": "main",
+              "resourceUsage": {
+                "cpu": "100m",
+                "ephemeral-storage": "64Mi",
+                "memory": "32Mi"
+              }
+            }
+          ]
+        },
+        "admissionChecks": [
+          {
+            "lastTransitionTime": "2026-09-21T01:25:32Z",
+            "message": "Capacity is not found, CA will try to find it later.",
+            "name": "prototype-secondary",
+            "state": "Pending"
+          }
+        ],
+        "conditions": [
+          {
+            "lastTransitionTime": "2026-09-21T01:25:32Z",
+            "message": "Quota reserved in ClusterQueue prototype-secondary",
+            "observedGeneration": 1,
+            "reason": "QuotaReserved",
+            "status": "True",
+            "type": "QuotaReserved"
+          },
+          {
+            "lastTransitionTime": "2026-09-21T01:25:32Z",
+            "message": "Not all pods are ready or succeeded",
+            "observedGeneration": 1,
+            "reason": "WaitForStart",
+            "status": "False",
+            "type": "PodsReady"
+          }
+        ]
+      }
+    }
+  ],
+  "provisioningRequests": [
+    {
+      "name": "job-kueue-unfit-proof-abaa2-prototype-secondary-1",
+      "status": {
+        "conditions": [
+          {
+            "lastTransitionTime": "2026-09-21T01:26:38Z",
+            "message": "ProvisioningRequest is accepted by ClusterAutoscaler",
+            "observedGeneration": 1,
+            "reason": "Accepted",
+            "status": "True",
+            "type": "Accepted"
+          },
+          {
+            "lastTransitionTime": "2026-09-21T01:26:38Z",
+            "message": "Capacity is not found, CA will try to find it later.",
+            "reason": "CapacityIsNotFound",
+            "status": "False",
+            "type": "Provisioned"
+          }
+        ]
+      }
+    }
+  ]
+}

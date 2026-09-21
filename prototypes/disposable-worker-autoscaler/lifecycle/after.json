@@ -1,0 +1,9 @@
+{
+  "observedAt": 1789958675.500434,
+  "name": "talos-ub2-gx6",
+  "uid": "59114c4c-ab60-46b9-bc94-45723d6b6ab2",
+  "systemUUID": "bf3769ef-de6a-43a5-a962-a03ed8b52643",
+  "jobPod": "retirement-arrival-fwnl8",
+  "jobPhase": "Running",
+  "jobNode": "talos-ub2-gx6"
+}

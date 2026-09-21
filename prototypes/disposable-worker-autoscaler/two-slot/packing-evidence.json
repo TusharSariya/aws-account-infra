@@ -1,0 +1,22 @@
+{
+  "result": "both packed onto busier secondary",
+  "pods": [
+    {
+      "name": "shared-packed-hq4xp",
+      "node": "talos-pz8-98c",
+      "phase": "Running",
+      "scheduler": "homelab-binpack"
+    },
+    {
+      "name": "shared-packed-r2d84",
+      "node": "talos-pz8-98c",
+      "phase": "Running",
+      "scheduler": "homelab-binpack"
+    }
+  ],
+  "primaryReadyAndSchedulable": true,
+  "primaryNode": "talos-9mg-j21",
+  "secondaryBaseJobRunning": true,
+  "secondaryBaseJobCPURequest": "1200m",
+  "packedPodCPURequest": "150m"
+}

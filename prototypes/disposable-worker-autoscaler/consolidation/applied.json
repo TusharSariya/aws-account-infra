@@ -1,0 +1,16 @@
+{
+  "phase": "consolidated",
+  "allowed": true,
+  "blockers": [],
+  "moves": [
+    {
+      "namespace": "prototype-consolidation",
+      "name": "consolidation-b-5f78ffd67b-jbx8r",
+      "uid": "0cd997ce-83fc-4532-909f-365cc33fd9e5"
+    }
+  ],
+  "source": "talos-9mg-j21",
+  "sourceUID": "4db139a6-6f1b-4e1e-ae79-1662575dcfcf",
+  "destination": "talos-pz8-98c",
+  "destinationUID": "0f95ac3f-24da-432f-8ea0-9d8db6a51e5f"
+}

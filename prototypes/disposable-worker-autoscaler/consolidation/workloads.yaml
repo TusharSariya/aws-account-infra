@@ -1,0 +1,115 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: prototype-consolidation
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: consolidation-a
+  namespace: prototype-consolidation
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: consolidation-a
+  template:
+    spec:
+      schedulerName: homelab-binpack
+      nodeSelector:
+        prototype.homelab/pool: workers
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: proof
+        image: docker.io/library/busybox:1.37.0@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0
+        command:
+        - sh
+        - -ec
+        - sleep 86400
+        resources:
+          requests:
+            cpu: 500m
+            memory: 128Mi
+            ephemeral-storage: 64Mi
+          limits:
+            memory: 256Mi
+            ephemeral-storage: 128Mi
+        securityContext:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+    metadata:
+      annotations:
+        prototype.homelab/policy: on-invoke
+        prototype.homelab/allow-move: 'true'
+      labels:
+        app: consolidation-a
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: consolidation-b
+  namespace: prototype-consolidation
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: consolidation-b
+  template:
+    spec:
+      schedulerName: homelab-binpack
+      nodeSelector:
+        prototype.homelab/pool: workers
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: proof
+        image: docker.io/library/busybox:1.37.0@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0
+        command:
+        - sh
+        - -ec
+        - sleep 86400
+        resources:
+          requests:
+            cpu: 500m
+            memory: 128Mi
+            ephemeral-storage: 64Mi
+          limits:
+            memory: 256Mi
+            ephemeral-storage: 128Mi
+        securityContext:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+    metadata:
+      annotations:
+        prototype.homelab/policy: on-invoke
+        prototype.homelab/allow-move: 'true'
+      labels:
+        app: consolidation-b
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: protect-b
+  namespace: prototype-consolidation
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: consolidation-b

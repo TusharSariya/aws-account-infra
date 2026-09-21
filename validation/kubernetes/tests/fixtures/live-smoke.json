@@ -1,0 +1,1638 @@
+[
+  {
+    "kind": "observation",
+    "case": "smoke",
+    "time": "2026-09-21T17:20:35.236870+00:00",
+    "elapsed": 2.52582164798514,
+    "jobs": [
+      {
+        "metadata": {
+          "name": "kv-9f3c4263da7dca7f-smoke",
+          "uid": "8e5a18b3-b73b-4674-8b78-a4ba32dbff4b",
+          "creationTimestamp": "2026-09-21T17:20:34Z"
+        },
+        "spec": {
+          "nodeName": null
+        },
+        "status": {}
+      }
+    ],
+    "pods": [],
+    "workloads": [
+      {
+        "metadata": {
+          "name": "job-kv-9f3c4263da7dca7f-smoke-45440",
+          "uid": "f9296ab9-40b8-4b22-9eab-98784012c4a6",
+          "creationTimestamp": "2026-09-21T17:20:34Z"
+        },
+        "spec": {
+          "nodeName": null
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-09-21T17:20:34Z",
+              "message": "Quota reserved in ClusterQueue prototype-shared",
+              "observedGeneration": 1,
+              "reason": "QuotaReserved",
+              "status": "True",
+              "type": "QuotaReserved"
+            },
+            {
+              "lastTransitionTime": "2026-09-21T17:20:34Z",
+              "message": "Not all pods are ready or succeeded",
+              "observedGeneration": 1,
+              "reason": "WaitForStart",
+              "status": "False",
+              "type": "PodsReady"
+            }
+          ]
+        }
+      }
+    ],
+    "nodes": [
+      {
+        "metadata": {
+          "name": "talos-pz8-98c",
+          "uid": "0f95ac3f-24da-432f-8ea0-9d8db6a51e5f",
+          "creationTimestamp": "2026-09-21T01:46:28Z"
+        },
+        "spec": {
+          "nodeName": null
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastHeartbeatTime": "2026-09-21T01:47:07Z",
+              "lastTransitionTime": "2026-09-21T01:47:07Z",
+              "message": "Cilium is running on this node",
+              "reason": "CiliumIsUp",
+              "status": "False",
+              "type": "NetworkUnavailable"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T02:52:19Z",
+              "lastTransitionTime": "2026-09-21T02:53:41Z",
+              "message": "Kubelet stopped posting node status.",
+              "reason": "NodeStatusUnknown",
+              "status": "Unknown",
+              "type": "MemoryPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T02:52:19Z",
+              "lastTransitionTime": "2026-09-21T02:53:41Z",
+              "message": "Kubelet stopped posting node status.",
+              "reason": "NodeStatusUnknown",
+              "status": "Unknown",
+              "type": "DiskPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T02:52:19Z",
+              "lastTransitionTime": "2026-09-21T02:53:41Z",
+              "message": "Kubelet stopped posting node status.",
+              "reason": "NodeStatusUnknown",
+              "status": "Unknown",
+              "type": "PIDPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T02:52:19Z",
+              "lastTransitionTime": "2026-09-21T02:53:41Z",
+              "message": "Kubelet stopped posting node status.",
+              "reason": "NodeStatusUnknown",
+              "status": "Unknown",
+              "type": "Ready"
+            }
+          ]
+        }
+      },
+      {
+        "metadata": {
+          "name": "talos-ub2-gx6",
+          "uid": "59114c4c-ab60-46b9-bc94-45723d6b6ab2",
+          "creationTimestamp": "2026-09-21T02:43:29Z"
+        },
+        "spec": {
+          "nodeName": null
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastHeartbeatTime": "2026-09-21T02:44:06Z",
+              "lastTransitionTime": "2026-09-21T02:44:06Z",
+              "message": "Cilium is running on this node",
+              "reason": "CiliumIsUp",
+              "status": "False",
+              "type": "NetworkUnavailable"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T17:16:45Z",
+              "lastTransitionTime": "2026-09-21T15:16:41Z",
+              "message": "kubelet has sufficient memory available",
+              "reason": "KubeletHasSufficientMemory",
+              "status": "False",
+              "type": "MemoryPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T17:16:45Z",
+              "lastTransitionTime": "2026-09-21T15:16:41Z",
+              "message": "kubelet has no disk pressure",
+              "reason": "KubeletHasNoDiskPressure",
+              "status": "False",
+              "type": "DiskPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T17:16:45Z",
+              "lastTransitionTime": "2026-09-21T15:16:41Z",
+              "message": "kubelet has sufficient PID available",
+              "reason": "KubeletHasSufficientPID",
+              "status": "False",
+              "type": "PIDPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T17:16:45Z",
+              "lastTransitionTime": "2026-09-21T15:16:41Z",
+              "message": "kubelet is posting ready status",
+              "reason": "KubeletReady",
+              "status": "True",
+              "type": "Ready"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "kind": "observation",
+    "case": "smoke",
+    "time": "2026-09-21T17:20:38.167059+00:00",
+    "elapsed": 5.456011639005737,
+    "jobs": [
+      {
+        "metadata": {
+          "name": "kv-9f3c4263da7dca7f-smoke",
+          "uid": "8e5a18b3-b73b-4674-8b78-a4ba32dbff4b",
+          "creationTimestamp": "2026-09-21T17:20:34Z"
+        },
+        "spec": {
+          "nodeName": null
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastProbeTime": "2026-09-21T17:20:34Z",
+              "lastTransitionTime": "2026-09-21T17:20:34Z",
+              "message": "Job suspended",
+              "reason": "JobSuspended",
+              "status": "True",
+              "type": "Suspended"
+            }
+          ]
+        }
+      }
+    ],
+    "pods": [],
+    "workloads": [
+      {
+        "metadata": {
+          "name": "job-kv-9f3c4263da7dca7f-smoke-45440",
+          "uid": "f9296ab9-40b8-4b22-9eab-98784012c4a6",
+          "creationTimestamp": "2026-09-21T17:20:34Z"
+        },
+        "spec": {
+          "nodeName": null
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-09-21T17:20:34Z",
+              "message": "Quota reserved in ClusterQueue prototype-shared",
+              "observedGeneration": 1,
+              "reason": "QuotaReserved",
+              "status": "True",
+              "type": "QuotaReserved"
+            },
+            {
+              "lastTransitionTime": "2026-09-21T17:20:34Z",
+              "message": "Not all pods are ready or succeeded",
+              "observedGeneration": 1,
+              "reason": "WaitForStart",
+              "status": "False",
+              "type": "PodsReady"
+            }
+          ]
+        }
+      }
+    ],
+    "nodes": [
+      {
+        "metadata": {
+          "name": "talos-pz8-98c",
+          "uid": "0f95ac3f-24da-432f-8ea0-9d8db6a51e5f",
+          "creationTimestamp": "2026-09-21T01:46:28Z"
+        },
+        "spec": {
+          "nodeName": null
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastHeartbeatTime": "2026-09-21T01:47:07Z",
+              "lastTransitionTime": "2026-09-21T01:47:07Z",
+              "message": "Cilium is running on this node",
+              "reason": "CiliumIsUp",
+              "status": "False",
+              "type": "NetworkUnavailable"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T02:52:19Z",
+              "lastTransitionTime": "2026-09-21T02:53:41Z",
+              "message": "Kubelet stopped posting node status.",
+              "reason": "NodeStatusUnknown",
+              "status": "Unknown",
+              "type": "MemoryPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T02:52:19Z",
+              "lastTransitionTime": "2026-09-21T02:53:41Z",
+              "message": "Kubelet stopped posting node status.",
+              "reason": "NodeStatusUnknown",
+              "status": "Unknown",
+              "type": "DiskPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T02:52:19Z",
+              "lastTransitionTime": "2026-09-21T02:53:41Z",
+              "message": "Kubelet stopped posting node status.",
+              "reason": "NodeStatusUnknown",
+              "status": "Unknown",
+              "type": "PIDPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T02:52:19Z",
+              "lastTransitionTime": "2026-09-21T02:53:41Z",
+              "message": "Kubelet stopped posting node status.",
+              "reason": "NodeStatusUnknown",
+              "status": "Unknown",
+              "type": "Ready"
+            }
+          ]
+        }
+      },
+      {
+        "metadata": {
+          "name": "talos-ub2-gx6",
+          "uid": "59114c4c-ab60-46b9-bc94-45723d6b6ab2",
+          "creationTimestamp": "2026-09-21T02:43:29Z"
+        },
+        "spec": {
+          "nodeName": null
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastHeartbeatTime": "2026-09-21T02:44:06Z",
+              "lastTransitionTime": "2026-09-21T02:44:06Z",
+              "message": "Cilium is running on this node",
+              "reason": "CiliumIsUp",
+              "status": "False",
+              "type": "NetworkUnavailable"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T17:16:45Z",
+              "lastTransitionTime": "2026-09-21T15:16:41Z",
+              "message": "kubelet has sufficient memory available",
+              "reason": "KubeletHasSufficientMemory",
+              "status": "False",
+              "type": "MemoryPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T17:16:45Z",
+              "lastTransitionTime": "2026-09-21T15:16:41Z",
+              "message": "kubelet has no disk pressure",
+              "reason": "KubeletHasNoDiskPressure",
+              "status": "False",
+              "type": "DiskPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T17:16:45Z",
+              "lastTransitionTime": "2026-09-21T15:16:41Z",
+              "message": "kubelet has sufficient PID available",
+              "reason": "KubeletHasSufficientPID",
+              "status": "False",
+              "type": "PIDPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T17:16:45Z",
+              "lastTransitionTime": "2026-09-21T15:16:41Z",
+              "message": "kubelet is posting ready status",
+              "reason": "KubeletReady",
+              "status": "True",
+              "type": "Ready"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "kind": "observation",
+    "case": "smoke",
+    "time": "2026-09-21T17:20:41.051888+00:00",
+    "elapsed": 8.340839810989564,
+    "jobs": [
+      {
+        "metadata": {
+          "name": "kv-9f3c4263da7dca7f-smoke",
+          "uid": "8e5a18b3-b73b-4674-8b78-a4ba32dbff4b",
+          "creationTimestamp": "2026-09-21T17:20:34Z"
+        },
+        "spec": {
+          "nodeName": null
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastProbeTime": "2026-09-21T17:20:34Z",
+              "lastTransitionTime": "2026-09-21T17:20:34Z",
+              "message": "Job suspended",
+              "reason": "JobSuspended",
+              "status": "True",
+              "type": "Suspended"
+            }
+          ]
+        }
+      }
+    ],
+    "pods": [],
+    "workloads": [
+      {
+        "metadata": {
+          "name": "job-kv-9f3c4263da7dca7f-smoke-45440",
+          "uid": "f9296ab9-40b8-4b22-9eab-98784012c4a6",
+          "creationTimestamp": "2026-09-21T17:20:34Z"
+        },
+        "spec": {
+          "nodeName": null
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-09-21T17:20:34Z",
+              "message": "Quota reserved in ClusterQueue prototype-shared",
+              "observedGeneration": 1,
+              "reason": "QuotaReserved",
+              "status": "True",
+              "type": "QuotaReserved"
+            },
+            {
+              "lastTransitionTime": "2026-09-21T17:20:34Z",
+              "message": "Not all pods are ready or succeeded",
+              "observedGeneration": 1,
+              "reason": "WaitForStart",
+              "status": "False",
+              "type": "PodsReady"
+            }
+          ]
+        }
+      }
+    ],
+    "nodes": [
+      {
+        "metadata": {
+          "name": "talos-pz8-98c",
+          "uid": "0f95ac3f-24da-432f-8ea0-9d8db6a51e5f",
+          "creationTimestamp": "2026-09-21T01:46:28Z"
+        },
+        "spec": {
+          "nodeName": null
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastHeartbeatTime": "2026-09-21T01:47:07Z",
+              "lastTransitionTime": "2026-09-21T01:47:07Z",
+              "message": "Cilium is running on this node",
+              "reason": "CiliumIsUp",
+              "status": "False",
+              "type": "NetworkUnavailable"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T02:52:19Z",
+              "lastTransitionTime": "2026-09-21T02:53:41Z",
+              "message": "Kubelet stopped posting node status.",
+              "reason": "NodeStatusUnknown",
+              "status": "Unknown",
+              "type": "MemoryPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T02:52:19Z",
+              "lastTransitionTime": "2026-09-21T02:53:41Z",
+              "message": "Kubelet stopped posting node status.",
+              "reason": "NodeStatusUnknown",
+              "status": "Unknown",
+              "type": "DiskPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T02:52:19Z",
+              "lastTransitionTime": "2026-09-21T02:53:41Z",
+              "message": "Kubelet stopped posting node status.",
+              "reason": "NodeStatusUnknown",
+              "status": "Unknown",
+              "type": "PIDPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T02:52:19Z",
+              "lastTransitionTime": "2026-09-21T02:53:41Z",
+              "message": "Kubelet stopped posting node status.",
+              "reason": "NodeStatusUnknown",
+              "status": "Unknown",
+              "type": "Ready"
+            }
+          ]
+        }
+      },
+      {
+        "metadata": {
+          "name": "talos-ub2-gx6",
+          "uid": "59114c4c-ab60-46b9-bc94-45723d6b6ab2",
+          "creationTimestamp": "2026-09-21T02:43:29Z"
+        },
+        "spec": {
+          "nodeName": null
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastHeartbeatTime": "2026-09-21T02:44:06Z",
+              "lastTransitionTime": "2026-09-21T02:44:06Z",
+              "message": "Cilium is running on this node",
+              "reason": "CiliumIsUp",
+              "status": "False",
+              "type": "NetworkUnavailable"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T17:16:45Z",
+              "lastTransitionTime": "2026-09-21T15:16:41Z",
+              "message": "kubelet has sufficient memory available",
+              "reason": "KubeletHasSufficientMemory",
+              "status": "False",
+              "type": "MemoryPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T17:16:45Z",
+              "lastTransitionTime": "2026-09-21T15:16:41Z",
+              "message": "kubelet has no disk pressure",
+              "reason": "KubeletHasNoDiskPressure",
+              "status": "False",
+              "type": "DiskPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T17:16:45Z",
+              "lastTransitionTime": "2026-09-21T15:16:41Z",
+              "message": "kubelet has sufficient PID available",
+              "reason": "KubeletHasSufficientPID",
+              "status": "False",
+              "type": "PIDPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T17:16:45Z",
+              "lastTransitionTime": "2026-09-21T15:16:41Z",
+              "message": "kubelet is posting ready status",
+              "reason": "KubeletReady",
+              "status": "True",
+              "type": "Ready"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "kind": "observation",
+    "case": "smoke",
+    "time": "2026-09-21T17:20:44.041283+00:00",
+    "elapsed": 11.330236101988703,
+    "jobs": [
+      {
+        "metadata": {
+          "name": "kv-9f3c4263da7dca7f-smoke",
+          "uid": "8e5a18b3-b73b-4674-8b78-a4ba32dbff4b",
+          "creationTimestamp": "2026-09-21T17:20:34Z"
+        },
+        "spec": {
+          "nodeName": null
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastProbeTime": "2026-09-21T17:20:34Z",
+              "lastTransitionTime": "2026-09-21T17:20:34Z",
+              "message": "Job suspended",
+              "reason": "JobSuspended",
+              "status": "True",
+              "type": "Suspended"
+            }
+          ]
+        }
+      }
+    ],
+    "pods": [],
+    "workloads": [
+      {
+        "metadata": {
+          "name": "job-kv-9f3c4263da7dca7f-smoke-45440",
+          "uid": "f9296ab9-40b8-4b22-9eab-98784012c4a6",
+          "creationTimestamp": "2026-09-21T17:20:34Z"
+        },
+        "spec": {
+          "nodeName": null
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-09-21T17:20:34Z",
+              "message": "Quota reserved in ClusterQueue prototype-shared",
+              "observedGeneration": 1,
+              "reason": "QuotaReserved",
+              "status": "True",
+              "type": "QuotaReserved"
+            },
+            {
+              "lastTransitionTime": "2026-09-21T17:20:34Z",
+              "message": "Not all pods are ready or succeeded",
+              "observedGeneration": 1,
+              "reason": "WaitForStart",
+              "status": "False",
+              "type": "PodsReady"
+            }
+          ]
+        }
+      }
+    ],
+    "nodes": [
+      {
+        "metadata": {
+          "name": "talos-pz8-98c",
+          "uid": "0f95ac3f-24da-432f-8ea0-9d8db6a51e5f",
+          "creationTimestamp": "2026-09-21T01:46:28Z"
+        },
+        "spec": {
+          "nodeName": null
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastHeartbeatTime": "2026-09-21T01:47:07Z",
+              "lastTransitionTime": "2026-09-21T01:47:07Z",
+              "message": "Cilium is running on this node",
+              "reason": "CiliumIsUp",
+              "status": "False",
+              "type": "NetworkUnavailable"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T02:52:19Z",
+              "lastTransitionTime": "2026-09-21T02:53:41Z",
+              "message": "Kubelet stopped posting node status.",
+              "reason": "NodeStatusUnknown",
+              "status": "Unknown",
+              "type": "MemoryPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T02:52:19Z",
+              "lastTransitionTime": "2026-09-21T02:53:41Z",
+              "message": "Kubelet stopped posting node status.",
+              "reason": "NodeStatusUnknown",
+              "status": "Unknown",
+              "type": "DiskPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T02:52:19Z",
+              "lastTransitionTime": "2026-09-21T02:53:41Z",
+              "message": "Kubelet stopped posting node status.",
+              "reason": "NodeStatusUnknown",
+              "status": "Unknown",
+              "type": "PIDPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T02:52:19Z",
+              "lastTransitionTime": "2026-09-21T02:53:41Z",
+              "message": "Kubelet stopped posting node status.",
+              "reason": "NodeStatusUnknown",
+              "status": "Unknown",
+              "type": "Ready"
+            }
+          ]
+        }
+      },
+      {
+        "metadata": {
+          "name": "talos-ub2-gx6",
+          "uid": "59114c4c-ab60-46b9-bc94-45723d6b6ab2",
+          "creationTimestamp": "2026-09-21T02:43:29Z"
+        },
+        "spec": {
+          "nodeName": null
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastHeartbeatTime": "2026-09-21T02:44:06Z",
+              "lastTransitionTime": "2026-09-21T02:44:06Z",
+              "message": "Cilium is running on this node",
+              "reason": "CiliumIsUp",
+              "status": "False",
+              "type": "NetworkUnavailable"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T17:16:45Z",
+              "lastTransitionTime": "2026-09-21T15:16:41Z",
+              "message": "kubelet has sufficient memory available",
+              "reason": "KubeletHasSufficientMemory",
+              "status": "False",
+              "type": "MemoryPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T17:16:45Z",
+              "lastTransitionTime": "2026-09-21T15:16:41Z",
+              "message": "kubelet has no disk pressure",
+              "reason": "KubeletHasNoDiskPressure",
+              "status": "False",
+              "type": "DiskPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T17:16:45Z",
+              "lastTransitionTime": "2026-09-21T15:16:41Z",
+              "message": "kubelet has sufficient PID available",
+              "reason": "KubeletHasSufficientPID",
+              "status": "False",
+              "type": "PIDPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T17:16:45Z",
+              "lastTransitionTime": "2026-09-21T15:16:41Z",
+              "message": "kubelet is posting ready status",
+              "reason": "KubeletReady",
+              "status": "True",
+              "type": "Ready"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "kind": "observation",
+    "case": "smoke",
+    "time": "2026-09-21T17:20:47.084596+00:00",
+    "elapsed": 14.373555847996613,
+    "jobs": [
+      {
+        "metadata": {
+          "name": "kv-9f3c4263da7dca7f-smoke",
+          "uid": "8e5a18b3-b73b-4674-8b78-a4ba32dbff4b",
+          "creationTimestamp": "2026-09-21T17:20:34Z"
+        },
+        "spec": {
+          "nodeName": null
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastProbeTime": "2026-09-21T17:20:44Z",
+              "lastTransitionTime": "2026-09-21T17:20:44Z",
+              "message": "Job resumed",
+              "reason": "JobResumed",
+              "status": "False",
+              "type": "Suspended"
+            }
+          ]
+        }
+      }
+    ],
+    "pods": [
+      {
+        "metadata": {
+          "name": "kv-9f3c4263da7dca7f-smoke-wwgx4",
+          "uid": "4f97a15f-dbbc-4905-a8c4-1e3288d03315",
+          "creationTimestamp": "2026-09-21T17:20:44Z"
+        },
+        "spec": {
+          "nodeName": "talos-ub2-gx6"
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastProbeTime": null,
+              "lastTransitionTime": "2026-09-21T17:20:44Z",
+              "observedGeneration": 1,
+              "status": "True",
+              "type": "PodReadyToStartContainers"
+            },
+            {
+              "lastProbeTime": null,
+              "lastTransitionTime": "2026-09-21T17:20:44Z",
+              "observedGeneration": 1,
+              "status": "True",
+              "type": "Initialized"
+            },
+            {
+              "lastProbeTime": null,
+              "lastTransitionTime": "2026-09-21T17:20:45Z",
+              "observedGeneration": 1,
+              "status": "True",
+              "type": "Ready"
+            },
+            {
+              "lastProbeTime": null,
+              "lastTransitionTime": "2026-09-21T17:20:45Z",
+              "observedGeneration": 1,
+              "status": "True",
+              "type": "ContainersReady"
+            },
+            {
+              "lastProbeTime": null,
+              "lastTransitionTime": "2026-09-21T17:20:44Z",
+              "observedGeneration": 1,
+              "status": "True",
+              "type": "PodScheduled"
+            }
+          ]
+        }
+      }
+    ],
+    "workloads": [
+      {
+        "metadata": {
+          "name": "job-kv-9f3c4263da7dca7f-smoke-45440",
+          "uid": "f9296ab9-40b8-4b22-9eab-98784012c4a6",
+          "creationTimestamp": "2026-09-21T17:20:34Z"
+        },
+        "spec": {
+          "nodeName": null
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-09-21T17:20:34Z",
+              "message": "Quota reserved in ClusterQueue prototype-shared",
+              "observedGeneration": 1,
+              "reason": "QuotaReserved",
+              "status": "True",
+              "type": "QuotaReserved"
+            },
+            {
+              "lastTransitionTime": "2026-09-21T17:20:43Z",
+              "message": "The workload is admitted",
+              "observedGeneration": 1,
+              "reason": "Admitted",
+              "status": "True",
+              "type": "Admitted"
+            },
+            {
+              "lastTransitionTime": "2026-09-21T17:20:46Z",
+              "message": "All pods reached readiness and the workload is running",
+              "observedGeneration": 1,
+              "reason": "Started",
+              "status": "True",
+              "type": "PodsReady"
+            }
+          ]
+        }
+      }
+    ],
+    "nodes": [
+      {
+        "metadata": {
+          "name": "talos-pz8-98c",
+          "uid": "0f95ac3f-24da-432f-8ea0-9d8db6a51e5f",
+          "creationTimestamp": "2026-09-21T01:46:28Z"
+        },
+        "spec": {
+          "nodeName": null
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastHeartbeatTime": "2026-09-21T01:47:07Z",
+              "lastTransitionTime": "2026-09-21T01:47:07Z",
+              "message": "Cilium is running on this node",
+              "reason": "CiliumIsUp",
+              "status": "False",
+              "type": "NetworkUnavailable"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T02:52:19Z",
+              "lastTransitionTime": "2026-09-21T02:53:41Z",
+              "message": "Kubelet stopped posting node status.",
+              "reason": "NodeStatusUnknown",
+              "status": "Unknown",
+              "type": "MemoryPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T02:52:19Z",
+              "lastTransitionTime": "2026-09-21T02:53:41Z",
+              "message": "Kubelet stopped posting node status.",
+              "reason": "NodeStatusUnknown",
+              "status": "Unknown",
+              "type": "DiskPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T02:52:19Z",
+              "lastTransitionTime": "2026-09-21T02:53:41Z",
+              "message": "Kubelet stopped posting node status.",
+              "reason": "NodeStatusUnknown",
+              "status": "Unknown",
+              "type": "PIDPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T02:52:19Z",
+              "lastTransitionTime": "2026-09-21T02:53:41Z",
+              "message": "Kubelet stopped posting node status.",
+              "reason": "NodeStatusUnknown",
+              "status": "Unknown",
+              "type": "Ready"
+            }
+          ]
+        }
+      },
+      {
+        "metadata": {
+          "name": "talos-ub2-gx6",
+          "uid": "59114c4c-ab60-46b9-bc94-45723d6b6ab2",
+          "creationTimestamp": "2026-09-21T02:43:29Z"
+        },
+        "spec": {
+          "nodeName": null
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastHeartbeatTime": "2026-09-21T02:44:06Z",
+              "lastTransitionTime": "2026-09-21T02:44:06Z",
+              "message": "Cilium is running on this node",
+              "reason": "CiliumIsUp",
+              "status": "False",
+              "type": "NetworkUnavailable"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T17:16:45Z",
+              "lastTransitionTime": "2026-09-21T15:16:41Z",
+              "message": "kubelet has sufficient memory available",
+              "reason": "KubeletHasSufficientMemory",
+              "status": "False",
+              "type": "MemoryPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T17:16:45Z",
+              "lastTransitionTime": "2026-09-21T15:16:41Z",
+              "message": "kubelet has no disk pressure",
+              "reason": "KubeletHasNoDiskPressure",
+              "status": "False",
+              "type": "DiskPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T17:16:45Z",
+              "lastTransitionTime": "2026-09-21T15:16:41Z",
+              "message": "kubelet has sufficient PID available",
+              "reason": "KubeletHasSufficientPID",
+              "status": "False",
+              "type": "PIDPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T17:16:45Z",
+              "lastTransitionTime": "2026-09-21T15:16:41Z",
+              "message": "kubelet is posting ready status",
+              "reason": "KubeletReady",
+              "status": "True",
+              "type": "Ready"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "kind": "observation",
+    "case": "smoke",
+    "time": "2026-09-21T17:20:49.992019+00:00",
+    "elapsed": 17.280971959989984,
+    "jobs": [
+      {
+        "metadata": {
+          "name": "kv-9f3c4263da7dca7f-smoke",
+          "uid": "8e5a18b3-b73b-4674-8b78-a4ba32dbff4b",
+          "creationTimestamp": "2026-09-21T17:20:34Z"
+        },
+        "spec": {
+          "nodeName": null
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastProbeTime": "2026-09-21T17:20:44Z",
+              "lastTransitionTime": "2026-09-21T17:20:44Z",
+              "message": "Job resumed",
+              "reason": "JobResumed",
+              "status": "False",
+              "type": "Suspended"
+            }
+          ]
+        }
+      }
+    ],
+    "pods": [
+      {
+        "metadata": {
+          "name": "kv-9f3c4263da7dca7f-smoke-wwgx4",
+          "uid": "4f97a15f-dbbc-4905-a8c4-1e3288d03315",
+          "creationTimestamp": "2026-09-21T17:20:44Z"
+        },
+        "spec": {
+          "nodeName": "talos-ub2-gx6"
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastProbeTime": null,
+              "lastTransitionTime": "2026-09-21T17:20:44Z",
+              "observedGeneration": 1,
+              "status": "True",
+              "type": "PodReadyToStartContainers"
+            },
+            {
+              "lastProbeTime": null,
+              "lastTransitionTime": "2026-09-21T17:20:44Z",
+              "observedGeneration": 1,
+              "status": "True",
+              "type": "Initialized"
+            },
+            {
+              "lastProbeTime": null,
+              "lastTransitionTime": "2026-09-21T17:20:45Z",
+              "observedGeneration": 1,
+              "status": "True",
+              "type": "Ready"
+            },
+            {
+              "lastProbeTime": null,
+              "lastTransitionTime": "2026-09-21T17:20:45Z",
+              "observedGeneration": 1,
+              "status": "True",
+              "type": "ContainersReady"
+            },
+            {
+              "lastProbeTime": null,
+              "lastTransitionTime": "2026-09-21T17:20:44Z",
+              "observedGeneration": 1,
+              "status": "True",
+              "type": "PodScheduled"
+            }
+          ]
+        }
+      }
+    ],
+    "workloads": [
+      {
+        "metadata": {
+          "name": "job-kv-9f3c4263da7dca7f-smoke-45440",
+          "uid": "f9296ab9-40b8-4b22-9eab-98784012c4a6",
+          "creationTimestamp": "2026-09-21T17:20:34Z"
+        },
+        "spec": {
+          "nodeName": null
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-09-21T17:20:34Z",
+              "message": "Quota reserved in ClusterQueue prototype-shared",
+              "observedGeneration": 1,
+              "reason": "QuotaReserved",
+              "status": "True",
+              "type": "QuotaReserved"
+            },
+            {
+              "lastTransitionTime": "2026-09-21T17:20:43Z",
+              "message": "The workload is admitted",
+              "observedGeneration": 1,
+              "reason": "Admitted",
+              "status": "True",
+              "type": "Admitted"
+            },
+            {
+              "lastTransitionTime": "2026-09-21T17:20:46Z",
+              "message": "All pods reached readiness and the workload is running",
+              "observedGeneration": 1,
+              "reason": "Started",
+              "status": "True",
+              "type": "PodsReady"
+            }
+          ]
+        }
+      }
+    ],
+    "nodes": [
+      {
+        "metadata": {
+          "name": "talos-pz8-98c",
+          "uid": "0f95ac3f-24da-432f-8ea0-9d8db6a51e5f",
+          "creationTimestamp": "2026-09-21T01:46:28Z"
+        },
+        "spec": {
+          "nodeName": null
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastHeartbeatTime": "2026-09-21T01:47:07Z",
+              "lastTransitionTime": "2026-09-21T01:47:07Z",
+              "message": "Cilium is running on this node",
+              "reason": "CiliumIsUp",
+              "status": "False",
+              "type": "NetworkUnavailable"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T02:52:19Z",
+              "lastTransitionTime": "2026-09-21T02:53:41Z",
+              "message": "Kubelet stopped posting node status.",
+              "reason": "NodeStatusUnknown",
+              "status": "Unknown",
+              "type": "MemoryPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T02:52:19Z",
+              "lastTransitionTime": "2026-09-21T02:53:41Z",
+              "message": "Kubelet stopped posting node status.",
+              "reason": "NodeStatusUnknown",
+              "status": "Unknown",
+              "type": "DiskPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T02:52:19Z",
+              "lastTransitionTime": "2026-09-21T02:53:41Z",
+              "message": "Kubelet stopped posting node status.",
+              "reason": "NodeStatusUnknown",
+              "status": "Unknown",
+              "type": "PIDPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T02:52:19Z",
+              "lastTransitionTime": "2026-09-21T02:53:41Z",
+              "message": "Kubelet stopped posting node status.",
+              "reason": "NodeStatusUnknown",
+              "status": "Unknown",
+              "type": "Ready"
+            }
+          ]
+        }
+      },
+      {
+        "metadata": {
+          "name": "talos-ub2-gx6",
+          "uid": "59114c4c-ab60-46b9-bc94-45723d6b6ab2",
+          "creationTimestamp": "2026-09-21T02:43:29Z"
+        },
+        "spec": {
+          "nodeName": null
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastHeartbeatTime": "2026-09-21T02:44:06Z",
+              "lastTransitionTime": "2026-09-21T02:44:06Z",
+              "message": "Cilium is running on this node",
+              "reason": "CiliumIsUp",
+              "status": "False",
+              "type": "NetworkUnavailable"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T17:16:45Z",
+              "lastTransitionTime": "2026-09-21T15:16:41Z",
+              "message": "kubelet has sufficient memory available",
+              "reason": "KubeletHasSufficientMemory",
+              "status": "False",
+              "type": "MemoryPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T17:16:45Z",
+              "lastTransitionTime": "2026-09-21T15:16:41Z",
+              "message": "kubelet has no disk pressure",
+              "reason": "KubeletHasNoDiskPressure",
+              "status": "False",
+              "type": "DiskPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T17:16:45Z",
+              "lastTransitionTime": "2026-09-21T15:16:41Z",
+              "message": "kubelet has sufficient PID available",
+              "reason": "KubeletHasSufficientPID",
+              "status": "False",
+              "type": "PIDPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T17:16:45Z",
+              "lastTransitionTime": "2026-09-21T15:16:41Z",
+              "message": "kubelet is posting ready status",
+              "reason": "KubeletReady",
+              "status": "True",
+              "type": "Ready"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "kind": "observation",
+    "case": "smoke",
+    "time": "2026-09-21T17:20:53.215891+00:00",
+    "elapsed": 20.50485127500724,
+    "jobs": [
+      {
+        "metadata": {
+          "name": "kv-9f3c4263da7dca7f-smoke",
+          "uid": "8e5a18b3-b73b-4674-8b78-a4ba32dbff4b",
+          "creationTimestamp": "2026-09-21T17:20:34Z"
+        },
+        "spec": {
+          "nodeName": null
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastProbeTime": "2026-09-21T17:20:44Z",
+              "lastTransitionTime": "2026-09-21T17:20:44Z",
+              "message": "Job resumed",
+              "reason": "JobResumed",
+              "status": "False",
+              "type": "Suspended"
+            }
+          ]
+        }
+      }
+    ],
+    "pods": [
+      {
+        "metadata": {
+          "name": "kv-9f3c4263da7dca7f-smoke-wwgx4",
+          "uid": "4f97a15f-dbbc-4905-a8c4-1e3288d03315",
+          "creationTimestamp": "2026-09-21T17:20:44Z"
+        },
+        "spec": {
+          "nodeName": "talos-ub2-gx6"
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastProbeTime": null,
+              "lastTransitionTime": "2026-09-21T17:20:51Z",
+              "observedGeneration": 1,
+              "status": "False",
+              "type": "PodReadyToStartContainers"
+            },
+            {
+              "lastProbeTime": null,
+              "lastTransitionTime": "2026-09-21T17:20:44Z",
+              "observedGeneration": 1,
+              "reason": "PodCompleted",
+              "status": "True",
+              "type": "Initialized"
+            },
+            {
+              "lastProbeTime": null,
+              "lastTransitionTime": "2026-09-21T17:20:50Z",
+              "observedGeneration": 1,
+              "reason": "PodCompleted",
+              "status": "False",
+              "type": "Ready"
+            },
+            {
+              "lastProbeTime": null,
+              "lastTransitionTime": "2026-09-21T17:20:50Z",
+              "observedGeneration": 1,
+              "reason": "PodCompleted",
+              "status": "False",
+              "type": "ContainersReady"
+            },
+            {
+              "lastProbeTime": null,
+              "lastTransitionTime": "2026-09-21T17:20:44Z",
+              "observedGeneration": 1,
+              "status": "True",
+              "type": "PodScheduled"
+            }
+          ]
+        }
+      }
+    ],
+    "workloads": [
+      {
+        "metadata": {
+          "name": "job-kv-9f3c4263da7dca7f-smoke-45440",
+          "uid": "f9296ab9-40b8-4b22-9eab-98784012c4a6",
+          "creationTimestamp": "2026-09-21T17:20:34Z"
+        },
+        "spec": {
+          "nodeName": null
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-09-21T17:20:34Z",
+              "message": "Quota reserved in ClusterQueue prototype-shared",
+              "observedGeneration": 1,
+              "reason": "QuotaReserved",
+              "status": "True",
+              "type": "QuotaReserved"
+            },
+            {
+              "lastTransitionTime": "2026-09-21T17:20:43Z",
+              "message": "The workload is admitted",
+              "observedGeneration": 1,
+              "reason": "Admitted",
+              "status": "True",
+              "type": "Admitted"
+            },
+            {
+              "lastTransitionTime": "2026-09-21T17:20:52Z",
+              "message": "All pods reached readiness and the workload is running",
+              "observedGeneration": 1,
+              "reason": "Recovered",
+              "status": "True",
+              "type": "PodsReady"
+            }
+          ]
+        }
+      }
+    ],
+    "nodes": [
+      {
+        "metadata": {
+          "name": "talos-pz8-98c",
+          "uid": "0f95ac3f-24da-432f-8ea0-9d8db6a51e5f",
+          "creationTimestamp": "2026-09-21T01:46:28Z"
+        },
+        "spec": {
+          "nodeName": null
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastHeartbeatTime": "2026-09-21T01:47:07Z",
+              "lastTransitionTime": "2026-09-21T01:47:07Z",
+              "message": "Cilium is running on this node",
+              "reason": "CiliumIsUp",
+              "status": "False",
+              "type": "NetworkUnavailable"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T02:52:19Z",
+              "lastTransitionTime": "2026-09-21T02:53:41Z",
+              "message": "Kubelet stopped posting node status.",
+              "reason": "NodeStatusUnknown",
+              "status": "Unknown",
+              "type": "MemoryPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T02:52:19Z",
+              "lastTransitionTime": "2026-09-21T02:53:41Z",
+              "message": "Kubelet stopped posting node status.",
+              "reason": "NodeStatusUnknown",
+              "status": "Unknown",
+              "type": "DiskPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T02:52:19Z",
+              "lastTransitionTime": "2026-09-21T02:53:41Z",
+              "message": "Kubelet stopped posting node status.",
+              "reason": "NodeStatusUnknown",
+              "status": "Unknown",
+              "type": "PIDPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T02:52:19Z",
+              "lastTransitionTime": "2026-09-21T02:53:41Z",
+              "message": "Kubelet stopped posting node status.",
+              "reason": "NodeStatusUnknown",
+              "status": "Unknown",
+              "type": "Ready"
+            }
+          ]
+        }
+      },
+      {
+        "metadata": {
+          "name": "talos-ub2-gx6",
+          "uid": "59114c4c-ab60-46b9-bc94-45723d6b6ab2",
+          "creationTimestamp": "2026-09-21T02:43:29Z"
+        },
+        "spec": {
+          "nodeName": null
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastHeartbeatTime": "2026-09-21T02:44:06Z",
+              "lastTransitionTime": "2026-09-21T02:44:06Z",
+              "message": "Cilium is running on this node",
+              "reason": "CiliumIsUp",
+              "status": "False",
+              "type": "NetworkUnavailable"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T17:16:45Z",
+              "lastTransitionTime": "2026-09-21T15:16:41Z",
+              "message": "kubelet has sufficient memory available",
+              "reason": "KubeletHasSufficientMemory",
+              "status": "False",
+              "type": "MemoryPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T17:16:45Z",
+              "lastTransitionTime": "2026-09-21T15:16:41Z",
+              "message": "kubelet has no disk pressure",
+              "reason": "KubeletHasNoDiskPressure",
+              "status": "False",
+              "type": "DiskPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T17:16:45Z",
+              "lastTransitionTime": "2026-09-21T15:16:41Z",
+              "message": "kubelet has sufficient PID available",
+              "reason": "KubeletHasSufficientPID",
+              "status": "False",
+              "type": "PIDPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T17:16:45Z",
+              "lastTransitionTime": "2026-09-21T15:16:41Z",
+              "message": "kubelet is posting ready status",
+              "reason": "KubeletReady",
+              "status": "True",
+              "type": "Ready"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "kind": "observation",
+    "case": "smoke",
+    "time": "2026-09-21T17:20:56.166999+00:00",
+    "elapsed": 23.455958382983226,
+    "jobs": [
+      {
+        "metadata": {
+          "name": "kv-9f3c4263da7dca7f-smoke",
+          "uid": "8e5a18b3-b73b-4674-8b78-a4ba32dbff4b",
+          "creationTimestamp": "2026-09-21T17:20:34Z"
+        },
+        "spec": {
+          "nodeName": null
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastProbeTime": "2026-09-21T17:20:44Z",
+              "lastTransitionTime": "2026-09-21T17:20:44Z",
+              "message": "Job resumed",
+              "reason": "JobResumed",
+              "status": "False",
+              "type": "Suspended"
+            },
+            {
+              "lastProbeTime": "2026-09-21T17:20:52Z",
+              "lastTransitionTime": "2026-09-21T17:20:52Z",
+              "message": "Reached expected number of succeeded pods",
+              "reason": "CompletionsReached",
+              "status": "True",
+              "type": "SuccessCriteriaMet"
+            },
+            {
+              "lastProbeTime": "2026-09-21T17:20:52Z",
+              "lastTransitionTime": "2026-09-21T17:20:52Z",
+              "message": "Reached expected number of succeeded pods",
+              "reason": "CompletionsReached",
+              "status": "True",
+              "type": "Complete"
+            }
+          ],
+          "completionTime": "2026-09-21T17:20:52Z"
+        }
+      }
+    ],
+    "pods": [
+      {
+        "metadata": {
+          "name": "kv-9f3c4263da7dca7f-smoke-wwgx4",
+          "uid": "4f97a15f-dbbc-4905-a8c4-1e3288d03315",
+          "creationTimestamp": "2026-09-21T17:20:44Z"
+        },
+        "spec": {
+          "nodeName": "talos-ub2-gx6"
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastProbeTime": null,
+              "lastTransitionTime": "2026-09-21T17:20:51Z",
+              "observedGeneration": 1,
+              "status": "False",
+              "type": "PodReadyToStartContainers"
+            },
+            {
+              "lastProbeTime": null,
+              "lastTransitionTime": "2026-09-21T17:20:44Z",
+              "observedGeneration": 1,
+              "reason": "PodCompleted",
+              "status": "True",
+              "type": "Initialized"
+            },
+            {
+              "lastProbeTime": null,
+              "lastTransitionTime": "2026-09-21T17:20:50Z",
+              "observedGeneration": 1,
+              "reason": "PodCompleted",
+              "status": "False",
+              "type": "Ready"
+            },
+            {
+              "lastProbeTime": null,
+              "lastTransitionTime": "2026-09-21T17:20:50Z",
+              "observedGeneration": 1,
+              "reason": "PodCompleted",
+              "status": "False",
+              "type": "ContainersReady"
+            },
+            {
+              "lastProbeTime": null,
+              "lastTransitionTime": "2026-09-21T17:20:44Z",
+              "observedGeneration": 1,
+              "status": "True",
+              "type": "PodScheduled"
+            }
+          ]
+        }
+      }
+    ],
+    "workloads": [
+      {
+        "metadata": {
+          "name": "job-kv-9f3c4263da7dca7f-smoke-45440",
+          "uid": "f9296ab9-40b8-4b22-9eab-98784012c4a6",
+          "creationTimestamp": "2026-09-21T17:20:34Z"
+        },
+        "spec": {
+          "nodeName": null
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-09-21T17:20:34Z",
+              "message": "Quota reserved in ClusterQueue prototype-shared",
+              "observedGeneration": 1,
+              "reason": "QuotaReserved",
+              "status": "True",
+              "type": "QuotaReserved"
+            },
+            {
+              "lastTransitionTime": "2026-09-21T17:20:43Z",
+              "message": "The workload is admitted",
+              "observedGeneration": 1,
+              "reason": "Admitted",
+              "status": "True",
+              "type": "Admitted"
+            },
+            {
+              "lastTransitionTime": "2026-09-21T17:20:52Z",
+              "message": "Reached expected number of succeeded pods",
+              "observedGeneration": 1,
+              "reason": "Succeeded",
+              "status": "True",
+              "type": "Finished"
+            },
+            {
+              "lastTransitionTime": "2026-09-21T17:20:52Z",
+              "message": "All pods reached readiness and the workload is running",
+              "observedGeneration": 1,
+              "reason": "Recovered",
+              "status": "True",
+              "type": "PodsReady"
+            }
+          ]
+        }
+      }
+    ],
+    "nodes": [
+      {
+        "metadata": {
+          "name": "talos-pz8-98c",
+          "uid": "0f95ac3f-24da-432f-8ea0-9d8db6a51e5f",
+          "creationTimestamp": "2026-09-21T01:46:28Z"
+        },
+        "spec": {
+          "nodeName": null
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastHeartbeatTime": "2026-09-21T01:47:07Z",
+              "lastTransitionTime": "2026-09-21T01:47:07Z",
+              "message": "Cilium is running on this node",
+              "reason": "CiliumIsUp",
+              "status": "False",
+              "type": "NetworkUnavailable"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T02:52:19Z",
+              "lastTransitionTime": "2026-09-21T02:53:41Z",
+              "message": "Kubelet stopped posting node status.",
+              "reason": "NodeStatusUnknown",
+              "status": "Unknown",
+              "type": "MemoryPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T02:52:19Z",
+              "lastTransitionTime": "2026-09-21T02:53:41Z",
+              "message": "Kubelet stopped posting node status.",
+              "reason": "NodeStatusUnknown",
+              "status": "Unknown",
+              "type": "DiskPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T02:52:19Z",
+              "lastTransitionTime": "2026-09-21T02:53:41Z",
+              "message": "Kubelet stopped posting node status.",
+              "reason": "NodeStatusUnknown",
+              "status": "Unknown",
+              "type": "PIDPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T02:52:19Z",
+              "lastTransitionTime": "2026-09-21T02:53:41Z",
+              "message": "Kubelet stopped posting node status.",
+              "reason": "NodeStatusUnknown",
+              "status": "Unknown",
+              "type": "Ready"
+            }
+          ]
+        }
+      },
+      {
+        "metadata": {
+          "name": "talos-ub2-gx6",
+          "uid": "59114c4c-ab60-46b9-bc94-45723d6b6ab2",
+          "creationTimestamp": "2026-09-21T02:43:29Z"
+        },
+        "spec": {
+          "nodeName": null
+        },
+        "status": {
+          "conditions": [
+            {
+              "lastHeartbeatTime": "2026-09-21T02:44:06Z",
+              "lastTransitionTime": "2026-09-21T02:44:06Z",
+              "message": "Cilium is running on this node",
+              "reason": "CiliumIsUp",
+              "status": "False",
+              "type": "NetworkUnavailable"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T17:16:45Z",
+              "lastTransitionTime": "2026-09-21T15:16:41Z",
+              "message": "kubelet has sufficient memory available",
+              "reason": "KubeletHasSufficientMemory",
+              "status": "False",
+              "type": "MemoryPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T17:16:45Z",
+              "lastTransitionTime": "2026-09-21T15:16:41Z",
+              "message": "kubelet has no disk pressure",
+              "reason": "KubeletHasNoDiskPressure",
+              "status": "False",
+              "type": "DiskPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T17:16:45Z",
+              "lastTransitionTime": "2026-09-21T15:16:41Z",
+              "message": "kubelet has sufficient PID available",
+              "reason": "KubeletHasSufficientPID",
+              "status": "False",
+              "type": "PIDPressure"
+            },
+            {
+              "lastHeartbeatTime": "2026-09-21T17:16:45Z",
+              "lastTransitionTime": "2026-09-21T15:16:41Z",
+              "message": "kubelet is posting ready status",
+              "reason": "KubeletReady",
+              "status": "True",
+              "type": "Ready"
+            }
+          ]
+        }
+      }
+    ]
+  }
+]

@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prototype-slot-ca
+  namespace: prototype-slot
+data:
+  cloud.yaml: |
+    address: 10.0.0.181:50051
+    cacert: /tls/ca.crt
+    cert: /tls/client.crt
+    key: /tls/client.key
+    grpc_timeout: 5s
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prototype-slot-ca
+  namespace: prototype-slot
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: prototype-slot-ca}
+  template:
+    metadata:
+      labels: {app: prototype-slot-ca}
+    spec:
+      serviceAccountName: prototype-slot-cluster-autoscaler
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        fsGroup: 65532
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: autoscaler
+          image: registry.k8s.io/autoscaling/cluster-autoscaler:v1.36.1@sha256:461388d03eb5b55db58941ee7a81d9a619dd15302b01cbab9f5a9946715994b4
+          command: ["./cluster-autoscaler"]
+          args:
+            - --cloud-provider=externalgrpc
+            - --cloud-config=/config/cloud.yaml
+            - --enable-provisioning-requests=true
+            - --provisioning-request-initial-backoff-time={{ .Values.provisioningRequestInitialBackoff }}
+            - --provisioning-request-max-backoff-time={{ .Values.provisioningRequestMaxBackoff }}
+            - --expander=priority,least-waste
+            - --scale-down-enabled=false
+            - --max-node-provision-time=15m
+            - --max-total-unready-percentage=100
+            - --leader-elect=false
+            - --namespace=prototype-slot
+            - --v=4
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {memory: 512Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - {name: config, mountPath: /config, readOnly: true}
+            - {name: tls, mountPath: /tls, readOnly: true}
+      volumes:
+        - name: config
+          configMap: {name: prototype-slot-ca}
+        - name: tls
+          secret: {secretName: prototype-slot-client, defaultMode: 288}

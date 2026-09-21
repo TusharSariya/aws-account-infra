@@ -1,0 +1,31 @@
+{
+  "primary": [
+    {
+      "vmid": 100,
+      "name": "talos-cp-01",
+      "status": "running"
+    },
+    {
+      "vmid": 9107,
+      "name": "PROTOTYPE-autoscaler-primary",
+      "status": "running"
+    },
+    {
+      "vmid": 102,
+      "name": "talos-worker-01",
+      "status": "running"
+    }
+  ],
+  "secondary": [
+    {
+      "vmid": 9105,
+      "name": "PROTOTYPE-autoscaler-slot",
+      "status": "running"
+    },
+    {
+      "vmid": 103,
+      "name": "talos-worker-02",
+      "status": "running"
+    }
+  ]
+}

@@ -1,0 +1,195 @@
+{
+  "initial": {
+    "jobSuspended": true,
+    "requests": [
+      {
+        "name": "job-kueue-zero-to-one-proof-1ba41-prototype-secondary-1",
+        "status": {}
+      }
+    ]
+  },
+  "duringBoot": {
+    "captured": "2026-09-21T01:28:27.657042+00:00",
+    "jobSuspended": false,
+    "jobSucceeded": 0,
+    "pods": [
+      {
+        "phase": "Pending",
+        "node": null
+      }
+    ],
+    "provider": {
+      "phase": "joining",
+      "ip": "10.0.0.9"
+    }
+  },
+  "durationSeconds": 213,
+  "job": {
+    "name": "kueue-zero-to-one-proof",
+    "created": "2026-09-21T01:27:00Z",
+    "status": {
+      "completionTime": "2026-09-21T01:30:33Z",
+      "conditions": [
+        {
+          "lastProbeTime": "2026-09-21T01:27:09Z",
+          "lastTransitionTime": "2026-09-21T01:27:09Z",
+          "message": "Job resumed",
+          "reason": "JobResumed",
+          "status": "False",
+          "type": "Suspended"
+        },
+        {
+          "lastProbeTime": "2026-09-21T01:30:33Z",
+          "lastTransitionTime": "2026-09-21T01:30:33Z",
+          "message": "Reached expected number of succeeded pods",
+          "reason": "CompletionsReached",
+          "status": "True",
+          "type": "SuccessCriteriaMet"
+        },
+        {
+          "lastProbeTime": "2026-09-21T01:30:33Z",
+          "lastTransitionTime": "2026-09-21T01:30:33Z",
+          "message": "Reached expected number of succeeded pods",
+          "reason": "CompletionsReached",
+          "status": "True",
+          "type": "Complete"
+        }
+      ],
+      "ready": 0,
+      "startTime": "2026-09-21T01:27:09Z",
+      "succeeded": 1,
+      "terminating": 0,
+      "uncountedTerminatedPods": {}
+    }
+  },
+  "pod": {
+    "name": "kueue-zero-to-one-proof-q2x48",
+    "phase": "Succeeded",
+    "node": "talos-2cq-i7z"
+  },
+  "node": {
+    "name": "talos-2cq-i7z",
+    "uid": "ca5154c7-e024-4495-9da6-734f87d5ae7b",
+    "created": "2026-09-21T01:29:16Z",
+    "providerID": "proxmox://prototype-secondary/9105"
+  },
+  "workloads": [
+    {
+      "name": "job-kueue-zero-to-one-proof-1ba41",
+      "status": {
+        "admission": {
+          "clusterQueue": "prototype-secondary",
+          "podSetAssignments": [
+            {
+              "count": 1,
+              "flavors": {
+                "cpu": "prototype-secondary",
+                "ephemeral-storage": "prototype-secondary",
+                "memory": "prototype-secondary"
+              },
+              "name": "main",
+              "resourceUsage": {
+                "cpu": "100m",
+                "ephemeral-storage": "64Mi",
+                "memory": "32Mi"
+              }
+            }
+          ]
+        },
+        "admissionChecks": [
+          {
+            "lastTransitionTime": "2026-09-21T01:27:00Z",
+            "message": "Capacity is found in the cluster",
+            "name": "prototype-secondary",
+            "podSetUpdates": [
+              {
+                "annotations": {
+                  "autoscaling.x-k8s.io/consume-provisioning-request": "job-kueue-zero-to-one-proof-1ba41-prototype-secondary-1",
+                  "autoscaling.x-k8s.io/provisioning-class-name": "best-effort-atomic-scale-up.autoscaling.x-k8s.io"
+                },
+                "name": "main"
+              }
+            ],
+            "state": "Ready"
+          }
+        ],
+        "conditions": [
+          {
+            "lastTransitionTime": "2026-09-21T01:27:00Z",
+            "message": "Quota reserved in ClusterQueue prototype-secondary",
+            "observedGeneration": 1,
+            "reason": "QuotaReserved",
+            "status": "True",
+            "type": "QuotaReserved"
+          },
+          {
+            "lastTransitionTime": "2026-09-21T01:27:08Z",
+            "message": "The workload is admitted",
+            "observedGeneration": 1,
+            "reason": "Admitted",
+            "status": "True",
+            "type": "Admitted"
+          },
+          {
+            "lastTransitionTime": "2026-09-21T01:30:33Z",
+            "message": "Reached expected number of succeeded pods",
+            "observedGeneration": 1,
+            "reason": "Succeeded",
+            "status": "True",
+            "type": "Finished"
+          },
+          {
+            "lastTransitionTime": "2026-09-21T01:30:33Z",
+            "message": "All pods reached readiness and the workload is running",
+            "observedGeneration": 1,
+            "reason": "Recovered",
+            "status": "True",
+            "type": "PodsReady"
+          }
+        ]
+      }
+    }
+  ],
+  "requestsDuringBoot": [
+    {
+      "name": "job-kueue-zero-to-one-proof-1ba41-prototype-secondary-1",
+      "status": {
+        "conditions": [
+          {
+            "lastTransitionTime": "2026-09-21T01:27:08Z",
+            "message": "ProvisioningRequest is accepted by ClusterAutoscaler",
+            "observedGeneration": 1,
+            "reason": "Accepted",
+            "status": "True",
+            "type": "Accepted"
+          },
+          {
+            "lastTransitionTime": "2026-09-21T01:27:08Z",
+            "message": "Capacity is found in the cluster",
+            "reason": "CapacityIsProvisioned",
+            "status": "True",
+            "type": "Provisioned"
+          }
+        ]
+      }
+    }
+  ],
+  "requestsAfterCompletion": 0,
+  "provider": {
+    "phase": "ready",
+    "name": "talos-2cq-i7z",
+    "ip": "10.0.0.9"
+  },
+  "controllerSnapshot": [
+    {
+      "namespace": "kueue-system",
+      "workingSetBytes": 77467648,
+      "usageNanoCores": 14597843
+    },
+    {
+      "namespace": "prototype-slot",
+      "workingSetBytes": 28536832,
+      "usageNanoCores": 3189794
+    }
+  ]
+}

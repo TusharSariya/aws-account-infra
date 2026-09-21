@@ -1,0 +1,7 @@
+{
+  "unavailableSeconds": 70,
+  "runningAfterUncordonSeconds": 27.4,
+  "pod": "cold-retry-cap-jnpcl",
+  "node": "talos-ub2-gx6",
+  "phase": "Running"
+}

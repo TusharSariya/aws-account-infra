@@ -1,0 +1,34 @@
+{
+  "originalVolume": {
+    "node": "talos-2cq-i7z",
+    "marker": "runtime-f8eeeaf69a3c8a45116ccc287d558395",
+    "claim_uid": "e4c86bd7-6e11-4bdb-9a20-4f7729f7239e",
+    "pv": "pvc-e4c86bd7-6e11-4bdb-9a20-4f7729f7239e",
+    "pv_uid": "e51cf5b6-bb0b-46c7-9ddf-84d089d617e6",
+    "volume_handle": "prototype-secondary/pve/local-lvm/vm-9199-pvc-e4c86bd7-6e11-4bdb-9a20-4f7729f7239e"
+  },
+  "negativeGuard": {
+    "attachedVolumeRefusal": {
+      "error": "Unexpected or retained disk reference blocks retirement"
+    },
+    "vm_uuid": "9b266a41-b165-4120-b2dc-8e99d4396abe"
+  },
+  "retired": {
+    "phase": "retired",
+    "name": "talos-2cq-i7z",
+    "uid": "ca5154c7-e024-4495-9da6-734f87d5ae7b",
+    "vm_uuid": "9b266a41-b165-4120-b2dc-8e99d4396abe"
+  },
+  "backendAfterDeletionBeforeReattach": [
+    {
+      "content": "images",
+      "ctime": "1789954638",
+      "format": "raw",
+      "size": 1073741824,
+      "vmid": 9199,
+      "volid": "local-lvm:vm-9199-pvc-e4c86bd7-6e11-4bdb-9a20-4f7729f7239e"
+    }
+  ],
+  "retainedVolumeAttachmentsBeforeReattach": 0,
+  "note": "Backend was independently checked during replacement provisioning. Retirement itself confirmed old VM absent before resetting target."
+}

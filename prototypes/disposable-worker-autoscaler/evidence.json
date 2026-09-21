@@ -1,0 +1,68 @@
+{
+  "date": "2026-09-21",
+  "job": {
+    "name": "zero-to-one-proof",
+    "uid": "5164903c-611d-47ed-95f9-0894d3318e12",
+    "created": "2026-09-21T01:11:32Z",
+    "status": {
+      "completionTime": "2026-09-21T01:14:54Z",
+      "conditions": [
+        {
+          "lastProbeTime": "2026-09-21T01:14:54Z",
+          "lastTransitionTime": "2026-09-21T01:14:54Z",
+          "message": "Reached expected number of succeeded pods",
+          "reason": "CompletionsReached",
+          "status": "True",
+          "type": "SuccessCriteriaMet"
+        },
+        {
+          "lastProbeTime": "2026-09-21T01:14:54Z",
+          "lastTransitionTime": "2026-09-21T01:14:54Z",
+          "message": "Reached expected number of succeeded pods",
+          "reason": "CompletionsReached",
+          "status": "True",
+          "type": "Complete"
+        }
+      ],
+      "ready": 0,
+      "startTime": "2026-09-21T01:11:32Z",
+      "succeeded": 1,
+      "terminating": 0,
+      "uncountedTerminatedPods": {}
+    }
+  },
+  "pod": {
+    "name": "zero-to-one-proof-qk2v6",
+    "node": "talos-390-cu5",
+    "phase": "Succeeded"
+  },
+  "node": {
+    "name": "talos-390-cu5",
+    "uid": "7483550b-d0b5-42fa-8d1a-76afb4a460ab",
+    "providerID": "proxmox://prototype-secondary/9105",
+    "created": "2026-09-21T01:13:40Z"
+  },
+  "scale_events": [
+    {
+      "reason": "ScaledUpGroup",
+      "message": "Scale-up: setting group prototype-secondary size to 1 instead of 0 (max: 1)",
+      "time": "2026-09-21T01:05:45Z"
+    },
+    {
+      "reason": "ScaledUpGroup",
+      "message": "Scale-up: setting group prototype-secondary size to 1 instead of 0 (max: 1)",
+      "time": "2026-09-21T01:11:34Z"
+    },
+    {
+      "reason": "TriggeredScaleUp",
+      "message": "pod triggered scale-up: [{prototype-secondary 0->1 (max: 1)}]",
+      "time": "2026-09-21T01:05:45Z"
+    },
+    {
+      "reason": "TriggeredScaleUp",
+      "message": "pod triggered scale-up: [{prototype-secondary 0->1 (max: 1)}]",
+      "time": "2026-09-21T01:11:34Z"
+    }
+  ],
+  "physical_power": "already-on path; no host shutdown in this proof"
+}

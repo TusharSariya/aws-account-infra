@@ -1,0 +1,16 @@
+[Unit]
+Description=Prototype primary stateless create/join reconciler (no deletion)
+After=network-online.target prototype-slot-provider.service
+
+[Service]
+Environment=HOMELAB_PROTOTYPE_SLOT=primary
+Environment=PYTHONPATH=%h/.local/share/homelab-capacity/source/src
+ExecStart=%h/.local/share/homelab-capacity/venv/bin/python %h/.local/share/homelab-capacity/reconcile.py
+Restart=no
+MemoryMax=192M
+TasksMax=48
+UMask=0077
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=default.target

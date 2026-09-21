@@ -1,0 +1,14 @@
+[
+  {
+    "pod": "prototype-binpack-64cbf9776d-97gv6",
+    "workingSetBytes": 18661376
+  },
+  {
+    "pod": "prototype-kueue-controller-manager-6499597f67-vlrrc",
+    "workingSetBytes": 70115328
+  },
+  {
+    "pod": "prototype-slot-ca-7cb5df7b64-pf2c2",
+    "workingSetBytes": 32739328
+  }
+]
