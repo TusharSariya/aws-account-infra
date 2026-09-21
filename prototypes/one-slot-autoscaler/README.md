@@ -1,6 +1,6 @@
-# One-slot external-gRPC autoscaler prototype
+# Bounded external-gRPC autoscaler prototype
 
-Throwaway scale-up integration for [issue106](https://github.com/TusharSariyaOrg/aws-account-infra/issues/106). The runtime owns only secondary prototype VM9105 and empty template9106. Production VMs100/102/103 and retained-volume prototype9104 are excluded. Automatic deletion RPCs and physical shutdown remain disabled. The subsequent explicit retirement command is described in [retirement.md](retirement.md).
+Throwaway scale-up integration for [issue106](https://github.com/TusharSariyaOrg/aws-account-infra/issues/106). The original proof owns secondary prototype VM9105 and empty template9106. The [two-slot extension](two-slot/README.md) additionally owns primary prototype VM9107/template9108 with independent state. Production VMs100/102/103 and retained-volume prototype9104 are excluded. Automatic deletion RPCs and physical shutdown remain disabled. The subsequent explicit retirement command is described in [retirement.md](retirement.md).
 
 The subsequent [Kueue extension](kueue/README.md) adds suspended-Job capacity requests and negative fit checks to this same isolated provider. The ordinary-Job evidence below describes the earlier baseline.
 

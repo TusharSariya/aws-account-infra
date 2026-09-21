@@ -11,10 +11,14 @@ import struct
 import subprocess
 import time
 
-VM, TEMPLATE = 9105, 9106
-MAC = bytes.fromhex('525400770305')
-NAME = 'PROTOTYPE-autoscaler-slot'
-TNAME = 'PROTOTYPE-autoscaler-empty-template'
+# Root-owned selection; the SSH caller cannot choose a host or arbitrary VM ID.
+HOST_CONFIG = Path('/etc/prototype-slot.json')
+SLOT = json.loads(HOST_CONFIG.read_text())['slot'] if HOST_CONFIG.exists() else 'secondary'
+if SLOT not in ('primary','secondary'):raise RuntimeError('Unknown prototype slot')
+VM, TEMPLATE = (9107,9108) if SLOT=='primary' else (9105,9106)
+MAC = bytes.fromhex('525400770307' if SLOT=='primary' else '525400770305')
+NAME = 'PROTOTYPE-autoscaler-primary' if SLOT=='primary' else 'PROTOTYPE-autoscaler-slot'
+TNAME = 'PROTOTYPE-autoscaler-primary-template' if SLOT=='primary' else 'PROTOTYPE-autoscaler-empty-template'
 ISO = 'local:iso/PROTOTYPE-talos-v1.13.9-metal.iso'
 STATE = Path('/var/lib/prototype-slot')
 
@@ -64,6 +68,7 @@ def dhcp_ack(path):
 def ensure_csi_access():
     # PVE removes per-VM ACLs when a disposable guest is destroyed. Restore both
     # sides of the privilege-separated token on every ensure, before readiness.
+    if SLOT=='primary':return  # Primary pilot advertises stateless capacity only.
     run('pveum','acl','modify','/vms/9105','--roles','Prototype105Disk',
         '--users','prototype105-csi@pve')
     run('pveum','acl','modify','/vms/9105','--roles','Prototype105Disk',
@@ -77,19 +82,19 @@ def disposable_config(cfg, expected_uuid):
         raise RuntimeError('VM ownership/generation mismatch')
     disks = {k: v.split(',')[0] for k, v in cfg.items()
              if re.fullmatch(r'(scsi|sata|ide|virtio|unused|efidisk|tpmstate)\d+', k)}
-    if disks != {'scsi0': 'local-lvm:vm-9105-disk-0', 'ide2': ISO}:
+    if disks != {'scsi0': f'local-lvm:vm-{VM}-disk-0', 'ide2': ISO}:
         raise RuntimeError('Unexpected or retained disk reference blocks retirement')
     if cfg.get('lock') or cfg.get('template'):
         raise RuntimeError('Locked/template VM blocks retirement')
 
 
 def retire(expected_uuid):
-    cfg = json.loads(run('pvesh','get','/nodes/pve/qemu/9105/config','--output-format','json'))
+    cfg = json.loads(run('pvesh','get',f'/nodes/pve/qemu/{VM}/config','--output-format','json'))
     disposable_config(cfg, expected_uuid)
-    status = json.loads(run('pvesh','get','/nodes/pve/qemu/9105/status/current','--output-format','json'))
+    status = json.loads(run('pvesh','get',f'/nodes/pve/qemu/{VM}/status/current','--output-format','json'))
     if status['status'] != 'stopped':
         raise RuntimeError('Only a gracefully stopped VM can be retired')
-    run('qm','destroy','9105','--purge','0','--destroy-unreferenced-disks','0')
+    run('qm','destroy',str(VM),'--purge','0','--destroy-unreferenced-disks','0')
     if checked(VM, NAME):raise RuntimeError('VM still exists after destroy')
     print(json.dumps({'vmid': VM, 'status': 'absent', 'retired_uuid': expected_uuid}))
 
@@ -110,18 +115,18 @@ def main():
             retire(args[1]);return
         if action=='inspect':
             ip=dhcp_ack(STATE/'dhcp.pcap')
-            print(json.dumps({'exists':bool(old),'status':old['status'] if old else 'absent','ip':ip,'uuid':json.loads(run('pvesh','get','/nodes/pve/qemu/9105/config','--output-format','json')).get('smbios1','').removeprefix('uuid=') if old else None}));return
+            print(json.dumps({'exists':bool(old),'status':old['status'] if old else 'absent','ip':ip,'uuid':json.loads(run('pvesh','get',f'/nodes/pve/qemu/{VM}/config','--output-format','json')).get('smbios1','').removeprefix('uuid=') if old else None}));return
         if not checked(TEMPLATE,TNAME):
             run('qm','create',str(TEMPLATE),'--name',TNAME,'--memory','4096','--cores','2','--cpu','host','--onboot','0','--scsihw','virtio-scsi-single','--scsi0','local-lvm:24','--ide2',ISO+',media=cdrom','--net0','virtio,bridge=vmbr0','--boot','order=scsi0;ide2','--description','Prototype empty OS template; no installed identity. Owner one-slot-proof.')
             run('qm','template',str(TEMPLATE))
         if not old:
             run('qm','clone',str(TEMPLATE),str(VM),'--full','1','--name',NAME)
-            run('qm','set',str(VM),'--net0','virtio=52:54:00:77:03:05,bridge=vmbr0','--onboot','0','--description','Owner one-slot-proof. Disposable prototype only. Never production.')
+            run('qm','set',str(VM),'--net0','virtio='+':'.join(f'{b:02x}' for b in MAC)+',bridge=vmbr0','--onboot','0','--description','Owner one-slot-proof. Disposable prototype only. Never production.')
             old=checked(VM,NAME)
         ensure_csi_access()
         if old['status']=='stopped':
             pcap=STATE/'dhcp.pcap'
-            proc=subprocess.Popen(['tcpdump','-ni','vmbr0','-U','-w',str(pcap),'udp src port 67 and udp dst port 68 and udp[36:4] = 0x52540077 and udp[40:2] = 0x0305'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+            proc=subprocess.Popen(['tcpdump','-ni','vmbr0','-U','-w',str(pcap),f'udp src port 67 and udp dst port 68 and udp[36:4] = 0x{MAC[:4].hex()} and udp[40:2] = 0x{MAC[4:].hex()}'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
             try:
                 time.sleep(0.3)
                 if proc.poll() is not None:raise RuntimeError('DHCP capture failed')

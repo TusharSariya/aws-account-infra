@@ -4,9 +4,8 @@ import argparse
 import fcntl
 import json
 import time
-from reconcile import STATE, PROTOTYPE, K, PVE, run, record
+from reconcile import STATE, PROTOTYPE, K, PVE, PROVIDER, run, record
 
-PROVIDER = 'proxmox://prototype-secondary/9105'
 
 
 def owned_node(node, name, uid):

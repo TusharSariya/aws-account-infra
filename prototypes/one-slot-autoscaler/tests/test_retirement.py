@@ -73,3 +73,18 @@ def test_same_ip_with_new_vm_generation_never_drains(monkeypatch, tmp_path):
     monkeypatch.setattr(runtime,'run',run)
     with pytest.raises(RuntimeError, match='hardware generation mismatch'):runtime.retire('old','old-uid')
     assert not any('drain' in c or 'shutdown' in c for c in calls)
+
+def test_primary_disk_guard_cannot_delete_secondary_disk(monkeypatch):
+    monkeypatch.setattr(pve,'VM',9107)
+    monkeypatch.setattr(pve,'NAME','PROTOTYPE-autoscaler-primary')
+    cfg=config()
+    with pytest.raises(RuntimeError,match='disk reference'):pve.disposable_config(cfg,UUID)
+    cfg['scsi0']='local-lvm:vm-9107-disk-0,size=24G'
+    pve.disposable_config(cfg,UUID)
+
+
+def test_primary_stateless_slot_does_not_grant_csi_access(monkeypatch):
+    monkeypatch.setattr(pve,'SLOT','primary')
+    def unexpected(*args):raise AssertionError('Primary has no CSI integration yet')
+    monkeypatch.setattr(pve,'run',unexpected)
+    pve.ensure_csi_access()

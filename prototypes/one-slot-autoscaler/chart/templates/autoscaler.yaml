@@ -44,6 +44,7 @@ spec:
             - --cloud-provider=externalgrpc
             - --cloud-config=/config/cloud.yaml
             - --enable-provisioning-requests=true
+            - --expander=priority,least-waste
             - --scale-down-enabled=false
             - --max-node-provision-time=15m
             - --max-total-unready-percentage=100

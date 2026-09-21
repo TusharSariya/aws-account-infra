@@ -1,4 +1,4 @@
-// Throwaway one-slot scale-up proof. Deletion and host shutdown are disabled.
+// Bounded prototype slots. Automatic deletion and host shutdown are disabled.
 package main
 
 import (
@@ -29,8 +29,9 @@ const providerID = "proxmox://prototype-secondary/9105"
 
 type service struct {
 	pb.UnimplementedCloudProviderServer
-	mu  sync.Mutex
-	dir string
+	mu   sync.Mutex
+	dir  string
+	slot string
 }
 type observed struct {
 	Phase string `json:"phase"`
@@ -38,9 +39,24 @@ type observed struct {
 	Error string `json:"error"`
 }
 
-func ng() *pb.NodeGroup {
-	return &pb.NodeGroup{Id: group, MinSize: 0, MaxSize: 1, Debug: "isolated prototype VM9105 only"}
+func (s *service) slotName() string {
+	if s.slot == "primary" {
+		return "primary"
+	}
+	return "secondary"
 }
+func (s *service) groupID() string { return "prototype-" + s.slotName() }
+func (s *service) vmID() int {
+	if s.slotName() == "primary" {
+		return 9107
+	}
+	return 9105
+}
+func (s *service) instanceID() string { return fmt.Sprintf("proxmox://%s/%d", s.groupID(), s.vmID()) }
+func (s *service) ng() *pb.NodeGroup {
+	return &pb.NodeGroup{Id: s.groupID(), MinSize: 0, MaxSize: 1, Debug: fmt.Sprintf("isolated prototype VM%d only", s.vmID())}
+}
+
 func (s *service) readTarget() (int32, error) {
 	b, e := os.ReadFile(filepath.Join(s.dir, "desired.json"))
 	if os.IsNotExist(e) {
@@ -68,11 +84,11 @@ func (s *service) observe() (observed, error) {
 	return o, e
 }
 func (s *service) NodeGroups(context.Context, *pb.NodeGroupsRequest) (*pb.NodeGroupsResponse, error) {
-	return &pb.NodeGroupsResponse{NodeGroups: []*pb.NodeGroup{ng()}}, nil
+	return &pb.NodeGroupsResponse{NodeGroups: []*pb.NodeGroup{s.ng()}}, nil
 }
 func (s *service) NodeGroupForNode(_ context.Context, r *pb.NodeGroupForNodeRequest) (*pb.NodeGroupForNodeResponse, error) {
-	if r.Node != nil && r.Node.ProviderID == providerID {
-		return &pb.NodeGroupForNodeResponse{NodeGroup: ng()}, nil
+	if r.Node != nil && r.Node.ProviderID == s.instanceID() {
+		return &pb.NodeGroupForNodeResponse{NodeGroup: s.ng()}, nil
 	}
 	return &pb.NodeGroupForNodeResponse{}, nil
 }
@@ -88,14 +104,14 @@ func (s *service) Cleanup(context.Context, *pb.CleanupRequest) (*pb.CleanupRespo
 func (s *service) Refresh(context.Context, *pb.RefreshRequest) (*pb.RefreshResponse, error) {
 	return &pb.RefreshResponse{}, nil
 }
-func valid(id string) error {
-	if id != group {
+func (s *service) valid(id string) error {
+	if id != s.groupID() {
 		return status.Error(codes.NotFound, "unknown owned node group")
 	}
 	return nil
 }
 func (s *service) NodeGroupTargetSize(_ context.Context, r *pb.NodeGroupTargetSizeRequest) (*pb.NodeGroupTargetSizeResponse, error) {
-	if e := valid(r.Id); e != nil {
+	if e := s.valid(r.Id); e != nil {
 		return nil, e
 	}
 	s.mu.Lock()
@@ -104,7 +120,7 @@ func (s *service) NodeGroupTargetSize(_ context.Context, r *pb.NodeGroupTargetSi
 	return &pb.NodeGroupTargetSizeResponse{TargetSize: n}, e
 }
 func (s *service) NodeGroupIncreaseSize(_ context.Context, r *pb.NodeGroupIncreaseSizeRequest) (*pb.NodeGroupIncreaseSizeResponse, error) {
-	if e := valid(r.Id); e != nil {
+	if e := s.valid(r.Id); e != nil {
 		return nil, e
 	}
 	s.mu.Lock()
@@ -132,7 +148,7 @@ func (s *service) NodeGroupIncreaseSize(_ context.Context, r *pb.NodeGroupIncrea
 	if e = os.Rename(tmp, filepath.Join(s.dir, "desired.json")); e != nil {
 		return nil, e
 	}
-	log.Print("accepted scale-up: prototype-secondary target=1")
+	log.Printf("accepted scale-up: %s target=1", s.groupID())
 	return &pb.NodeGroupIncreaseSizeResponse{}, nil
 }
 func (s *service) NodeGroupDecreaseTargetSize(context.Context, *pb.NodeGroupDecreaseTargetSizeRequest) (*pb.NodeGroupDecreaseTargetSizeResponse, error) {
@@ -142,7 +158,7 @@ func (s *service) NodeGroupDeleteNodes(context.Context, *pb.NodeGroupDeleteNodes
 	return nil, status.Error(codes.PermissionDenied, "deletion disabled in scale-up proof")
 }
 func (s *service) NodeGroupNodes(_ context.Context, r *pb.NodeGroupNodesRequest) (*pb.NodeGroupNodesResponse, error) {
-	if e := valid(r.Id); e != nil {
+	if e := s.valid(r.Id); e != nil {
 		return nil, e
 	}
 	s.mu.Lock()
@@ -166,18 +182,86 @@ func (s *service) NodeGroupNodes(_ context.Context, r *pb.NodeGroupNodesRequest)
 	if o.Error != "" {
 		st.ErrorInfo = &pb.InstanceErrorInfo{ErrorCode: "ProvisionFailed", ErrorMessage: o.Error}
 	}
-	return &pb.NodeGroupNodesResponse{Instances: []*pb.Instance{{Id: providerID, Status: st}}}, nil
+	return &pb.NodeGroupNodesResponse{Instances: []*pb.Instance{{Id: s.instanceID(), Status: st}}}, nil
 }
 func (s *service) NodeGroupTemplateNodeInfo(_ context.Context, r *pb.NodeGroupTemplateNodeInfoRequest) (*pb.NodeGroupTemplateNodeInfoResponse, error) {
-	if e := valid(r.Id); e != nil {
+	if e := s.valid(r.Id); e != nil {
 		return nil, e
 	}
-	node := &core.Node{ObjectMeta: meta.ObjectMeta{Name: "prototype-slot-template", Labels: map[string]string{"kubernetes.io/hostname": "prototype-slot-template", "kubernetes.io/os": "linux", "kubernetes.io/arch": "amd64", "prototype.homelab/slot": "secondary", "topology.kubernetes.io/region": group, "topology.kubernetes.io/zone": "pve", "prototype.homelab/csi-worker": "true"}}, Spec: core.NodeSpec{ProviderID: providerID}, Status: core.NodeStatus{Capacity: core.ResourceList{core.ResourceCPU: resource.MustParse("2"), core.ResourceMemory: resource.MustParse("4Gi"), core.ResourcePods: resource.MustParse("110"), core.ResourceEphemeralStorage: resource.MustParse("18Gi")}, Allocatable: core.ResourceList{core.ResourceCPU: resource.MustParse("1800m"), core.ResourceMemory: resource.MustParse("3Gi"), core.ResourcePods: resource.MustParse("110"), core.ResourceEphemeralStorage: resource.MustParse("15Gi")}, Conditions: []core.NodeCondition{{Type: core.NodeReady, Status: core.ConditionTrue}}}}
+	node := &core.Node{ObjectMeta: meta.ObjectMeta{Name: "prototype-slot-template", Labels: map[string]string{"kubernetes.io/hostname": "prototype-slot-template", "kubernetes.io/os": "linux", "kubernetes.io/arch": "amd64", "prototype.homelab/slot": s.slotName(), "prototype.homelab/pool": "workers", "topology.kubernetes.io/region": s.groupID(), "topology.kubernetes.io/zone": "pve", "prototype.homelab/csi-worker": fmt.Sprint(s.slotName() == "secondary")}}, Spec: core.NodeSpec{ProviderID: s.instanceID()}, Status: core.NodeStatus{Capacity: core.ResourceList{core.ResourceCPU: resource.MustParse("2"), core.ResourceMemory: resource.MustParse("4Gi"), core.ResourcePods: resource.MustParse("110"), core.ResourceEphemeralStorage: resource.MustParse("18Gi")}, Allocatable: core.ResourceList{core.ResourceCPU: resource.MustParse("1800m"), core.ResourceMemory: resource.MustParse("3Gi"), core.ResourcePods: resource.MustParse("110"), core.ResourceEphemeralStorage: resource.MustParse("15Gi")}, Conditions: []core.NodeCondition{{Type: core.NodeReady, Status: core.ConditionTrue}}}}
 	b, e := node.Marshal()
 	return &pb.NodeGroupTemplateNodeInfoResponse{NodeBytes: b}, e
 }
+
+type multiService struct {
+	*service
+	primary *service
+}
+
+func (m *multiService) resolve(id string) (*service, error) {
+	for _, s := range []*service{m.service, m.primary} {
+		if s.groupID() == id {
+			return s, nil
+		}
+	}
+	return nil, status.Error(codes.NotFound, "unknown owned node group")
+}
+func (m *multiService) NodeGroups(context.Context, *pb.NodeGroupsRequest) (*pb.NodeGroupsResponse, error) {
+	return &pb.NodeGroupsResponse{NodeGroups: []*pb.NodeGroup{m.service.ng(), m.primary.ng()}}, nil
+}
+func (m *multiService) NodeGroupForNode(ctx context.Context, r *pb.NodeGroupForNodeRequest) (*pb.NodeGroupForNodeResponse, error) {
+	for _, s := range []*service{m.service, m.primary} {
+		if r.Node != nil && r.Node.ProviderID == s.instanceID() {
+			return s.NodeGroupForNode(ctx, r)
+		}
+	}
+	return &pb.NodeGroupForNodeResponse{}, nil
+}
+func (m *multiService) NodeGroupTargetSize(ctx context.Context, r *pb.NodeGroupTargetSizeRequest) (*pb.NodeGroupTargetSizeResponse, error) {
+	s, e := m.resolve(r.Id)
+	if e != nil {
+		return nil, e
+	}
+	return s.NodeGroupTargetSize(ctx, r)
+}
+func (m *multiService) NodeGroupIncreaseSize(ctx context.Context, r *pb.NodeGroupIncreaseSizeRequest) (*pb.NodeGroupIncreaseSizeResponse, error) {
+	s, e := m.resolve(r.Id)
+	if e != nil {
+		return nil, e
+	}
+	return s.NodeGroupIncreaseSize(ctx, r)
+}
+func (m *multiService) NodeGroupDecreaseTargetSize(ctx context.Context, r *pb.NodeGroupDecreaseTargetSizeRequest) (*pb.NodeGroupDecreaseTargetSizeResponse, error) {
+	s, e := m.resolve(r.Id)
+	if e != nil {
+		return nil, e
+	}
+	return s.NodeGroupDecreaseTargetSize(ctx, r)
+}
+func (m *multiService) NodeGroupDeleteNodes(ctx context.Context, r *pb.NodeGroupDeleteNodesRequest) (*pb.NodeGroupDeleteNodesResponse, error) {
+	s, e := m.resolve(r.Id)
+	if e != nil {
+		return nil, e
+	}
+	return s.NodeGroupDeleteNodes(ctx, r)
+}
+func (m *multiService) NodeGroupNodes(ctx context.Context, r *pb.NodeGroupNodesRequest) (*pb.NodeGroupNodesResponse, error) {
+	s, e := m.resolve(r.Id)
+	if e != nil {
+		return nil, e
+	}
+	return s.NodeGroupNodes(ctx, r)
+}
+func (m *multiService) NodeGroupTemplateNodeInfo(ctx context.Context, r *pb.NodeGroupTemplateNodeInfoRequest) (*pb.NodeGroupTemplateNodeInfoResponse, error) {
+	s, e := m.resolve(r.Id)
+	if e != nil {
+		return nil, e
+	}
+	return s.NodeGroupTemplateNodeInfo(ctx, r)
+}
 func main() {
-	dir := flag.String("state", "", "private state directory")
+	dir := flag.String("state", "", "private secondary state directory")
+	primaryDir := flag.String("primary-state", "", "optional primary state directory")
 	addr := flag.String("listen", "10.0.0.181:50051", "listen address")
 	cert := flag.String("cert", "", "server certificate")
 	key := flag.String("key", "", "server key")
@@ -199,7 +283,17 @@ func main() {
 		log.Fatal("invalid client CA")
 	}
 	server := grpc.NewServer(grpc.Creds(credentials.NewTLS(&tls.Config{Certificates: []tls.Certificate{pair}, ClientCAs: roots, ClientAuth: tls.RequireAndVerifyClientCert, MinVersion: tls.VersionTLS12})))
-	pb.RegisterCloudProviderServer(server, &service{dir: *dir})
+	var provider pb.CloudProviderServer = &service{dir: *dir}
+	if *primaryDir != "" {
+		if *primaryDir == *dir {
+			log.Fatal("slot state directories must differ")
+		}
+		if e = os.MkdirAll(*primaryDir, 0700); e != nil {
+			log.Fatal(e)
+		}
+		provider = &multiService{service: &service{dir: *dir}, primary: &service{dir: *primaryDir, slot: "primary"}}
+	}
+	pb.RegisterCloudProviderServer(server, provider)
 	l, e := net.Listen("tcp", *addr)
 	if e != nil {
 		log.Fatal(e)

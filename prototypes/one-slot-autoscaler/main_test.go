@@ -76,3 +76,41 @@ func TestScaleUpRefusedDuringLifecycleOperation(t *testing.T) {
 		t.Fatal("target changed", n, err)
 	}
 }
+
+func TestTwoSlotsHaveIndependentStateAndIdentity(t *testing.T) {
+	m := &multiService{service: &service{dir: t.TempDir()}, primary: &service{dir: t.TempDir(), slot: "primary"}}
+	ctx := context.Background()
+	groups, err := m.NodeGroups(ctx, &pb.NodeGroupsRequest{})
+	if err != nil || len(groups.NodeGroups) != 2 {
+		t.Fatal(groups, err)
+	}
+	if _, err = m.NodeGroupIncreaseSize(ctx, &pb.NodeGroupIncreaseSizeRequest{Id: "prototype-primary", Delta: 1}); err != nil {
+		t.Fatal(err)
+	}
+	primary, _ := m.primary.readTarget()
+	secondary, _ := m.service.readTarget()
+	if primary != 1 || secondary != 0 {
+		t.Fatal(primary, secondary)
+	}
+	r, err := m.NodeGroupForNode(ctx, &pb.NodeGroupForNodeRequest{Node: &pb.ExternalGrpcNode{ProviderID: "proxmox://prototype-primary/9107"}})
+	if err != nil || r.NodeGroup.Id != "prototype-primary" {
+		t.Fatal(r, err)
+	}
+	for _, id := range []string{"proxmox://prototype-primary/9105", "proxmox://prototype-secondary/9107", "proxmox://primary/102"} {
+		r, err = m.NodeGroupForNode(ctx, &pb.NodeGroupForNodeRequest{Node: &pb.ExternalGrpcNode{ProviderID: id}})
+		if err != nil || r.NodeGroup != nil {
+			t.Fatal("foreign identity accepted", id)
+		}
+	}
+	template, err := m.NodeGroupTemplateNodeInfo(ctx, &pb.NodeGroupTemplateNodeInfoRequest{Id: "prototype-primary"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := &core.Node{}
+	if err = n.Unmarshal(template.NodeBytes); err != nil {
+		t.Fatal(err)
+	}
+	if n.Labels["prototype.homelab/pool"] != "workers" || n.Labels["prototype.homelab/csi-worker"] != "false" || n.Spec.ProviderID != "proxmox://prototype-primary/9107" {
+		t.Fatal(n)
+	}
+}

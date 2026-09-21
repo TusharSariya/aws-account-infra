@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Scale-up-only prototype reconciler. No production VM or shutdown operations."""
 import json
+import os
 import fcntl
 from pathlib import Path
 import subprocess
@@ -8,11 +9,15 @@ import time
 from homelab_capacity.imm2 import PowerController
 
 HOME = Path.home()
-STATE = HOME/'.local/share/homelab-capacity/slot-state'
+SLOT = os.environ.get('HOMELAB_PROTOTYPE_SLOT','secondary')
+if SLOT not in ('primary','secondary'):raise RuntimeError('Unknown prototype slot')
+VM = 9107 if SLOT=='primary' else 9105
+PROVIDER = f'proxmox://prototype-{SLOT}/{VM}'
+STATE = HOME/'.local/share/homelab-capacity'/('slot-primary' if SLOT=='primary' else 'slot-state')
 PROTOTYPE = HOME/'talos-wifi-prototype'
 CONFIG = HOME/'.config/homelab-capacity/hosts.json'
 K = [str(PROTOTYPE/'kubectl'),'--kubeconfig',str(PROTOTYPE/'private/kubeconfig'),'--request-timeout=10s']
-PVE = ['ssh','-T','-o','BatchMode=yes','-o','StrictHostKeyChecking=yes','-o','ConnectTimeout=5','-o','UserKnownHostsFile='+str(HOME/'.config/homelab-capacity/pve_known_hosts'),'-i',str(HOME/'.config/homelab-capacity/pve_slot'),'root@10.0.0.223']
+PVE = ['ssh','-T','-o','BatchMode=yes','-o','StrictHostKeyChecking=yes','-o','ConnectTimeout=5','-o','UserKnownHostsFile='+str(HOME/'.config/homelab-capacity/pve_known_hosts'),'-i',str(HOME/'.config/homelab-capacity/pve_slot'),'root@'+('10.0.0.224' if SLOT=='primary' else '10.0.0.223')]
 
 
 def run(args, timeout=30):
@@ -49,7 +54,7 @@ def reconcile():
     if cfg['clusters'][0]['name']!='laptop-wifi-PROTOTYPE' or cfg['clusters'][0]['cluster']['server']!='https://10.0.2.15:6443':
         raise RuntimeError('Not the isolated prototype cluster')
     record('waking')
-    PowerController(CONFIG,'secondary').ensure_on()
+    PowerController(CONFIG,SLOT).ensure_on()
     record('waiting-pve')
     deadline=time.monotonic()+600
     while True:
@@ -60,7 +65,7 @@ def reconcile():
             time.sleep(10)
     record('creating')
     result=json.loads(run(PVE+['ensure'],timeout=500))
-    if result.get('vmid')!=9105:raise RuntimeError('Unexpected VM identity')
+    if result.get('vmid')!=VM:raise RuntimeError('Unexpected VM identity')
     ip=result['ip']
     # The address is derived from a DHCP ACK for the fixed prototype MAC by the host helper.
     import ipaddress
@@ -81,21 +86,22 @@ def reconcile():
             node=matches[0];name=node['metadata']['name']
             if 'node-role.kubernetes.io/control-plane' in node['metadata'].get('labels',{}):raise RuntimeError('Refusing control-plane node')
             existing=node['spec'].get('providerID','')
-            if existing not in ('','proxmox://prototype-secondary/9105'):raise RuntimeError('Foreign provider identity')
-            run(K+['patch','node',name,'--type=merge','-p','{"spec":{"providerID":"proxmox://prototype-secondary/9105"}}'])
-            run(K+['label','node',name,'--overwrite','prototype.homelab/csi-worker=true','topology.kubernetes.io/region=prototype-secondary','topology.kubernetes.io/zone=pve'])
+            if existing not in ('',PROVIDER):raise RuntimeError('Foreign provider identity')
+            run(K+['patch','node',name,'--type=merge','-p',json.dumps({'spec':{'providerID':PROVIDER}})])
+            run(K+['label','node',name,'--overwrite','prototype.homelab/csi-worker='+str(SLOT=='secondary').lower(),'topology.kubernetes.io/region=prototype-'+SLOT,'topology.kubernetes.io/zone=pve'])
             run(K+['wait','--for=condition=Ready','node/'+name,'--timeout=180s'],timeout=200)
-            record('waiting-csi',name=name,ip=ip)
-            csi_deadline=time.monotonic()+180
-            while time.monotonic()<csi_deadline:
-                pods=json.loads(run(K+['-n','prototype105-csi','get','pods','--field-selector','spec.nodeName='+name,'-o','json']))['items']
-                csi=run(K+['get','csinode',name,'--ignore-not-found','-o','json']).strip()
-                drivers=json.loads(csi)['spec'].get('drivers',[]) if csi else []
-                if storage_ready(pods,drivers):break
-                time.sleep(2)
-            else:raise TimeoutError('CSI registration/readiness deadline')
+            if SLOT=='secondary':
+                record('waiting-csi',name=name,ip=ip)
+                csi_deadline=time.monotonic()+180
+                while time.monotonic()<csi_deadline:
+                    pods=json.loads(run(K+['-n','prototype105-csi','get','pods','--field-selector','spec.nodeName='+name,'-o','json']))['items']
+                    csi=run(K+['get','csinode',name,'--ignore-not-found','-o','json']).strip()
+                    drivers=json.loads(csi)['spec'].get('drivers',[]) if csi else []
+                    if storage_ready(pods,drivers):break
+                    time.sleep(2)
+                else:raise TimeoutError('CSI registration/readiness deadline')
             # Publish workload eligibility only after all worker prerequisites pass.
-            run(K+['label','node',name,'--overwrite','prototype.homelab/slot=secondary'])
+            run(K+['label','node',name,'--overwrite','prototype.homelab/slot='+SLOT,'prototype.homelab/pool=workers','prototype.homelab/stateless-only='+str(SLOT=='primary').lower()])
             record('ready',name=name,ip=ip);return
         time.sleep(5)
     raise TimeoutError('Fresh node join deadline')
