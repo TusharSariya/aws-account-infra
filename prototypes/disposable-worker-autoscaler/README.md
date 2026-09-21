@@ -1,4 +1,6 @@
-# Bounded external-gRPC autoscaler prototype
+# Disposable-worker autoscaler prototype
+
+Originally named `one-slot-autoscaler`, this prototype now includes two-slot placement, consolidation, and worker lifecycle support. Historical one-slot evidence and deployed resource identities retain their original names.
 
 Throwaway scale-up integration for [issue106](https://github.com/TusharSariyaOrg/aws-account-infra/issues/106). The original proof owns secondary prototype VM9105 and empty template9106. The [two-slot extension](two-slot/README.md) additionally owns primary prototype VM9107/template9108 with independent state. Production VMs100/102/103 and retained-volume prototype9104 are excluded. Autoscaler deletion RPCs and physical shutdown remain disabled. The [primary lifecycle service](lifecycle/README.md) separately supports guarded idle retirement and recreation. The subsequent explicit retirement command is described in [retirement.md](retirement.md).
 
