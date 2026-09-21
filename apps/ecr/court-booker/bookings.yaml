@@ -26,6 +26,38 @@ weekly:
 # other is filled with a horizon_hours (72) offset. Set both to decouple.
 # Disable after a oneshot fires — a later apply with a past `at()` will error.
 oneshot:
+  # Thursday's unlock times have passed; attempt both on Tuesday morning.
+  - name: thu-20260924-court1-1100
+    activity: court1
+    booking_date: "2026-09-24"
+    booking_time: "11:00"
+    invoke_at: "2026-09-22T11:00:00"
+    duration_min: 60
+    people: 1
+    enabled: true
+  - name: thu-20260924-court2-1200
+    activity: court2
+    booking_date: "2026-09-24"
+    booking_time: "12:00"
+    invoke_at: "2026-09-22T12:00:00"
+    duration_min: 60
+    people: 1
+    enabled: true
+  # Friday's attempts use the normal 72-hour unlock offset.
+  - name: fri-20260925-court1-1100
+    activity: court1
+    booking_date: "2026-09-25"
+    booking_time: "11:00"
+    duration_min: 60
+    people: 1
+    enabled: true
+  - name: fri-20260925-court2-1200
+    activity: court2
+    booking_date: "2026-09-25"
+    booking_time: "12:00"
+    duration_min: 60
+    people: 1
+    enabled: true
   - name: tue-1000-open
     activity: court2
     booking_date: "2026-08-18"
