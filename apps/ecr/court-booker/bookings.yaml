@@ -31,7 +31,7 @@ oneshot:
     activity: court1
     booking_date: "2026-09-24"
     booking_time: "11:00"
-    invoke_at: "2026-09-22T10:55:00"
+    invoke_at: "2026-09-22T11:00:00"
     duration_min: 60
     people: 1
     enabled: true
@@ -39,7 +39,7 @@ oneshot:
     activity: court2
     booking_date: "2026-09-24"
     booking_time: "12:00"
-    invoke_at: "2026-09-22T10:55:00"
+    invoke_at: "2026-09-22T12:00:00"
     duration_min: 60
     people: 1
     enabled: true
