@@ -39,17 +39,17 @@ ssh -F ~/.config/aws-account-infra/imm2/ssh_config imm-primary 'power on'
 ssh -F ~/.config/aws-account-infra/imm2/ssh_config imm-secondary 'power on'
 ```
 
-Current access uses the existing privileged operator account. This is a verified operator path, not the final least-privilege controller credential. Give the Ubuntu laptop its own key and a dedicated account with only the permissions proven necessary for status and power actions. Do not copy the Mac private key into Git, Helm values, images or Terraform state. Preserve independently recoverable credential references and known-host trust.
+The Mac operator path uses the existing privileged account. The laptop now has a separate generated SSH key and dedicated account `capacity` in slot2 on each controller with `custom:pr` power/restart permission. Its generated IPMI password is held in a private file, not supplied by an operator at runtime. Do not copy the Mac private key into Git, Helm values, images or Terraform state. Preserve independently recoverable credential references and known-host trust.
 
 ## Library and adapter boundary
 
-Recommended implementation: Paramiko for Python SSH transport, with a small IMM2-specific adapter. OpenSSH is the already verified operator transport. Paramiko support for these exact firmware/key/algorithm combinations must still be exercised; successful OpenSSH authentication is not a Paramiko integration test.
+Updated after live comparison: use pyghmi1.6.19 as the primary power transport. Structured IPMI status and idempotent ensure-on worked from the laptop against both controllers using the dedicated power-only account. Paramiko4.0.0 also passed live SSH checks, but Paramiko5 removed the legacy RSA signature these units require. Keep SSH as the operator/diagnostic path; there is no automatic transport fallback after an uncertain write. See [the implemented power adapter](../../controllers/homelab-capacity/README.md).
 
 The adapter exposes registered host identities and bounded `get_power` / `ensure_on` operations. It sends only allowlisted commands, validates the complete response, distinguishes unknown/unreachable from off, uses bounded connection/command timeouts and re-reads actual state before retrying a timed-out action. IMM2 can report command errors while SSH exits zero, as the failed enrollment demonstrated. Never classify success from exit status alone. Do not expose arbitrary commands, reset, forced power-off, account changes or firmware actions through routine scaling.
 
 For routine shutdown, the coordinator drains workloads, releases retained storage, deletes only owned disposable compute and requests orderly Proxmox shutdown; IMM2 observes completion. An IMM2 hard-off is not a fallback for a failed drain. Power acceptance must not block a short provider RPC throughout firmware boot; publish progress and reconcile asynchronously.
 
-`pyghmi` is an alternative for IPMI power control, but SSH public keys do not authenticate IPMI. Switching would require a separately provisioned supported credential path. We do not need to implement an SSH or IPMI protocol stack.
+`pyghmi` is the selected power transport following live testing; SSH public keys do not authenticate IPMI. Its separate generated credential path is now provisioned on the laptop. We do not need to implement an SSH or IPMI protocol stack.
 
 Sources: [Paramiko SSH client](https://docs.paramiko.org/en/stable/api/client.html), [Lenovo IMM2 users command](https://pubs.lenovo.com/imm2/dw1lm_r_userscommand), [Lenovo IMM2 IPMI support](https://pubs.lenovo.com/imm2/dw1lm_t_managingtheimmwithipmi), and the repository's [captured firmware CLI help](../research/imm2-cli-help.md).
 

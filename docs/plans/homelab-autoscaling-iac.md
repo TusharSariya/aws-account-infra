@@ -6,7 +6,7 @@ Status: technical design, 2026-09-20. No deployment or production ownership tran
 
 The isolated same-host retained-volume proof passed in [issue105](https://github.com/TusharSariyaOrg/aws-account-infra/issues/105): old worker and OS disks deleted, fresh node identity created, original PVC/PV/backend handle and marker verified. This used a manual harness and ISO installation, not the future autoscaler or template clone path.
 
-[IMM2 key access and startup](imm2-power-control.md) are now verified for both physical servers from the Mac. Paramiko is the recommended SSH transport for a small power adapter; the Ubuntu laptop still needs its own controller key/account and the library integration needs testing. Next build the bounded adapter and one isolated zero-to-one worker integration before expanding to both slots.
+[IMM2 key access and startup](imm2-power-control.md) are verified. The [power adapter](../../controllers/homelab-capacity/README.md) now uses pyghmi1.6.19 for structured IPMI status and idempotent wake, live-tested from the laptop against both controllers with a dedicated power-only account. Paramiko4 is an optional tested SSH transport; Paramiko5 is incompatible with the current legacy RSA signatures. One isolated zero-to-one worker integration is being validated before expanding to both slots.
 
 ## Target
 
@@ -95,7 +95,7 @@ Use separate ownership manifests for disposable guest disks and durable volume I
 
 ## Outstanding technical evidence
 
-External-gRPC/provider integration for independent endpoints; template cloning with fresh identity; retained-volume lifecycle through the actual runtime controller on both hosts; laptop SSH credential enrollment and Paramiko compatibility; measured laptop controller footprint; exact worker budgets and node-template resources. These are implementation-fit questions, not new user preference questions. Backup/restore, redundancy and hardware-failure drills remain deferred.
+External-gRPC/provider integration for independent endpoints; template cloning with fresh identity; retained-volume lifecycle through the actual runtime controller on both hosts; measured laptop controller footprint; exact worker budgets and node-template resources. These are implementation-fit questions, not new user preference questions. Backup/restore, redundancy and hardware-failure drills remain deferred.
 
 Primary-source provider and storage findings: [autoscaling research](../research/homelab-power-autoscaling.md), copied from research commit7207381.
 
