@@ -1,8 +1,10 @@
 #!/usr/bin/python3
-"""Forced-command helper for secondary PVE. Can create only prototype IDs9105/9106."""
+"""Forced-command helper for secondary PVE. Owns prototype IDs9105/9106; can retire only stopped, disk-guarded VM9105."""
 import fcntl
 import json
 import os
+import re
+import shlex
 from pathlib import Path
 import socket
 import struct
@@ -59,17 +61,56 @@ def dhcp_ack(path):
     return None
 
 
+def ensure_csi_access():
+    # PVE removes per-VM ACLs when a disposable guest is destroyed. Restore both
+    # sides of the privilege-separated token on every ensure, before readiness.
+    run('pveum','acl','modify','/vms/9105','--roles','Prototype105Disk',
+        '--users','prototype105-csi@pve')
+    run('pveum','acl','modify','/vms/9105','--roles','Prototype105Disk',
+        '--tokens','prototype105-csi@pve!csi')
+
+
+def disposable_config(cfg, expected_uuid):
+    if (cfg.get('name') != NAME or
+        cfg.get('description') != 'Owner one-slot-proof. Disposable prototype only. Never production.' or
+        cfg.get('smbios1') != 'uuid=' + expected_uuid or cfg.get('onboot') != 0):
+        raise RuntimeError('VM ownership/generation mismatch')
+    disks = {k: v.split(',')[0] for k, v in cfg.items()
+             if re.fullmatch(r'(scsi|sata|ide|virtio|unused|efidisk|tpmstate)\d+', k)}
+    if disks != {'scsi0': 'local-lvm:vm-9105-disk-0', 'ide2': ISO}:
+        raise RuntimeError('Unexpected or retained disk reference blocks retirement')
+    if cfg.get('lock') or cfg.get('template'):
+        raise RuntimeError('Locked/template VM blocks retirement')
+
+
+def retire(expected_uuid):
+    cfg = json.loads(run('pvesh','get','/nodes/pve/qemu/9105/config','--output-format','json'))
+    disposable_config(cfg, expected_uuid)
+    status = json.loads(run('pvesh','get','/nodes/pve/qemu/9105/status/current','--output-format','json'))
+    if status['status'] != 'stopped':
+        raise RuntimeError('Only a gracefully stopped VM can be retired')
+    run('qm','destroy','9105','--purge','0','--destroy-unreferenced-disks','0')
+    if checked(VM, NAME):raise RuntimeError('VM still exists after destroy')
+    print(json.dumps({'vmid': VM, 'status': 'absent', 'retired_uuid': expected_uuid}))
+
+
 def main():
-    action=os.environ.get('SSH_ORIGINAL_COMMAND','')
-    if action not in ('inspect','ensure'):
-        raise RuntimeError('Only inspect/ensure allowed; no deletion or arbitrary commands')
+    args=shlex.split(os.environ.get('SSH_ORIGINAL_COMMAND',''))
+    if args in (['inspect'], ['ensure']):
+        action=args[0]
+    elif len(args)==2 and args[0]=='retire' and re.fullmatch(r'[0-9a-f-]{36}',args[1]):
+        action='retire'
+    else:
+        raise RuntimeError('Only inspect, ensure or generation-bound retire allowed')
     STATE.mkdir(mode=0o700,exist_ok=True)
     with (STATE/'lock').open('a') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         old=checked(VM,NAME)
+        if action=='retire':
+            retire(args[1]);return
         if action=='inspect':
             ip=dhcp_ack(STATE/'dhcp.pcap')
-            print(json.dumps({'exists':bool(old),'status':old['status'] if old else 'absent','ip':ip}));return
+            print(json.dumps({'exists':bool(old),'status':old['status'] if old else 'absent','ip':ip,'uuid':json.loads(run('pvesh','get','/nodes/pve/qemu/9105/config','--output-format','json')).get('smbios1','').removeprefix('uuid=') if old else None}));return
         if not checked(TEMPLATE,TNAME):
             run('qm','create',str(TEMPLATE),'--name',TNAME,'--memory','4096','--cores','2','--cpu','host','--onboot','0','--scsihw','virtio-scsi-single','--scsi0','local-lvm:24','--ide2',ISO+',media=cdrom','--net0','virtio,bridge=vmbr0','--boot','order=scsi0;ide2','--description','Prototype empty OS template; no installed identity. Owner one-slot-proof.')
             run('qm','template',str(TEMPLATE))
@@ -77,6 +118,7 @@ def main():
             run('qm','clone',str(TEMPLATE),str(VM),'--full','1','--name',NAME)
             run('qm','set',str(VM),'--net0','virtio=52:54:00:77:03:05,bridge=vmbr0','--onboot','0','--description','Owner one-slot-proof. Disposable prototype only. Never production.')
             old=checked(VM,NAME)
+        ensure_csi_access()
         if old['status']=='stopped':
             pcap=STATE/'dhcp.pcap'
             proc=subprocess.Popen(['tcpdump','-ni','vmbr0','-U','-w',str(pcap),'udp src port 67 and udp dst port 68 and udp[36:4] = 0x52540077 and udp[40:2] = 0x0305'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)

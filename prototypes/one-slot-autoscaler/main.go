@@ -21,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"syscall"
 )
 
 const group = "prototype-secondary"
@@ -108,6 +109,15 @@ func (s *service) NodeGroupIncreaseSize(_ context.Context, r *pb.NodeGroupIncrea
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	f, err := os.OpenFile(filepath.Join(s.dir, "lifecycle.lock"), os.O_CREATE|os.O_RDWR, 0600)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	if err = syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+		return nil, status.Error(codes.Unavailable, "slot lifecycle operation in progress")
+	}
+	defer syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
 	n, e := s.readTarget()
 	if e != nil {
 		return nil, e

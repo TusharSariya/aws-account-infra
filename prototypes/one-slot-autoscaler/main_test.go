@@ -4,6 +4,9 @@ import (
 	"context"
 	pb "homelab.example/one-slot-prototype/protos"
 	core "k8s.io/api/core/v1"
+	"os"
+	"path/filepath"
+	"syscall"
 	"testing"
 )
 
@@ -51,5 +54,25 @@ func TestTemplateRoundtrip(t *testing.T) {
 	}
 	if n.Labels["prototype.homelab/slot"] != "secondary" || n.Status.Allocatable.Cpu().MilliValue() != 1800 {
 		t.Fatal("incorrect scheduling template")
+	}
+}
+
+func TestScaleUpRefusedDuringLifecycleOperation(t *testing.T) {
+	s := &service{dir: t.TempDir()}
+	f, err := os.OpenFile(filepath.Join(s.dir, "lifecycle.lock"), os.O_CREATE|os.O_RDWR, 0600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	if err = syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+		t.Fatal(err)
+	}
+	defer syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
+	if _, err = s.NodeGroupIncreaseSize(context.Background(), &pb.NodeGroupIncreaseSizeRequest{Id: group, Delta: 1}); err == nil {
+		t.Fatal("raced lifecycle operation")
+	}
+	n, err := s.readTarget()
+	if err != nil || n != 0 {
+		t.Fatal("target changed", n, err)
 	}
 }

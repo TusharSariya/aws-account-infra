@@ -1,6 +1,6 @@
 # One-slot external-gRPC autoscaler prototype
 
-Throwaway scale-up integration for [issue106](https://github.com/TusharSariyaOrg/aws-account-infra/issues/106). The runtime owns only secondary prototype VM9105 and empty template9106. Production VMs100/102/103 and retained-volume prototype9104 are excluded. Deletion and physical shutdown RPCs are disabled.
+Throwaway scale-up integration for [issue106](https://github.com/TusharSariyaOrg/aws-account-infra/issues/106). The runtime owns only secondary prototype VM9105 and empty template9106. Production VMs100/102/103 and retained-volume prototype9104 are excluded. Automatic deletion RPCs and physical shutdown remain disabled. The subsequent explicit retirement command is described in [retirement.md](retirement.md).
 
 The subsequent [Kueue extension](kueue/README.md) adds suspended-Job capacity requests and negative fit checks to this same isolated provider. The ordinary-Job evidence below describes the earlier baseline.
 
@@ -9,7 +9,7 @@ The subsequent [Kueue extension](kueue/README.md) adds suspended-Job capacity re
 - Upstream Cluster Autoscaler1.36.1 runs through the included Helm chart in the isolated `laptop-wifi-PROTOTYPE` cluster. Its image is pinned by digest; scale-down is disabled.
 - The small Go service implements upstream external-gRPC protobufs, accepts a single zero-to-one request and atomically records desired size. Calls do not wait for host/VM boot. It advertises one group with min0/max1 and conservative allocatable capacity (1.8CPU,3GiB,15GiB ephemeral). Production fit budgets are not inferred from this small prototype.
 - A Python reconciler on the Ubuntu laptop consumes desired state, invokes the pyghmi power adapter, waits for PVE, creates the guest, enrolls a fresh Talos identity, and waits for Node Ready plus an actual ready CSI Pod and registered CSI driver. It publishes the workload selector label only after these prerequisites pass.
-- The secondary PVE helper is reachable only through a dedicated laptop key with an OpenSSH forced command and forwarding/PTY restrictions. Its only operations are `inspect` and `ensure` for the two fixed prototype IDs/names. It cannot delete guests or run arbitrary commands.
+- The secondary PVE helper is reachable only through a dedicated laptop key with an OpenSSH forced command and forwarding/PTY restrictions. Its operations are `inspect` and `ensure` for the two fixed prototype IDs/names, plus generation-bound `retire` for VM 9105 only. Retirement requires a stopped VM and exactly its own disposable OS disk; retained or unknown disk references block it. It cannot run arbitrary commands.
 - VM9105 is cloned with a full disposable OS disk from an empty template, then installed from the existing Talos1.13.9 ISO. The template contains no installed Talos identity. This proves orchestration and fresh enrollment, not an optimized preinstalled image pipeline.
 - The helper captures a DHCP ACK for the exact prototype MAC to discover the assigned address; it never guesses an unused LAN address. Existing prototype worker configuration supplies the route to the laptop control plane.
 

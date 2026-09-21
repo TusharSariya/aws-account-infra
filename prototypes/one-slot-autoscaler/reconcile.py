@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Scale-up-only prototype reconciler. No production VM or shutdown operations."""
 import json
+import fcntl
 from pathlib import Path
 import subprocess
 import time
@@ -31,6 +32,17 @@ def storage_ready(pods, drivers):
     ) and any(d['name']=='csi.proxmox.sinextra.dev' for d in drivers)
 
 
+def wait_talos(ip):
+    deadline = time.monotonic() + 180
+    while time.monotonic() < deadline:
+        try:
+            run([str(PROTOTYPE/'talosctl'), '--nodes', ip, 'version', '--insecure'], timeout=10)
+            return
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            time.sleep(2)
+    raise TimeoutError('Talos maintenance API readiness deadline')
+
+
 def reconcile():
     # This cluster check runs before any mutation, including host wake.
     cfg=json.loads(run(K+['config','view','--minify','-o','json']))
@@ -57,6 +69,8 @@ def reconcile():
     nodes=json.loads(run(K+['get','nodes','-o','json']))['items']
     matching=[n for n in nodes if any(a['type']=='InternalIP' and a['address']==ip for a in n['status'].get('addresses',[]))]
     if not matching:
+        record('waiting-talos',ip=ip)
+        wait_talos(ip)
         run([str(PROTOTYPE/'talosctl'),'apply-config','--insecure','--nodes',ip,'--file',str(PROTOTYPE/'private/peer.yaml')],timeout=120)
     record('joining',ip=ip)
     deadline=time.monotonic()+600
@@ -91,7 +105,12 @@ if __name__=='__main__':
     STATE.mkdir(mode=0o700,parents=True,exist_ok=True)
     while True:
         if (STATE/'desired.json').exists() and json.loads((STATE/'desired.json').read_text())['target']==1:
-            try:reconcile()
+            try:
+                with (STATE/"lifecycle.lock").open("a") as lock:
+                    fcntl.flock(lock, fcntl.LOCK_EX)
+                    if json.loads((STATE/"desired.json").read_text())["target"] != 1:
+                        continue
+                    reconcile()
             except Exception as exc:
                 record('failed',error=type(exc).__name__)
                 raise

@@ -1,0 +1,16 @@
+{
+  "result": "marker verified",
+  "replacementNode": "talos-pz8-98c",
+  "nodeUID": "0f95ac3f-24da-432f-8ea0-9d8db6a51e5f",
+  "hardwareUUID": "d4970c6b-3aba-4032-9628-9551ea7714f5",
+  "claimUID": "e4c86bd7-6e11-4bdb-9a20-4f7729f7239e",
+  "pvUID": "e51cf5b6-bb0b-46c7-9ddf-84d089d617e6",
+  "volumeHandle": "prototype-secondary/pve/local-lvm/vm-9199-pvc-e4c86bd7-6e11-4bdb-9a20-4f7729f7239e",
+  "marker": "runtime-f8eeeaf69a3c8a45116ccc287d558395",
+  "volumeAttachment": {
+    "name": "csi-99ad8b9ab997b9334f4737571375acfdabc40ca11cf8a9e619d64c103e87aa28",
+    "node": "talos-pz8-98c",
+    "attached": true
+  },
+  "backendAttachment": "local-lvm:vm-9199-pvc-e4c86bd7-6e11-4bdb-9a20-4f7729f7239e,backup=0,iothread=1,replicate=0,size=1G,wwn=0x5056432d49443031"
+}

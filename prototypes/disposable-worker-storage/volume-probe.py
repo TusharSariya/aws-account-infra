@@ -34,21 +34,24 @@ def resources(node, storage_class):
                   'containers': [{'name': 'probe',
                     'image': 'docker.io/library/busybox:1.37.0@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0',
                     'command': ['sleep', '86400'],
-                    'securityContext': {'allowPrivilegeEscalation': False, 'capabilities': {'drop': ['ALL']}},
+                    'securityContext': {'readOnlyRootFilesystem': True, 'allowPrivilegeEscalation': False, 'capabilities': {'drop': ['ALL']}},
                     'resources': {'requests': {'cpu': '10m', 'memory': '16Mi'}, 'limits': {'memory': '64Mi'}},
                     'volumeMounts': [{'name': 'data', 'mountPath': '/data'}]}],
                   'volumes': [{'name': 'data', 'persistentVolumeClaim': {'claimName': CLAIM}}]}}
     ]
 
 def main():
+    global NS
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('action', choices=['render', 'create', 'release', 'verify'])
+    p.add_argument('--namespace', default=NS)
     p.add_argument('--node', required=True)
     p.add_argument('--storage-class', required=True)
     p.add_argument('--kubectl', default='./kubectl')
     p.add_argument('--kubeconfig', default='private/kubeconfig')
     p.add_argument('--evidence', type=Path, default=Path('private/storage-probe.json'))
     a = p.parse_args()
+    NS = a.namespace
     docs = resources(a.node, a.storage_class)
     if a.action == 'render':
         print(json.dumps({'apiVersion': 'v1', 'kind': 'List', 'items': docs}, indent=2))
