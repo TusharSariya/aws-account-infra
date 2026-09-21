@@ -21,6 +21,8 @@ For the repeat, the test Job was removed and the first node drained and cleanly 
 - 31 Python tests passed across power behavior and CSI readiness; three Go tests passed for group ownership, bounded scale requests and protobuf behavior. Helm lint passed.
 - Production nodes `talos-cp-01`, `talos-worker-01` and `talos-worker-02` were all Ready after the proof. Protected VMs 100/102/103 and retained-volume prototype 9104 were excluded from provisioning and teardown.
 
+The repository security check subsequently caught unused endpoint-write RBAC inherited from the upstream example and a missing read-only root filesystem on the proof Job. Endpoint writes were removed (leader election is disabled), the Job was hardened, and the Helm release was updated. The hardened Job completed on the existing worker. The captured JSON above remains the earlier zero-to-one run, not this final manifest check.
+
 ## Deliberate limits and live state
 
 Both physical hosts were already powered on. This proves the already-on power path, not a pyghmi off-to-on cycle or physical scale-to-zero. Automatic deletion and physical shutdown are disabled. Kueue admission, two-slot placement, runtime retained-volume deletion, app policies and production migration remain subsequent work.

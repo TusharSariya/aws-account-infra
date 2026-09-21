@@ -27,7 +27,6 @@ rules:
   - ''
   resources:
   - events
-  - endpoints
   verbs:
   - create
   - patch
@@ -42,15 +41,6 @@ rules:
   resources:
   - pods/status
   verbs:
-  - update
-- apiGroups:
-  - ''
-  resourceNames:
-  - cluster-autoscaler
-  resources:
-  - endpoints
-  verbs:
-  - get
   - update
 - apiGroups:
   - ''
