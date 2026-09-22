@@ -14,6 +14,26 @@ LOCAL_KUBECTL = Path.home() / ".local/share/main-control-plane/private/kubectl"
 KUBECTL = str(LOCAL_KUBECTL) if LOCAL_KUBECTL.exists() else "kubectl"
 
 ROOT = Path(__file__).resolve().parent
+
+
+def verify_nonroot(objects):
+    for obj in objects:
+        if obj["kind"] not in ["Deployment", "StatefulSet"]:
+            continue
+        pod = obj["spec"]["template"]["spec"]
+        for container in pod.get("containers", []) + pod.get("initContainers", []):
+            effective = {
+                **pod.get("securityContext", {}),
+                **container.get("securityContext", {}),
+            }
+            assert effective.get("runAsNonRoot") is True, (
+                obj["metadata"]["name"],
+                container["name"],
+                "must run non-root",
+            )
+            assert effective.get("runAsUser") != 0
+
+
 spec = importlib.util.spec_from_file_location(
     "main_renderer", ROOT / "monitoring/render.py"
 )
@@ -76,9 +96,16 @@ for name, lock in json.loads((ROOT / "argocd/release.json").read_text())[
         assert (ROOT / "argocd/crds" / name).read_bytes() == (
             ROOT / "argocd/vendor" / name
         ).read_bytes()
-for o in yaml.safe_load_all(
-    subprocess.check_output([KUBECTL, "kustomize", str(ROOT / "argocd")], text=True)
-):
+verify_nonroot(
+    yaml.safe_load_all((ROOT / "argocd/vendor/namespace-install.yaml").read_text())
+)
+argocd = list(
+    yaml.safe_load_all(
+        subprocess.check_output([KUBECTL, "kustomize", str(ROOT / "argocd")], text=True)
+    )
+)
+verify_nonroot(argocd)
+for o in argocd:
     assert o["kind"] not in [
         "Application",
         "ClusterRole",
