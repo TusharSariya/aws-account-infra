@@ -22,6 +22,16 @@ obj=copy.deepcopy(base);obj['spec']['schedulingGates']=[];case('missing gate',ob
 obj=copy.deepcopy(base);obj['metadata']['labels']={};case('missing queue',obj,False)
 obj=copy.deepcopy(base);obj['spec']['nodeName']='talos-worker-01';case('direct binding',obj,False)
 obj=copy.deepcopy(base);obj['spec']['serviceAccountName']='ai-operator-job';obj['metadata']['labels']={};obj['spec']['schedulingGates']=[];case('operator bypasses queue',obj,True)
+hook=copy.deepcopy(base)
+hook['metadata']['labels']={}
+hook['metadata']['ownerReferences']=[dict(apiVersion='batch/v1',kind='Job',name='argo-workflows-crd-install')]
+hook['spec']['serviceAccountName']='argo-workflows-crd-install'
+hook['spec']['schedulingGates']=[]
+case('named Argo CRD hook is operational',hook,True)
+obj=copy.deepcopy(hook);obj['metadata']['ownerReferences'][0]['name']='ordinary-job';case('hook account alone cannot bypass',obj,False)
+obj=copy.deepcopy(hook);obj['spec']['serviceAccountName']='homelab-job';case('hook name alone cannot bypass',obj,False)
+req=copy.deepcopy(request);req['namespace']='homelab-models';case('hook cannot bypass in another namespace',hook,False,req)
+obj=copy.deepcopy(hook);obj['metadata']['labels']=copy.deepcopy(base['metadata']['labels']);case('operational hook must stay outside queue',obj,False)
 obj=copy.deepcopy(base);obj['spec']['schedulingGates']=[];req=copy.deepcopy(request);req['operation']='UPDATE';case('unprivileged gate removal',obj,False,req,base)
 req=copy.deepcopy(req);req['userInfo']['username']='system:serviceaccount:kueue-system:kueue-controller-manager';case('Kueue gate removal',obj,True,req,base)
 Path(sys.argv[1]).write_text(json.dumps(dict(variables=policy['spec']['variables'],validations=policy['spec']['validations'],cases=cases)))

@@ -19,6 +19,9 @@ spec:
       expression: >-
         request.namespace == 'homelab-jobs' && object.spec.serviceAccountName in
         ['ai-operator-job', 'argo-controller', 'argo-server'] ||
+        request.namespace == 'homelab-jobs' && object.spec.serviceAccountName == 'argo-workflows-crd-install' &&
+        has(object.metadata.ownerReferences) && object.metadata.ownerReferences.exists(o,
+          o.apiVersion == 'batch/v1' && o.kind == 'Job' && o.name == 'argo-workflows-crd-install') ||
         request.namespace == 'arc-runners' && has(object.metadata.ownerReferences) &&
         object.metadata.ownerReferences.exists(o, o.apiVersion == 'actions.github.com/v1alpha1' && o.kind == 'AutoscalingListener')
     - name: queue
