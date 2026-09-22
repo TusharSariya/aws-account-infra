@@ -17,17 +17,22 @@ class DeploymentPreflightTests(unittest.TestCase):
             'actions.github.com/organization': 'TusharSariyaOrg',
             'actions.github.com/repository': 'aws-account-infra'}}, 'status': {'phase': 'Running'}}
 
-    def run_preflight(self, pods):
+    def run_preflight(self, pods, memory='84Gi'):
         def run(command):
             if 'pods' in command: value = {'items': pods}
             elif 'deployment' in command: value = {'spec': {'replicas': 0}}
             elif 'clusterqueue' in command:
                 value = {'spec': {'resourceGroups': [{'flavors': [{'resources': [
-                    {'name': 'cpu', 'nominalQuota': '31.5'}, {'name': 'memory', 'nominalQuota': '144Gi'}]}]}]}}
+                    {'name': 'cpu', 'nominalQuota': '31.25'}, {'name': 'memory', 'nominalQuota': memory}]}]}]}}
             elif 'storageclass' in command: value = {'reclaimPolicy': 'Retain', 'allowVolumeExpansion': False}
             else: value = {'mounted': True, 'free': 200 * 1024**3}
             return json.dumps(value).encode()
         return postgres_preflight.verify('kubectl', run)
+
+    def test_old_memory_pool_must_be_reduced_before_deployment(self):
+        self.run_preflight([])
+        with self.assertRaisesRegex(ValueError, '84 GiB'):
+            self.run_preflight([], memory='144Gi')
 
     def test_only_this_repositorys_own_runner_is_exempt(self):
         with patch.dict(os.environ, {'GITHUB_ACTIONS': 'true', 'GITHUB_REPOSITORY': 'TusharSariyaOrg/aws-account-infra', 'RUNNER_NAME': 'deploy-runner'}, clear=True), patch('socket.gethostname', return_value='deploy-runner'):

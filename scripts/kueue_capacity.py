@@ -41,10 +41,10 @@ def verify(node, pods, reserve, pool=None):
         raise ValueError('Expected talos-worker-01')
     if not any(c['type'] == 'Ready' and c['status'] == 'True' for c in node['status']['conditions']):
         raise ValueError('Worker must be Ready')
-    # The 172-GiB guest exposes 168.92 GiB after kernel/firmware reservations.
-    # The allocatable check below remains the admission budget authority.
-    if quantity(node['status']['capacity']['memory']) < 168 * 1024**3:
-        raise ValueError('Restore worker to 172 GiB before enabling the pool')
+    # Use observed allocatable memory, including kernel/firmware reservations.
+    # The reviewed pool plus platform reserve must fit after any VM resize.
+    if quantity(node['status']['allocatable']['memory']) > quantity(node['status']['capacity']['memory']):
+        raise ValueError('Node allocatable memory exceeds reported capacity')
     result = {}
     for resource in ('cpu', 'memory'):
         quota = pool[resource]

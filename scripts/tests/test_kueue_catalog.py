@@ -20,7 +20,7 @@ class CatalogTests(unittest.TestCase):
             entries['homelab-talos-custom'] = dict(cpu=3.001, memory=5121, scratch=6145, docker=True)
             (path / 'runner-catalog.json').write_text(json.dumps(entries))
             validate_rendered(rendered_values(path), path)
-            for resource, value in [('cpu', 31.501), ('memory', 147457), ('scratch', 245761), ('cpu', 0), ('cpu', .0001)]:
+            for resource, value in [('cpu', 31.251), ('memory', 86017), ('scratch', 245761), ('cpu', 0), ('cpu', .0001)]:
                 invalid = copy.deepcopy(entries)
                 invalid['homelab-talos-custom'][resource] = value
                 (path / 'runner-catalog.json').write_text(json.dumps(invalid))

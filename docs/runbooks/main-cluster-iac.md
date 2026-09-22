@@ -69,6 +69,14 @@ physical power off, and the laptop API, etcd and internal/external DNS passed ag
 
 ## Remaining Helm rollout
 
+The independent CI/admission root was subsequently applied through its guarded
+saved-plan administrator path during PR 117 verification. Its follow-up plan was
+empty and PV/PVC identities and bindings were unchanged. This also corrected the
+stale 172-GiB-worker assumption: the primary's reviewed compute pool is now
+31.25 CPUs / 84 GiB, with a 6.5-CPU / 24-GiB platform reserve, checked against
+observed allocatable capacity. Dormant AI requests and data remain unchanged.
+The Talos and application release rollout below still uses the `apply` label.
+
 These steps require an explicitly approved temporary host wake:
 
 1. Wake through IMM using the manual runbook. Confirm source VM 100 remains off.
