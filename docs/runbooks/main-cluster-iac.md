@@ -4,7 +4,8 @@ Configuration reconciliation is on `fix/main-cluster-iac-reconciliation`, based 
 current main, rather than the stale `docs/talos-homelab-plans` checkout used during
 migration. Both physical application hosts normally remain intentionally off.
 An approved temporary wake on 2026-09-22 verified refreshed Proxmox plans and
-permissions. Live Helm upgrades have not been run during this reconciliation.
+permissions. Talos and application Helm upgrades use the reviewed CI apply
+workflow; PR 117 records the rollout checks and execution status.
 
 | Layer | Canonical owner |
 | --- | --- |
@@ -67,7 +68,7 @@ remains the source for a future workload restore. No scheduled work was resumed.
 Both Talos workers were then shut down gracefully. Both IMM controllers confirmed
 physical power off, and the laptop API, etcd and internal/external DNS passed again.
 
-## Remaining Helm rollout
+## Helm rollout procedure
 
 The independent CI/admission root was subsequently applied through its guarded
 saved-plan administrator path during PR 117 verification. Its follow-up plan was
@@ -93,7 +94,8 @@ These steps require an explicitly approved temporary host wake:
 6. Verify ready workloads, essential placement, unchanged storage and empty follow-up
    plans; gracefully return both physical hosts to off if that remains the operator intent.
 
-Until that rollout, live placement remains the already-tested migration placement;
-new Terraform/Helm configuration describes it, but has not been applied to release
-metadata. Argo CD still has no Applications or repository credentials and does not
-own these releases. Monitoring and GitOps pause while primary sleeps.
+A configuration change is deployed only after the guarded apply and acceptance
+checks pass; successful rendering alone does not update Helm release metadata.
+The CI/admission root additionally requires an empty follow-up plan. Argo CD has
+no Applications or repository credentials and does not own these releases.
+Monitoring and GitOps pause while primary sleeps.
