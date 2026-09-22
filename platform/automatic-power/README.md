@@ -64,7 +64,10 @@ Graceful application, worker VM, and physical host shutdown follows the idle per
 - [x] Wake-only acceptance from both servers off and Kueue overflow.
 - [x] Secondary, then primary automatic shutdown acceptance (real configured 5-minute window).
 - [x] Both-hosts-off DNS/API/Pi-hole checks and coordinator restart.
-- [ ] Repeat physical laptop reboot/Wi-Fi test for this rollout; previous migration proof is linked in the evidence.
+- [x] Cold-wake CI completion, post-cycle storage/monitoring/Argo recovery and restored schedules.
+
+The physical laptop reboot/Wi-Fi cycle was proved during the earlier migration,
+not repeated during this rollout. See the explicit scope note in the evidence.
 
 The private `acceptance.json` requires `always_on`, `dns`, `capacity`, `storage`,
 `wake`, and `independence` true, and an explicit `shutdown_hosts` list. Receipts are
