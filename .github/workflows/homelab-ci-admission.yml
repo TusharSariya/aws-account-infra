@@ -85,7 +85,7 @@ jobs:
         run: |
           uv run --with PyYAML==6.0.3 python scripts/homelab-ci.py setup
           uv run --with pytest --with PyYAML==6.0.3 --project controllers/homelab-capacity python -m pytest controllers/homelab-capacity/tests -q
-          PYTHONPATH=scripts uv run --with pytest python -m pytest scripts/tests/test_homelab_node_readiness.py scripts/tests/test_homelab_power_hold.py -q
+          PYTHONPATH=scripts uv run --with pytest --with PyYAML==6.0.3 python -m pytest scripts/tests/test_homelab_node_readiness.py scripts/tests/test_homelab_power_hold.py scripts/tests/test_ci_management_preflight.py -q
           uv run --with PyYAML==6.0.3 python scripts/runner_catalog.py
           PYTHONPATH=scripts uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p 'test_kueue_*.py'
           for pattern in 'test_local_cache.py' 'test_capacity_*.py' 'test_cache_download.py' 'test_cache_transport.py' 'test_build_cache.py' 'test_nexus_observation.py' 'test_registry_enrollment.py' 'test_ci_pod_usage.py'; do

@@ -235,7 +235,7 @@ class Session:
         if status['spec']['stage'] != 'running':
             raise StageError('Installed control plane must be running before adoption/update')
         self.run(self.tc + ['etcd', 'members'])
-        self.run(self.tc + ['kubeconfig', self.private / 'kubeconfig', '--merge=false'])
+        self.run(self.tc + ['kubeconfig', self.private / 'kubeconfig', '--merge=false', '--force'])
         kube = yaml.safe_load((self.private / 'kubeconfig').read_text())
         if kube['clusters'][0]['cluster']['server'] != 'https://10.0.0.231:6443':
             raise StageError('Unexpected Kubernetes API target')

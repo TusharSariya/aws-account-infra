@@ -25,12 +25,8 @@ runs:
         echo "path=$(mktemp -d "$RUNNER_TEMP/talos-ci.XXXXXXXX")" >> "$GITHUB_OUTPUT"
     - name: Set up pinned Talos tools and verified charts
       shell: bash
-      env:
-        MODE: ${{ inputs.mode }}
-      run: |
-        extra=()
-        if [[ "$MODE" == apply ]]; then extra+=(--acceptance); fi
-        uv run scripts/talos-ci.py setup "${extra[@]}"
+      # Plans also need the verified kubectl binary for their maintenance hold.
+      run: uv run scripts/talos-ci.py setup --acceptance
     - name: Prepare original private Talos identity
       shell: bash
       env:

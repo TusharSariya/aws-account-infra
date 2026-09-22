@@ -56,7 +56,6 @@ runs:
       env:
         PRIVATE: ${{ steps.private.outputs.path }}
       run: |
-        uv run scripts/talos-ci.py connect --private "$PRIVATE"
         install -m 700 "$HOME/.cache/aws-account-infra/talos/kubectl-v1.36.3" "$PRIVATE/kubectl"
         PATH="$PRIVATE:$PATH" python3 scripts/homelab-power-hold.py acquire --kubeconfig "$PRIVATE/kubeconfig" --receipt "$PRIVATE/power-hold.json" --hosts primary --wait
     - name: Execute selected acceptance or maintenance operation

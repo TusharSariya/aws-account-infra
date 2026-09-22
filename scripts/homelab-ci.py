@@ -102,11 +102,6 @@ def preflight(kube):
         raise ValueError('Keep AI off with termination observed throughout migration')
     config = yaml.safe_load((CONFIG / 'pool-values.yaml').read_text())
     catalog = json.loads((CONFIG / 'runner-catalog.json').read_text())
-    # Updating a scale set must not interrupt an assigned or gated runner.
-    if any(p['metadata']['namespace'] == 'arc-runners'
-           and 'kueue.x-k8s.io/queue-name' in p['metadata'].get('labels', {})
-           and p.get('status', {}).get('phase') not in ('Succeeded', 'Failed') for p in pods):
-        raise ValueError('Wait for all existing runners to become idle before admission deployment')
     node = get('get', 'node', 'talos-worker-01')
     summary = json.loads(run(kube + ['get', '--raw=/api/v1/nodes/talos-worker-01/proxy/stats/summary']))
     from kueue_capacity import verify_storage
@@ -232,14 +227,21 @@ def enroll_registry(kube, source):
     run(kube + ['apply', '--server-side', '--field-manager=homelab-ci-credentials', '-f', '-'], json.dumps(secret).encode())
 
 
+def require_idle_runners(pods):
+    """Deployments must not interrupt jobs; persistent listeners are not jobs."""
+    for pod in pods:
+        if pod['metadata']['namespace'] != 'arc-runners' or pod.get('status', {}).get('phase') in ('Succeeded', 'Failed'):
+            continue
+        owners = pod['metadata'].get('ownerReferences', [])
+        if len(owners) == 1 and owners[0].get('kind') == 'AutoscalingListener':
+            continue
+        raise ValueError('Wait for assigned/gated runners before updating CI services')
+
+
 def management_preflight(kube):
     """Potential quotas are validated even when workers are powered off."""
     from kueue_capacity import quantity
     nodes = json.loads(run(kube + ['get', 'nodes', '-o', 'json']))['items']
-    pods = json.loads(run(kube + ['get', 'pods', '-A', '-o', 'json']))['items']
-    if any(p['metadata']['namespace'] == 'arc-runners' and
-           p.get('status', {}).get('phase') not in ('Succeeded', 'Failed') for p in pods):
-        raise ValueError('Wait for assigned/gated runners before updating scale sets')
     pool = yaml.safe_load((CONFIG / 'pool-values.yaml').read_text())
     report = {}
     for name in ['talos-worker-01', 'talos-worker-02']:
@@ -325,6 +327,8 @@ def main():
             print('PASS: GitHub App Secret enrolled privately')
             return
         backend()
+        if args.operation == 'apply':
+            require_idle_runners(json.loads(run(kube + ['get', 'pods', '-A', '-o', 'json']))['items'])
         report = preflight(kube) if args.scope == 'cache' else management_preflight(kube)
         command = ['tofu', '-chdir=' + str(TF)]
         plan, receipt = private / 'ci.tfplan', private / 'ci-record.json'
