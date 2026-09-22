@@ -43,7 +43,16 @@ def run(command, data=None, *, timeout=2400):
         markers = {'openapi': 'schema-discovery', 'timeout': 'timeout', 'deadline exceeded': 'deadline',
                    'invalid ownership': 'ownership', 'already exists': 'already-exists',
                    'another operation': 'pending-operation', 'forbidden': 'forbidden',
-                   'validation': 'validation', 'invalid': 'invalid', 'cannot re-use': 'release-name-in-use'}
+                   'validation': 'validation', 'invalid': 'invalid', 'cannot re-use': 'release-name-in-use',
+                   'provider produced inconsistent final plan': 'provider-inconsistent-final-plan',
+                   'provider produced invalid plan': 'provider-invalid-plan',
+                   'inconsistent result after apply': 'provider-inconsistent-result',
+                   'error while running post render': 'post-render',
+                   'error running post-renderer': 'post-render',
+                   'failed to create patch': 'patch', 'cannot patch': 'patch',
+                   'failed to render': 'render', 'failed to download': 'download',
+                   'connection refused': 'connection-refused', 'no such host': 'dns',
+                   'context canceled': 'canceled', 'error acquiring the state lock': 'state-lock'}
         categories = sorted({value for key, value in markers.items() if key in diagnostic})
         if categories:
             print('Application diagnostic categories: ' + ','.join(categories), file=sys.stderr)
