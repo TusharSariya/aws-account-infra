@@ -56,7 +56,7 @@ Every workload maps to a tier through its declared runtime policy.
 
 ## Open findings
 
-Tracking issue: see the PR description.
+Tracking issue: #134.
 
 | Priority | Issue | Finding |
 |---|---|---|
