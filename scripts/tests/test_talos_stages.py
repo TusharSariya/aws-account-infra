@@ -44,22 +44,23 @@ class StageTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             session = ci.Session.__new__(ci.Session)
             session.private = Path(d)
+            session.env = {"KUBECTL": "kubectl"}
             plan = session.private / 'tfplan'
             plan.write_bytes(b'original-test-plan')
             (session.private / 'guarded-plan.sha256').write_text(hashlib.sha256(plan.read_bytes()).hexdigest())
             command = ['tofu', '-chdir=live/talos/homelab', 'apply', '-input=false', '-lock-timeout=60s', str(plan)]
-            with patch.object(session, 'run') as execute:
+            with patch.object(session, 'run') as execute, patch('main_cluster_guard.require_primary_ready'):
                 with patch.dict(os.environ, {}, clear=True), self.assertRaisesRegex(ValueError, 'GitHub CI'):
                     session.execute(command)
                 with patch.dict(os.environ, {'GITHUB_ACTIONS': 'true'}):
                     session.execute(command)
-                    self.assertEqual(execute.call_count, 1)
+                    self.assertEqual(execute.call_count, 2)
                     plan.write_bytes(b'changed-test-plan')
                     with self.assertRaisesRegex(ValueError, 'changed after review'):
                         session.execute(command)
                     with self.assertRaisesRegex(ValueError, 'guarded saved plan'):
                         session.execute(command[:-1] + ['-auto-approve'])
-                    self.assertEqual(execute.call_count, 1)
+                    self.assertEqual(execute.call_count, 2)
 
     def test_private_process_errors_do_not_disclose_output(self):
         import subprocess

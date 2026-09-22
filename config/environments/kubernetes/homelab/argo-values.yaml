@@ -9,6 +9,8 @@ crds:
   keep: true
   full: true
   upgradeJob:
+    nodeSelector:
+      kubernetes.io/hostname: talos-worker-01
     image:
       tag: v4.1.3@sha256:94a031823f2ac72e89865f83909984004e2ecdbe266f7ad34872bc566d969571
     resources:

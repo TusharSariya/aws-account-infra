@@ -1,0 +1,17 @@
+{
+  "owner": "ubuntu-qemu-systemd",
+  "host": "10.0.0.181",
+  "name": "talos-cp-01",
+  "source_vm_id": 100,
+  "vcpus": 2,
+  "memory_gib": 4,
+  "disks_gib": [
+    100
+  ],
+  "mac_address": "02:42:00:00:01:00",
+  "ipv4_address": "10.0.0.221",
+  "api_vip": "10.0.0.231",
+  "guest_agent": true,
+  "service": "main-control-plane.service",
+  "on_boot": true
+}

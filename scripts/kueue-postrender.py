@@ -33,4 +33,7 @@ def render(documents):
 
 if __name__ == '__main__':
     documents = list(render(yaml.safe_load_all(sys.stdin)))
-    yaml.safe_dump_all(documents, sys.stdout, sort_keys=False)
+    import subprocess
+    from pathlib import Path
+    rendered = yaml.safe_dump_all(documents, sort_keys=False)
+    subprocess.run([str(Path(__file__).resolve().parents[1] / "kubernetes/platform/main/placement/helm-post-renderer.py"), "--namespace", "kueue-system"], input=rendered, text=True, check=True)

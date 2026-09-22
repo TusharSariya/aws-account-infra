@@ -1,0 +1,23 @@
+groups:
+  - name: platform
+    rules:
+      - alert: MonitoringTargetDown
+        expr: up{job="monitoring"} == 0
+        for: 3m
+        labels: {severity: warning}
+        annotations: {summary: 'Monitoring target {{ $labels.instance }} is unavailable'}
+      - alert: WorkerUnavailable
+        expr: up{job="kubelet",node=~"talos-worker-.*"} == 0
+        for: 5m
+        labels: {severity: warning}
+        annotations: {summary: 'Worker {{ $labels.node }} is unavailable; check laptop maintenance journal and silences'}
+      - alert: ControlPlaneUnavailable
+        expr: up{job="kubelet",node="talos-cp-01"} == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations: {summary: 'Control-plane kubelet cannot be scraped'}
+      - alert: PlatformVolumeNearlyFull
+        expr: kubelet_volume_stats_available_bytes{namespace="monitoring"} / kubelet_volume_stats_capacity_bytes{namespace="monitoring"} < 0.2
+        for: 5m
+        labels: {severity: warning}
+        annotations: {summary: 'Monitoring volume has less than 20 percent free'}

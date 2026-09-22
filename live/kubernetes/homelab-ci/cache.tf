@@ -1,4 +1,6 @@
 resource "helm_release" "cache" {
+  set              = [{ name = "mainPlacementRevision", value = local.main_placement_revision }]
+  postrender       = { binary_path = "${path.module}/../../../kubernetes/platform/main/placement/helm-post-renderer.py", args = ["--namespace", "homelab-cache"] }
   name             = "homelab-cache"
   namespace        = "homelab-cache"
   create_namespace = true

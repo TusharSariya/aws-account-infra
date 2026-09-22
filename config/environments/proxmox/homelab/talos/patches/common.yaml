@@ -1,4 +1,7 @@
 machine:
+  kubelet:
+    extraConfig:
+      serverTLSBootstrap: true
   install:
     wipe: false
 cluster:

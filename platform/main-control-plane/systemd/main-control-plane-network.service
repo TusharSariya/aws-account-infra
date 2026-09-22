@@ -1,0 +1,15 @@
+[Unit]
+Description=Routed Wi-Fi network for main Talos VM
+Wants=network-online.target
+After=network-online.target NetworkManager-wait-online.service
+Before=main-control-plane.service
+ConditionPathExists=/var/lib/main-control-plane/source-fenced
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/lib/main-control-plane/network.py up
+ExecStop=/usr/local/lib/main-control-plane/network.py down
+
+[Install]
+WantedBy=multi-user.target

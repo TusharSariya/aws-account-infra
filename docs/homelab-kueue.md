@@ -4,17 +4,17 @@
 
 As of 2026-09-17, repository variable `CI_EXECUTOR=talos` makes the server the default for routine CI, at the owner's explicit direction. PR #87's failed workflows were retried after this change. Independent bootstrap/recovery jobs retain their hosted or Mac execution paths. Earlier rollout acceptance requirements below remain historical evidence requirements; changing the routing does not mark unobserved scenarios complete.
 
-Kueue 0.19.4 admits declared CPU/RAM/ephemeral-storage requests against `homelab-compute` (31.5 CPU, 144 GiB), bound to `talos-worker-01`. AI, CI and Argo LocalQueues share the whole pool. StrictFIFO, equal priority and disabled preemption/borrowing are reviewed in `config/environments/kubernetes/homelab-ci/pool-values.yaml`. An older large waiting request blocks newer smaller work. Utilization does not affect reservations. GitHub's upstream queue is separate.
+Kueue 0.19.4 admits declared CPU/RAM/ephemeral-storage requests against `homelab-compute` (31.25 CPU, 84 GiB), bound to `talos-worker-01`. AI, CI and Argo LocalQueues share the whole pool. StrictFIFO, equal priority and disabled preemption/borrowing are reviewed in `config/environments/kubernetes/homelab-ci/pool-values.yaml`. An older large waiting request blocks newer smaller work. Utilization does not affect reservations. GitHub's upstream queue is separate.
 
 Kubernetes schedules admitted Pods and enforces limits. The AI lifecycle controller owns desired state, replicas, draining, idle shutdown and storage protection. ARC 0.14.2 owns disposable runners; Argo owns workflow execution. Platform controllers, DNS and operational commands stay outside Kueue.
 
-AI retains 31.25 CPU / 77 GiB and its existing volumes. Each complete runner Pod reserves/limits its reviewed catalog CPU/RAM/scratch budget. Multiple disposable runners share admission, with zero idle runners and no ARC maximum. The shared scratch quota is 60 GiB. Trusted privileged runner/Docker containers use no host filesystem, host socket or host namespace mounts. GitHub fork PRs never run on Talos. The existing App registration key is not mounted into runner Pods; the runner service account has no Kubernetes API token.
+AI retains 31.25 CPU / 77 GiB and its existing volumes. Each complete runner Pod reserves/limits its reviewed catalog CPU/RAM/scratch budget. Multiple disposable runners share admission, with zero idle runners and no ARC maximum. The shared scratch quota is 240 GiB. Trusted privileged runner/Docker containers use no host filesystem, host socket or host namespace mounts. GitHub fork PRs never run on Talos. The existing App registration key is not mounted into runner Pods; the runner service account has no Kubernetes API token.
 
 ## Automatic platform recovery
 
-Both Talos VMs have `on_boot=true` in reviewed Proxmox configuration, with control-plane startup order 1 and worker order 2. The flags were applied after runner startup, checkout and tool setup passed; full CI acceptance remains gated. Essential Kubernetes services, including Pi-hole, retain their controller-managed replicas and start when their nodes return; their Pods stay outside Kueue. AI startup remains governed by lifecycle desired state, and ARC retains zero idle runners.
+The existing control plane runs on the Ubuntu laptop under `main-control-plane.service`. Both Proxmox workers have `on_boot=true`; retired source VM 100 remains stopped with autostart disabled. Worker 01 has 112 GiB of RAM. Its 31.25-CPU / 84-GiB compute pool plus 6.5-CPU / 24-GiB platform reserve fits the observed allocatable memory, which is checked before admission deployment. After manual sleep, restore the saved maintenance journal before resuming runners and schedules; powering on the host alone does not resume them. See `docs/runbooks/manual-server-sleep.md`.
 
-## Ordered rollout
+## Historical initial rollout
 
 Review three PRs in order: foundation; admission/runners; routing/acceptance. Keep AI off during migration and do not credit intermediate branch checks to a different source revision. Previous VM design/checkmarks are retained under the OpenSpec change's `evidence/pre-kueue-plan/`. Preserve all existing deployment logs and failed attempts.
 
@@ -25,7 +25,9 @@ Review three PRs in order: foundation; admission/runners; routing/acceptance. Ke
 
 Changing `CI_EXECUTOR` is explicit; unknown values fail workflow runner selection. There is no automatic paid fallback. CI/admission bootstrap, Proxmox/Talos changes and worker/recovery operations always use hosted runners. Routine application-only/AWS deployments can use Talos; a combined Proxmox/Talos apply stays hosted. Required plan/apply/publish gates retain their conditions.
 
-## Retire VM 103
+## Historical retirement of the old CI VM
+
+Do not repeat this migration: VM 103 now identifies worker 02 on secondary Proxmox. The following records the earlier primary-host CI VM retirement, before the two-worker layout.
 
 The only retirement targets are `proxmox_virtual_environment_vm.ci_runner[0]`, its pinned `ci_ubuntu[0]` import, and the worker's exact 156-to-172-GiB RAM change. Existing backends and Talos disks/identities remain unchanged. Normal deployment guards reject deletion; the migration uses its dedicated guard.
 

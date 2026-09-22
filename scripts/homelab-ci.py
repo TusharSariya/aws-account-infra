@@ -309,6 +309,8 @@ def main():
         guard(json.loads(run(command + ['show','-json',plan])))
         record['apply'] = 'running'; receipt.write_text(json.dumps(record, indent=2))
         try:
+            from main_cluster_guard import require_primary_ready
+            require_primary_ready(kube)
             run(command + ['apply','-input=false','-lock-timeout=60s',plan])
             record['apply'] = 'success'
             fresh = private / 'post-apply.tfplan'

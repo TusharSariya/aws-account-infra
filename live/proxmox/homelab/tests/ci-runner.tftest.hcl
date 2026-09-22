@@ -14,7 +14,7 @@ run "ci_disabled_by_default" {
     vm_creation_approved = true
   }
   assert {
-    condition     = length(proxmox_virtual_environment_vm.ci_runner) == 0 && output.capacity.memory_gib == 116
+    condition     = length(proxmox_virtual_environment_vm.ci_runner) == 0 && output.capacity.memory_gib == 112
     error_message = "Foundation must not implicitly activate a runner."
   }
 }

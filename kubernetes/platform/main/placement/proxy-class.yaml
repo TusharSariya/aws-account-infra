@@ -1,0 +1,9 @@
+apiVersion: tailscale.com/v1alpha1
+kind: ProxyClass
+metadata:
+  name: primary-applications
+spec:
+  statefulSet:
+    pod:
+      nodeSelector:
+        homelab.tfdraw.dev/worker-role: primary

@@ -277,7 +277,15 @@ class Session:
             digest = hashlib.sha256((self.private / 'tfplan').read_bytes()).hexdigest()
             if digest != (self.private / 'guarded-plan.sha256').read_text():
                 raise StageError('Saved plan changed after review')
+            from main_cluster_guard import require_primary_ready
+            require_primary_ready(self.env['KUBECTL'], self.env)
         self.run(command)
+        if operation == 'apply':
+            # CoreDNS is Talos-managed rather than a Helm release. Reassert the
+            # same placement policy after Talos reconciliation, keeping a private audit.
+            self.run(['python3', str(ROOT / 'kubernetes/platform/main/placement/plan.py'),
+                      '--kubeconfig', str(self.private / 'kubeconfig'),
+                      '--output', str(self.private / 'main-placement'), '--apply'])
         print('PASS: OpenTofu ' + operation + ' (private diagnostics suppressed)')
 
     def state(self):

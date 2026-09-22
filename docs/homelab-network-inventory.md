@@ -1,6 +1,6 @@
 # Homelab network inventory
 
-Status: current intended allocation, reconciled 2026-09-19. This is the
+Status: current intended allocation, reconciled 2026-09-22. This is the
 operator-facing source of truth for the homelab `10.0.0.0/24` LAN. It records
 only named infrastructure addresses, not every DHCP client on the home LAN.
 
@@ -11,7 +11,8 @@ only named infrastructure addresses, not every DHCP client on the home LAN.
 | `10.0.0.1` | Rogers router | Router LAN address | Live | Default gateway for all entries below. |
 | `10.0.0.67` | Secondary PVE IBM IMM2 | DHCP reservation | Operator-confirmed | Out-of-band management for the physical secondary server. Recheck after any router or IMM reset. |
 | `10.0.0.98` | Primary PVE IBM IMM2 | DHCP reservation | Operator-confirmed | Out-of-band management for the physical primary server. |
-| `10.0.0.221` | `talos-cp-01` | Guest-configured static | Existing target identity | VM 100 on primary PVE. |
+| `10.0.0.181` | Ubuntu laptop | Existing reservation | Active | Main control-plane host; routes .221/.231 across Wi-Fi with proxy ARP. |
+| `10.0.0.221` | `talos-cp-01` | Guest-configured static | Existing target identity | QEMU/systemd on Ubuntu .181; source PVE VM 100 is stopped and stale. |
 | `10.0.0.222` | `talos-worker-01` | Guest-configured static | Existing target identity | VM 102 on primary PVE; primary-local persistent storage. |
 | `10.0.0.223` | Secondary PVE | Static host management | Physical host target | Proxmox endpoint for the secondary server. |
 | `10.0.0.224` | Primary PVE | Static host management | Existing host target | Proxmox endpoint for the primary server. |
@@ -48,8 +49,7 @@ data disk and existing protected PVC workloads.
 ## Historical addresses
 
 `10.0.0.63` and `10.0.0.92` are former PVE management addresses. `10.0.0.181`
-is a historical administrator-laptop reservation, not evidence of its current
-address. Do not use any of these for new connections or allocations.
+is the active Ubuntu control-plane host. Do not reuse the former PVE addresses.
 
 ## Change control
 

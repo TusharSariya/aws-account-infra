@@ -55,11 +55,16 @@ def load_vms(root, tfvars, extra=()):
 
 
 def check(primary_vms, secondary_vms, inventory, documents):
-    require(set(primary_vms) == {CP, PRIMARY}, "Primary PVE node set drift")
+    require(set(primary_vms) == {PRIMARY}, "Primary PVE node set drift")
     require(set(secondary_vms) == {SECONDARY}, "Secondary PVE node set drift")
-    vms = {**primary_vms, **secondary_vms}
+    laptop = json.loads((ROOT / "platform/main-control-plane/vm.json").read_text())
+    require(laptop["owner"] == "ubuntu-qemu-systemd" and laptop["host"] == "10.0.0.181", "Laptop ownership drift")
+    # VM ID here is historical identity only; the source must never return to the PVE map.
+    cp = {**laptop, "vm_id": laptop["source_vm_id"], "startup_order": 1,
+          "iso_file_id": "local:iso/talos-v1.13.9-qemu-amd64.iso"}
+    vms = {CP: cp, **primary_vms, **secondary_vms}
     require({node["name"] for node in inventory["nodes"]} == set(vms) and len(inventory["nodes"]) == 3,
-            "Talos and Proxmox node sets differ")
+            "Talos and physical ownership inventories differ")
     require(inventory["kubernetes_version"] == "v1.36.3", "Kubernetes pin drift")
     require(inventory["endpoint"] == "https://10.0.0.231:6443" and inventory["talos_endpoint"] == "10.0.0.221",
             "Endpoint drift")
@@ -73,6 +78,7 @@ def check(primary_vms, secondary_vms, inventory, documents):
         require(vm["on_boot"], name + ": autostart drift")
         config, *extra = documents[name]
         machine, cluster = config["machine"], config["cluster"]
+        require(machine["kubelet"].get("extraConfig", {}).get("serverTLSBootstrap") is True, name + ": serving certificate bootstrap missing")
         require(machine["type"] == ("controlplane" if is_cp else "worker"), name + ": role drift")
         require(machine["kubelet"]["image"].endswith(":v1.36.3"), name + ": kubelet version drift")
         require("workload.security/sandbox" not in machine["nodeLabels"] and

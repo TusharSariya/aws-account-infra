@@ -17,11 +17,13 @@ provider "helm" {
 
 # CI downloads this exact chart and verifies its committed SHA-256 before plan.
 resource "helm_release" "cilium" {
-  name      = "cilium"
-  namespace = "kube-system"
-  chart     = "${path.module}/.terraform/cilium-1.20.1.tgz"
-  version   = "1.20.1"
-  values    = [local.cilium_values]
+  set        = [{ name = "mainPlacementRevision", value = local.main_placement_revision }]
+  postrender = { binary_path = "${path.module}/../../../kubernetes/platform/main/placement/helm-post-renderer.py", args = ["--namespace", "kube-system"] }
+  name       = "cilium"
+  namespace  = "kube-system"
+  chart      = "${path.module}/.terraform/cilium-1.20.1.tgz"
+  version    = "1.20.1"
+  values     = [local.cilium_values]
 
   wait    = true
   timeout = 600

@@ -1,0 +1,13 @@
+# Merge into eligible workflow/job Pod templates, preserving existing constraints.
+# Not a standalone resource and not applied to AI or PVC-using jobs.
+nodeSelector:
+  homelab.tfdraw.dev/stateless-compute: "true"
+affinity:
+  nodeAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        preference:
+          matchExpressions:
+            - key: homelab.tfdraw.dev/worker-role
+              operator: In
+              values: [primary]

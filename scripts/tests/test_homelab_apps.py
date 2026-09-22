@@ -230,6 +230,19 @@ class GuardTests(unittest.TestCase):
                 apps.execute('plan', config)
             run.assert_not_called()
 
+    def test_provider_failure_category_does_not_expose_plan_values(self):
+        import contextlib
+        import io
+        diagnostics = io.StringIO()
+        with patch.object(apps.subprocess, 'run') as run, contextlib.redirect_stderr(diagnostics):
+            run.return_value = subprocess.CompletedProcess(
+                ['tofu'], 1, b'',
+                b'Error: Provider produced inconsistent final plan: PRIVATE-FIXTURE-CONTENT')
+            with self.assertRaises(apps.AppError):
+                apps.run(['tofu', 'apply'])
+        self.assertIn('provider-inconsistent-final-plan', diagnostics.getvalue())
+        self.assertNotIn('PRIVATE-FIXTURE-CONTENT', diagnostics.getvalue())
+
     def test_failure_diagnostics_emit_only_fixed_categories(self):
         import contextlib
         import io

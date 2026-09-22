@@ -14,21 +14,23 @@ class CapacityTests(unittest.TestCase):
 
     def test_observed_restored_worker_capacity(self):
         node = {'metadata': {'name': 'talos-worker-01'}, 'status': {
-            'conditions': [{'type': 'Ready', 'status': 'True'}], 'capacity': {'memory': '177121916Ki'},
-            'allocatable': {'cpu': '37950m', 'memory': '176626300Ki'}}}
+            'conditions': [{'type': 'Ready', 'status': 'True'}], 'capacity': {'memory': '115288768Ki'},
+            'allocatable': {'cpu': '37950m', 'memory': '114793152Ki'}}}
         verify(node, [], {'cpu': '6', 'memory': '24Gi'})
         with self.assertRaisesRegex(ValueError, 'allocatable'):
-            verify(node, [], {'cpu': '6', 'memory': '25Gi'})
+            verify(node, [], {'cpu': '6', 'memory': '26Gi'})
+        with self.assertRaisesRegex(ValueError, 'allocatable'):
+            verify(node, [], {'cpu': '6', 'memory': '24Gi'}, {'cpu': '31.5', 'memory': '144Gi'})
 
     def test_pool_and_platform_must_fit(self):
         node = {'metadata': {'name': 'talos-worker-01'}, 'status': {
-            'conditions': [{'type': 'Ready', 'status': 'True'}], 'capacity': {'memory': '172Gi'},
-            'allocatable': {'cpu': '37500m', 'memory': '171Gi'}}}
-        verify(node, [], {'cpu': '6', 'memory': '27Gi'})
+            'conditions': [{'type': 'Ready', 'status': 'True'}], 'capacity': {'memory': '112Gi'},
+            'allocatable': {'cpu': '37950m', 'memory': '109Gi'}}}
+        verify(node, [], {'cpu': '6.5', 'memory': '25Gi'})
         with self.assertRaisesRegex(ValueError, 'allocatable'):
-            verify(node, [], {'cpu': '6.1', 'memory': '27Gi'})
-        node['status']['capacity']['memory'] = '156Gi'
-        with self.assertRaisesRegex(ValueError, 'Restore'):
+            verify(node, [], {'cpu': '6.8', 'memory': '25Gi'})
+        node['status']['capacity']['memory'] = '100Gi'
+        with self.assertRaisesRegex(ValueError, 'capacity'):
             verify(node, [], {'cpu': '1', 'memory': '1Gi'})
 
 
