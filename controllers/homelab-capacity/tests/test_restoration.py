@@ -119,3 +119,45 @@ def test_unfinished_restore_is_not_admission_ready(tmp_path):
     record["phase"] = "complete"
     journal.write("secondary-platform.json", record)
     assert controller.observation("secondary", objects).ready
+
+
+@pytest.mark.parametrize("node", ["talos-worker-01", "talos-worker-02", None])
+def test_recovery_checks_host_storage_without_capturing_other_hosts_tests(
+    tmp_path, node
+):
+    kube, management, journal, objects = setup(tmp_path)
+    record = journal.read("secondary-platform.json")
+    pv = {"uid": "test-volume", "hostPath": {"path": "/local/test"}, "nodeAffinity": {}}
+    if node:
+        pv["nodeAffinity"] = {
+            "required": {
+                "nodeSelectorTerms": [
+                    {
+                        "matchExpressions": [
+                            {
+                                "key": "kubernetes.io/hostname",
+                                "operator": "In",
+                                "values": [node],
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    record["storage"] = {
+        "pv//test-volume": pv,
+        "pvc/test/claim": {
+            "uid": "test-claim",
+            "volumeName": "test-volume",
+            "storageClassName": "local",
+        },
+    }
+    journal.write("secondary-platform.json", record)
+    if node == "talos-worker-01":
+        Platform(kube, management, journal).restore("secondary", objects)
+        assert journal.read("secondary-platform.json")["phase"] == "complete"
+        assert journal.read("secondary-platform.json")["storage"] == record["storage"]
+    else:
+        with pytest.raises(RuntimeError, match="Protected storage"):
+            Platform(kube, management, journal).restore("secondary", objects)
+        assert not kube.patches

@@ -47,6 +47,41 @@ def storage_identity(objects):
     return result
 
 
+def storage_for_host(identity, host):
+    """Exclude only local volumes proven to belong exclusively to another node.
+
+    Shared, unbound and ambiguous storage stays protected. Apply the same scope
+    to old journals without rewriting the captured evidence.
+    """
+    excluded = set()
+    for key, volume in identity.items():
+        if not key.startswith("pv//") or not (
+            volume.get("local") or volume.get("hostPath")
+        ):
+            continue
+        affinity = volume.get("nodeAffinity") or {}
+        terms = affinity.get("required", {}).get("nodeSelectorTerms", [])
+        if len(terms) != 1:
+            continue
+        expressions = terms[0].get("matchExpressions", [])
+        if len(expressions) != 1:
+            continue
+        selector = expressions[0]
+        if (
+            selector.get("key") == "kubernetes.io/hostname"
+            and selector.get("operator") == "In"
+            and selector.get("values")
+            and NODES[host] not in selector["values"]
+        ):
+            excluded.add(key.removeprefix("pv//"))
+    return {
+        key: value
+        for key, value in identity.items()
+        if not (key.startswith("pv//") and key.removeprefix("pv//") in excluded)
+        and not (key.startswith("pvc/") and value.get("volumeName") in excluded)
+    }
+
+
 class Platform:
     def __init__(self, kube, management, journal):
         self.kube, self.management, self.journal = kube, management, journal
@@ -67,7 +102,7 @@ class Platform:
             "id": str(uuid.uuid4()),
             "phase": "captured",
             "node": node,
-            "storage": storage_identity(objects),
+            "storage": storage_for_host(storage_identity(objects), host),
             "volume": self.management.storage(host),
             "objects": [],
         }
@@ -211,7 +246,10 @@ class Platform:
             return
         observed_storage = storage_identity(objects)
         if (
-            any(observed_storage.get(k) != v for k, v in record["storage"].items())
+            any(
+                observed_storage.get(k) != v
+                for k, v in storage_for_host(record["storage"], host).items()
+            )
             or self.management.storage(host) != record["volume"]
         ):
             raise RuntimeError("Protected storage identity or mount changed")
