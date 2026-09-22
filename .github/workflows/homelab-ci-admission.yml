@@ -55,7 +55,9 @@ permissions:
   contents: read
   id-token: write
 concurrency:
-  group: tofu-apply
+  # Only mutations share the deployment lock. PR plans must not cancel the
+  # pending tofu-apply acceptance workflow (or be cancelled by it).
+  group: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'apply' && 'tofu-apply' || format('homelab-ci-plan-{0}', github.ref) }}
   cancel-in-progress: false
 jobs:
   contracts:
