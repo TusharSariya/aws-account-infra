@@ -100,6 +100,18 @@ class CIPermissionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.check(self.rights, False)
 
+    def test_apply_allows_inherited_host_role_but_no_retired_vm_rights(self):
+        self.rights['/']['Sys.Modify'] = 1
+        self.rights['/vms/102']['VM.Allocate'] = 1
+        self.rights['/vms/100']['Sys.Modify'] = 1
+        self.check(self.rights, True)
+        for privilege in ('VM.Allocate', 'VM.PowerMgmt', 'VM.Audit', 'VM.Config.Disk'):
+            with self.subTest(privilege=privilege):
+                self.rights['/vms/100'][privilege] = 1
+                with self.assertRaisesRegex(ValueError, 'Retired VM 100'):
+                    self.check(self.rights, True)
+                del self.rights['/vms/100'][privilege]
+
     def test_limited_plan_scope(self):
         self.check(self.rights, False)
         self.rights['/vms/100']['VM.Config.CPU'] = 1

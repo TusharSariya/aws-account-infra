@@ -15,7 +15,10 @@ def check_permissions(data, writable):
         raise ValueError('Apply token requires Sys.Modify at / for VM startup order')
     if not writable and privileges('/') - {'Sys.Audit'}:
         raise ValueError('Plan token has unexpected host permissions')
-    if privileges('/vms/100') - {'Sys.Audit'}:
+    # The root host role propagates in API permission responses, even at VM paths.
+    # It grants no VM-specific rights; reject every privilege beyond that role.
+    inherited_host = {'Sys.Audit', 'Sys.Modify'} if writable else {'Sys.Audit'}
+    if privileges('/vms/100') - inherited_host:
         raise ValueError('Retired VM 100 must be outside both CI token scopes')
     for path in ('/vms/102',):
         rights = privileges(path)

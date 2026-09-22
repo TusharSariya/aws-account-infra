@@ -2,8 +2,9 @@
 
 Configuration reconciliation is on `fix/main-cluster-iac-reconciliation`, based on
 current main, rather than the stale `docs/talos-homelab-plans` checkout used during
-migration. Both physical application hosts remain intentionally off. Live Helm
-upgrades and refreshed Proxmox plans have not been run during this reconciliation.
+migration. Both physical application hosts normally remain intentionally off.
+An approved temporary wake on 2026-09-22 verified refreshed Proxmox plans and
+permissions. Live Helm upgrades have not been run during this reconciliation.
 
 | Layer | Canonical owner |
 | --- | --- |
@@ -35,7 +36,8 @@ This is not automatic power management.
 
 The authoritative S3 primary state was backed up privately, and only the retired
 VM 100 entry was removed under locking. Worker 01's complete state entry matched
-before and after. A state-based plan has zero VM changes. Source VM 100 remains
+before and after. Refreshed plans against both running hosts have zero VM changes.
+Source VM 100 remains
 physically preserved, stopped/protected/onboot=0. Do not re-import it or boot its
 stale disk. The old checkout's claim that no remote primary state existed was
 incorrect and has been corrected in the migration evidence.
@@ -44,7 +46,28 @@ Private evidence and backups are under
 `~/.local/share/main-control-plane/iac-reconciliation` on the administrator Mac.
 They must never be committed. Existing encrypted state backend keys are unchanged.
 
-## Remaining live rollout
+## Live verification on 2026-09-22
+
+Both workers became Ready during the approved temporary wake. Each refreshed
+provider plan contained exactly its existing worker with a `no-op` action.
+No provider apply was needed. Primary S3 state and secondary private local state
+were reused; no empty state, import or VM recreation was introduced.
+
+Exactly four `/vms/100` ACL entries were removed from the primary plan/apply users
+and tokens. All other ACL entries were preserved. Both identities passed the live
+HTTPS permission preflight. The check allows the apply identity's inherited
+host-level `Sys.Modify` but rejects every VM-specific privilege on the retired VM.
+The secondary lock file now includes the signed Linux AMD64 provider checksum.
+
+Primary data-volume identity and all 21 PV / 22 PVC identities, bindings and
+affinity remained unchanged. API, etcd, internal DNS and external DNS checks
+passed on the laptop. Workloads remained paused and both workers cordoned during
+verification; the original `manual-off-20260922-primary` maintenance journal
+remains the source for a future workload restore. No scheduled work was resumed.
+Both Talos workers were then shut down gracefully. Both IMM controllers confirmed
+physical power off, and the laptop API, etcd and internal/external DNS passed again.
+
+## Remaining Helm rollout
 
 These steps require an explicitly approved temporary host wake:
 
@@ -52,9 +75,10 @@ These steps require an explicitly approved temporary host wake:
 2. Restore the latest maintenance journal, verifying the worker's original data
    mount and PV/PVC bindings before restoring application writes. Preserve the
    secondary worker's original cordon.
-3. Remove the retired `/vms/100` ACLs from both existing CI users/tokens, preserving
-   worker/storage permissions. Re-run `proxmox-ci-check.py` for plan/apply identities.
-4. Run refreshed provider plans with existing states. Reject recreation, deletion,
+3. Re-run `proxmox-ci-check.py` for plan/apply identities; retired VM ACL removal
+   is already complete.
+4. Repeat refreshed provider plans with existing states if infrastructure changes
+   before rollout. Reject recreation, deletion,
    replacement, or unexplained hardware/storage changes. Do not create empty state.
 5. Use the existing saved-plan CI workflow to record the placement renderer in Helm
    release histories. Do not bypass credentials, plan review, or image checks.
