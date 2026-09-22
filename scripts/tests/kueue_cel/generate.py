@@ -10,14 +10,14 @@ request=dict(namespace='homelab-jobs',operation='CREATE',userInfo=dict(username=
 cases=[]
 def case(name,obj,allowed,req=None,old=None): cases.append(dict(name=name,object=obj,allowed=allowed,request=req or request,oldObject=old))
 case('ordinary queued Pod',base,True)
-for resource,value in [('cpu','31.501'),('memory','145Gi'),('ephemeral-storage','241Gi')]:
+for resource,value in [('cpu','31.251'),('memory','85Gi'),('ephemeral-storage','241Gi')]:
  obj=copy.deepcopy(base);obj['spec']['containers'][0]['resources']['requests'][resource]=value;case('oversized '+resource,obj,False)
 obj=copy.deepcopy(base);obj['spec']['containers'][0]['resources']['requests']['ephemeral-storage']='240Gi';case('exact scratch pool fits',obj,True)
-obj=copy.deepcopy(base);obj['spec']['containers']=[container('15.75'),container('15.751')];case('aggregate exceeds pool',obj,False)
+obj=copy.deepcopy(base);obj['spec']['containers']=[container('15.625'),container('15.626')];case('aggregate exceeds pool',obj,False)
 obj=copy.deepcopy(base);obj['spec']['initContainers']=[container('34')];case('init peak exceeds pool',obj,False)
-obj=copy.deepcopy(base);obj['spec']['containers']=[container('30.5')];obj['spec']['initContainers']=[container('2',restartPolicy='Always')];case('sidecar aggregate exceeds pool',obj,False)
-obj=copy.deepcopy(base);obj['spec']['containers']=[container('30.5')];obj['spec']['initContainers']=[container('1',restartPolicy='Always'),container('30.5')];case('exact sidecar/init peak fits',obj,True)
-obj=copy.deepcopy(base);obj['spec']['initContainers']=[container('31.5'),container('1',restartPolicy='Always')];case('later sidecar not charged to earlier init',obj,True)
+obj=copy.deepcopy(base);obj['spec']['containers']=[container('30.25')];obj['spec']['initContainers']=[container('2',restartPolicy='Always')];case('sidecar aggregate exceeds pool',obj,False)
+obj=copy.deepcopy(base);obj['spec']['containers']=[container('30.25')];obj['spec']['initContainers']=[container('1',restartPolicy='Always'),container('30.25')];case('exact sidecar/init peak fits',obj,True)
+obj=copy.deepcopy(base);obj['spec']['initContainers']=[container('31.25'),container('1',restartPolicy='Always')];case('later sidecar not charged to earlier init',obj,True)
 obj=copy.deepcopy(base);obj['spec']['schedulingGates']=[];case('missing gate',obj,False)
 obj=copy.deepcopy(base);obj['metadata']['labels']={};case('missing queue',obj,False)
 obj=copy.deepcopy(base);obj['spec']['nodeName']='talos-worker-01';case('direct binding',obj,False)
