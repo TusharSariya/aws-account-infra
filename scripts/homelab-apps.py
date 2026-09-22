@@ -27,7 +27,10 @@ class AppError(ValueError):
     """Only deliberately authored, secret-free diagnostics."""
 
 
-ADDRESSES = {'helm_release.postgres_operator', 'helm_release.postgres', 'helm_release.tailscale_operator', 'helm_release.pihole', 'helm_release.ollama', 'helm_release.odysseus', 'helm_release.capacity', 'helm_release.ai', 'helm_release.lifecycle', 'helm_release.argo', 'helm_release.jobs'}
+# Always-on releases are owned and guarded by homelab-management after migration.
+ADDRESSES = {'helm_release.postgres_operator', 'helm_release.postgres',
+             'helm_release.ollama', 'helm_release.odysseus',
+             'helm_release.capacity', 'helm_release.ai'}
 
 
 def run(command, data=None, *, timeout=2400):

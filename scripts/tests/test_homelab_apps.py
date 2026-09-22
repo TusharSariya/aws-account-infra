@@ -4,6 +4,7 @@ import importlib.util
 import hashlib
 from copy import deepcopy
 import json
+import re
 from pathlib import Path
 import subprocess
 import tempfile
@@ -33,6 +34,15 @@ class GuardTests(unittest.TestCase):
 
     def plan(self, action):
         return {'resource_changes': [{'address': a, 'change': {'actions': action}} for a in apps.ADDRESSES]}
+
+    def test_guard_tracks_releases_owned_by_the_application_root(self):
+        addresses = set()
+        for path in apps.TF.glob('*.tf'):
+            addresses.update('helm_release.' + name for name in
+                             re.findall(r'resource "helm_release" "([^"]+)"', path.read_text()))
+        plan = {'resource_changes': [{'address': address, 'change': {'actions': ['no-op']}}
+                                     for address in addresses]}
+        self.assertEqual(len(apps.guard_plan(plan)), len(addresses))
 
     def test_safe_plan_and_forbidden_resource_actions(self):
         for actions in [['create'], ['update'], ['no-op']]:
