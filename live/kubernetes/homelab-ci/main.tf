@@ -11,6 +11,7 @@ locals {
   config = "${path.module}/../../../config/environments/kubernetes/homelab-ci"
 }
 resource "helm_release" "kueue" {
+  set              = [{ name = "mainPlacementRevision", value = local.main_placement_revision }]
   name             = "kueue"
   namespace        = "kueue-system"
   create_namespace = true
@@ -23,6 +24,8 @@ resource "helm_release" "kueue" {
   max_history      = 5
 }
 resource "helm_release" "queue" {
+  set         = [{ name = "mainPlacementRevision", value = local.main_placement_revision }]
+  postrender  = { binary_path = "${path.module}/../../../kubernetes/platform/main/placement/helm-post-renderer.py", args = ["--namespace", "kueue-system"] }
   name        = "homelab-queue"
   namespace   = "kueue-system"
   chart       = "${path.module}/../../../charts/homelab-queue"
@@ -33,6 +36,8 @@ resource "helm_release" "queue" {
   max_history = 5
 }
 resource "helm_release" "arc" {
+  set              = [{ name = "mainPlacementRevision", value = local.main_placement_revision }]
+  postrender       = { binary_path = "${path.module}/../../../kubernetes/platform/main/placement/helm-post-renderer.py", args = ["--namespace", "arc-systems"] }
   name             = "arc"
   namespace        = "arc-systems"
   create_namespace = true
@@ -45,12 +50,14 @@ resource "helm_release" "arc" {
   max_history      = 5
 }
 resource "helm_release" "runners" {
-  for_each  = local.runner_catalog
-  name      = each.key
-  namespace = "arc-runners"
-  chart     = "${path.module}/.terraform/gha-runner-scale-set-0.14.2.tgz"
-  version   = "0.14.2"
-  values    = [yamlencode(local.runner_values[each.key])]
+  set        = [{ name = "mainPlacementRevision", value = local.main_placement_revision }]
+  postrender = { binary_path = "${path.module}/../../../kubernetes/platform/main/placement/helm-post-renderer.py", args = ["--namespace", "arc-runners"] }
+  for_each   = local.runner_catalog
+  name       = each.key
+  namespace  = "arc-runners"
+  chart      = "${path.module}/.terraform/gha-runner-scale-set-0.14.2.tgz"
+  version    = "0.14.2"
+  values     = [yamlencode(local.runner_values[each.key])]
   lifecycle {
     precondition {
       condition = (

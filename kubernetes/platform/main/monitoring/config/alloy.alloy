@@ -1,0 +1,46 @@
+logging {
+  level = "warn"
+}
+discovery.kubernetes "main" {
+  role = "pod"
+  namespaces {
+    names = ["monitoring"]
+  }
+  selectors {
+    role = "pod"
+    label = "monitoring.homelab/main-logs=true"
+  }
+}
+discovery.relabel "main" {
+  targets = discovery.kubernetes.main.targets
+  rule {
+    source_labels = ["__meta_kubernetes_namespace"]
+    target_label = "namespace"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_pod_name"]
+    target_label = "pod"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_pod_container_name"]
+    target_label = "container"
+  }
+}
+loki.source.kubernetes "main" {
+  targets = discovery.relabel.main.output
+  forward_to = [loki.process.main.receiver]
+}
+loki.process "main" {
+  // Only fixed-format diagnostic markers are stored. Request bodies and ordinary
+  // workload output never enter Loki, even on an opted-in Pod.
+  stage.match {
+    selector = "{namespace=~\".+\"} !~ \"^main-observe [a-zA-Z0-9_-]{1,80}[[:space:]]*$\""
+    action = "drop"
+  }
+  forward_to = [loki.write.local.receiver]
+}
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

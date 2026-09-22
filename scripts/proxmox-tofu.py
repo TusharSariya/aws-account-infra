@@ -44,7 +44,7 @@ def main():
                 data = json.load(response)['data']
             if route.startswith('access/permissions'):
                 permissions = {priv for values in data.values() for priv in values}
-                expected = not route.endswith('/101')
+                expected = route.endswith('/102')
                 if ('VM.Allocate' in permissions) != expected:
                     raise ValueError('VM allocation scope differs from the approved IDs')
             print('PASS: authenticated HTTPS ' + route)

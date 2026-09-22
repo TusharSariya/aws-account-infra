@@ -28,6 +28,7 @@ class NativeContractTests(unittest.TestCase):
                 fixture, count = re.subn(r'(?m)^import \{\n[^}]+^\}\n', '', main.read_text())
                 self.assertEqual(count, 1)
                 main.write_text(fixture)
+                shutil.copytree(ROOT / 'kubernetes/platform/main/placement', root / 'kubernetes/platform/main/placement')
                 values_dir = root / 'config/environments/talos/homelab'
                 shutil.copytree(ROOT / 'config/environments/talos/homelab', values_dir)
                 values = values_dir / 'cilium-values.yaml'

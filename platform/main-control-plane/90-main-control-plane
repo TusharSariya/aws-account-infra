@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Reinstall only main VM advertisements after a Wi-Fi reconnect.
+set -euo pipefail
+if [[ ${1:-} == wlp5s0b1 && ${2:-} == up ]]; then
+  /usr/local/lib/main-control-plane/network.py reconnect
+fi

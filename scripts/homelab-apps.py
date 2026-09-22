@@ -307,6 +307,9 @@ def execute(operation, private):
             raise AppError('Application apply only runs through GitHub CI')
         if hashlib.sha256(plan.read_bytes()).hexdigest() != (private / 'apps-plan.sha256').read_text():
             raise AppError('Saved application plan changed after validation')
+        from main_cluster_guard import require_primary_ready
+        require_primary_ready(Path.home() / '.cache/aws-account-infra/talos/kubectl-v1.36.3')
+        run([str(Path.home() / '.cache/aws-account-infra/talos/kubectl-v1.36.3'), 'apply', '-f', str(ROOT / 'kubernetes/platform/main/placement/proxy-class.yaml')])
         from postgres_preflight import verify
         verify(str(Path.home() / '.cache/aws-account-infra/talos/kubectl-v1.36.3'), run)
         try:

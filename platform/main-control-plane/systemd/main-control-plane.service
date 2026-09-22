@@ -1,0 +1,27 @@
+[Unit]
+Description=Relocated main Talos control plane
+Requires=main-control-plane-network.service
+After=main-control-plane-network.service
+ConditionPathExists=/var/lib/main-control-plane/copy-verified
+ConditionPathExists=/var/lib/main-control-plane/source-fenced
+
+[Service]
+Type=simple
+User=tushar
+SupplementaryGroups=kvm
+WorkingDirectory=/var/lib/main-control-plane/vm
+ExecStart=/usr/local/lib/main-control-plane/launch.sh
+ExecStop=/usr/local/lib/main-control-plane/stop.py
+TimeoutStopSec=240
+KillMode=mixed
+KillSignal=SIGCONT
+SendSIGKILL=no
+Restart=no
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/main-control-plane/vm
+
+[Install]
+WantedBy=multi-user.target

@@ -1,6 +1,8 @@
 # Secondary PVE worker
 
 This root manages only `talos-worker-02` on secondary PVE `10.0.0.223`.
+Runtime `started` changes are ignored by OpenTofu: the laptop manual sleep/wake
+procedure owns power state. New guests start stopped, while host autostart stays enabled.
 Its fixed contract is VM 103, 38 vCPUs, 112 GiB RAM without ballooning,
 one 320-GiB OS disk (`scsi0` / `/dev/sda`), MAC `02:42:00:00:01:03`,
 guest-configured static `10.0.0.225`, QEMU Guest Agent, gVisor and autostart.

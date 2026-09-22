@@ -22,7 +22,6 @@ ROLES = {
 }
 SCOPES = {
     '/': 'HomelabTofuHost',
-    '/vms/100': 'HomelabTofuVM',
     '/vms/102': 'HomelabTofuVM',
     '/storage/local-lvm': 'HomelabTofuStorage',
     '/storage/local': 'HomelabTofuISO',
@@ -40,7 +39,6 @@ def select_plan():
     }
     SCOPES = {
         '/': 'HomelabTofuAudit',
-        '/vms/100': 'HomelabTofuPlanVM',
         '/vms/102': 'HomelabTofuPlanVM',
         '/storage/local': 'HomelabTofuISO',
         '/storage/local-lvm': 'HomelabTofuISO',
@@ -74,7 +72,7 @@ def remote():
             if SCOPES.get(acl['path']) != acl['roleid'] or not acl.get('propagate'):
                 raise RuntimeError('Existing identity ACL differs; inspect before changing')
     if USER not in users:
-        pve('user', 'add', USER, '--comment', 'OpenTofu for homelab VMs 100 and 102')
+        pve('user', 'add', USER, '--comment', 'OpenTofu for homelab worker VM 102')
     for name, privileges in ROLES.items():
         if name not in roles:
             pve('role', 'add', name, '--privs', privileges)

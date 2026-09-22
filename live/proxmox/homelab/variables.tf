@@ -30,13 +30,12 @@ variable "vms" {
 
   validation {
     condition = (
-      length(var.vms) == 2 &&
-      length(distinct([for vm in var.vms : vm.vm_id])) == 2 &&
-      length(distinct([for vm in var.vms : lower(vm.mac_address)])) == 2 &&
-      length(distinct([for vm in var.vms : vm.ipv4_address])) == 2 &&
-      length(distinct([for vm in var.vms : vm.startup_order])) == 2
+      length(var.vms) == 1 &&
+      alltrue([for name, vm in var.vms :
+        name == "talos-worker-01" && vm.vm_id == 102 && vm.ipv4_address == "10.0.0.222"
+      ])
     )
-    error_message = "The two guests need unique VM IDs, MACs, reserved IPs and startup orders."
+    error_message = "Only existing worker 01 (VM 102, .222) belongs here. Never reintroduce retired VM 100."
   }
   validation {
     condition = alltrue([for vm in var.vms :

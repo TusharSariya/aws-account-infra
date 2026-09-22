@@ -76,6 +76,8 @@ resource "proxmox_virtual_environment_vm" "guest" {
 
   lifecycle {
     prevent_destroy = true
+    # Manual sleep/wake owns runtime power; infrastructure applies must not wake workers.
+    ignore_changes = [started]
     precondition {
       condition     = var.host_readiness_confirmed
       error_message = "Creation is gated: validate .225 is unused, host ECC is healthy, and recovery prerequisites are complete."

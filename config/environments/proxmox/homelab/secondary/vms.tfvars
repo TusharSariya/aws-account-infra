@@ -11,7 +11,7 @@ vms = {
     guest_agent   = true
     cpu_limit     = 0
     cpu_units     = 100
-    started       = true
+    started       = false
     on_boot       = true
   }
 }

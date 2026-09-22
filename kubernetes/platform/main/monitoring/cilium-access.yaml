@@ -1,0 +1,31 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: monitoring-node-metrics
+  namespace: monitoring
+spec:
+  endpointSelector:
+    matchLabels:
+      app: prometheus
+  egress:
+    - toEntities: [host, remote-node, kube-apiserver]
+      toPorts:
+        - ports:
+            - port: "10250"
+              protocol: TCP
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: alloy-api
+  namespace: monitoring
+spec:
+  endpointSelector:
+    matchLabels:
+      app: alloy
+  egress:
+    - toEntities: [kube-apiserver]
+      toPorts:
+        - ports:
+            - port: "6443"
+              protocol: TCP

@@ -83,6 +83,8 @@ resource "proxmox_virtual_environment_vm" "guest" {
 
   lifecycle {
     prevent_destroy = true
+    # Manual sleep/wake owns runtime power; infrastructure applies must not wake workers.
+    ignore_changes = [started]
 
     precondition {
       condition     = var.vm_creation_approved

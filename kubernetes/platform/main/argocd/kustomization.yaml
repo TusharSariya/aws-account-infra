@@ -1,0 +1,66 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: argocd
+resources:
+- namespace.yaml
+- vendor/namespace-install.yaml
+- projects.yaml
+- network-policy.yaml
+patches:
+- target:
+    kind: Deployment
+    name: argocd-(applicationset-controller|dex-server|notifications-controller)
+  patch: "- op: add\n  path: /spec/replicas\n  value: 0"
+- target:
+    kind: Deployment
+    name: argocd-(repo-server|server|redis)
+  patch: "- op: add\n  path: /spec/template/spec/nodeSelector\n  value:\n    homelab.tfdraw.dev/worker-role:\
+    \ primary\n- op: add\n  path: /spec/template/spec/containers/0/resources\n  value:\n\
+    \    requests: {cpu: 100m, memory: 256Mi}\n    limits: {cpu: '1', memory: 256Mi}"
+- target:
+    kind: Deployment
+    name: argocd-repo-server
+  patch: "- op: replace\n  path: /spec/template/spec/containers/0/resources\n  value:\n\
+    \    requests: {cpu: 200m, memory: 256Mi}\n    limits: {cpu: '1', memory: 512Mi}"
+- target:
+    kind: StatefulSet
+    name: argocd-application-controller
+  patch: "- op: add\n  path: /spec/template/spec/nodeSelector\n  value:\n    homelab.tfdraw.dev/worker-role:\
+    \ primary\n- op: add\n  path: /spec/template/spec/containers/0/resources\n  value:\n\
+    \    requests: {cpu: 250m, memory: 256Mi}\n    limits: {cpu: '1', memory: 512Mi}"
+- target:
+    kind: ConfigMap
+    name: argocd-cm
+  patch: "- op: add\n  path: /data\n  value:\n    resource.inclusions: |\n      -\
+    \ apiGroups: [apps]\n        kinds: [Deployment, ReplicaSet]\n        clusters:\
+    \ ['*']\n      - apiGroups: ['']\n        kinds: [Service, Pod, Event]\n     \
+    \   clusters: ['*']"
+- target:
+    kind: Deployment
+    name: argocd-(repo-server|redis)
+  patch: "- op: add\n  path: /spec/template/spec/initContainers/0/resources\n  value:\n\
+    \    requests: {cpu: 50m, memory: 64Mi}\n    limits: {cpu: '1', memory: 256Mi}"
+- target:
+    kind: NetworkPolicy
+    name: argocd-.*
+  patch: "$patch: delete\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\n\
+    metadata:\n  name: unused\n"
+- target:
+    kind: Deployment
+    name: argocd-(repo-server|redis)
+  patch: "- op: add\n  path: /spec/template/spec/automountServiceAccountToken\n  value:\
+    \ false\n"
+- target:
+    kind: Deployment
+    name: argocd-redis
+  patch: "- op: remove\n  path: /spec/template/spec/initContainers\n"
+- target:
+    kind: Role
+    name: argocd-redis
+  patch: "$patch: delete\napiVersion: rbac.authorization.k8s.io/v1\nkind: Role\nmetadata:\n\
+    \  name: argocd-redis\n"
+- target:
+    kind: RoleBinding
+    name: argocd-redis
+  patch: "$patch: delete\napiVersion: rbac.authorization.k8s.io/v1\nkind: RoleBinding\n\
+    metadata:\n  name: argocd-redis\n"

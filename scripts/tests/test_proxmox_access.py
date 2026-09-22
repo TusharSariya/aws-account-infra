@@ -80,7 +80,7 @@ class CIPermissionTests(unittest.TestCase):
         self.check = module('proxmox-ci-check').check_permissions
         self.rights = {
             '/': {'Sys.Audit': 1},
-            '/vms/100': {'VM.Audit': 1, 'VM.GuestAgent.Audit': 1, 'VM.Config.Disk': 1},
+            '/vms/100': {'Sys.Audit': 1},
             '/vms/102': {'VM.Audit': 1, 'VM.Config.Disk': 1},
             '/vms/101': {'Sys.Audit': 1},
             '/storage/local': {'Datastore.Audit': 1},
@@ -88,7 +88,7 @@ class CIPermissionTests(unittest.TestCase):
         }
 
     def test_apply_rejects_missing_global_startup_permission(self):
-        for path in ('/vms/100', '/vms/102'):
+        for path in ('/vms/102',):
             self.rights[path]['VM.Allocate'] = 1
         with self.assertRaisesRegex(ValueError, 'Sys.Modify'):
             self.check(self.rights, True)
@@ -116,10 +116,10 @@ class CIPermissionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.check(self.rights, False)
 
-    def test_apply_requires_both_vm_scopes_and_rejects_unrelated_vm(self):
+    def test_apply_requires_worker_scope_and_rejects_unrelated_vm(self):
         with self.assertRaises(ValueError):
             self.check(self.rights, True)
-        for path in ('/vms/100', '/vms/102'):
+        for path in ('/vms/102',):
             self.rights[path]['VM.Allocate'] = 1
         self.rights['/']['Sys.Modify'] = 1
         self.check(self.rights, True)

@@ -1,0 +1,6 @@
+# Merge into each existing main Talos node, preserving its machine configuration.
+# Manually inspect and approve only that node's kubelet-serving CSR.
+machine:
+  kubelet:
+    extraConfig:
+      serverTLSBootstrap: true
