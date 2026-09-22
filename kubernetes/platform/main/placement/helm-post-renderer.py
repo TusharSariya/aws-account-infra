@@ -12,7 +12,9 @@ from plan import patch_for
 parser = argparse.ArgumentParser()
 parser.add_argument("--namespace", default=os.environ.get("MAIN_HELM_NAMESPACE"))
 args = parser.parse_args()
-objects = list(yaml.safe_load_all(sys.stdin))
+# Helm charts can include empty or comment-only documents for disabled templates.
+# Emitting those as "--- null" is rejected by Kubernetes' YAML document reader.
+objects = [obj for obj in yaml.safe_load_all(sys.stdin) if obj is not None]
 for obj in objects:
     if not obj or "spec" not in obj:
         continue

@@ -16,6 +16,14 @@ spec.loader.exec_module(guard)
 
 
 class MainClusterTests(unittest.TestCase):
+    def test_empty_chart_documents_are_not_emitted_as_null_manifests(self):
+        manifest = {'apiVersion': 'v1', 'kind': 'ConfigMap',
+                    'metadata': {'name': 'fixture'}, 'data': {'value': 'kept'}}
+        rendered = '---\n# disabled template\n---\n' + yaml.safe_dump(manifest) + '---\n# another disabled template\n'
+        out = subprocess.check_output([str(RENDER), '--namespace', 'cnpg-system'], input=rendered, text=True)
+        self.assertEqual(list(yaml.safe_load_all(out)), [manifest])
+        self.assertNotIn('--- null', out)
+
     def test_real_cache_chart_pins_database_and_backup_consumers(self):
         rendered = subprocess.check_output(['helm', 'template', 'homelab-cache', str(ROOT / 'charts/homelab-cache'), '--namespace', 'homelab-cache'], text=True)
         out = subprocess.check_output([str(RENDER), '--namespace', 'homelab-cache'], input=rendered, text=True)
