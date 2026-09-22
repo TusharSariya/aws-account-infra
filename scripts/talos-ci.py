@@ -102,13 +102,17 @@ def guard_storage_config(configs):
                 'provisioning': {'diskSelector': {'match': SELECTOR},
                                  'minSize': '1199GiB', 'grow': False},
                 'filesystem': {'type': 'xfs', 'projectQuotaSupport': True}}
+    laptop = {'apiVersion': 'v1alpha1', 'kind': 'UserVolumeConfig', 'name': 'pihole',
+              'provisioning': {'diskSelector': {'match': "!system_disk && '/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_homelab-dns' in disk.symlinks"},
+                               'minSize': '2GiB', 'maxSize': '2GiB'}}
+    expected_by_node = {'talos-worker-01': [expected], 'talos-cp-01': [laptop]}
     for name, config in configs.items():
         docs = list(yaml.safe_load_all(config))
         if name == 'talos-worker-01' and docs[0].get('machine', {}).get('sysctls', {}).get('user.max_user_namespaces') != '11255':
             raise StageError('Worker user namespaces are required to prevent project quota bypass')
         volumes = [d for d in docs if d.get('kind') == 'UserVolumeConfig']
-        if volumes != ([expected] if name == 'talos-worker-01' else []):
-            raise StageError('User volume must target only the verified worker data disk')
+        if volumes != expected_by_node.get(name, []):
+            raise StageError('User volumes must match the dedicated disks and limits for each node')
 
 
 def guard_storage_disks(disks, volumes):

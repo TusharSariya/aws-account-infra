@@ -142,7 +142,19 @@ class StorageGuardTests(unittest.TestCase):
 
     def test_checked_in_config_and_unsafe_selector(self):
         config = (ci.ROOT / 'config/environments/proxmox/homelab/talos/patches/talos-worker-01.yaml').read_text()
-        ci.guard_storage_config({'talos-worker-01': config, 'talos-cp-01': 'machine: {}'})
+        laptop = (ci.ROOT / 'config/environments/proxmox/homelab/talos/patches/talos-cp-01.yaml').read_text()
+        ci.guard_storage_config({'talos-worker-01': config, 'talos-cp-01': laptop})
+        for before, after in [
+                ("!system_disk && ", ''),
+                ('homelab-dns', 'drive-scsi0'),
+                ('maxSize: 2GiB', 'maxSize: 4GiB'),
+                ('name: pihole', 'name: unexpected')]:
+            with self.subTest(change=after), self.assertRaises(ValueError):
+                ci.guard_storage_config({'talos-cp-01': laptop.replace(before, after)})
+        with self.assertRaises(ValueError):
+            ci.guard_storage_config({'talos-cp-01': laptop + '\n---\n' + laptop})
+        with self.assertRaises(ValueError):
+            ci.guard_storage_config({'talos-worker-02': laptop})
         with self.assertRaises(ValueError):
             ci.guard_storage_config({'talos-worker-01': config.replace(ci.SELECTOR, '!system_disk')})
 
