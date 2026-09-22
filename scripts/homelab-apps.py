@@ -321,9 +321,18 @@ def execute(operation, private):
             raise AppError('Saved application plan changed after validation')
         from main_cluster_guard import require_primary_ready
         require_primary_ready(Path.home() / '.cache/aws-account-infra/talos/kubectl-v1.36.3')
-        run([str(Path.home() / '.cache/aws-account-infra/talos/kubectl-v1.36.3'), 'apply', '-f', str(ROOT / 'kubernetes/platform/main/placement/proxy-class.yaml')])
-        from postgres_preflight import verify
-        verify(str(Path.home() / '.cache/aws-account-infra/talos/kubectl-v1.36.3'), run)
+        data = run(command + ['show', '-json', plan])
+        check_secrets(data, private)
+        summary = guard_plan(json.loads(data))
+        # Idle capacity is a rollout prerequisite, not a prerequisite for a
+        # verified no-op apply while the same PR's test runners are active.
+        if any(item['actions'] != ['no-op'] for item in summary):
+            from postgres_preflight import verify
+            try:
+                verify(str(Path.home() / '.cache/aws-account-infra/talos/kubectl-v1.36.3'), run)
+            except ValueError as error:
+                raise AppError('Application rollout preflight blocked; wait for idle capacity and verify storage/quotas') from error
+            run([str(Path.home() / '.cache/aws-account-infra/talos/kubectl-v1.36.3'), 'apply', '-f', str(ROOT / 'kubernetes/platform/main/placement/proxy-class.yaml')])
         try:
             run(command + ['apply', '-input=false', '-lock-timeout=60s', plan])
         except AppError:

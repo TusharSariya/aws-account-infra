@@ -128,6 +128,26 @@ class GuardTests(unittest.TestCase):
                 apps.bootstrap('kubectl')
             run.assert_not_called()
 
+    def test_noop_apply_does_not_require_rollout_capacity_or_reapply_proxy_class(self):
+        for actions in (['no-op'], ['update']):
+            with self.subTest(actions=actions), tempfile.TemporaryDirectory() as directory:
+                private = Path(directory)
+                (private / 'apps.tfplan').write_bytes(b'verified-plan')
+                (private / 'apps-plan.sha256').write_text(hashlib.sha256(b'verified-plan').hexdigest())
+                data = json.dumps(self.plan(actions)).encode()
+                with patch.dict(apps.os.environ, {'GITHUB_ACTIONS': 'true'}), \
+                     patch.object(apps, 'run', return_value=data) as run, \
+                     patch.object(apps, 'guard_images'), patch.object(apps, 'credentials'), \
+                     patch.object(apps, 'check_secrets'), \
+                     patch.object(apps, 'lifecycle_credentials', return_value={'operator': 'test-only'}), \
+                     patch.object(apps, 'reconcile_credential_object'), \
+                     patch('main_cluster_guard.require_primary_ready'), \
+                     patch('postgres_preflight.verify') as verify:
+                    apps.execute('apply', private)
+                self.assertEqual(verify.call_count, int(actions != ['no-op']))
+                writes = [call for call in run.call_args_list if '-f' in call.args[0]]
+                self.assertEqual(len(writes), int(actions != ['no-op']))
+
     def test_changed_saved_plan_cannot_apply(self):
         with tempfile.TemporaryDirectory() as d, patch.dict(apps.os.environ, {'GITHUB_ACTIONS': 'true'}), patch.object(apps, 'run') as run, patch.object(apps, 'guard_images'), patch.object(apps, 'credentials'):
             p = Path(d)
