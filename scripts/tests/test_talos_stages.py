@@ -31,6 +31,26 @@ class StageTests(unittest.TestCase):
         self.assertEqual(session.tc[-2:], ['-n', '10.0.0.221'])
         self.assertEqual(session.worker_tc[-2:], ['-n', '10.0.0.222'])
 
+    def test_connect_refreshes_only_its_private_kubeconfig(self):
+        with tempfile.TemporaryDirectory() as directory:
+            session = ci.Session.__new__(ci.Session)
+            session.private = Path(directory)
+            session.tc = ['talosctl', '-n', '10.0.0.221']
+            target = session.private / 'kubeconfig'
+            def execute(command):
+                if 'machinestatus' in command:
+                    return 'spec: {stage: running}'
+                if 'kubeconfig' in command:
+                    self.assertEqual(command[4], target)
+                    self.assertIn('--merge=false', command)
+                    if target.exists() and '--force' not in command:
+                        raise ci.StageError('kubeconfig already exists')
+                    target.write_text('clusters: [{cluster: {server: "https://10.0.0.231:6443"}}]')
+                return ''
+            with patch.object(session, 'run', side_effect=execute):
+                session.connect()
+                session.connect()
+
     def test_environment_overrides_and_secret_are_not_inherited(self):
         poisoned = {'TF_CLI_ARGS_plan': '-destroy', 'TF_LOG': 'TRACE', 'TOFU_LOG': 'TRACE',
                     'TF_VAR_machine_configurations': 'wrong', 'TF_DATA_DIR': '/wrong',

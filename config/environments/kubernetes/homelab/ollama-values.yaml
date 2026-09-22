@@ -7,3 +7,5 @@ storage: 300Gi
 resources:
   requests: {cpu: '8', memory: 32Gi}
   limits: {cpu: '36', memory: 64Gi}
+
+wakeGateway: wake-ollama

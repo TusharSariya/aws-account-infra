@@ -25,18 +25,22 @@ runs:
         echo "path=$(mktemp -d "$RUNNER_TEMP/talos-ci.XXXXXXXX")" >> "$GITHUB_OUTPUT"
     - name: Set up pinned Talos tools and verified charts
       shell: bash
-      env:
-        MODE: ${{ inputs.mode }}
-      run: |
-        extra=()
-        if [[ "$MODE" == apply ]]; then extra+=(--acceptance); fi
-        uv run scripts/talos-ci.py setup "${extra[@]}"
+      # Plans also need the verified kubectl binary for their maintenance hold.
+      run: uv run scripts/talos-ci.py setup --acceptance
     - name: Prepare original private Talos identity
       shell: bash
       env:
         TALOS_SECRETS_B64: ${{ inputs.secrets-b64 }}
         PRIVATE: ${{ steps.private.outputs.path }}
       run: uv run scripts/talos-ci.py prepare --private "$PRIVATE"
+    - name: Hold retained workers during cluster operations
+      shell: bash
+      env:
+        PRIVATE: ${{ steps.private.outputs.path }}
+      run: |
+        uv run scripts/talos-ci.py connect --private "$PRIVATE"
+        install -m 700 "$HOME/.cache/aws-account-infra/talos/kubectl-v1.36.3" "$PRIVATE/kubectl"
+        PATH="$PRIVATE:$PATH" python3 scripts/homelab-power-hold.py acquire --kubeconfig "$PRIVATE/kubeconfig" --receipt "$PRIVATE/power-hold.json" --hosts primary,secondary --wait
     - name: Verify live identity, dry-run configuration and disk safety
       shell: bash
       env:
@@ -93,6 +97,15 @@ runs:
       env:
         PRIVATE: ${{ steps.private.outputs.path }}
       run: uv run scripts/talos-ci.py readiness --private "$PRIVATE"
+    - name: Release only this operation's maintenance hold
+      if: always() && steps.private.outputs.path != ''
+      shell: bash
+      env:
+        PRIVATE: ${{ steps.private.outputs.path }}
+      run: |
+        if [[ -f "$PRIVATE/power-hold.json" ]]; then
+          PATH="$PRIVATE:$PATH" python3 scripts/homelab-power-hold.py release --kubeconfig "$PRIVATE/kubeconfig" --receipt "$PRIVATE/power-hold.json"
+        fi
     - name: Remove private configurations, plans and credentials
       if: always() && steps.private.outputs.path != ''
       shell: bash

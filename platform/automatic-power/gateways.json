@@ -1,0 +1,26 @@
+[
+  {
+    "name": "wake-ollama",
+    "namespace": "homelab-models",
+    "host": "primary",
+    "upstream": "ollama.homelab-models.svc.cluster.local",
+    "port": 11434,
+    "startAI": true
+  },
+  {
+    "name": "wake-odysseus",
+    "namespace": "homelab-models",
+    "host": "primary",
+    "upstream": "odysseus.homelab-models.svc.cluster.local",
+    "port": 7000,
+    "startAI": true
+  },
+  {
+    "name": "wake-lifecycle",
+    "namespace": "homelab-platform",
+    "host": "primary",
+    "upstream": "ai-lifecycle.homelab-platform.svc.cluster.local",
+    "port": 8080,
+    "wakePaths": "/start"
+  }
+]

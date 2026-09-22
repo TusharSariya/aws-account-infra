@@ -4,13 +4,18 @@ image:
   repository: pihole/pihole
   tag: 2026.07.2@sha256:f7d1be836e3bc608b56d82fc9904f5a831cdfbc0dc9c6d58f94e4c985c70038b
 nodeSelector:
-  kubernetes.io/hostname: talos-worker-01
+  node-role.kubernetes.io/control-plane: ""
+tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule
 resources:
   requests: {cpu: 100m, memory: 128Mi}
   limits: {cpu: '1', memory: 512Mi}
 persistentVolumeClaim:
   enabled: true
-  storageClass: worker-local-retain
+  storageClass: laptop-local-retain
+  existingClaim: pihole-laptop
   size: 2Gi
   annotations:
     helm.sh/resource-policy: keep
@@ -40,6 +45,7 @@ serviceDns:
   mixedService: true
   annotations:
     tailscale.com/expose: 'true'
+    tailscale.com/proxy-class: primary-applications
     tailscale.com/hostname: pihole-dns
 serviceWeb:
   type: ClusterIP
@@ -49,6 +55,8 @@ virtualHost: pihole-admin.tail2f646b.ts.net
 ingress:
   enabled: true
   ingressClassName: tailscale
+  annotations:
+    tailscale.com/proxy-class: primary-applications
   path: /
   pathType: Prefix
   # The operator derives the hostname from tls.hosts; leave HTTP host matching empty.

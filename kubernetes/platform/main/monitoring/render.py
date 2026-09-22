@@ -226,7 +226,7 @@ def render():
                 "apiGroups": [""],
                 "resources": ["pods", "pods/log"],
                 "verbs": ["get", "list", "watch"],
-            }
+            },
         ],
     )
     add(
@@ -249,7 +249,12 @@ def render():
                 "resources": ["nodes/metrics"],
                 "verbs": ["get"],
                 "resourceNames": ["talos-cp-01", "talos-worker-01", "talos-worker-02"],
-            }
+            },
+            {
+                "apiGroups": [""],
+                "resources": ["nodes"],
+                "verbs": ["get", "list", "watch"],
+            },
         ],
     )
     add(

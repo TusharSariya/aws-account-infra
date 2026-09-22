@@ -27,7 +27,7 @@ class SelectionTests(unittest.TestCase):
         selected = units.select_units(['config/environments/kubernetes/homelab/ai-values.yaml'],
                                       units.load_units())
         self.assertEqual([u['id'] for u in selected], ['kubernetes-homelab'])
-        self.assertIn('talos-homelab', selected[0]['dependencies'])
+        self.assertIn('kubernetes-homelab-management', selected[0]['dependencies'])
         # A serialized-object substring check also matches dependency/watch fields.
         # Every workflow membership check must project only actual selected IDs.
         root = Path(__file__).resolve().parents[2]

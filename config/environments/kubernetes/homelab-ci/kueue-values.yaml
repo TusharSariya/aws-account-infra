@@ -28,4 +28,5 @@ managerConfig:
           operator: In
           values: [homelab-models, homelab-jobs, arc-runners]
     integrations:
+      # Batch/CronJob compute uses labeled, gated Pods under the same admission policy.
       frameworks: [pod, deployment]

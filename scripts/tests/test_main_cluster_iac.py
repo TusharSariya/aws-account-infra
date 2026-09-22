@@ -45,6 +45,13 @@ class MainClusterTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'sleeping or cordoned'):
                     guard.require_primary_ready('kubectl')
 
+    def test_platform_restoration_blocks_apply_after_node_is_ready(self):
+        node = {'metadata': {'annotations': {'homelab.tfdraw.dev/power-operation': 'restoring'}},
+                'spec': {}, 'status': {'conditions': [{'type': 'Ready', 'status': 'True'}]}}
+        with patch.object(guard.subprocess, 'check_output', return_value=json.dumps(node)):
+            with self.assertRaisesRegex(ValueError, 'platform restoration'):
+                guard.require_primary_ready('kubectl')
+
     def test_hibernation_blocks_apply_even_after_node_returns(self):
         node = {'spec': {}, 'status': {'conditions': [{'type': 'Ready', 'status': 'True'}]}}
         db = {'metadata': {'annotations': {'cnpg.io/hibernation': 'on'}}}

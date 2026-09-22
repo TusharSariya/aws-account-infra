@@ -13,3 +13,6 @@ queues:
   - {namespace: homelab-models, name: ai}
   - {namespace: arc-runners, name: ci}
   - {namespace: homelab-jobs, name: argo}
+# Enable only after the always-on admission controller has passed wake-only acceptance.
+power:
+  enabled: false

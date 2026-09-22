@@ -177,7 +177,7 @@ spec:
   tls: [{hosts: [ai-lifecycle]}]
   defaultBackend:
     service:
-      name: ai-lifecycle
+      name: {{ .Values.wakeGateway | default "ai-lifecycle" }}
       port: {number: 8080}
 ---
 apiVersion: networking.k8s.io/v1
@@ -188,6 +188,17 @@ spec:
     matchLabels: {app: ai-lifecycle}
   policyTypes: [Ingress, Egress]
   ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: homelab-platform}
+          podSelector:
+            matchLabels: {app: wake-lifecycle}
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: homelab-models}
+          podSelector:
+            matchExpressions:
+              - {key: app, operator: In, values: [wake-ollama, wake-odysseus]}
+      ports: [{protocol: TCP, port: 8080}]
     - from:
         - namespaceSelector:
             matchLabels: {kubernetes.io/metadata.name: homelab-models}

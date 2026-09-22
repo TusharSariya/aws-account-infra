@@ -1,0 +1,54 @@
+name: Retained host maintenance hold
+description: Wake and hold registered hosts through the laptop API during Proxmox work
+inputs:
+  action:
+    description: acquire or release
+    required: true
+  secrets-b64:
+    description: Existing Talos identity, required for acquire
+    default: ''
+  private-path:
+    description: Private workspace returned by acquire, required for release
+    default: ''
+outputs:
+  private-path:
+    description: Private credential and durable hold receipt directory
+    value: ${{ steps.private.outputs.path }}
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@v6
+      if: inputs.action == 'acquire'
+      with:
+        enable-cache: false
+    - id: private
+      if: inputs.action == 'acquire'
+      shell: bash
+      run: |
+        umask 077
+        echo "path=$(mktemp -d "$RUNNER_TEMP/host-hold.XXXXXXXX")" >> "$GITHUB_OUTPUT"
+    - name: Acquire independent management hold
+      if: inputs.action == 'acquire'
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      env:
+        PRIVATE: ${{ steps.private.outputs.path }}
+        TALOS_SECRETS_B64: ${{ inputs.secrets-b64 }}
+      run: |
+        uv run scripts/talos-ci.py setup --acceptance --checks-only
+        uv run scripts/talos-ci.py prepare --private "$PRIVATE"
+        uv run scripts/talos-ci.py connect --private "$PRIVATE"
+        install -m 700 "$HOME/.cache/aws-account-infra/talos/kubectl-v1.36.3" "$PRIVATE/kubectl"
+        PATH="$PRIVATE:$PATH" python3 scripts/homelab-power-hold.py acquire --kubeconfig "$PRIVATE/kubeconfig" --receipt "$PRIVATE/power-hold.json" --hosts primary,secondary --wait
+    - name: Release only this operation's hold and remove its credentials
+      if: inputs.action == 'release'
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      env:
+        PRIVATE: ${{ inputs.private-path }}
+      run: |
+        test -n "$PRIVATE"
+        if [[ -f "$PRIVATE/power-hold.json" ]]; then
+          PATH="$PRIVATE:$PATH" python3 scripts/homelab-power-hold.py release --kubeconfig "$PRIVATE/kubeconfig" --receipt "$PRIVATE/power-hold.json"
+        fi
+        rm -rf -- "$PRIVATE"

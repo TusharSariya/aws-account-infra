@@ -11,11 +11,31 @@ metadata: {name: homelab-worker}
 spec:
   nodeLabels:
     kubernetes.io/hostname: {{ .Values.worker }}
+{{- if .Values.power.enabled }}
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ResourceFlavor
+metadata: {name: homelab-secondary}
+spec:
+  nodeLabels:
+    kubernetes.io/hostname: talos-worker-02
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: AdmissionCheck
+metadata: {name: homelab-host-ready}
+spec:
+  controllerName: homelab.tfdraw.dev/retained-host-power
+{{- end }}
 ---
 apiVersion: kueue.x-k8s.io/v1beta2
 kind: ClusterQueue
 metadata: {name: homelab-compute}
 spec:
+{{- if .Values.power.enabled }}
+  admissionChecksStrategy:
+    admissionChecks:
+      - name: homelab-host-ready
+{{- end }}
   queueingStrategy: {{ .Values.strategy }}
   namespaceSelector:
     matchExpressions:
@@ -36,6 +56,16 @@ spec:
               nominalQuota: {{ .Values.memory }}
             - name: ephemeral-storage
               nominalQuota: {{ .Values.scratch }}
+{{- if .Values.power.enabled }}
+        - name: homelab-secondary
+          resources:
+            - name: cpu
+              nominalQuota: {{ .Values.cpu | quote }}
+            - name: memory
+              nominalQuota: {{ .Values.memory }}
+            - name: ephemeral-storage
+              nominalQuota: {{ .Values.scratch }}
+{{- end }}
 ---
 apiVersion: kueue.x-k8s.io/v1beta2
 kind: WorkloadPriorityClass

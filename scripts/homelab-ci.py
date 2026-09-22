@@ -16,10 +16,13 @@ from kueue_capacity import verify
 from local_lifecycle_record import execution_lock, guard_environment, tree_digest
 
 ROOT = Path(__file__).resolve().parents[1]
-TF = ROOT / 'live/kubernetes/homelab-ci'
+TF = ROOT / 'live/kubernetes/homelab-management'
 CONFIG = ROOT / 'config/environments/kubernetes/homelab-ci'
 RELEASES = {'kueue': ('kueue-system', '0.19.4'), 'queue': ('kueue-system', None),
-            'arc': ('arc-systems', '0.14.2'), 'cache': ('homelab-cache', None), 'runners': ('arc-runners', '0.14.2')}
+            'arc': ('arc-systems', '0.14.2'), 'cache': ('homelab-cache', None), 'runners': ('arc-runners', '0.14.2'),
+            'tailscale_operator': ('tailscale', '1.102.3'), 'pihole': ('homelab-services', '2.38.0'),
+            'lifecycle': ('homelab-platform', None), 'argo': ('homelab-jobs', '2.0.5'),
+            'jobs': ('homelab-jobs', None), 'always_on': ('homelab-platform', None)}
 
 
 def run(args, data=None):
@@ -64,7 +67,7 @@ def guard(plan):
 
 def backend():
     value = json.loads((TF / '.terraform/terraform.tfstate').read_text())['backend']
-    expected = dict(bucket='tofu-state-992382747916-us-east-1', key='kubernetes/homelab-ci/terraform.tfstate',
+    expected = dict(bucket='tofu-state-992382747916-us-east-1', key='kubernetes/' + TF.name + '/terraform.tfstate',
                     region='us-east-1', dynamodb_table='tofu-locks', encrypt=True)
     if value['type'] != 's3' or any(value['config'].get(k) != v for k, v in expected.items()):
         raise ValueError('CI backend identity differs')
@@ -76,6 +79,10 @@ def backend():
 
 def artifacts():
     (TF / '.terraform').mkdir(exist_ok=True)
+    if TF.name == 'homelab-management':
+        from cache_download import fetch
+        for name, artifact in json.loads((ROOT / 'config/environments/kubernetes/homelab/artifacts.json').read_text()).items():
+            fetch(artifact['url'], artifact['sha256'], TF / '.terraform' / name, use_cache=False)
     for artifact in json.loads((CONFIG / 'artifacts.json').read_text()):
         path = TF / '.terraform' / (artifact['chart'] + '-' + artifact['version'] + '.tgz')
         if not path.exists():
@@ -95,11 +102,6 @@ def preflight(kube):
         raise ValueError('Keep AI off with termination observed throughout migration')
     config = yaml.safe_load((CONFIG / 'pool-values.yaml').read_text())
     catalog = json.loads((CONFIG / 'runner-catalog.json').read_text())
-    # Updating a scale set must not interrupt an assigned or gated runner.
-    if any(p['metadata']['namespace'] == 'arc-runners'
-           and 'kueue.x-k8s.io/queue-name' in p['metadata'].get('labels', {})
-           and p.get('status', {}).get('phase') not in ('Succeeded', 'Failed') for p in pods):
-        raise ValueError('Wait for all existing runners to become idle before admission deployment')
     node = get('get', 'node', 'talos-worker-01')
     summary = json.loads(run(kube + ['get', '--raw=/api/v1/nodes/talos-worker-01/proxy/stats/summary']))
     from kueue_capacity import verify_storage
@@ -225,14 +227,53 @@ def enroll_registry(kube, source):
     run(kube + ['apply', '--server-side', '--field-manager=homelab-ci-credentials', '-f', '-'], json.dumps(secret).encode())
 
 
+def require_idle_runners(pods):
+    """Deployments must not interrupt jobs; persistent listeners are not jobs."""
+    for pod in pods:
+        if pod['metadata']['namespace'] != 'arc-runners' or pod.get('status', {}).get('phase') in ('Succeeded', 'Failed'):
+            continue
+        owners = pod['metadata'].get('ownerReferences', [])
+        if len(owners) == 1 and owners[0].get('kind') == 'AutoscalingListener':
+            continue
+        raise ValueError('Wait for assigned/gated runners before updating CI services')
+
+
+def management_preflight(kube):
+    """Potential quotas are validated even when workers are powered off."""
+    from kueue_capacity import quantity
+    nodes = json.loads(run(kube + ['get', 'nodes', '-o', 'json']))['items']
+    pool = yaml.safe_load((CONFIG / 'pool-values.yaml').read_text())
+    report = {}
+    for name in ['talos-worker-01', 'talos-worker-02']:
+        node = next(n for n in nodes if n['metadata']['name'] == name)
+        for resource in ['cpu', 'memory']:
+            if quantity(pool[resource]) + quantity(pool['platformReserve'][resource]) > quantity(node['status']['allocatable'][resource]):
+                raise ValueError('Potential pool exceeds retained worker capacity')
+        report[name] = {'potential': {k: pool[k] for k in ['cpu', 'memory', 'scratch']},
+                        'ready': any(c['type'] == 'Ready' and c['status'] == 'True' for c in node['status']['conditions'])}
+    cp = next(n for n in nodes if n['metadata']['name'] == 'talos-cp-01')
+    if not any(c['type'] == 'Ready' and c['status'] == 'True' for c in cp['status']['conditions']):
+        raise ValueError('Always-on control plane must be Ready')
+    # Helm can silently prune fields removed by a CRD version. Validate the
+    # enabled queue against the installed API, including its readiness gate.
+    rendered = run(['helm', 'template', 'homelab-queue', ROOT / 'charts/homelab-queue',
+                    '-n', 'kueue-system', '-f', CONFIG / 'pool-values.yaml'])
+    run(kube + ['apply', '--dry-run=server', '--validate=strict', '-f', '-'], rendered)
+    return report
+
+
 def main():
+    global TF
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('operation', choices=['setup','plan','apply','enroll','enroll-cache','enroll-registry','status'])
+    parser.add_argument('--scope', choices=['management', 'cache'], default='management')
     parser.add_argument('--private', type=Path)
     parser.add_argument('--app-json', type=Path)
     parser.add_argument('--cache-json', type=Path)
     parser.add_argument('--registry-json', type=Path)
     args = parser.parse_args()
+    if args.scope == 'cache':
+        TF = ROOT / 'live/kubernetes/homelab-ci'
     os.umask(0o077)
     guard_environment()
     if any(k.startswith(('AWS_ENDPOINT_URL','TF_VAR_','TOFU_CLI_ARGS')) for k in os.environ):
@@ -286,7 +327,9 @@ def main():
             print('PASS: GitHub App Secret enrolled privately')
             return
         backend()
-        report = preflight(kube)
+        if args.operation == 'apply':
+            require_idle_runners(json.loads(run(kube + ['get', 'pods', '-A', '-o', 'json']))['items'])
+        report = preflight(kube) if args.scope == 'cache' else management_preflight(kube)
         command = ['tofu', '-chdir=' + str(TF)]
         plan, receipt = private / 'ci.tfplan', private / 'ci-record.json'
         if args.operation == 'plan':
@@ -310,7 +353,8 @@ def main():
         record['apply'] = 'running'; receipt.write_text(json.dumps(record, indent=2))
         try:
             from main_cluster_guard import require_primary_ready
-            require_primary_ready(kube)
+            if args.scope == 'cache':
+                require_primary_ready(kube)
             run(command + ['apply','-input=false','-lock-timeout=60s',plan])
             record['apply'] = 'success'
             fresh = private / 'post-apply.tfplan'

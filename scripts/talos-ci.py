@@ -102,13 +102,17 @@ def guard_storage_config(configs):
                 'provisioning': {'diskSelector': {'match': SELECTOR},
                                  'minSize': '1199GiB', 'grow': False},
                 'filesystem': {'type': 'xfs', 'projectQuotaSupport': True}}
+    laptop = {'apiVersion': 'v1alpha1', 'kind': 'UserVolumeConfig', 'name': 'pihole',
+              'provisioning': {'diskSelector': {'match': "!system_disk && '/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_homelab-dns' in disk.symlinks"},
+                               'minSize': '2GiB', 'maxSize': '2GiB'}}
+    expected_by_node = {'talos-worker-01': [expected], 'talos-cp-01': [laptop]}
     for name, config in configs.items():
         docs = list(yaml.safe_load_all(config))
         if name == 'talos-worker-01' and docs[0].get('machine', {}).get('sysctls', {}).get('user.max_user_namespaces') != '11255':
             raise StageError('Worker user namespaces are required to prevent project quota bypass')
         volumes = [d for d in docs if d.get('kind') == 'UserVolumeConfig']
-        if volumes != ([expected] if name == 'talos-worker-01' else []):
-            raise StageError('User volume must target only the verified worker data disk')
+        if volumes != expected_by_node.get(name, []):
+            raise StageError('User volumes must match the dedicated disks and limits for each node')
 
 
 def guard_storage_disks(disks, volumes):
@@ -231,7 +235,7 @@ class Session:
         if status['spec']['stage'] != 'running':
             raise StageError('Installed control plane must be running before adoption/update')
         self.run(self.tc + ['etcd', 'members'])
-        self.run(self.tc + ['kubeconfig', self.private / 'kubeconfig', '--merge=false'])
+        self.run(self.tc + ['kubeconfig', self.private / 'kubeconfig', '--merge=false', '--force'])
         kube = yaml.safe_load((self.private / 'kubeconfig').read_text())
         if kube['clusters'][0]['cluster']['server'] != 'https://10.0.0.231:6443':
             raise StageError('Unexpected Kubernetes API target')

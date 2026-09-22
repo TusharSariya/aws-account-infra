@@ -13,7 +13,9 @@ workflow; PR 117 records the rollout checks and execution status.
 | Primary worker hardware | `live/proxmox/homelab`, existing S3 state |
 | Secondary worker hardware | `live/proxmox/homelab-secondary`, preserved private local state |
 | Talos machine configuration | `config/environments/proxmox/homelab/talos`, generated with existing private secrets |
-| Existing Helm releases | `live/talos/homelab`, `live/kubernetes/homelab`, `live/kubernetes/homelab-ci` |
+| Always-on management, DNS, Kueue and ARC | `live/kubernetes/homelab-management`, transferred existing release state |
+| Worker application Helm releases | `live/kubernetes/homelab`; Nexus stays in `live/kubernetes/homelab-ci` |
+| Talos-managed networking Helm releases | `live/talos/homelab` |
 | Monitoring and Argo CD | `kubernetes/platform/main`, reviewed Kustomize installation |
 | Temporary sleep state | Laptop's private maintenance journal; not a new steady-state Helm release |
 
@@ -31,7 +33,7 @@ Application, CI-service and Talos apply stages refuse a NotReady or cordoned
 primary worker, or a hibernated CNPG database. Complete the laptop wake runbook
 and restore its journal before deploying. The two Proxmox roots ignore runtime
 `started` drift so infrastructure reconciliation does not undo manual sleep/wake.
-This is not automatic power management.
+The subsequent [automatic-power rollout](automatic-server-power.md) owns runtime power transitions. It preserves both worker definitions and storage identities. Management plans use attainable capacity while workers sleep; admission requires fresh post-wake measurements. CI infrastructure operations register durable maintenance holds.
 
 ## State reconciliation already performed
 

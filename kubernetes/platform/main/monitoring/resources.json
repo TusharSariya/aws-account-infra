@@ -29,8 +29,8 @@
         "namespace": "monitoring"
       },
       "data": {
-        "prometheus.yml": "global:\n  scrape_interval: 30s\n  evaluation_interval: 30s\nrule_files: [/etc/monitoring/alerts.yml]\nalerting:\n  alertmanagers:\n    - static_configs:\n        - targets: ['alertmanager:9093']\nscrape_configs:\n  - job_name: monitoring\n    static_configs:\n      - targets: ['prometheus:9090', 'loki:3100', 'alloy:12345', 'grafana:3000', 'alertmanager:9093']\n  - job_name: kubelet\n    scheme: https\n    authorization:\n      credentials_file: /var/run/secrets/kubernetes.io/serviceaccount/token\n    tls_config:\n      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt\n    static_configs:\n      - targets: ['10.0.0.221:10250']\n        labels: {node: talos-cp-01}\n      - targets: ['10.0.0.222:10250']\n        labels: {node: talos-worker-01}\n      - targets: ['10.0.0.225:10250']\n        labels: {node: talos-worker-02}\n    metric_relabel_configs:\n      - source_labels: [__name__]\n        regex: 'kubelet_volume_stats_.*|kubelet_running_pods|kubelet_running_containers|process_.*'\n        action: keep\n",
-        "alerts.yml": "groups:\n  - name: platform\n    rules:\n      - alert: MonitoringTargetDown\n        expr: up{job=\"monitoring\"} == 0\n        for: 3m\n        labels: {severity: warning}\n        annotations: {summary: 'Monitoring target {{ $labels.instance }} is unavailable'}\n      - alert: WorkerUnavailable\n        expr: up{job=\"kubelet\",node=~\"talos-worker-.*\"} == 0\n        for: 5m\n        labels: {severity: warning}\n        annotations: {summary: 'Worker {{ $labels.node }} is unavailable; check laptop maintenance journal and silences'}\n      - alert: ControlPlaneUnavailable\n        expr: up{job=\"kubelet\",node=\"talos-cp-01\"} == 0\n        for: 2m\n        labels: {severity: critical}\n        annotations: {summary: 'Control-plane kubelet cannot be scraped'}\n      - alert: PlatformVolumeNearlyFull\n        expr: kubelet_volume_stats_available_bytes{namespace=\"monitoring\"} / kubelet_volume_stats_capacity_bytes{namespace=\"monitoring\"} < 0.2\n        for: 5m\n        labels: {severity: warning}\n        annotations: {summary: 'Monitoring volume has less than 20 percent free'}\n"
+        "prometheus.yml": "global:\n  scrape_interval: 30s\n  evaluation_interval: 30s\nrule_files: [/etc/monitoring/alerts.yml]\nalerting:\n  alertmanagers:\n    - static_configs:\n        - targets: ['alertmanager:9093']\nscrape_configs:\n  - job_name: monitoring\n    static_configs:\n      - targets: ['prometheus:9090', 'loki:3100', 'alloy:12345', 'grafana:3000', 'alertmanager:9093']\n  - job_name: kubelet\n    scheme: https\n    authorization:\n      credentials_file: /var/run/secrets/kubernetes.io/serviceaccount/token\n    tls_config:\n      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt\n    kubernetes_sd_configs:\n      - role: node\n    relabel_configs:\n      - source_labels: [__meta_kubernetes_node_name]\n        regex: talos-cp-01|talos-worker-01|talos-worker-02\n        action: keep\n      - source_labels: [__meta_kubernetes_node_name]\n        target_label: node\n      - source_labels: [__meta_kubernetes_node_annotation_homelab_tfdraw_dev_power_intent]\n        target_label: power_intent\n    metric_relabel_configs:\n      - source_labels: [__name__]\n        regex: 'kubelet_volume_stats_.*|kubelet_running_pods|kubelet_running_containers|process_.*'\n        action: keep\n",
+        "alerts.yml": "groups:\n  - name: platform\n    rules:\n      - alert: MonitoringTargetDown\n        expr: up{job=\"monitoring\"} == 0\n        for: 3m\n        labels: {severity: warning}\n        annotations: {summary: 'Monitoring target {{ $labels.instance }} is unavailable'}\n      - alert: WorkerUnavailable\n        expr: up{job=\"kubelet\",node=~\"talos-worker-.*\",power_intent!=\"sleep\"} == 0\n        for: 5m\n        labels: {severity: warning}\n        annotations: {summary: 'Worker {{ $labels.node }} is unexpectedly unavailable; inspect the laptop power journal'}\n      - alert: ControlPlaneUnavailable\n        expr: up{job=\"kubelet\",node=\"talos-cp-01\"} == 0\n        for: 2m\n        labels: {severity: critical}\n        annotations: {summary: 'Control-plane kubelet cannot be scraped'}\n      - alert: PlatformVolumeNearlyFull\n        expr: kubelet_volume_stats_available_bytes{namespace=\"monitoring\"} / kubelet_volume_stats_capacity_bytes{namespace=\"monitoring\"} < 0.2\n        for: 5m\n        labels: {severity: warning}\n        annotations: {summary: 'Monitoring volume has less than 20 percent free'}\n"
       }
     },
     {
@@ -1121,6 +1121,19 @@
             "talos-cp-01",
             "talos-worker-01",
             "talos-worker-02"
+          ]
+        },
+        {
+          "apiGroups": [
+            ""
+          ],
+          "resources": [
+            "nodes"
+          ],
+          "verbs": [
+            "get",
+            "list",
+            "watch"
           ]
         }
       ]

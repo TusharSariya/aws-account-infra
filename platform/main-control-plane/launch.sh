@@ -6,10 +6,10 @@ cd /var/lib/main-control-plane/vm
 [[ -f /var/lib/main-control-plane/source-fenced ]]
 # Receipt is created only after test networking, source shutdown and offline copy.
 [[ -f /var/lib/main-control-plane/copy-verified ]]
-[[ -f system.qcow2 && -f OVMF_CODE.fd && -f OVMF_VARS.fd ]]
+[[ -f dns.qcow2 && -f system.qcow2 && -f OVMF_CODE.fd && -f OVMF_VARS.fd ]]
 ip link show maincptap >/dev/null
 exec flock -n vm.lock qemu-system-x86_64 \
-  -name talos-cp-01 -machine q35,accel=kvm,smm=on -cpu host -smp 2 -m 4096 \
+  -name talos-cp-01 -machine q35,accel=kvm,smm=on -cpu host -smp 2 -m 5120 \
   -uuid 46a49cd4-7692-4ed9-b00f-4e791de782b3 \
   -device vmgenid,guid=a04f7689-48c8-45fb-b5b6-adc7d16ee5dc \
   -drive if=pflash,format=raw,unit=0,readonly=on,file=OVMF_CODE.fd \
@@ -18,6 +18,8 @@ exec flock -n vm.lock qemu-system-x86_64 \
   -device virtio-scsi-pci,id=scsihw0 \
   -drive file=system.qcow2,format=qcow2,if=none,id=system,cache=none,discard=ignore \
   -device scsi-hd,bus=scsihw0.0,channel=0,scsi-id=0,lun=0,drive=system,bootindex=1 \
+  -drive file=dns.qcow2,format=qcow2,if=none,id=dns,cache=none,discard=ignore \
+  -device scsi-hd,bus=scsihw0.0,channel=0,scsi-id=1,lun=0,drive=dns,serial=homelab-dns \
   -netdev tap,id=main,ifname=maincptap,script=no,downscript=no \
   -device virtio-net-pci,netdev=main,mac=02:42:00:00:01:00 \
   -chardev socket,path=qga.sock,server=on,wait=off,id=qga0 \

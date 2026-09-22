@@ -6,9 +6,7 @@ trap 'echo "ACCEPTANCE_DIAGNOSTIC: readiness line $LINENO" >&2' ERR
 KUBECTL="${KUBECTL:-kubectl}"
 k() { "$KUBECTL" --request-timeout=30s "$@"; }
 k wait --for=condition=Ready node/talos-cp-01 node/talos-worker-01 --timeout=300s
-for ds in cilium cilium-envoy kube-proxy; do
-  k -n kube-system rollout status "daemonset/$ds" --timeout=300s
-done
+python3 "$(dirname "$0")/homelab_node_readiness.py"
 for deploy in cilium-operator coredns; do
   k -n kube-system rollout status "deployment/$deploy" --timeout=300s
 done

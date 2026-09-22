@@ -178,7 +178,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: odysseus
+                name: {{ .Values.wakeGateway | default "odysseus" }}
                 port: {name: http}
 
 {{- end }}

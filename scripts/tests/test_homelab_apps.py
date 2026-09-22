@@ -4,6 +4,7 @@ import importlib.util
 import hashlib
 from copy import deepcopy
 import json
+import re
 from pathlib import Path
 import subprocess
 import tempfile
@@ -33,6 +34,15 @@ class GuardTests(unittest.TestCase):
 
     def plan(self, action):
         return {'resource_changes': [{'address': a, 'change': {'actions': action}} for a in apps.ADDRESSES]}
+
+    def test_guard_tracks_releases_owned_by_the_application_root(self):
+        addresses = set()
+        for path in apps.TF.glob('*.tf'):
+            addresses.update('helm_release.' + name for name in
+                             re.findall(r'resource "helm_release" "([^"]+)"', path.read_text()))
+        plan = {'resource_changes': [{'address': address, 'change': {'actions': ['no-op']}}
+                                     for address in addresses]}
+        self.assertEqual(len(apps.guard_plan(plan)), len(addresses))
 
     def test_safe_plan_and_forbidden_resource_actions(self):
         for actions in [['create'], ['update'], ['no-op']]:
@@ -117,6 +127,26 @@ class GuardTests(unittest.TestCase):
             with self.assertRaises(apps.AppError):
                 apps.bootstrap('kubectl')
             run.assert_not_called()
+
+    def test_noop_apply_does_not_require_rollout_capacity_or_reapply_proxy_class(self):
+        for actions in (['no-op'], ['update']):
+            with self.subTest(actions=actions), tempfile.TemporaryDirectory() as directory:
+                private = Path(directory)
+                (private / 'apps.tfplan').write_bytes(b'verified-plan')
+                (private / 'apps-plan.sha256').write_text(hashlib.sha256(b'verified-plan').hexdigest())
+                data = json.dumps(self.plan(actions)).encode()
+                with patch.dict(apps.os.environ, {'GITHUB_ACTIONS': 'true'}), \
+                     patch.object(apps, 'run', return_value=data) as run, \
+                     patch.object(apps, 'guard_images'), patch.object(apps, 'credentials'), \
+                     patch.object(apps, 'check_secrets'), \
+                     patch.object(apps, 'lifecycle_credentials', return_value={'operator': 'test-only'}), \
+                     patch.object(apps, 'reconcile_credential_object'), \
+                     patch('main_cluster_guard.require_primary_ready'), \
+                     patch('postgres_preflight.verify') as verify:
+                    apps.execute('apply', private)
+                self.assertEqual(verify.call_count, int(actions != ['no-op']))
+                writes = [call for call in run.call_args_list if '-f' in call.args[0]]
+                self.assertEqual(len(writes), int(actions != ['no-op']))
 
     def test_changed_saved_plan_cannot_apply(self):
         with tempfile.TemporaryDirectory() as d, patch.dict(apps.os.environ, {'GITHUB_ACTIONS': 'true'}), patch.object(apps, 'run') as run, patch.object(apps, 'guard_images'), patch.object(apps, 'credentials'):
@@ -326,8 +356,16 @@ class ChartTests(unittest.TestCase):
         self.assertEqual({(x['port'], x['protocol']) for x in dns['spec']['ports']}, {(53, 'TCP'), (53, 'UDP')})
         self.assertEqual(dns['metadata']['annotations']['tailscale.com/expose'], 'true')
         self.assertFalse(any(p['port'] == 67 for s in services for p in s['spec']['ports']))
-        pvc = by_kind['PersistentVolumeClaim'][0]
-        self.assertEqual(pvc['spec']['storageClassName'], 'worker-local-retain')
+        self.assertNotIn('PersistentVolumeClaim', by_kind)
+        claims = [v['persistentVolumeClaim']['claimName'] for v in pod['volumes']
+                  if 'persistentVolumeClaim' in v]
+        self.assertEqual(claims, ['pihole-laptop'])
+        self.assertEqual(pod['nodeSelector'], {'node-role.kubernetes.io/control-plane': ''})
+        retained = list(yaml.safe_load_all(subprocess.check_output(
+            ['helm', 'template', 'homelab-always-on', str(ROOT / 'charts/homelab-always-on')], text=True)))
+        pvc = next(d for d in retained if d and d['kind'] == 'PersistentVolumeClaim')
+        self.assertEqual(pvc['spec']['storageClassName'], 'laptop-local-retain')
+        self.assertEqual(pvc['spec']['volumeName'], 'laptop-pihole')
         self.assertEqual(pvc['metadata']['annotations']['helm.sh/resource-policy'], 'keep')
         ingress = by_kind['Ingress'][0]
         self.assertEqual(ingress['spec']['ingressClassName'], 'tailscale')

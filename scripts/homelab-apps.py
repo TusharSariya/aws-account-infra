@@ -27,7 +27,10 @@ class AppError(ValueError):
     """Only deliberately authored, secret-free diagnostics."""
 
 
-ADDRESSES = {'helm_release.postgres_operator', 'helm_release.postgres', 'helm_release.tailscale_operator', 'helm_release.pihole', 'helm_release.ollama', 'helm_release.odysseus', 'helm_release.capacity', 'helm_release.ai', 'helm_release.lifecycle', 'helm_release.argo', 'helm_release.jobs'}
+# Always-on releases are owned and guarded by homelab-management after migration.
+ADDRESSES = {'helm_release.postgres_operator', 'helm_release.postgres',
+             'helm_release.ollama', 'helm_release.odysseus',
+             'helm_release.capacity', 'helm_release.ai'}
 
 
 def run(command, data=None, *, timeout=2400):
@@ -318,9 +321,18 @@ def execute(operation, private):
             raise AppError('Saved application plan changed after validation')
         from main_cluster_guard import require_primary_ready
         require_primary_ready(Path.home() / '.cache/aws-account-infra/talos/kubectl-v1.36.3')
-        run([str(Path.home() / '.cache/aws-account-infra/talos/kubectl-v1.36.3'), 'apply', '-f', str(ROOT / 'kubernetes/platform/main/placement/proxy-class.yaml')])
-        from postgres_preflight import verify
-        verify(str(Path.home() / '.cache/aws-account-infra/talos/kubectl-v1.36.3'), run)
+        data = run(command + ['show', '-json', plan])
+        check_secrets(data, private)
+        summary = guard_plan(json.loads(data))
+        # Idle capacity is a rollout prerequisite, not a prerequisite for a
+        # verified no-op apply while the same PR's test runners are active.
+        if any(item['actions'] != ['no-op'] for item in summary):
+            from postgres_preflight import verify
+            try:
+                verify(str(Path.home() / '.cache/aws-account-infra/talos/kubectl-v1.36.3'), run)
+            except ValueError as error:
+                raise AppError('Application rollout preflight blocked; wait for idle capacity and verify storage/quotas') from error
+            run([str(Path.home() / '.cache/aws-account-infra/talos/kubectl-v1.36.3'), 'apply', '-f', str(ROOT / 'kubernetes/platform/main/placement/proxy-class.yaml')])
         try:
             run(command + ['apply', '-input=false', '-lock-timeout=60s', plan])
         except AppError:

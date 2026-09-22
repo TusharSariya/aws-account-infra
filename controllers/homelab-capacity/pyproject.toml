@@ -10,6 +10,8 @@ dependencies = ["pyghmi==1.6.19", "paramiko==4.0.0"]
 
 [project.scripts]
 homelab-power = "homelab_capacity.cli:main"
+homelab-coordinator = "homelab_capacity.coordinator:main"
+powerctl = "homelab_capacity.control:main"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

@@ -1,0 +1,166 @@
+{{- range .Values.gateways }}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: {{ .name }}-api
+  namespace: {{ .namespace }}
+  labels: {app.kubernetes.io/managed-by: Helm}
+  annotations:
+    meta.helm.sh/release-name: {{ $.Release.Name }}
+    meta.helm.sh/release-namespace: {{ $.Release.Namespace }}
+spec:
+  endpointSelector:
+    matchLabels: {app: {{ .name }}}
+  egress:
+    - toEntities: [kube-apiserver]
+      toPorts:
+        - ports: [{port: '6443', protocol: TCP}]
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: {{ .name }}, namespace: {{ .namespace }}}
+automountServiceAccountToken: false
+---
+apiVersion: coordination.k8s.io/v1
+kind: Lease
+metadata: {name: {{ .name }}, namespace: {{ .namespace }}}
+spec: {leaseDurationSeconds: 30}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: {name: {{ .name }}, namespace: {{ .namespace }}}
+rules:
+  - apiGroups: [coordination.k8s.io]
+    resources: [leases]
+    resourceNames: [{{ .name }}]
+    verbs: [get, patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: {name: {{ .name }}, namespace: {{ .namespace }}}
+subjects: [{kind: ServiceAccount, name: {{ .name }}, namespace: {{ .namespace }}}]
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: {{ .name }}}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: {{ .name }}-code, namespace: {{ .namespace }}}
+data:
+  gateway.py: |
+{{ $.Values.gatewayCode | indent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: {{ .name }}, namespace: {{ .namespace }}}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app: {{ .name }}}
+  template:
+    metadata:
+      labels: {app: {{ .name }}}
+      annotations:
+        checksum/code: {{ $.Values.gatewayCode | sha256sum }}
+    spec:
+      serviceAccountName: {{ .name }}
+      automountServiceAccountToken: false
+      nodeSelector: {node-role.kubernetes.io/control-plane: ''}
+      tolerations:
+        - {key: node-role.kubernetes.io/control-plane, operator: Exists, effect: NoSchedule}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: gateway
+          image: python:3.14-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6
+          command: [python, /code/gateway.py]
+          ports: [{name: http, containerPort: 8080}]
+          resources:
+            requests: {cpu: 20m, memory: 32Mi}
+            limits: {cpu: 250m, memory: 128Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          readinessProbe:
+            httpGet: {path: /_power/healthz, port: http}
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket: {port: http}
+            initialDelaySeconds: 15
+          env:
+            - {name: GATEWAY_NAME, value: {{ .name }}}
+            - {name: UPSTREAM_HOST, value: {{ .upstream }}}
+            - {name: UPSTREAM_PORT, value: {{ .port | quote }}}
+            - {name: START_AI, value: {{ .startAI | default false | quote }}}
+            - {name: WAKE_PATHS, value: {{ .wakePaths | default "" | quote }}}
+            - name: POD_NAMESPACE
+              valueFrom: {fieldRef: {fieldPath: metadata.namespace}}
+            - name: POD_UID
+              valueFrom: {fieldRef: {fieldPath: metadata.uid}}
+          volumeMounts:
+            - {name: code, mountPath: /code, readOnly: true}
+            - {name: lease-auth, mountPath: /var/run/secrets/kubernetes.io/serviceaccount, readOnly: true}
+{{- if .startAI }}
+            - {name: wake-credentials, mountPath: /wake-credentials, readOnly: true}
+{{- end }}
+      volumes:
+        - name: lease-auth
+          projected:
+            sources:
+              - serviceAccountToken: {path: token, expirationSeconds: 3600}
+              - configMap:
+                  name: kube-root-ca.crt
+                  items: [{key: ca.crt, path: ca.crt}]
+{{- if .startAI }}
+        - name: wake-credentials
+          secret: {secretName: wake-lifecycle-auth}
+{{- end }}
+        - name: code
+          configMap: {name: {{ .name }}-code}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: {{ .name }}, namespace: {{ .namespace }}}
+spec:
+  selector: {app: {{ .name }}}
+  ports: [{name: http, port: 8080, targetPort: http}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: {{ .name }}, namespace: {{ .namespace }}}
+spec:
+  podSelector:
+    matchLabels: {app: {{ .name }}}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: tailscale}
+      ports: [{port: 8080, protocol: TCP}]
+  egress:
+{{- if .startAI }}
+    - to:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: homelab-platform}
+          podSelector:
+            matchLabels: {app: ai-lifecycle}
+      ports: [{port: 8080, protocol: TCP}]
+{{- end }}
+    - to:
+        - ipBlock: {cidr: 10.96.0.1/32}
+        - ipBlock: {cidr: 10.0.0.221/32}
+        - ipBlock: {cidr: 10.0.0.231/32}
+      ports: [{port: 443, protocol: TCP}, {port: 6443, protocol: TCP}]
+    - to:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: kube-system}
+      ports: [{port: 53, protocol: UDP}, {port: 53, protocol: TCP}]
+    - to:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: {{ .namespace }}}
+      ports: [{port: {{ .port }}, protocol: TCP}]
+{{- end }}
