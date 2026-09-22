@@ -1,0 +1,12 @@
+{
+  "idle_seconds": 300,
+  "modes": {"primary": "observe", "secondary": "observe"},
+  "journal": "~/.local/share/homelab-capacity/main",
+  "power_config": "~/.config/homelab-capacity/hosts.json",
+  "pve_key": "~/.config/homelab-capacity/retained-pve",
+  "known_hosts": "~/.config/homelab-capacity/pve_known_hosts",
+  "kubectl": "~/.local/share/main-control-plane/private/kubectl",
+  "kubeconfig": "~/.config/homelab-capacity/coordinator-kubeconfig",
+  "talosctl": "~/.local/share/main-control-plane/private/talosctl",
+  "talosconfig": "~/.local/share/main-control-plane/private/talosconfig"
+}

@@ -30,7 +30,10 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def authorized(self, scope):
-        expected = 'Bearer ' + self.server.tokens[scope]
+        token = self.server.tokens.get(scope)
+        if not token:
+            return False
+        expected = 'Bearer ' + token
         return hmac.compare_digest(self.headers.get('Authorization', '').encode(), expected.encode())
 
     def dispatch(self):
@@ -39,9 +42,12 @@ class Handler(BaseHTTPRequestHandler):
             self.server.runtime.current_status()
             return self.respond(200, {'ready': True})
         source = path[2] if len(path) == 4 and path[1] == 'activity' else None
-        scope = source if source in ('odysseus', 'ollama') else 'operator'
+        scope = 'gateway' if self.path in ('/wake', '/wake-status') else source if source in ('odysseus', 'ollama') else 'operator'
         if not self.authorized(scope):
             return self.respond(401, {'error': 'Authentication required'})
+        if self.command == 'GET' and self.path == '/wake-status':
+            status = self.server.runtime.current_status()
+            return self.respond(200, {key: status[key] for key in ('desired', 'revision')})
         if self.command == 'GET' and self.path == '/status':
             return self.respond(200, self.server.runtime.current_status())
         if self.command != 'POST':
@@ -52,7 +58,9 @@ class Handler(BaseHTTPRequestHandler):
         payload = json.loads(self.rfile.read(length))
         if not isinstance(payload, dict):
             raise Rejected('JSON object required')
-        if self.path in ('/start', '/stop', '/force-stop'):
+        if self.path == '/wake':
+            value = self.server.runtime.operate('start', payload)
+        elif self.path in ('/start', '/stop', '/force-stop'):
             value = self.server.runtime.operate(self.path[1:], payload)
         elif source in ('odysseus', 'ollama'):
             value = self.server.runtime.activity(source, path[3], payload)
@@ -104,7 +112,10 @@ def main():
     config = json.loads(Path('/config/config.json').read_text())
     server = Server(('0.0.0.0', 8080), Handler)
     server.tokens = {name: Path('/credentials/' + name).read_text().strip() for name in ('operator', 'odysseus', 'ollama')}
-    if any(len(value) < 43 for value in server.tokens.values()) or len(set(server.tokens.values())) != 3:
+    gateway = Path('/credentials/gateway')
+    if gateway.exists():
+        server.tokens['gateway'] = gateway.read_text().strip()
+    if any(len(value) < 43 for value in server.tokens.values()) or len(set(server.tokens.values())) != len(server.tokens):
         raise ValueError('Separate lifecycle credentials of at least 256 bits are required')
     runtime = Runtime(Kubernetes(), os.environ['POD_UID'], config, source_keys=server.tokens)
     server.runtime = runtime

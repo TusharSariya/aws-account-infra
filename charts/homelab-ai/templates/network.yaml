@@ -7,6 +7,14 @@ spec:
   policyTypes: [Ingress, Egress]
   ingress:
     - from:
+        - podSelector:
+            matchLabels: {app: wake-odysseus}
+      ports: [{protocol: TCP, port: 7000}]
+    - from:
+        - podSelector:
+            matchLabels: {app: wake-ollama}
+      ports: [{protocol: TCP, port: 11434}]
+    - from:
         - namespaceSelector:
             matchLabels: {kubernetes.io/metadata.name: tailscale}
           podSelector:

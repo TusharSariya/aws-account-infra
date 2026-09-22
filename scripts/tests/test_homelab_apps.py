@@ -326,8 +326,16 @@ class ChartTests(unittest.TestCase):
         self.assertEqual({(x['port'], x['protocol']) for x in dns['spec']['ports']}, {(53, 'TCP'), (53, 'UDP')})
         self.assertEqual(dns['metadata']['annotations']['tailscale.com/expose'], 'true')
         self.assertFalse(any(p['port'] == 67 for s in services for p in s['spec']['ports']))
-        pvc = by_kind['PersistentVolumeClaim'][0]
-        self.assertEqual(pvc['spec']['storageClassName'], 'worker-local-retain')
+        self.assertNotIn('PersistentVolumeClaim', by_kind)
+        claims = [v['persistentVolumeClaim']['claimName'] for v in pod['volumes']
+                  if 'persistentVolumeClaim' in v]
+        self.assertEqual(claims, ['pihole-laptop'])
+        self.assertEqual(pod['nodeSelector'], {'node-role.kubernetes.io/control-plane': ''})
+        retained = list(yaml.safe_load_all(subprocess.check_output(
+            ['helm', 'template', 'homelab-always-on', str(ROOT / 'charts/homelab-always-on')], text=True)))
+        pvc = next(d for d in retained if d and d['kind'] == 'PersistentVolumeClaim')
+        self.assertEqual(pvc['spec']['storageClassName'], 'laptop-local-retain')
+        self.assertEqual(pvc['spec']['volumeName'], 'laptop-pihole')
         self.assertEqual(pvc['metadata']['annotations']['helm.sh/resource-policy'], 'keep')
         ingress = by_kind['Ingress'][0]
         self.assertEqual(ingress['spec']['ingressClassName'], 'tailscale')

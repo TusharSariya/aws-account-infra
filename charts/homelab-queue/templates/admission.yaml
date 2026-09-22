@@ -17,6 +17,12 @@ spec:
   variables:
     - name: operational
       expression: >-
+        request.namespace == 'homelab-models' &&
+        object.spec.serviceAccountName in ['wake-ollama', 'wake-odysseus'] &&
+        has(object.metadata.labels) && object.metadata.labels['app'] == object.spec.serviceAccountName &&
+        has(object.spec.nodeSelector) && 'node-role.kubernetes.io/control-plane' in object.spec.nodeSelector &&
+        has(object.metadata.ownerReferences) && object.metadata.ownerReferences.exists(o,
+          o.apiVersion == 'apps/v1' && o.kind == 'ReplicaSet' && o.name.startsWith(object.spec.serviceAccountName + '-')) ||
         request.namespace == 'homelab-jobs' && object.spec.serviceAccountName in
         ['ai-operator-job', 'argo-controller', 'argo-server'] ||
         request.namespace == 'homelab-jobs' && object.spec.serviceAccountName == 'argo-workflows-crd-install' &&

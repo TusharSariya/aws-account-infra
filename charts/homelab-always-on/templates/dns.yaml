@@ -1,0 +1,47 @@
+{{- if .Values.dns.enabled }}
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: laptop-local-retain
+  annotations:
+    helm.sh/resource-policy: keep
+provisioner: kubernetes.io/no-provisioner
+reclaimPolicy: Retain
+volumeBindingMode: WaitForFirstConsumer
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: laptop-pihole
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  capacity: {storage: 2Gi}
+  volumeMode: Filesystem
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: laptop-local-retain
+  local: {path: /var/mnt/pihole}
+  claimRef: {namespace: homelab-services, name: pihole-laptop}
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values: [talos-cp-01]
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pihole-laptop
+  namespace: homelab-services
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: laptop-local-retain
+  volumeName: laptop-pihole
+  resources:
+    requests: {storage: 2Gi}
+{{- end }}

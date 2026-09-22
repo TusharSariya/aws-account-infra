@@ -1,0 +1,118 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: retained-host-coordinator, namespace: homelab-platform}
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: retained-host-coordinator
+  namespace: homelab-platform
+  annotations:
+    kubernetes.io/service-account.name: retained-host-coordinator
+    helm.sh/resource-policy: keep
+type: kubernetes.io/service-account-token
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata: {name: retained-host-observation}
+rules:
+  - apiGroups: ['']
+    resources: [pods, nodes, persistentvolumes, persistentvolumeclaims]
+    verbs: [get, list, watch]
+  - apiGroups: [apps]
+    resources: [replicasets, deployments, statefulsets]
+    verbs: [get, list, watch]
+  - apiGroups: [batch]
+    resources: [jobs, cronjobs]
+    verbs: [get, list, watch]
+  - apiGroups: [postgresql.cnpg.io]
+    resources: [clusters, backups]
+    verbs: [get, list, watch]
+  - apiGroups: [argoproj.io]
+    resources: [applications]
+    verbs: [get, list, watch]
+  - apiGroups: [coordination.k8s.io]
+    resources: [leases]
+    verbs: [get, list, watch]
+  - apiGroups: [kueue.x-k8s.io]
+    resources: [workloads]
+    verbs: [get, list, watch]
+  - apiGroups: ['']
+    resources: [nodes]
+    resourceNames: [talos-worker-01, talos-worker-02]
+    verbs: [patch]
+  - apiGroups: ['']
+    resources: [nodes/proxy]
+    resourceNames: [talos-worker-01, talos-worker-02]
+    verbs: [get]
+  - apiGroups: [kueue.x-k8s.io]
+    resources: [admissionchecks]
+    resourceNames: [homelab-host-ready]
+    verbs: [get]
+  - apiGroups: [kueue.x-k8s.io]
+    resources: [admissionchecks/status]
+    resourceNames: [homelab-host-ready]
+    verbs: [get, patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata: {name: retained-host-observation}
+subjects: [{kind: ServiceAccount, name: retained-host-coordinator, namespace: homelab-platform}]
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: retained-host-observation}
+{{- range $namespace, $names := dict "homelab-cache" (list "nexus" "nexus-postgres") "cnpg-system" (list "cnpg") "local-path-storage" (list "local-path-provisioner") "homelab-platform" (list "guest-capacity" "physical-capacity") "monitoring" (list "alloy" "grafana" "prometheus" "loki" "alertmanager") "argocd" (list "argocd-applicationset-controller" "argocd-application-controller" "argocd-server" "argocd-repo-server" "argocd-redis" "argocd-dex-server" "argocd-notifications-controller") }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: {name: retained-host-platform, namespace: {{ $namespace }}}
+rules:
+  - apiGroups: [apps]
+    resources: [deployments, statefulsets]
+    resourceNames: {{ $names | toJson }}
+    verbs: [patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: {name: retained-host-platform, namespace: {{ $namespace }}}
+subjects: [{kind: ServiceAccount, name: retained-host-coordinator, namespace: homelab-platform}]
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: retained-host-platform}
+{{- end }}
+{{- range $namespace, $schedule := dict "homelab-cache" "cache-monitor" "homelab-data" "apps-db-backup-monitor" }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: {name: retained-host-schedule, namespace: {{ $namespace }}}
+rules:
+  - apiGroups: [batch]
+    resources: [cronjobs]
+    resourceNames: [{{ $schedule }}]
+    verbs: [patch]
+{{- if eq $namespace "homelab-data" }}
+  - apiGroups: [postgresql.cnpg.io]
+    resources: [clusters]
+    resourceNames: [apps-db]
+    verbs: [patch]
+{{- end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: {name: retained-host-schedule, namespace: {{ $namespace }}}
+subjects: [{kind: ServiceAccount, name: retained-host-coordinator, namespace: homelab-platform}]
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: retained-host-schedule}
+{{- end }}
+{{- range list "homelab-models" "homelab-jobs" "arc-runners" }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: {name: retained-host-admission, namespace: {{ . }}}
+rules:
+  - apiGroups: [kueue.x-k8s.io]
+    resources: [workloads/status]
+    verbs: [get, patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: {name: retained-host-admission, namespace: {{ . }}}
+subjects: [{kind: ServiceAccount, name: retained-host-coordinator, namespace: homelab-platform}]
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: retained-host-admission}
+{{- end }}

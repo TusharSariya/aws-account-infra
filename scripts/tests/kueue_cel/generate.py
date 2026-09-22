@@ -34,4 +34,12 @@ req=copy.deepcopy(request);req['namespace']='homelab-models';case('hook cannot b
 obj=copy.deepcopy(hook);obj['metadata']['labels']=copy.deepcopy(base['metadata']['labels']);case('operational hook must stay outside queue',obj,False)
 obj=copy.deepcopy(base);obj['spec']['schedulingGates']=[];req=copy.deepcopy(request);req['operation']='UPDATE';case('unprivileged gate removal',obj,False,req,base)
 req=copy.deepcopy(req);req['userInfo']['username']='system:serviceaccount:kueue-system:kueue-controller-manager';case('Kueue gate removal',obj,True,req,base)
+gateway=dict(metadata=dict(labels={'app':'wake-ollama'},ownerReferences=[dict(apiVersion='apps/v1',kind='ReplicaSet',name='wake-ollama-abc',controller=True)]),spec=dict(serviceAccountName='wake-ollama',nodeSelector={'node-role.kubernetes.io/control-plane':''},containers=[container()]))
+gateway_req=copy.deepcopy(request);gateway_req['namespace']='homelab-models'
+case('registered always-on gateway',gateway,True,gateway_req)
+for field,value in [('serviceAccountName','default'),('nodeSelector',{'kubernetes.io/hostname':'talos-worker-01'})]:
+ obj=copy.deepcopy(gateway);obj['spec'][field]=value;case('gateway wrong '+field,obj,False,gateway_req)
+obj=copy.deepcopy(gateway);obj['metadata']['labels']['app']='other';case('gateway wrong label',obj,False,gateway_req)
+obj=copy.deepcopy(gateway);obj['metadata']['ownerReferences'][0]['name']='other-abc';case('gateway wrong owner',obj,False,gateway_req)
+case('gateway wrong namespace',gateway,False)
 Path(sys.argv[1]).write_text(json.dumps(dict(variables=policy['spec']['variables'],validations=policy['spec']['validations'],cases=cases)))

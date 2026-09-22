@@ -134,7 +134,7 @@
       "path": "live/kubernetes/homelab",
       "var_file": "config/environments/kubernetes/homelab/apps.tfvars",
       "dependencies": [
-        "talos-homelab"
+        "kubernetes-homelab-management"
       ],
       "ci": true,
       "watch": [
@@ -206,7 +206,7 @@
       "path": "live/kubernetes/homelab-ci",
       "var_file": "config/environments/kubernetes/homelab-ci/ci.tfvars",
       "dependencies": [
-        "talos-homelab"
+        "kubernetes-homelab-management"
       ],
       "ci": false,
       "watch": [
@@ -236,6 +236,35 @@
       "watch": [
         "live/proxmox/homelab-secondary/",
         "config/environments/proxmox/homelab/secondary/"
+      ]
+    },
+    {
+      "id": "kubernetes-homelab-management",
+      "cloud": "kubernetes",
+      "environment": "homelab",
+      "path": "live/kubernetes/homelab-management",
+      "var_file": "config/environments/kubernetes/homelab/apps.tfvars",
+      "dependencies": [
+        "talos-homelab"
+      ],
+      "ci": false,
+      "watch": [
+        "live/kubernetes/homelab-management/",
+        "controllers/homelab-capacity/",
+        "platform/automatic-power/",
+        "kubernetes/platform/main/placement/",
+        "charts/homelab-queue/",
+        "charts/homelab-always-on/",
+        "charts/homelab-lifecycle/",
+        "charts/homelab-jobs/",
+        "config/environments/kubernetes/homelab/",
+        "config/environments/kubernetes/homelab-ci/",
+        "apps/platform/lifecycle/",
+        "apps/platform/jobs/",
+        "apps/platform/storage/",
+        "scripts/homelab-ci.py",
+        "scripts/kueue-postrender.py",
+        "scripts/runner_catalog.py"
       ]
     }
   ]

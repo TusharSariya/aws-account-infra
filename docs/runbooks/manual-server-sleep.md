@@ -1,5 +1,10 @@
 # Manual application-server sleep and wake
 
+For the retained-worker automatic-power rollout, use
+[the current power runbook](automatic-server-power.md). The legacy procedure below
+predates always-on Pi-hole, ARC, Kueue, lifecycle and access proxies. Do not use its
+global controller/submission shutdown steps while the new coordinator is running.
+
 Run from the Ubuntu laptop, using the private main-cluster kubeconfig and Talos
 credentials. This procedure has no web portal, automatic wake or shutdown trigger,
 idle timer, or Kubernetes dependency for host power control. Do not use it until

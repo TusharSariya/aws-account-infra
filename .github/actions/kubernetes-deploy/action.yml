@@ -62,6 +62,14 @@ runs:
       env:
         PRIVATE: ${{ steps.private.outputs.path }}
       run: uv run scripts/talos-ci.py connect --private "$PRIVATE"
+    - name: Hold retained workers during cluster operations
+      shell: bash
+      env:
+        PRIVATE: ${{ steps.private.outputs.path }}
+      run: |
+        uv run scripts/talos-ci.py connect --private "$PRIVATE"
+        install -m 700 "$HOME/.cache/aws-account-infra/talos/kubectl-v1.36.3" "$PRIVATE/kubectl"
+        PATH="$PRIVATE:$PATH" python3 scripts/homelab-power-hold.py acquire --kubeconfig "$PRIVATE/kubeconfig" --receipt "$PRIVATE/power-hold.json" --hosts primary --wait
     - name: Check authenticated schema discovery before planning
       shell: bash
       env:
@@ -130,6 +138,15 @@ runs:
         POSTGRES_BACKUP_CREDENTIALS_B64: ${{ inputs.postgres-credentials-b64 }}
         AI_LIFECYCLE_CREDENTIALS_B64: ${{ inputs.lifecycle-credentials-b64 }}
       run: uv run --with PyYAML==6.0.3 python scripts/homelab-apps.py endpoints --private "$PRIVATE"
+    - name: Release only this operation's maintenance hold
+      if: always() && steps.private.outputs.path != ''
+      shell: bash
+      env:
+        PRIVATE: ${{ steps.private.outputs.path }}
+      run: |
+        if [[ -f "$PRIVATE/power-hold.json" ]]; then
+          PATH="$PRIVATE:$PATH" python3 scripts/homelab-power-hold.py release --kubeconfig "$PRIVATE/kubeconfig" --receipt "$PRIVATE/power-hold.json"
+        fi
     - name: Remove private application workspace
       if: always() && steps.private.outputs.path != ''
       shell: bash

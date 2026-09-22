@@ -96,5 +96,5 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: ollama
+                name: {{ .Values.wakeGateway | default "ollama" }}
                 port: {name: http}

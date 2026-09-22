@@ -13,6 +13,34 @@ from pathlib import Path
 PRIMARY = {"homelab.tfdraw.dev/worker-role": "primary"}
 STORAGE = {"homelab.tfdraw.dev/storage": "local-primary"}
 ESSENTIAL = {"coredns", "cilium-operator"}
+ALWAYS_ON = {
+    "homelab-services": {"pihole"},
+    "arc-systems": {"arc-gha-rs-controller"},
+    "homelab-jobs": {"argo-workflows-server", "argo-workflows-workflow-controller"},
+    "homelab-platform": {"ai-lifecycle"},
+    "kueue-system": {"kueue-controller-manager"},
+    "tailscale": {"operator"},
+}
+
+
+def control_plane(pod):
+    selector = pod.setdefault("nodeSelector", {})
+    for key in (
+        "kubernetes.io/hostname",
+        "homelab.tfdraw.dev/worker-role",
+        "homelab.tfdraw.dev/storage",
+    ):
+        selector.pop(key, None)
+    selector["node-role.kubernetes.io/control-plane"] = ""
+    tol = {
+        "key": "node-role.kubernetes.io/control-plane",
+        "operator": "Exists",
+        "effect": "NoSchedule",
+    }
+    if tol not in pod.setdefault("tolerations", []):
+        pod["tolerations"].append(tol)
+
+
 DEPLOYMENTS = {
     "arc-systems": {"arc-gha-rs-controller"},
     "cnpg-system": {"cnpg"},
@@ -49,18 +77,10 @@ def patch_for(obj):
     new = copy.deepcopy(obj["spec"])
     if kind == "Deployment":
         pod = new["template"]["spec"]
-        if ns == "kube-system" and name in ESSENTIAL:
-            pod.setdefault("nodeSelector", {})[
-                "node-role.kubernetes.io/control-plane"
-            ] = ""
-            # Preserve networking bootstrap tolerations already supplied by Talos/Cilium.
-            tol = {
-                "key": "node-role.kubernetes.io/control-plane",
-                "operator": "Exists",
-                "effect": "NoSchedule",
-            }
-            if tol not in pod.setdefault("tolerations", []):
-                pod["tolerations"].append(tol)
+        if (ns == "kube-system" and name in ESSENTIAL) or name in ALWAYS_ON.get(
+            ns, set()
+        ):
+            control_plane(pod)
         elif name in DEPLOYMENTS.get(ns, set()):
             pod.setdefault("nodeSelector", {}).update(PRIMARY)
             if ns in {"homelab-cache", "homelab-services", "local-path-storage"}:
@@ -108,9 +128,7 @@ def patch_for(obj):
             prefs.append(preference)
     elif kind == "AutoscalingRunnerSet" and ns == "arc-runners":
         # Controller-owned listener template, not ephemeral listener Pod patches.
-        new.setdefault("listenerTemplate", {}).setdefault("spec", {}).setdefault(
-            "nodeSelector", {}
-        ).update(PRIMARY)
+        control_plane(new.setdefault("listenerTemplate", {}).setdefault("spec", {}))
         pod = new["template"]["spec"]
         # Keep PVC-using runners pinned; local ephemeral claims also count.
         if any(

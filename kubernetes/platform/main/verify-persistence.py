@@ -105,13 +105,19 @@ def main():
             )["data"]["result"]
             assert len(logs) >= 2, "Both pre-restart Pod log streams must survive"
             targets = get(19190, "/api/v1/targets")["data"]["activeTargets"]
-            assert len(targets) == 8 and all(t["health"] == "up" for t in targets), [
-                (t["labels"], t["health"]) for t in targets
-            ]
+            assert len(targets) == 8 and all(
+                t["health"] == "up"
+                or (
+                    t["labels"].get("job") == "kubelet"
+                    and t["labels"].get("node") == "talos-worker-02"
+                    and t["labels"].get("power_intent") == "sleep"
+                )
+                for t in targets
+            ), [(t["labels"], t["health"]) for t in targets]
             record.update(passed=True, checked=time.time())
             args.evidence.write_text(json.dumps(record, indent=2))
             print(
-                "Historical metrics/logs, all eight scrape targets and unchanged claims verified"
+                "Historical metrics/logs, awake scrape targets, intentional sleep and unchanged claims verified"
             )
     finally:
         for proc in procs:

@@ -95,9 +95,13 @@ class SafetyTests(unittest.TestCase):
         )
         self.assertEqual(
             result["listenerTemplate"]["spec"]["nodeSelector"][
-                "homelab.tfdraw.dev/worker-role"
+                "node-role.kubernetes.io/control-plane"
             ],
-            "primary",
+            "",
+        )
+        self.assertNotIn(
+            "homelab.tfdraw.dev/storage",
+            result["listenerTemplate"]["spec"]["nodeSelector"],
         )
 
     def test_active_work_blocks_shutdown(self):

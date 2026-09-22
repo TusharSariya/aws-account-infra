@@ -1,0 +1,20 @@
+[Unit]
+Description=Retained homelab host power coordinator
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/share/homelab-capacity/retained/.venv/bin/homelab-coordinator --config %h/.config/homelab-capacity/coordinator.json
+Restart=on-failure
+RestartSec=15
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=%h/.local/share/homelab-capacity/main %h/.local/share/homelab-capacity/locks
+MemoryMax=256M
+CPUQuota=50%
+
+[Install]
+WantedBy=default.target

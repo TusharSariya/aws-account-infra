@@ -16,13 +16,16 @@ scrape_configs:
       credentials_file: /var/run/secrets/kubernetes.io/serviceaccount/token
     tls_config:
       ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-    static_configs:
-      - targets: ['10.0.0.221:10250']
-        labels: {node: talos-cp-01}
-      - targets: ['10.0.0.222:10250']
-        labels: {node: talos-worker-01}
-      - targets: ['10.0.0.225:10250']
-        labels: {node: talos-worker-02}
+    kubernetes_sd_configs:
+      - role: node
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_node_name]
+        regex: talos-cp-01|talos-worker-01|talos-worker-02
+        action: keep
+      - source_labels: [__meta_kubernetes_node_name]
+        target_label: node
+      - source_labels: [__meta_kubernetes_node_annotation_homelab_tfdraw_dev_power_intent]
+        target_label: power_intent
     metric_relabel_configs:
       - source_labels: [__name__]
         regex: 'kubelet_volume_stats_.*|kubelet_running_pods|kubelet_running_containers|process_.*'

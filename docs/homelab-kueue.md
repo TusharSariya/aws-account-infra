@@ -4,7 +4,7 @@
 
 As of 2026-09-17, repository variable `CI_EXECUTOR=talos` makes the server the default for routine CI, at the owner's explicit direction. PR #87's failed workflows were retried after this change. Independent bootstrap/recovery jobs retain their hosted or Mac execution paths. Earlier rollout acceptance requirements below remain historical evidence requirements; changing the routing does not mark unobserved scenarios complete.
 
-Kueue 0.19.4 admits declared CPU/RAM/ephemeral-storage requests against `homelab-compute` (31.25 CPU, 84 GiB), bound to `talos-worker-01`. AI, CI and Argo LocalQueues share the whole pool. StrictFIFO, equal priority and disabled preemption/borrowing are reviewed in `config/environments/kubernetes/homelab-ci/pool-values.yaml`. An older large waiting request blocks newer smaller work. Utilization does not affect reservations. GitHub's upstream queue is separate.
+Kueue 0.19.4 admits declared CPU/RAM/ephemeral-storage requests against `homelab-compute`, with 31.25 CPU / 84 GiB / 240 GiB scratch per retained worker. It prefers `talos-worker-01` and uses `talos-worker-02` for eligible overflow. The laptop admission check holds reserved work until the assigned worker and its dependencies recover. AI, CI and Argo LocalQueues share the whole pool. StrictFIFO, equal priority and disabled preemption/borrowing are reviewed in `config/environments/kubernetes/homelab-ci/pool-values.yaml`. An older large waiting request blocks newer smaller work. Utilization does not affect reservations. GitHub's upstream queue is separate.
 
 Kubernetes schedules admitted Pods and enforces limits. The AI lifecycle controller owns desired state, replicas, draining, idle shutdown and storage protection. ARC 0.14.2 owns disposable runners; Argo owns workflow execution. Platform controllers, DNS and operational commands stay outside Kueue.
 
@@ -12,7 +12,7 @@ AI retains 31.25 CPU / 77 GiB and its existing volumes. Each complete runner Pod
 
 ## Automatic platform recovery
 
-The existing control plane runs on the Ubuntu laptop under `main-control-plane.service`. Both Proxmox workers have `on_boot=true`; retired source VM 100 remains stopped with autostart disabled. Worker 01 has 112 GiB of RAM. Its 31.25-CPU / 84-GiB compute pool plus 6.5-CPU / 24-GiB platform reserve fits the observed allocatable memory, which is checked before admission deployment. After manual sleep, restore the saved maintenance journal before resuming runners and schedules; powering on the host alone does not resume them. See `docs/runbooks/manual-server-sleep.md`.
+The existing control plane runs on the Ubuntu laptop under `main-control-plane.service`. Both Proxmox workers have `on_boot=true`; retired source VM 100 remains stopped with autostart disabled. Worker 01 has 112 GiB of RAM. Its 31.25-CPU / 84-GiB compute pool plus 6.5-CPU / 24-GiB platform reserve fits the observed allocatable memory, which is checked before admission deployment. The laptop coordinator restores its saved platform journal before releasing admission. ARC listeners and other submission controllers stay on the laptop. The configurable idle threshold is currently five minutes; automatic shutdown is still in acceptance. See `docs/runbooks/automatic-server-power.md`.
 
 ## Historical initial rollout
 
@@ -43,13 +43,13 @@ Do not enable the pool on a 156-GiB worker. `scripts/kueue_capacity.py` checks a
 
 ## Independent bootstrap and recovery
 
-State root: `live/kubernetes/homelab-ci`; S3 key: `kubernetes/homelab-ci/terraform.tfstate`. `deploy-units.json` marks it outside the general matrix because `.github/workflows/homelab-ci-admission.yml` exclusively owns its hosted plan/apply flow. The workflow uses the existing `prod` environment, OIDC roles, Tailscale enrollment and original Talos identity. Dispatch `mode=apply` with `confirm=homelab-ci` only after review. It applies the exact guarded saved plan and requires a fresh empty post-plan. Plans/credentials remain private; only a non-secret receipt is uploaded. Bootstrap can run with ARC absent.
+Management state root: `live/kubernetes/homelab-management`; S3 key: `kubernetes/homelab-management/terraform.tfstate`. Nexus remains in `live/kubernetes/homelab-ci` with its original backend. Existing release state was transferred with private backups; source removed blocks use `destroy=false`. `deploy-units.json` marks it outside the general matrix because `.github/workflows/homelab-ci-admission.yml` exclusively owns its hosted plan/apply flow. The workflow uses the existing `prod` environment, OIDC roles, Tailscale enrollment and original Talos identity. Dispatch `mode=apply` with `confirm=homelab-ci` only after review. It applies the exact guarded saved plan and requires a fresh empty post-plan. Plans/credentials remain private; only a non-secret receipt is uploaded. Bootstrap can run with ARC absent.
 
 The Mac remains the recovery path when hosted allowance is exhausted. Keep the existing Mac bootstrap and original secret recovery procedures. Use the pinned repository OpenTofu/kubectl setup (`scripts/local_lifecycle_tools.py`), Helm 3.19.0 and `uv`; connect through the existing tailnet and original cluster identity. With an owned mode-0700 directory containing a mode-0600 `kubeconfig`:
 
 ```sh
 uv run --with PyYAML==6.0.3 python scripts/homelab-ci.py setup
-tofu -chdir=live/kubernetes/homelab-ci init -input=false -lockfile=readonly
+tofu -chdir=live/kubernetes/homelab-management init -input=false -lockfile=readonly
 uv run --with PyYAML==6.0.3 python scripts/homelab-ci.py plan --private "$PRIVATE"
 # Review the source/plan/capacity receipt before apply.
 uv run --with PyYAML==6.0.3 python scripts/homelab-ci.py enroll --private "$PRIVATE" --app-json "$APP_JSON"

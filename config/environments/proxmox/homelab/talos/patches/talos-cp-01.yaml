@@ -39,3 +39,13 @@ apiVersion: v1alpha1
 kind: Layer2VIPConfig
 name: 10.0.0.231
 link: homelab
+---
+# Dedicated laptop disk, never the system or an existing application disk.
+apiVersion: v1alpha1
+kind: UserVolumeConfig
+name: pihole
+provisioning:
+  diskSelector:
+    match: "!system_disk && '/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_homelab-dns' in disk.symlinks"
+  minSize: 2GiB
+  maxSize: 2GiB

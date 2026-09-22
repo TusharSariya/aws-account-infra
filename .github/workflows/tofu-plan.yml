@@ -93,7 +93,7 @@ jobs:
     needs: detect
     if: contains(fromJSON(needs.detect.outputs.units).*.id, 'proxmox-homelab') && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     environment: prod
     env:
       PROXMOX_VE_ENDPOINT: https://pve.tail2f646b.ts.net/
@@ -124,6 +124,14 @@ jobs:
         with:
           tofu_version: 1.11.5
           tofu_wrapper: false
+      - name: Accept the laptop management subnet route
+        run: sudo tailscale set --accept-routes=true
+      - name: Wake and hold both retained Proxmox hosts
+        id: power_hold
+        uses: ./.github/actions/host-power-hold
+        with:
+          action: acquire
+          secrets-b64: ${{ secrets.TALOS_SECRETS_B64 }}
       - name: Verify authenticated HTTPS and plan token scope
         run: python3 ../../../scripts/proxmox-ci-check.py plan
       - name: Initialize and validate
@@ -150,6 +158,13 @@ jobs:
               issue_number: context.issue.number,
               body: `### Proxmox plan\nCommit: ${{ github.event.pull_request.head.sha }}\n\nPreview only; VM creation requires the apply label.\n\n<details><summary>Plan</summary>\n\n\`\`\`\n${plan.slice(-60000)}\n\`\`\`\n</details>`
             });
+
+      - name: Release Proxmox plan hold
+        if: always() && steps.power_hold.outputs.private-path != ''
+        uses: ./.github/actions/host-power-hold
+        with:
+          action: release
+          private-path: ${{ steps.power_hold.outputs.private-path }}
 
   talos-plan:
     needs: detect

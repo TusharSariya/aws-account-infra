@@ -1,9 +1,18 @@
 apiVersion: tailscale.com/v1alpha1
 kind: ProxyClass
 metadata:
+  # Preserve the class name referenced by existing Ingress/Service objects.
   name: primary-applications
 spec:
   statefulSet:
     pod:
       nodeSelector:
-        homelab.tfdraw.dev/worker-role: primary
+        node-role.kubernetes.io/control-plane: ""
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+      tailscaleContainer:
+        resources:
+          requests: {cpu: 10m, memory: 32Mi}
+          limits: {cpu: 250m, memory: 128Mi}

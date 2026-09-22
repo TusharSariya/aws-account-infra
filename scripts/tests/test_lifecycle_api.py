@@ -64,3 +64,12 @@ class APITests(unittest.TestCase):
         self.server.runtime.current_status.side_effect = api.Unavailable()
         self.assertEqual(self.call('/healthz')[0], 503)
         self.assertEqual(self.call('/status', 'operator-fixture')[0], 503)
+
+    def test_gateway_credential_can_only_start_and_read_minimal_status(self):
+        self.server.tokens['gateway'] = 'gateway-fixture'
+        self.server.runtime.current_status.return_value = {'desired': 'off', 'revision': 9, 'private': 'hidden'}
+        self.assertEqual(self.call('/wake-status', 'gateway-fixture'), (200, {'desired': 'off', 'revision': 9}))
+        self.assertEqual(self.call('/wake', 'gateway-fixture', {'revision': 9})[0], 200)
+        self.server.runtime.operate.assert_called_once_with('start', {'revision': 9})
+        for path in ['/stop', '/force-stop', '/start', '/status', '/activity/ollama/begin']:
+            self.assertEqual(self.call(path, 'gateway-fixture', {})[0], 401)

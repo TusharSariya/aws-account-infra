@@ -1,0 +1,5 @@
+apiVersion: v2
+name: homelab-always-on
+version: 0.1.0
+description: Retained laptop DNS storage and always-on demand infrastructure
+type: application

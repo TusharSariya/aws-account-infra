@@ -3,9 +3,19 @@ on:
   pull_request:
     paths:
       - 'live/kubernetes/homelab-ci/**'
+      - 'live/kubernetes/homelab-management/**'
+      - 'controllers/homelab-capacity/**'
+      - 'platform/automatic-power/**'
       - 'config/environments/kubernetes/homelab-ci/**'
       - 'charts/homelab-queue/**'
       - 'charts/homelab-cache/**'
+      - 'charts/homelab-always-on/**'
+      - 'charts/homelab-lifecycle/**'
+      - 'charts/homelab-jobs/**'
+      - 'apps/platform/lifecycle/**'
+      - 'apps/platform/jobs/**'
+      - 'config/environments/kubernetes/homelab/**'
+      - 'scripts/homelab-power-hold.py'
       - 'apps/platform/cache/**'
       - 'apps/platform/storage/**'
       - 'scripts/cache_capacity.py'
@@ -74,6 +84,8 @@ jobs:
       - name: Verify admission artifacts, contracts and CEL behavior
         run: |
           uv run --with PyYAML==6.0.3 python scripts/homelab-ci.py setup
+          uv run --with pytest --with PyYAML==6.0.3 --project controllers/homelab-capacity python -m pytest controllers/homelab-capacity/tests -q
+          PYTHONPATH=scripts uv run --with pytest python -m pytest scripts/tests/test_homelab_node_readiness.py scripts/tests/test_homelab_power_hold.py -q
           uv run --with PyYAML==6.0.3 python scripts/runner_catalog.py
           PYTHONPATH=scripts uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p 'test_kueue_*.py'
           for pattern in 'test_local_cache.py' 'test_capacity_*.py' 'test_cache_download.py' 'test_cache_transport.py' 'test_build_cache.py' 'test_nexus_observation.py' 'test_registry_enrollment.py' 'test_ci_pod_usage.py'; do
@@ -81,9 +93,15 @@ jobs:
           done
           uv run --with PyYAML==6.0.3 python scripts/tests/kueue_cel/generate.py "$RUNNER_TEMP/cel-cases.json"
           (cd scripts/tests/kueue_cel && CGO_ENABLED=0 go run . "$RUNNER_TEMP/cel-cases.json")
-          tofu -chdir=live/kubernetes/homelab-ci init -backend=false -input=false -lockfile=readonly
-          tofu -chdir=live/kubernetes/homelab-ci validate
+          tofu -chdir=live/kubernetes/homelab-management init -backend=false -input=false -lockfile=readonly
+          tofu -chdir=live/kubernetes/homelab-management validate
   admission:
+    strategy:
+      max-parallel: 1
+      matrix:
+        include:
+          - {scope: management, root: homelab-management}
+          - {scope: cache, root: homelab-ci}
     needs: contracts
     if: (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
     # Bootstrap, upgrade and recovery cannot depend on ARC or CI_EXECUTOR.
@@ -137,13 +155,22 @@ jobs:
           echo "$HOME/.cache/aws-account-infra/talos" >> "$GITHUB_PATH"
           install -m 700 "$HOME/.cache/aws-account-infra/talos/kubectl-v1.36.3" "$PRIVATE/kubectl"
           echo "$PRIVATE" >> "$GITHUB_PATH"
-          uv run --with PyYAML==6.0.3 python scripts/homelab-ci.py setup
-          tofu -chdir=live/kubernetes/homelab-ci init -input=false -lockfile=readonly
-          tofu -chdir=live/kubernetes/homelab-ci validate
+          uv run --with PyYAML==6.0.3 python scripts/homelab-ci.py setup --scope "${{ matrix.scope }}"
+          tofu -chdir=live/kubernetes/${{ matrix.root }} init -input=false -lockfile=readonly
+          tofu -chdir=live/kubernetes/${{ matrix.root }} validate
+      - name: Hold application capacity during infrastructure work
+        if: inputs.mode == 'apply' || matrix.scope == 'cache'
+        env:
+          PRIVATE: ${{ steps.private.outputs.path }}
+          SCOPE: ${{ matrix.scope }}
+        run: |
+          hosts=primary
+          if [[ "$SCOPE" == management ]]; then hosts=primary,secondary; fi
+          python3 scripts/homelab-power-hold.py acquire --kubeconfig "$PRIVATE/kubeconfig" --receipt "$PRIVATE/power-hold.json" --hosts "$hosts" --wait
       - name: Guard exact plan and capacity
         env:
           PRIVATE: ${{ steps.private.outputs.path }}
-        run: uv run --with PyYAML==6.0.3 python scripts/homelab-ci.py plan --private "$PRIVATE"
+        run: uv run --with PyYAML==6.0.3 python scripts/homelab-ci.py plan --scope "${{ matrix.scope }}" --private "$PRIVATE"
       - name: Enroll existing repository GitHub App privately
         if: inputs.mode == 'apply'
         env:
@@ -155,13 +182,13 @@ jobs:
           import base64, os, pathlib
           pathlib.Path(os.environ['PRIVATE'], 'github-app.json').write_bytes(base64.b64decode(os.environ['ARC_GITHUB_APP_JSON_B64'], validate=True))
           PY
-          uv run --with PyYAML==6.0.3 python scripts/homelab-ci.py enroll --private "$PRIVATE" --app-json "$PRIVATE/github-app.json"
+          uv run --with PyYAML==6.0.3 python scripts/homelab-ci.py enroll --scope "${{ matrix.scope }}" --private "$PRIVATE" --app-json "$PRIVATE/github-app.json"
           rm "$PRIVATE/github-app.json"
       - name: Apply saved plan and require fresh empty post-plan
         if: inputs.mode == 'apply'
         env:
           PRIVATE: ${{ steps.private.outputs.path }}
-        run: uv run --with PyYAML==6.0.3 python scripts/homelab-ci.py apply --private "$PRIVATE"
+        run: uv run --with PyYAML==6.0.3 python scripts/homelab-ci.py apply --scope "${{ matrix.scope }}" --private "$PRIVATE"
       - name: Preserve non-secret execution receipt
         if: always() && steps.private.outputs.path != ''
         env:
@@ -171,9 +198,17 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: homelab-ci-receipt-${{ github.run_id }}-${{ github.run_attempt }}
+          name: homelab-ci-receipt-${{ matrix.scope }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: ci-record.json
           if-no-files-found: ignore
+      - name: Release only this run's maintenance hold
+        if: always() && steps.private.outputs.path != ''
+        env:
+          PRIVATE: ${{ steps.private.outputs.path }}
+        run: |
+          if [[ -f "$PRIVATE/power-hold.json" ]]; then
+            python3 scripts/homelab-power-hold.py release --kubeconfig "$PRIVATE/kubeconfig" --receipt "$PRIVATE/power-hold.json"
+          fi
       - name: Remove ephemeral credentials and saved plans
         if: always() && steps.private.outputs.path != ''
         env:

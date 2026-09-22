@@ -6,6 +6,8 @@ scratch: 240Gi
 storageHeadroom: 8Gi
 podHeadroom: 10
 strategy: StrictFIFO
+power:
+  enabled: true
 platformReserve:
   cpu: 6500m
   memory: 24Gi

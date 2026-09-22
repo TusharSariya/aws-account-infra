@@ -24,6 +24,14 @@ def module(name, path):
 
 
 class Contracts(unittest.TestCase):
+    def test_power_gate_uses_the_v1beta2_strategy_and_both_flavors(self):
+        docs = self.render('charts/homelab-queue', values='config/environments/kubernetes/homelab-ci/pool-values.yaml')
+        queue = next(d for d in docs if d['kind'] == 'ClusterQueue')
+        self.assertEqual(queue['apiVersion'], 'kueue.x-k8s.io/v1beta2')
+        self.assertNotIn('admissionChecks', queue['spec'])
+        self.assertEqual(queue['spec']['admissionChecksStrategy'], {'admissionChecks': [{'name': 'homelab-host-ready'}]})
+        self.assertEqual([f['name'] for f in queue['spec']['resourceGroups'][0]['flavors']], ['homelab-worker', 'homelab-secondary'])
+
     def render(self, chart, name='test', values=None, namespace='default'):
         args = ['helm','template',name,str(ROOT/chart),'--namespace',namespace,'--kube-version','1.36.3']
         if values: args += ['-f',str(ROOT/values)]
@@ -41,7 +49,7 @@ class Contracts(unittest.TestCase):
         self.assertNotIn('globalDefault', priority)
 
     def test_runner_entire_pod_resources_and_no_host_mounts(self):
-        documents = self.render('live/kubernetes/homelab-ci/.terraform/gha-runner-scale-set-0.14.2.tgz',
+        documents = self.render('live/kubernetes/homelab-management/.terraform/gha-runner-scale-set-0.14.2.tgz',
             name='homelab-talos',namespace='arc-runners',values='config/environments/kubernetes/homelab-ci/arc-runner-values.yaml')
         scale = next(d for d in documents if d['kind'] == 'AutoscalingRunnerSet')['spec']
         self.assertEqual(scale['minRunners'], 0)
@@ -73,13 +81,13 @@ class Contracts(unittest.TestCase):
             with TemporaryDirectory() as directory:
                 path = Path(directory) / 'values.yaml'
                 path.write_text(yaml.safe_dump(value))
-                docs = self.render('live/kubernetes/homelab-ci/.terraform/gha-runner-scale-set-0.14.2.tgz',
+                docs = self.render('live/kubernetes/homelab-management/.terraform/gha-runner-scale-set-0.14.2.tgz',
                                    name=name, namespace='arc-runners', values=path)
                 rendered[name] = next(d for d in docs if d['kind'] == 'AutoscalingRunnerSet')['spec']
         validate_rendered(rendered)
 
     def test_workload_webhooks_are_filtered_and_stop_updates_bypass(self):
-        raw = self.render('live/kubernetes/homelab-ci/.terraform/kueue-0.19.4.tgz',name='kueue',
+        raw = self.render('live/kubernetes/homelab-management/.terraform/kueue-0.19.4.tgz',name='kueue',
                           namespace='kueue-system',values='config/environments/kubernetes/homelab-ci/kueue-values.yaml')
         config = next(d for d in raw if d['kind']=='ConfigMap' and d['metadata']['name']=='kueue-manager-config')
         manager = yaml.safe_load(config['data']['controller_manager_config.yaml'])

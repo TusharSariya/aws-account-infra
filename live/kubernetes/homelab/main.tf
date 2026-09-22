@@ -10,35 +10,6 @@ provider "helm" {
 locals {
   config = "${path.module}/../../../config/environments/kubernetes/homelab"
 }
-resource "helm_release" "tailscale_operator" {
-  set         = [{ name = "mainPlacementRevision", value = local.main_placement_revision }]
-  postrender  = { binary_path = "${path.module}/../../../kubernetes/platform/main/placement/helm-post-renderer.py", args = ["--namespace", "tailscale"] }
-  name        = "tailscale-operator"
-  namespace   = "tailscale"
-  chart       = "${path.module}/.terraform/tailscale-operator-1.102.3.tgz"
-  version     = "1.102.3"
-  values      = [file("${local.config}/operator-values.yaml")]
-  wait        = true
-  timeout     = 600
-  max_history = 5
-  lifecycle {
-    prevent_destroy = true
-  }
-}
-resource "helm_release" "pihole" {
-  set         = [{ name = "mainPlacementRevision", value = local.main_placement_revision }]
-  postrender  = { binary_path = "${path.module}/../../../kubernetes/platform/main/placement/helm-post-renderer.py", args = ["--namespace", "homelab-services"] }
-  name        = "pihole"
-  namespace   = "homelab-services"
-  chart       = "${path.module}/.terraform/pihole-2.38.0.tgz"
-  version     = "2.38.0"
-  values      = [file("${local.config}/pihole-values.yaml")]
-  wait        = true
-  timeout     = 600
-  max_history = 5
-  depends_on  = [helm_release.tailscale_operator]
-}
-
 resource "helm_release" "ollama" {
   set        = [{ name = "mainPlacementRevision", value = local.main_placement_revision }]
   postrender = { binary_path = "${path.module}/../../../kubernetes/platform/main/placement/helm-post-renderer.py", args = ["--namespace", "homelab-models"] }
@@ -51,7 +22,6 @@ resource "helm_release" "ollama" {
   wait        = true
   timeout     = 900
   max_history = 5
-  depends_on  = [helm_release.tailscale_operator]
   lifecycle {
     prevent_destroy = true
   }
@@ -69,7 +39,6 @@ resource "helm_release" "odysseus" {
   wait        = true
   timeout     = 900
   max_history = 5
-  depends_on  = [helm_release.tailscale_operator]
   lifecycle {
     prevent_destroy = true
   }
@@ -112,65 +81,6 @@ resource "helm_release" "ai" {
   timeout     = 300
   max_history = 5
   depends_on  = [helm_release.capacity, helm_release.ollama, helm_release.odysseus]
-  lifecycle {
-    prevent_destroy = true
-  }
-}
-
-resource "helm_release" "lifecycle" {
-  set        = [{ name = "mainPlacementRevision", value = local.main_placement_revision }]
-  postrender = { binary_path = "${path.module}/../../../kubernetes/platform/main/placement/helm-post-renderer.py", args = ["--namespace", "homelab-platform"] }
-  name       = "homelab-lifecycle"
-  namespace  = "homelab-platform"
-  chart      = "${path.module}/../../../charts/homelab-lifecycle"
-  values = [file("${local.config}/lifecycle-values.yaml"), yamlencode({
-    code = merge(
-      { for f in fileset("${path.module}/../../../apps/platform/storage", "*.py") : f => file("${path.module}/../../../apps/platform/storage/${f}") },
-      { for f in fileset("${path.module}/../../../apps/platform/lifecycle", "*.py") : f => file("${path.module}/../../../apps/platform/lifecycle/${f}") }
-    )
-    chartRevision = sha256(join("", [for f in sort(tolist(fileset("${path.module}/../../../charts/homelab-lifecycle", "**"))) : filesha256("${path.module}/../../../charts/homelab-lifecycle/${f}")]))
-  })]
-  wait        = true
-  timeout     = 300
-  max_history = 5
-  depends_on  = [helm_release.ai]
-  lifecycle {
-    prevent_destroy = true
-  }
-}
-
-resource "helm_release" "argo" {
-  set              = [{ name = "mainPlacementRevision", value = local.main_placement_revision }]
-  postrender       = { binary_path = "${path.module}/../../../kubernetes/platform/main/placement/helm-post-renderer.py", args = ["--namespace", "homelab-jobs"] }
-  name             = "argo-workflows"
-  namespace        = "homelab-jobs"
-  create_namespace = true
-  chart            = "${path.module}/.terraform/argo-workflows-2.0.5.tgz"
-  version          = "2.0.5"
-  values           = [file("${local.config}/argo-values.yaml")]
-  wait             = true
-  timeout          = 600
-  max_history      = 5
-  depends_on       = [helm_release.lifecycle]
-  lifecycle {
-    prevent_destroy = true
-  }
-}
-
-resource "helm_release" "jobs" {
-  set        = [{ name = "mainPlacementRevision", value = local.main_placement_revision }]
-  postrender = { binary_path = "${path.module}/../../../kubernetes/platform/main/placement/helm-post-renderer.py", args = ["--namespace", "homelab-jobs"] }
-  name       = "homelab-jobs"
-  namespace  = "homelab-jobs"
-  chart      = "${path.module}/../../../charts/homelab-jobs"
-  values = [yamlencode({
-    code          = { for f in fileset("${path.module}/../../../apps/platform/jobs", "*.py") : f => file("${path.module}/../../../apps/platform/jobs/${f}") }
-    chartRevision = sha256(join("", [for f in sort(tolist(fileset("${path.module}/../../../charts/homelab-jobs", "**"))) : filesha256("${path.module}/../../../charts/homelab-jobs/${f}")]))
-  })]
-  wait        = true
-  timeout     = 300
-  max_history = 5
-  depends_on  = [helm_release.argo]
   lifecycle {
     prevent_destroy = true
   }

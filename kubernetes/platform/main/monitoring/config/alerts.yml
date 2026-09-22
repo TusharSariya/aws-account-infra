@@ -7,10 +7,10 @@ groups:
         labels: {severity: warning}
         annotations: {summary: 'Monitoring target {{ $labels.instance }} is unavailable'}
       - alert: WorkerUnavailable
-        expr: up{job="kubelet",node=~"talos-worker-.*"} == 0
+        expr: up{job="kubelet",node=~"talos-worker-.*",power_intent!="sleep"} == 0
         for: 5m
         labels: {severity: warning}
-        annotations: {summary: 'Worker {{ $labels.node }} is unavailable; check laptop maintenance journal and silences'}
+        annotations: {summary: 'Worker {{ $labels.node }} is unexpectedly unavailable; inspect the laptop power journal'}
       - alert: ControlPlaneUnavailable
         expr: up{job="kubelet",node="talos-cp-01"} == 0
         for: 2m
