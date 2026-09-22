@@ -238,14 +238,7 @@ class Coordinator:
                         budgets["pool"],
                         expected_node=registration["node"],
                     )
-                    summary = json.loads(
-                        self.kube.run(
-                            "get",
-                            "--raw=/api/v1/nodes/"
-                            + registration["node"]
-                            + "/proxy/stats/summary",
-                        )
-                    )
+                    summary = self.kube.stats(host)
                     verify_storage(
                         node,
                         objects["pods"],

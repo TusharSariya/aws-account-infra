@@ -1,6 +1,10 @@
 """Bounded kubectl adapter. Never print captured Kubernetes object bodies."""
 
+import base64
 import json
+import ssl
+import urllib.request
+from .config import INVENTORY
 import subprocess
 from pathlib import Path
 
@@ -43,6 +47,30 @@ class Kube:
         if result.returncode:
             raise RuntimeError("Kubernetes operation failed: " + args[0])
         return result.stdout
+
+    def stats(self, host):
+        """Read the fixed kubelet summary using nodes/stats, never nodes/proxy."""
+        node = INVENTORY[host]
+        credential = json.loads(
+            self.run("config", "view", "--raw", "--minify", "-o", "json")
+        )
+        cluster = credential["clusters"][0]["cluster"]
+        context = ssl.create_default_context(
+            cadata=base64.b64decode(cluster["certificate-authority-data"]).decode()
+        )
+        token = credential["users"][0]["user"]["token"]
+        request = urllib.request.Request(
+            "https://" + node["talos"] + ":10250/stats/summary",
+            headers={"Authorization": "Bearer " + token},
+        )
+        with urllib.request.urlopen(request, context=context, timeout=10) as response:
+            body = response.read(8 * 1024 * 1024 + 1)
+        if len(body) > 8 * 1024 * 1024:
+            raise ValueError("Node statistics response exceeds limit")
+        summary = json.loads(body)
+        if summary["node"]["nodeName"] != node["node"]:
+            raise ValueError("Node statistics identity mismatch")
+        return summary
 
     def wait(self, *args):
         result = subprocess.run(

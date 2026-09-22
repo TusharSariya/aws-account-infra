@@ -43,7 +43,7 @@ rules:
     resourceNames: [talos-worker-01, talos-worker-02]
     verbs: [patch]
   - apiGroups: ['']
-    resources: [nodes/proxy]
+    resources: [nodes/stats]
     resourceNames: [talos-worker-01, talos-worker-02]
     verbs: [get]
   - apiGroups: [kueue.x-k8s.io]
