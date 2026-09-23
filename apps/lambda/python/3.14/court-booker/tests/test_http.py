@@ -154,3 +154,107 @@ def test_cancel_matching_reservation():
     result = UpaceHttpBooker(session_factory=lambda: session).cancel(_request(), CREDS)
     assert result.status == CANCELLED
     assert session.cancelled_ids == [99]
+
+
+def test_booked_metadata_contains_identity_and_requested_interval():
+    result = UpaceHttpBooker(session_factory=FakeSession).book(_request(), CREDS)
+    assert result.reservation_id == "2176741740"
+    assert result.calendar_reservation["reservation_id"] == result.reservation_id
+    assert result.calendar_reservation["start"] == "2026-08-17T08:30:00+00:00"
+    assert result.calendar_reservation["end"] == "2026-08-17T09:30:00+00:00"
+
+
+def test_held_metadata_preserves_actual_duration_and_cancellation():
+    session = FakeSession(held=[HeldReservation(99, 12739, None,
+        "2026-08-17 06:00:00", "2026-08-17 07:30:00")])
+    booker = UpaceHttpBooker(session_factory=lambda: session)
+    held = booker.book(_request(duration_min=60), CREDS)
+    assert held.calendar_reservation["end"] == "2026-08-17T10:00:00+00:00"
+    assert held.reservation_id == "99"
+    cancelled = booker.cancel(_request(), CREDS)
+    assert cancelled.calendar_reservation["status"] == "cancelled"
+    assert cancelled.calendar_reservation["reservation_id"] == "99"
+
+
+def test_held_dry_run_does_not_publish():
+    session = FakeSession(held=[HeldReservation(99, 12739, None,
+        "2026-08-17 06:00:00", "2026-08-17 07:30:00")])
+    result = UpaceHttpBooker(session_factory=lambda: session).book(_request(dry_run=True), CREDS)
+    assert result.status == DRY_RUN
+    assert result.calendar_reservation is None
+
+
+def test_missing_actual_end_is_not_guessed():
+    session = FakeSession(held=[HeldReservation(99, 12739, None, "2026-08-17 06:00:00")])
+    result = UpaceHttpBooker(session_factory=lambda: session).book(_request(), CREDS)
+    assert result.reservation_id == "99"
+    assert result.calendar_reservation is None
+
+
+def test_cancelled_reservation_does_not_match():
+    session = FakeSession(held=[HeldReservation(99, 12739, None,
+        "2026-08-17 06:00:00", "2026-08-17 07:00:00", cancelled=True)])
+    result = UpaceHttpBooker(session_factory=lambda: session).book(_request(), CREDS)
+    assert result.status == BOOKED
+
+
+def test_reservations_validator_fails_closed():
+    import pytest
+    from booker.http import _validated_reservations
+
+    valid = {"id": 99, "class_id": 12739, "start_time": "2026-08-17 06:00:00",
+             "end_time": "2026-08-17 07:00:00", "active": 1, "deleted": 0}
+    assert _validated_reservations({"success": True, "data": {"reservations": []}}) == []
+    assert _validated_reservations({"success": True, "data": {"reservations": [valid]}})[0].end_time == valid["end_time"]
+    for payload in ({}, {"success": False, "data": {"reservations": []}},
+                    {"success": True, "data": {}},
+                    {"success": True, "data": {"reservations": [valid, {}]}},
+                    {"success": True, "data": {"reservations": [valid], "total": 2}},
+                    {"success": True, "data": {"reservations": [], "has_more": True}}):
+        with pytest.raises(UpaceHttpError):
+            _validated_reservations(payload)
+
+
+def test_failed_reservation_read_never_attempts_booking():
+    class FailedSession(FakeSession):
+        def reservations(self, start, end):
+            raise UpaceHttpError(502, "malformed")
+    session = FailedSession()
+    result = UpaceHttpBooker(session_factory=lambda: session).book(_request(), CREDS)
+    assert not result.ok
+    assert result.calendar_reservation is None
+    assert session.reserve_calls == 0
+
+
+def test_raw_reservations_rejects_failure_and_preserves_pagination_metadata(monkeypatch):
+    import json
+    import sys
+    from types import SimpleNamespace
+
+    import pytest
+    from booker.http import GeneratedUpaceSession
+
+    monkeypatch.setitem(sys.modules, "upace", SimpleNamespace(ApiException=RuntimeError))
+    adapter = object.__new__(GeneratedUpaceSession)
+    calls = []
+
+    def response(**kwargs):
+        calls.append(kwargs)
+        return SimpleNamespace(status=200, read=lambda: json.dumps({
+            "success": True, "data": {"reservations": [], "next_cursor": "more"}
+        }).encode())
+
+    adapter._reservations = SimpleNamespace(list_my_reservations_without_preload_content=response)
+    with pytest.raises(UpaceHttpError, match="incomplete"):
+        adapter.reservations(date(2026, 8, 17), date(2026, 8, 18))
+    assert calls[0]["_request_timeout"] == (5, 20)
+
+
+def test_validator_recognizes_all_documented_cancellation_states():
+    from booker.http import _validated_reservations
+
+    base = {"id": 99, "class_id": 12739, "start_time": "2026-08-17 06:00:00",
+            "end_time": "2026-08-17 07:00:00", "active": 1, "deleted": 0}
+    for override in ({"active": 0}, {"deleted": 1}, {"cancelled_on": "2026-08-15 10:00:00"}):
+        rows = _validated_reservations({"success": True, "data": {"reservations": [base | override]}})
+        assert rows[0].cancelled

@@ -33,6 +33,8 @@ class BookingResult:
     activity: str = ""
     time: str = ""
     reserve_clicks: int = 0
+    reservation_id: str | None = None
+    calendar_reservation: dict[str, Any] | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return asdict(self)

@@ -28,6 +28,7 @@ class BookingRequest:
     dry_run: bool = False
     calendar_url: str = ""
     equipment_id: int | None = None
+    timezone: str = "America/St_Johns"
 
 
 class StubUpace:
@@ -53,7 +54,7 @@ class StubUpace:
         if self.scenario == "membership":
             return BookingResult(status=MEMBERSHIP, message="membership required", **base)
         if self.scenario == "already_held":
-            return BookingResult(status=ALREADY_HELD, message="already held", **base)
+            return BookingResult(status="dry_run" if request.dry_run else ALREADY_HELD, message="already held", **base)
         if self.scenario == "full":
             return BookingResult(status=FULL, message="slot full", **base)
         if self.scenario == "unexpected":
@@ -78,7 +79,7 @@ class StubUpace:
     def cancel(self, request: BookingRequest, creds: Credentials) -> BookingResult:
         self.cancel_calls += 1
         return BookingResult(
-            status="cancelled",
+            status="dry_run" if request.dry_run else "cancelled",
             message="cancelled matching reservation",
             target_date=request.target_date.isoformat(),
             activity=request.activity_key,
