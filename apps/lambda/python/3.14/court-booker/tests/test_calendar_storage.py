@@ -260,12 +260,44 @@ def test_upstream_errors_preserve_previous_calendar(repo, failure_stage):
     assert not repo.get_metadata().get("initialized")
 
 
-def test_concurrent_claims_coalesce(repo):
+@pytest.mark.skipif(
+    not os.environ.get("CALENDAR_LOCALSTACK_ENDPOINT"),
+    reason="concurrent conditional writes require isolated LocalStack, not Moto",
+)
+def test_concurrent_claims_coalesce():
     from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
 
-    with ThreadPoolExecutor(max_workers=6) as pool:
-        results = list(pool.map(lambda _: repo.claim_refresh(now=NOW), range(6)))
-    assert sum(value is not None for value in results) == 1
+    endpoint = os.environ["CALENDAR_LOCALSTACK_ENDPOINT"]
+    repo = make_repo(endpoint)
+    try:
+        for _ in range(5):
+            gate = Barrier(6)
+
+            def claim(_, gate=gate):
+                # Separate sessions/resources model independent Lambda requests.
+                # Moto's in-process backend does not support concurrent writes.
+                table = (
+                    boto3.Session()
+                    .resource(
+                        "dynamodb",
+                        region_name="us-east-1",
+                        endpoint_url=endpoint,
+                        aws_access_key_id="test",
+                        aws_secret_access_key="test",
+                    )
+                    .Table(repo.table.name)
+                )
+                contender = CalendarRepository(table)
+                gate.wait(timeout=30)
+                return contender.claim_refresh(now=NOW)
+
+            with ThreadPoolExecutor(max_workers=6) as pool:
+                winners = [lease for lease in pool.map(claim, range(6)) if lease]
+            assert len(winners) == 1
+            assert repo.release_refresh(winners[0])
+    finally:
+        repo.table.delete()
 
 
 def test_writer_rejects_status_mismatch(monkeypatch, repo):

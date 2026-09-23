@@ -10,7 +10,7 @@ SCOPES = {
     "tflint": ["**/*.tf", "**/*.tf.json", ".tflint.hcl"],
     "trivy": ["**/*.tf", "**/*.tf.json", "**/*.yaml", "**/*.yml", "**/Dockerfile*", ".trivyignore", ".trivyignore.yaml"],
     "shell": ["scripts/*.sh", "scripts/git-hooks/*", "mocks/localstack/smoke.sh", "tests/**", ".shellcheckrc"],
-    "localstack": ["mocks/localstack/**", "scripts/localstack.sh", "apps/ecr/court-booker/**"],
+    "localstack": ["mocks/localstack/**", "scripts/localstack.sh", "apps/ecr/court-booker/**", "apps/lambda/python/3.14/court-booker/**"],
 }
 
 
