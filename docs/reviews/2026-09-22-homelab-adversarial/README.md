@@ -16,6 +16,10 @@ that can be added and removed.
 
 All reviewers shared one brief ([brief.md](brief.md)) and worked read-only.
 
+A second, same-angle comparison (Claude Fable 5.1 vs Codex `gpt-6-astra` at medium effort, pinned to `000bb81`) is in [round-2/](round-2/README.md). It added issues #136-#151.
+
+Every `homelab-review` issue has one attribution comment per model and effort that found it, with a timestamp, and a `found-by:*` label.
+
 ## Important caveat: the reviews ran against a stale tree
 
 The reviewers read a local working tree 79 commits behind `main`. Every finding was then
