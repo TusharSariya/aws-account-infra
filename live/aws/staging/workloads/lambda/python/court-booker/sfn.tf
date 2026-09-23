@@ -26,7 +26,7 @@ data "aws_iam_policy_document" "sfn" {
     sid       = "InvokeBooker"
     effect    = "Allow"
     actions   = ["lambda:InvokeFunction"]
-    resources = ["arn:aws:lambda:${var.region}:${var.aws_account_id}:function:court-booker-api"]
+    resources = ["arn:aws:lambda:${var.region}:${var.aws_account_id}:function:court-booker-api", "arn:aws:lambda:${var.region}:${var.aws_account_id}:function:court-booker-api-calendar-writer"]
   }
 
   statement {
@@ -72,7 +72,7 @@ resource "aws_sfn_state_machine" "booker" {
   definition = jsonencode({
     Comment        = "Three API attempts, 60s apart. Wait is here so Lambda is not billed for sleep."
     StartAt        = "Book"
-    TimeoutSeconds = 180
+    TimeoutSeconds = 300
     States = {
       Book = {
         Type     = "Task"
@@ -91,8 +91,47 @@ resource "aws_sfn_state_machine" "booker" {
           }
         ]
         OutputPath = "$.Payload"
-        End        = true
+        Next       = "PublishCalendarIfSuccessful"
       }
+      PublishCalendarIfSuccessful = {
+        Type = "Choice"
+        Choices = [
+          {
+            And = [
+              { Variable = "$.dry_run", IsPresent = true },
+              { Variable = "$.dry_run", BooleanEquals = true }
+            ]
+            Next = "Complete"
+          },
+          {
+            Or = [
+              { Variable = "$.status", StringEquals = "booked" },
+              { Variable = "$.status", StringEquals = "already_held" },
+              { Variable = "$.status", StringEquals = "cancelled" }
+            ]
+            Next = "PublishCalendar"
+          }
+        ]
+        Default = "Complete"
+      }
+      PublishCalendar = {
+        Type     = "Task"
+        Resource = "arn:aws:states:::lambda:invoke"
+        Parameters = {
+          FunctionName = aws_lambda_function.calendar["writer"].arn
+          "Payload.$"  = "$"
+        }
+        ResultPath = null
+        Retry      = [{ ErrorEquals = ["States.ALL"], IntervalSeconds = 2, MaxAttempts = 2, BackoffRate = 2 }]
+        Catch      = [{ ErrorEquals = ["States.ALL"], ResultPath = null, Next = "CalendarPublicationFailed" }]
+        Next       = "Complete"
+      }
+      CalendarPublicationFailed = {
+        Type  = "Fail"
+        Error = "CalendarPublicationFailed"
+        Cause = "booking confirmed, calendar publication failed"
+      }
+      Complete = { Type = "Succeed" }
     }
   })
 

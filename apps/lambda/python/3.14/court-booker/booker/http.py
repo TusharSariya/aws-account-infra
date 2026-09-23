@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
+
+from booker.calendar_contract import normalize_reservation
 from typing import Any, Callable, Protocol
 
 from booker.results import (
@@ -41,6 +44,8 @@ class HeldReservation:
     equipment_id: int | None
     class_id: int | None
     start_time: str
+    end_time: str = ""
+    cancelled: bool = False
 
 
 class UpaceSession(Protocol):
@@ -115,6 +120,71 @@ def _classify_bad_request(message: str) -> str:
     return CLOSED
 
 
+def _validated_reservations(response: Any) -> list[HeldReservation]:
+    """Only the complete, successful endpoint shape can represent an empty calendar."""
+    data = _get(response, "data")
+    rows = _get(data, "reservations")
+    if _get(response, "success") is not True or not isinstance(rows, list):
+        raise UpaceHttpError(502, "invalid reservations response")
+    # The verified endpoint is unpaginated. Fail closed if that contract changes.
+    for container in (response, data):
+        for key in ("next", "next_page", "next_cursor", "has_more", "pagination", "links"):
+            if _get(container, key):
+                raise UpaceHttpError(502, "incomplete reservations response")
+        total = _get(container, "total")
+        if total is not None and total != len(rows):
+            raise UpaceHttpError(502, "incomplete reservations response")
+    result = []
+    seen = set()
+    try:
+        for row in rows:
+            reservation_id = _strict_id(_get(row, "id"))
+            equipment_id = _get(row, "equipment_id")
+            class_id = _get(row, "class_id")
+            equipment_id = _strict_id(equipment_id) if equipment_id is not None else None
+            class_id = _strict_id(class_id) if class_id is not None else None
+            if reservation_id in seen or (equipment_id is None and class_id is None):
+                raise ValueError("missing identity or duplicate reservation")
+            seen.add(reservation_id)
+            start, end = _get(row, "start_time"), _get(row, "end_time")
+            if not isinstance(start, str) or not isinstance(end, str):
+                raise ValueError("missing reservation times")
+            if datetime.fromisoformat(end) <= datetime.fromisoformat(start):
+                raise ValueError("invalid reservation interval")
+            active, deleted = _get(row, "active"), _get(row, "deleted")
+            if type(active) is not int or active not in (0, 1):
+                raise ValueError("invalid reservation active state")
+            if type(deleted) is not int or deleted not in (0, 1):
+                raise ValueError("invalid reservation deleted state")
+            cancelled_on = _get(row, "cancelled_on")
+            if cancelled_on is not None:
+                datetime.fromisoformat(cancelled_on)
+            result.append(HeldReservation(
+                id=reservation_id, equipment_id=equipment_id, class_id=class_id,
+                start_time=start, end_time=end,
+                cancelled=not active or bool(deleted) or cancelled_on is not None,
+            ))
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise UpaceHttpError(502, "malformed reservation data") from exc
+    return result
+
+
+def _strict_id(value: Any) -> int:
+    if type(value) is not int or value <= 0:
+        raise ValueError("invalid reservation identifier")
+    return value
+
+
+def _held_calendar(held: HeldReservation, request: BookingRequest, *, status="confirmed"):
+    if not held.end_time:
+        return None
+    return normalize_reservation(
+        reservation_id=held.id, equipment_id=request.equipment_id,
+        start=held.start_time, end=held.end_time, court=request.activity_label,
+        status=status, timezone=request.timezone,
+    )
+
+
 class GeneratedUpaceSession:
     """Thin adapter over the generated `upace` package. Lazy-imported so unit
     tests can inject a fake without CodeArtifact.
@@ -146,6 +216,7 @@ class GeneratedUpaceSession:
             response = self._auth.login_legacy(
                 login_legacy_request=LoginLegacyRequest(email=username, password=password),
                 origin=ORIGIN,
+                _request_timeout=(5, 20),
             )
         except ApiException as exc:
             raise UpaceHttpError(int(exc.status or 0), _error_message(exc)) from exc
@@ -162,6 +233,7 @@ class GeneratedUpaceSession:
                 equipment_id,
                 var_date=target_date,
                 start_time=hhmm,
+                _request_timeout=(5, 20),
             )
         except ApiException as exc:
             raise UpaceHttpError(int(exc.status or 0), _error_message(exc)) from exc
@@ -176,27 +248,18 @@ class GeneratedUpaceSession:
         from upace import ApiException
 
         try:
-            response = self._reservations.list_my_reservations(start_time=start, end_time=end)
+            response = self._reservations.list_my_reservations_without_preload_content(
+                start_time=start, end_time=end, _request_timeout=(5, 20),
+            )
         except ApiException as exc:
             raise UpaceHttpError(int(exc.status or 0), _error_message(exc)) from exc
-        data = _get(response, "data")
-        rows = _get(data, "reservations") or []
-        held: list[HeldReservation] = []
-        for row in rows:
-            reservation_id = _get(row, "id")
-            if reservation_id is None:
-                continue
-            equipment_id = _get(row, "equipment_id")
-            class_id = _get(row, "class_id")
-            held.append(
-                HeldReservation(
-                    id=int(reservation_id),
-                    equipment_id=int(equipment_id) if equipment_id is not None else None,
-                    class_id=int(class_id) if class_id is not None else None,
-                    start_time=str(_get(row, "start_time") or ""),
-                )
-            )
-        return held
+        if int(getattr(response, "status", 0) or 0) != 200:
+            raise UpaceHttpError(502, "unsuccessful reservations response")
+        try:
+            payload = _json_body(response)
+        except (ValueError, TypeError, UnicodeError) as exc:
+            raise UpaceHttpError(502, "invalid reservations JSON") from exc
+        return _validated_reservations(payload)
 
     def reserve(
         self,
@@ -277,7 +340,10 @@ class UpaceHttpBooker:
             return BookingResult(status=UNEXPECTED_UI, message=exc.message, **meta)
         clock.mark("login")
 
-        held = self._matching(session, request)
+        try:
+            held = self._matching(session, request)
+        except UpaceHttpError:
+            return BookingResult(status=UNEXPECTED_UI, message="could not validate existing reservations", **meta)
         clock.mark("list_reservations", held=held is not None)
         if cancel:
             if held is None:
@@ -290,9 +356,19 @@ class UpaceHttpBooker:
                 clock.mark("cancel", error=True)
                 return BookingResult(status=UNEXPECTED_UI, message=exc.message, **meta)
             clock.mark("cancel")
-            return BookingResult(status=CANCELLED, message="cancelled matching reservation", **meta)
+            return BookingResult(
+                status=CANCELLED, message="cancelled matching reservation",
+                reservation_id=str(held.id),
+                calendar_reservation=_held_calendar(held, request, status="cancelled"), **meta,
+            )
         if held is not None:
-            return BookingResult(status=ALREADY_HELD, message="already in My Reservations", **meta)
+            return BookingResult(
+                status=DRY_RUN if request.dry_run else ALREADY_HELD,
+                message="already in My Reservations",
+                reservation_id=str(held.id),
+                calendar_reservation=None if request.dry_run else _held_calendar(held, request),
+                **meta,
+            )
 
         try:
             durations = session.available_duration_values(
@@ -313,7 +389,7 @@ class UpaceHttpBooker:
         if request.dry_run:
             return BookingResult(status=DRY_RUN, message="slot available, reserve skipped", **meta)
         try:
-            session.reserve(
+            reservation_id = session.reserve(
                 equipment_id=request.equipment_id,
                 target_date=request.target_date,
                 hhmm=request.hhmm,
@@ -327,19 +403,30 @@ class UpaceHttpBooker:
             clock.mark("reserve", error=True)
             return BookingResult(status=UNEXPECTED_UI, message=str(exc), **meta)
         clock.mark("reserve")
-        return BookingResult(status=BOOKED, message="reservation complete", reserve_clicks=1, **meta)
+        start = datetime.fromisoformat(f"{request.target_date.isoformat()}T{request.hhmm}")
+        return BookingResult(
+            status=BOOKED, message="reservation complete", reserve_clicks=1,
+            reservation_id=str(reservation_id),
+            calendar_reservation=normalize_reservation(
+                reservation_id=reservation_id, equipment_id=request.equipment_id,
+                start=start.isoformat(), end=(start + timedelta(minutes=request.duration_min)).isoformat(),
+                court=request.activity_label, timezone=request.timezone,
+            ), **meta,
+        )
 
     def _matching(self, session: UpaceSession, request: BookingRequest) -> HeldReservation | None:
         end = request.target_date + timedelta(days=1)
-        try:
-            rows = session.reservations(request.target_date, end)
-        except UpaceHttpError:
-            return None
-        prefix = f"{request.target_date.isoformat()} {request.hhmm}"
+        rows = session.reservations(request.target_date, end)
+        target = datetime.fromisoformat(f"{request.target_date.isoformat()}T{request.hhmm}")
         for row in rows:
             ids = {value for value in (row.equipment_id, row.class_id) if value is not None}
             if request.equipment_id not in ids:
                 continue
-            if row.start_time.startswith(prefix):
+            if row.cancelled:
+                continue
+            row_start = datetime.fromisoformat(row.start_time)
+            if row_start.tzinfo is not None:
+                row_start = row_start.astimezone(ZoneInfo(request.timezone)).replace(tzinfo=None)
+            if row_start == target:
                 return row
         return None

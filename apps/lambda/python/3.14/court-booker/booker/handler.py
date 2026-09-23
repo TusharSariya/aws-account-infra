@@ -100,6 +100,7 @@ def _run_weekly(
         dry_run=bool(event.get("dry_run", False)),
         calendar_url=config.calendar_url,
         equipment_id=config.equipment_id(activity),
+        timezone=config.timezone,
     )
     return browser.book(request, creds)
 
@@ -122,6 +123,7 @@ def _run_adhoc(
         dry_run=bool(event.get("dry_run", False)),
         calendar_url=config.calendar_url,
         equipment_id=config.equipment_id(activity),
+        timezone=config.timezone,
     )
     if event.get("cancel"):
         return browser.cancel(request, creds)

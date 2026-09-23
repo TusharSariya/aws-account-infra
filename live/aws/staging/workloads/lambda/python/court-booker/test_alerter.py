@@ -71,3 +71,57 @@ def test_sfn_email_uses_human_subject():
     assert "Threshold Crossed" not in body
     assert "AWSAccountId" not in body
     assert "Attempts:" in body
+
+
+def test_api_alarm_names_are_recognized():
+    from alerter import _is_sfn_alarm
+
+    assert _is_sfn_alarm({"AlarmName": "court-booker-api-failed"})
+    for name, expected in [("throttles", "throttled"), ("scheduler-target-errors", "schedule failed")]:
+        subject, _ = format_email({"AlarmName": f"court-booker-api-{name}"}, None, [], "us-east-1")
+        assert expected in subject
+
+
+def test_publication_failure_does_not_report_booking_failure():
+    subject, body = format_email(
+        {"AlarmName": "court-booker-api-failed"},
+        {"error": "CalendarPublicationFailed", "cause": "booking confirmed, calendar publication failed"},
+        [], "us-east-1",
+    )
+    assert "booking confirmed, calendar publication failed" in subject
+    assert "do not repeat the booking" in body
+
+
+def test_calendar_and_timeout_alarms_have_distinct_messages():
+    for suffix, expected in [
+        ("calendar-feed-errors", "calendar feed failed"),
+        ("calendar-reconcile-errors", "calendar reconciliation failed"),
+        ("calendar-writer-errors", "calendar publication failed"),
+        ("timed-out", "workflow timed out"),
+    ]:
+        subject, _ = format_email({"AlarmName": f"court-booker-api-{suffix}"}, None, [], "us-east-1")
+        assert expected in subject
+
+
+def test_async_failure_destination_redacts_request_and_response(monkeypatch):
+    import alerter
+
+    emails = []
+
+    class Ses:
+        def send_email(self, **kwargs):
+            emails.append(kwargs)
+
+    monkeypatch.setenv("ALERT_FROM", "a@example.test")
+    monkeypatch.setenv("ALERT_TO", "a@example.test")
+    monkeypatch.setattr(alerter.boto3, "client", lambda name, **kwargs: Ses())
+    alerter.lambda_handler({
+        "requestContext": {"condition": "RetriesExhausted"},
+        "requestPayload": {"token": "must-not-leak"},
+        "responsePayload": {"errorMessage": "secret upstream payload"},
+    }, None)
+    assert len(emails) == 1
+    rendered = json.dumps(emails)
+    assert "reconciliation failed" in rendered
+    assert "must-not-leak" not in rendered
+    assert "secret upstream" not in rendered

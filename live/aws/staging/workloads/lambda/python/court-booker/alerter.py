@@ -30,6 +30,13 @@ def lambda_handler(event, context):  # noqa: ARG001
     sfn = boto3.client("stepfunctions", region_name=region)
     ses = boto3.client("ses", region_name=region)
 
+    # Async failure destinations contain upstream errors; never forward those payloads.
+    if event.get("requestContext", {}).get("condition") in {"RetriesExhausted", "EventAgeExceeded"}:
+        event = {"Records": [{"Sns": {"Message": json.dumps({
+            "AlarmName": "court-booker-api-calendar-reconcile-errors",
+            "NewStateValue": "ALARM",
+        })}}]}
+
     for record in event.get("Records", []):
         sns = record.get("Sns") or {}
         payload = _parse_alarm(sns.get("Message") or "")
@@ -58,16 +65,28 @@ def format_email(
     if state and state != "ALARM":
         return f"Court booker {state.lower()}: {alarm}", _ok_body(payload)
 
-    if alarm == "court-booker-throttles":
+    if alarm in {"court-booker-throttles", "court-booker-api-throttles"}:
         return "Court booker: Lambda was throttled", _simple_body(
             "The court-booker Lambda was throttled, so a booking attempt never ran.",
             payload,
         )
-    if alarm == "court-booker-scheduler-target-errors":
+    if alarm in {"court-booker-scheduler-target-errors", "court-booker-api-scheduler-target-errors"}:
         return "Court booker: schedule failed to start", _simple_body(
             "EventBridge Scheduler could not start the court-booker state machine.",
             payload,
         )
+
+    calendar_alerts = {
+        "court-booker-api-calendar-writer-errors": ("calendar publication failed", "A calendar publication attempt failed. Step Functions retries persistence independently; reconciliation can recover confirmed bookings."),
+        "court-booker-api-calendar-feed-errors": ("calendar feed failed", "Calendar downloads encountered an error. Upace reservations are unchanged."),
+        "court-booker-api-calendar-reconcile-errors": ("calendar reconciliation failed", "Refreshing the shared calendar failed. Previously stored events are preserved; future requests can retry after the refresh lease expires."),
+        "court-booker-api-calendar-refresh-errors": ("calendar refresh request failed", "The feed could not request background reconciliation. Stored events continue to be served."),
+        "court-booker-api-calendar-http-errors": ("calendar HTTP request failed", "Calendar requests returned server errors. Initialization can return 503 until the first successful reconciliation."),
+        "court-booker-api-timed-out": ("booking workflow timed out", "The booking workflow exceeded its 300-second limit. Check the execution and reservations before retrying; the booking may have succeeded."),
+    }
+    if alarm in calendar_alerts:
+        headline, summary = calendar_alerts[alarm]
+        return f"Court booker: {headline}", _simple_body(summary, payload)
 
     failure = _failure_from_execution(execution) if execution else {}
     headline, blurb = explain_failure(failure)
@@ -108,6 +127,11 @@ def explain_failure(failure: dict[str, str]) -> tuple[str, str]:
     error = (failure.get("error") or "").strip()
     combined = f"{message} {error}".lower()
 
+    if error == "CalendarPublicationFailed":
+        return "booking confirmed, calendar publication failed", (
+            "The booking operation succeeded, but calendar persistence exhausted its retries. "
+            "Run calendar sync to recover publication; do not repeat the booking."
+        )
     if status == "full" or "no open spots" in message.lower():
         return "slot already taken", STATUS_BLURB["full"]
     if status == "closed" and "no start time" in message.lower():
@@ -179,7 +203,7 @@ def _parse_alarm(raw: str) -> dict[str, Any]:
 
 
 def _is_sfn_alarm(payload: dict[str, Any]) -> bool:
-    return str(payload.get("AlarmName") or "") == "court-booker-failed"
+    return str(payload.get("AlarmName") or "") in {"court-booker-failed", "court-booker-api-failed"}
 
 
 def _latest_failed_execution(sfn, machine_arn: str) -> dict[str, Any] | None:
