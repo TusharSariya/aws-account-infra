@@ -17,10 +17,12 @@ class FakeS3:
         self.failure = failure
         self.objects = {backup.KEY: [('original', b'old') ]}
         self.parts = []
+        self.encryption_requests = []
         self.aborted = False
     def upload_file(self, path, bucket, key, **kwargs):
         if self.failure == 'upload':
             raise OSError('injected upload failure')
+        self.encryption_requests.append(kwargs['ExtraArgs'])
         self.objects[key] = [('staged', Path(path).read_bytes())]
     def head_object(self, Bucket, Key):
         return {'VersionId': self.objects[Key][-1][0]}
@@ -30,6 +32,7 @@ class FakeS3:
             data += b'corrupt'
         return {'VersionId': VersionId, 'Body': io.BytesIO(data)}
     def create_multipart_upload(self, **kwargs):
+        self.encryption_requests.append(kwargs)
         return {'UploadId': 'new'}
     def upload_part_copy(self, CopySource, **kwargs):
         if self.failure == 'copy':
@@ -50,7 +53,7 @@ class BackupTests(unittest.TestCase):
                 path = Path(name) / 'archive'; path.write_bytes(b'complete backup')
                 s3 = FakeS3(failure)
                 with self.assertRaises((OSError, backup.BackupError)):
-                    backup.publish(s3, 'bucket', 'kms', path, lambda: None)
+                    backup.publish(s3, 'bucket', path, lambda: None)
                 self.assertEqual(s3.objects[backup.KEY], [('original', b'old')])
                 self.assertEqual(s3.aborted, failure == 'copy')
 
@@ -58,8 +61,11 @@ class BackupTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as name:
             path = Path(name) / 'archive'; path.write_bytes(b'complete backup')
             s3 = FakeS3()
-            result = backup.publish(s3, 'bucket', 'kms', path, lambda: None)
+            result = backup.publish(s3, 'bucket', path, lambda: None)
             self.assertEqual(result['version_id'], 'published')
+            for request in s3.encryption_requests:
+                self.assertEqual(request['ServerSideEncryption'], 'AES256')
+                self.assertNotIn('SSEKMSKeyId', request)
             backup.verify_object(s3, 'bucket', backup.KEY, 'original', hashlib.sha256(b'old').hexdigest())
             self.assertEqual(len(s3.objects[backup.KEY]), 2)
 
@@ -68,7 +74,7 @@ class BackupTests(unittest.TestCase):
             path = Path(name) / 'archive'; path.write_bytes(b'data')
             s3 = FakeS3()
             with self.assertRaises(ConnectionError):
-                backup.publish(s3, 'bucket', 'kms', path, lambda: (_ for _ in ()).throw(ConnectionError()))
+                backup.publish(s3, 'bucket', path, lambda: (_ for _ in ()).throw(ConnectionError()))
             self.assertEqual(s3.objects[backup.KEY], [('original', b'old')])
 
     def test_dump_failure_and_scratch_bound(self):

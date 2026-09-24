@@ -5,7 +5,6 @@ backupImage: ghcr.io/tusharsariyaorg/homelab-postgres-backup@sha256:bf63c3b94be7
 backup:
   enabled: true
   bucket: homelab-postgres-992382747916-us-east-1
-  kmsKeyArn: arn:aws:kms:us-east-1:992382747916:key/9d02eeb7-9b3a-46c6-9032-13851a0eec29
   trustAnchorArn: arn:aws:rolesanywhere:us-east-1:992382747916:trust-anchor/3fa6e0a8-a30f-46f3-9881-e14f06b58fcc
   profileArn: arn:aws:rolesanywhere:us-east-1:992382747916:profile/eadc5c4d-8939-4a77-9f6f-887f15ae642e
   roleArn: arn:aws:iam::992382747916:role/homelab/homelab-postgres-backup

@@ -67,7 +67,6 @@ spec:
                 - {name: AWS_CONFIG_FILE, value: /code/aws-config}
                 - {name: AWS_EC2_METADATA_DISABLED, value: "true"}
                 - {name: BACKUP_BUCKET, value: {{ .Values.backup.bucket | quote }}}
-                - {name: BACKUP_KMS_KEY, value: {{ required "KMS key required" .Values.backup.kmsKeyArn | quote }}}
                 - {name: PYTHONDONTWRITEBYTECODE, value: "1"}
                 - {name: TMPDIR, value: /scratch}
               volumeMounts:

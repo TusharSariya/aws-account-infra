@@ -1,6 +1,7 @@
 # Bootstrap recovery inputs have no automatic expiry. Routine/monthly backups
 # use distinct prefixes; retain noncurrent versions for the same retention window.
 module "recovery" {
+  use_s3_managed_encryption   = true
   source                      = "../../../../../modules/aws/encrypted_s3_bucket"
   bucket_name                 = "homelab-recovery-${var.aws_account_id}-${var.region}"
   kms_description             = "Homelab independent recovery backups"

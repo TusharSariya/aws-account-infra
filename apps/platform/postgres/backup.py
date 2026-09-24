@@ -141,10 +141,10 @@ def verify_object(s3, bucket, key, version, expected):
         raise BackupError('S3 exact-version checksum mismatch')
 
 
-def publish(s3, bucket, kms_key, path, check_lock):
+def publish(s3, bucket, path, check_lock):
     checksum = digest_file(path)
     staging = 'staging/' + str(uuid.uuid4()) + '.tar.gz'
-    extra = dict(ServerSideEncryption='aws:kms', SSEKMSKeyId=kms_key,
+    extra = dict(ServerSideEncryption='AES256',
                  Metadata={'sha256': checksum}, ContentType='application/gzip')
     s3.upload_file(str(path), bucket, staging, ExtraArgs=extra, Config=TRANSFER)
     staged = s3.head_object(Bucket=bucket, Key=staging)
@@ -200,7 +200,7 @@ def backup(s3, cw, scratch):
                 if not connection.execute('SELECT pg_try_advisory_lock(%s)', (LOCK,)).fetchone()[0]:
                     raise BackupError('Database onboarding or another backup is active')
                 path = archive(connection, work)
-                result = publish(s3, os.environ['BACKUP_BUCKET'], os.environ['BACKUP_KMS_KEY'],
+                result = publish(s3, os.environ['BACKUP_BUCKET'],
                                  path, lambda: connection.execute('SELECT 1'))
                 metric(cw, 'BackupSuccess')
                 print(json.dumps(result))

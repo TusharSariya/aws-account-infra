@@ -47,15 +47,3 @@ variable "ecr_repos" {
   default     = []
   description = "ECR repos to create statically, one per image. Usually empty — most repos are created ad-hoc by CI."
 }
-
-variable "backup_noncurrent_transition_days" {
-  type        = number
-  default     = 30
-  description = "Days before noncurrent backup versions move to cheaper storage."
-}
-
-variable "backup_run_stamped_glacier_days" {
-  type        = number
-  default     = 180
-  description = "Days before immutable run-stamped derived-artifact tarballs (tagged lifecycle-class=run-stamped) transition to GLACIER. Transition only — never expired (dedup pointers may reference old objects)."
-}

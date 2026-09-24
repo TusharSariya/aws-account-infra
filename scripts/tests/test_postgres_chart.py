@@ -8,7 +8,7 @@ class ChartTests(unittest.TestCase):
         args=['helm','template','apps-db','charts/homelab-postgres']
         if enabled:
             args += ['--set','backup.enabled=true','--set','backupImage=example.invalid/backup@sha256:'+'a'*64,
-                     '--set','backup.kmsKeyArn=kms,backup.trustAnchorArn=anchor,backup.profileArn=profile,backup.roleArn=role']
+                     '--set','backup.trustAnchorArn=anchor,backup.profileArn=profile,backup.roleArn=role']
         return [x for x in yaml.safe_load_all(subprocess.check_output(args)) if x]
 
     def test_one_primary_tls_storage_and_no_plaintext_credentials(self):

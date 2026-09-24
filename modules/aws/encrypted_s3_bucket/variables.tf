@@ -86,3 +86,9 @@ variable "protect_bucket_deletion" {
   default     = false
   description = "Explicitly deny DeleteBucket. Removing this protection requires a reviewed policy change."
 }
+
+variable "use_s3_managed_encryption" {
+  description = "Use SSE-S3 for new objects. Retain the existing KMS key for historical versions and other consumers until a separate verified retirement."
+  type        = bool
+  default     = false
+}

@@ -5,7 +5,6 @@ backupImage: ""
 backup:
   enabled: false
   bucket: homelab-postgres-992382747916-us-east-1
-  kmsKeyArn: ""
   trustAnchorArn: ""
   profileArn: ""
   roleArn: ""

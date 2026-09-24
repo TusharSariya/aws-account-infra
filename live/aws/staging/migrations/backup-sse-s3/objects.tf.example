@@ -1,0 +1,33 @@
+variable "objects" {
+  type = map(object({
+    bucket           = string
+    key              = string
+    etag             = string
+    storage_class    = string
+    object_lock_mode = optional(string)
+    retain_until     = optional(string)
+  }))
+}
+# One-time copies only. Never delete backup objects through this migration.
+resource "aws_s3_object_copy" "reencrypted" {
+  for_each                      = var.objects
+  bucket                        = each.value.bucket
+  key                           = each.value.key
+  source                        = "${each.value.bucket}/${each.value.key}"
+  copy_if_match                 = each.value.etag
+  expected_bucket_owner         = "992382747916"
+  expected_source_bucket_owner  = "992382747916"
+  server_side_encryption        = "AES256"
+  metadata_directive            = "COPY"
+  tagging_directive             = "COPY"
+  storage_class                 = each.value.storage_class
+  object_lock_mode              = each.value.object_lock_mode
+  object_lock_retain_until_date = each.value.retain_until
+  lifecycle {
+    prevent_destroy = true
+    ignore_changes  = all
+  }
+}
+output "copied_versions" {
+  value = { for k, v in aws_s3_object_copy.reencrypted : k => { source = v.source_version_id, destination = v.version_id } }
+}
