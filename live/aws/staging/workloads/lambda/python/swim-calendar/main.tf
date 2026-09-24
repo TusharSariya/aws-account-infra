@@ -143,6 +143,8 @@ resource "aws_lambda_function" "app" {
   for_each                       = local.functions
   function_name                  = "swim-calendar-${each.key}"
   role                           = aws_iam_role.lambda[each.key].arn
+  # AWS supports Python 3.14; the pinned static AWS ruleset predates this runtime.
+  # tflint-ignore: aws_lambda_function_invalid_runtime
   runtime                        = "python3.14"
   architectures                  = ["arm64"]
   handler                        = "swim_calendar.handlers.${each.key}"

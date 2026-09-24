@@ -203,3 +203,44 @@ def test_closure_subtracts_partial_windows_and_full_cancellation():
     assert events[1]['start'] == '2026-09-24T14:30:00+00:00'
     payload['schedule'][0]['block_schedules'][0].update(start_time='00:00', end_time='23:59')
     assert equipment_events(payload, DAY) == []
+
+
+@mock_aws
+def test_older_collection_cannot_replace_newer_publication():
+    client = boto3.client('s3', region_name='us-east-1')
+    client.create_bucket(Bucket='swim-test')
+    publish(client, 'swim-test', Source(), NOW)
+    class OverlappingSource:
+        def collect(self, *args):
+            publish(client, 'swim-test', Source({}), NOW + timedelta(minutes=1))
+            return fresh()
+    with pytest.raises(ClientError):
+        publish(client, 'swim-test', OverlappingSource(), NOW)
+    snapshot, _ = load(client, 'swim-test')
+    assert snapshot['last_success'] == (NOW + timedelta(minutes=1)).isoformat()
+    assert Calendar.from_ical(snapshot['ics']).walk('VEVENT') == []
+
+
+def test_lesson_wrong_date_and_invalid_season_rejected():
+    payload = lesson()
+    payload['classes'][0]['date'] = '2026-09-25'
+    with pytest.raises(ValueError):
+        class_events(payload, DAY)
+    payload = lesson()
+    payload['classes'][0]['end_day'] = '2026-08-01'
+    with pytest.raises(ValueError):
+        class_events(payload, DAY)
+
+
+def test_health_check_alerts_on_stale_snapshot(monkeypatch):
+    from swim_calendar import handlers
+    monkeypatch.setenv('SNAPSHOT_BUCKET', 'test')
+    monkeypatch.setattr(handlers, 's3', lambda: None)
+    monkeypatch.setattr(handlers, 'load', lambda *args: (None, None))
+    with pytest.raises(RuntimeError, match='36 hours'):
+        handlers.feed({'health': True}, None)
+    monkeypatch.setattr(handlers, 'load', lambda *args: ({'last_success': datetime.now(UTC).isoformat()}, None))
+    assert handlers.feed({'health': True}, None) == {'status': 'healthy'}
+    monkeypatch.setattr(handlers, 'load', lambda *args: ({'last_success': (datetime.now(UTC) - timedelta(hours=37)).isoformat()}, None))
+    with pytest.raises(RuntimeError, match='36 hours'):
+        handlers.feed({'health': True}, None)
