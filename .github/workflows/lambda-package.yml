@@ -79,9 +79,9 @@ jobs:
           fi
       - name: iRacing calendar tests
         run: |
-          uv run --locked --directory apps/lambda/python/3.14/iracing-calendar pytest
-          uv run --locked --directory apps/lambda/python/3.14/iracing-calendar ruff check .
-          uv run --locked --directory apps/lambda/python/3.14/iracing-calendar ruff format --check .
+          uv run --frozen --directory apps/lambda/python/3.14/iracing-calendar pytest
+          uv run --frozen --directory apps/lambda/python/3.14/iracing-calendar ruff check .
+          uv run --frozen --directory apps/lambda/python/3.14/iracing-calendar ruff format --check .
       - name: Swimming calendar tests
         run: uv run --frozen --directory apps/lambda/python/3.14/swim-calendar pytest
       - id: aws

@@ -153,7 +153,7 @@ jobs:
 
       - name: Initialize iRacing calendar after apply
         if: contains(fromJSON(needs.detect.outputs.units).*.id, 'aws-staging-iracing-calendar')
-        run: uv run --locked --directory apps/lambda/python/3.14/iracing-calendar python -m iracing_calendar.cli sync --function iracing-calendar-sync
+        run: uv run --frozen --directory apps/lambda/python/3.14/iracing-calendar python -m iracing_calendar.cli sync --function iracing-calendar-sync
 
       - name: Initialize swimming calendar after apply
         if: contains(fromJSON(needs.detect.outputs.units).*.id, 'aws-staging-swim-calendar')

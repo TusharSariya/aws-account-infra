@@ -76,7 +76,9 @@ A crashed worker's lease expires after ten minutes. No HTTP sync route is expose
 ## Releases
 
 `scripts/iracing-package.py` builds deterministic, content-addressed Python 3.14 /
-ARM64 artifacts using `uv.lock` and verified dependency hashes. The shared calendar
+ARM64 artifacts using `uv.lock` and verified dependency hashes. The builder first
+checks lock freshness offline against PyPI, then exports with `--frozen` so CI
+can use its dependency-cache index without changing the lockfile identity. The shared calendar
 module invokes the builder, stores its hash-named release and deploys it through the
 OpenTofu pipeline. CI initializes the snapshot after apply. There is no private SDK
 or runtime authentication to iRacing.

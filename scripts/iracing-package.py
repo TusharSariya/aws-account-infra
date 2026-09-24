@@ -2,11 +2,23 @@
 import base64
 import hashlib
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import zipfile
+
+
+def export_requirements(app, requirements):
+    # Validate project metadata against its canonical index without fetching.
+    # CI's dependency cache changes UV_INDEX_URL, not the committed lock identity.
+    environment = dict(os.environ, UV_INDEX_URL="https://pypi.org/simple")
+    subprocess.run(["uv", "lock", "--check", "--offline", "--directory", str(app)],
+                   env=environment, check=True, stdout=sys.stderr)
+    subprocess.run(["uv", "export", "--directory", str(app), "--frozen", "--no-dev",
+                    "--no-emit-project", "--output-file", str(requirements)],
+                   check=True, stdout=sys.stderr)
 
 
 def main():
@@ -18,8 +30,7 @@ def main():
     with tempfile.TemporaryDirectory() as directory:
         stage = Path(directory)
         requirements = stage / "requirements.txt"
-        subprocess.run(["uv", "export", "--directory", str(app), "--locked", "--no-dev",
-                        "--no-emit-project", "--output-file", str(requirements)], check=True, stdout=sys.stderr)
+        export_requirements(app, requirements)
         vendor = stage / "vendor"
         subprocess.run(["uv", "pip", "install", "--python-version", "3.14", "--python-platform",
                         "aarch64-manylinux_2_28", "--only-binary", ":all:", "--require-hashes",
