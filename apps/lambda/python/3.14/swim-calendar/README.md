@@ -15,8 +15,10 @@ unfamiliar or malformed blocks fail the refresh. Past events remain for 30 days.
 A validated refresh atomically replaces a single private S3 snapshot containing
 both event revisions and rendered ICS. Versioning permits recovery. Failed or
 incomplete refreshes leave the previous calendar intact; conditional S3 writes
-prevent an older overlapping run from replacing newer data. The sync Lambda has
-reserved concurrency one. The snapshot has no instructor/contact/attendee data.
+prevent an older overlapping run from replacing newer data. An expiring, conditionally written S3 lease coalesces concurrent syncs. The lease
+lasts 660 seconds, longer than the Lambda 600-second timeout, and recovers after
+abandoned work. This account has 10 Lambda slots and requires all 10 to remain
+unreserved, so neither function reserves account concurrency. The snapshot has no instructor/contact/attendee data.
 
 API Gateway serves GET /calendars/swimming.ics through a read-only Lambda, with
 ETags and five-minute cache freshness. Before initialization it returns 503.

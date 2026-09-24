@@ -1,8 +1,8 @@
 locals {
   app_root = abspath("${path.module}/../../../../../../..")
   functions = {
-    sync = { timeout = 600, concurrency = 1 }
-    feed = { timeout = 15, concurrency = 5 }
+    sync = { timeout = 600, concurrency = -1 }
+    feed = { timeout = 15, concurrency = -1 }
   }
 }
 
@@ -113,7 +113,7 @@ data "aws_iam_policy_document" "lambda" {
   }
   statement {
     actions   = each.key == "sync" ? ["s3:GetObject", "s3:PutObject"] : ["s3:GetObject"]
-    resources = ["${aws_s3_bucket.snapshot.arn}/current.json"]
+    resources = each.key == "sync" ? ["${aws_s3_bucket.snapshot.arn}/current.json", "${aws_s3_bucket.snapshot.arn}/lease.json"] : ["${aws_s3_bucket.snapshot.arn}/current.json"]
   }
   # Allows the SDK to distinguish an uninitialized snapshot (404) from access denied.
   statement {
@@ -135,6 +135,7 @@ resource "aws_iam_role_policy" "lambda" {
   policy   = data.aws_iam_policy_document.lambda[each.key].json
 }
 resource "aws_lambda_function" "app" {
+  # checkov:skip=CKV_AWS_115:Account quota is 10 with a minimum 10 unreserved; S3 leases coalesce syncs and API Gateway throttles downloads.
   # checkov:skip=CKV_AWS_117:Public Upace and S3 access require no VPC or NAT gateway.
   # checkov:skip=CKV_AWS_116:Sync has an async failure destination; synchronous feed errors have alarms.
   # checkov:skip=CKV_AWS_50:CloudWatch metrics and logs cover this small public feed.

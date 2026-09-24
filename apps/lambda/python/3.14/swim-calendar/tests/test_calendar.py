@@ -180,12 +180,23 @@ def test_localstack_snapshot_versioning_and_fencing():
         client.put_bucket_versioning(Bucket=bucket, VersioningConfiguration={'Status': 'Enabled'})
         publish(client, bucket, Source(), NOW)
         previous, etag = load(client, bucket)
+        from concurrent.futures import ThreadPoolExecutor
+        from threading import Barrier
+        from swim_calendar.handlers import claim, release
+        gate = Barrier(6)
+        def attempt(_):
+            gate.wait()
+            return claim(client, bucket, NOW)
+        with ThreadPoolExecutor(max_workers=6) as pool:
+            winners = [value for value in pool.map(attempt, range(6)) if value]
+        assert len(winners) == 1
+        release(client, bucket, winners[0])
         publish(client, bucket, Source({}), NOW + timedelta(hours=1))
         with pytest.raises(ClientError) as err:
             client.put_object(Bucket=bucket, Key='current.json', Body=b'{}', IfMatch=etag)
         assert err.value.response['Error']['Code'] == 'PreconditionFailed'
         versions = client.list_object_versions(Bucket=bucket)['Versions']
-        assert len(versions) == 2
+        assert len([v for v in versions if v['Key'] == 'current.json']) == 2
         assert load(client, bucket)[0]['ics'] != previous['ics']
     finally:
         versions = client.list_object_versions(Bucket=bucket).get('Versions', [])
@@ -244,3 +255,19 @@ def test_health_check_alerts_on_stale_snapshot(monkeypatch):
     monkeypatch.setattr(handlers, 'load', lambda *args: ({'last_success': (datetime.now(UTC) - timedelta(hours=37)).isoformat()}, None))
     with pytest.raises(RuntimeError, match='36 hours'):
         handlers.feed({'health': True}, None)
+
+
+@mock_aws
+def test_refresh_lease_coalesces_and_recovers_after_timeout():
+    from swim_calendar.handlers import claim, release
+    client = boto3.client('s3', region_name='us-east-1')
+    client.create_bucket(Bucket='swim-test')
+    first = claim(client, 'swim-test', NOW)
+    assert first
+    assert claim(client, 'swim-test', NOW + timedelta(seconds=30)) is None
+    successor = claim(client, 'swim-test', NOW + timedelta(seconds=661))
+    assert successor and successor != first
+    release(client, 'swim-test', first)
+    assert claim(client, 'swim-test', NOW + timedelta(seconds=662)) is None
+    release(client, 'swim-test', successor)
+    assert claim(client, 'swim-test', NOW + timedelta(seconds=663))
