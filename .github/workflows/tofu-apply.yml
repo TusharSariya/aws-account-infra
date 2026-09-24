@@ -134,6 +134,10 @@ jobs:
               print(f"{unit['id']}\t{unit['path']}\t{unit['var_file']}\t{unit['cloud']}")
           PY
 
+          # Reuse large provider binaries across this serial multi-unit apply.
+          # Separate copies per root exceed the checks runner's 4-GiB scratch limit.
+          export TF_PLUGIN_CACHE_DIR="$RUNNER_TEMP/tofu-provider-cache"
+          mkdir -p "$TF_PLUGIN_CACHE_DIR"
           while IFS=$'\t' read -r id path var_file cloud; do
             echo "::group::Apply $id"
             if [[ "$cloud" == talos || "$cloud" == kubernetes ]]; then
@@ -150,6 +154,10 @@ jobs:
               -var-file="$GITHUB_WORKSPACE/$var_file" "${extra[@]}"
             echo "::endgroup::"
           done < /tmp/deploy-units.tsv
+
+      - name: Initialize iRacing calendar after apply
+        if: contains(fromJSON(needs.detect.outputs.units).*.id, 'aws-staging-iracing-calendar')
+        run: uv run --frozen --directory apps/lambda/python/3.14/iracing-calendar python -m iracing_calendar.cli sync --function iracing-calendar-sync
 
       - name: Initialize swimming calendar after apply
         if: contains(fromJSON(needs.detect.outputs.units).*.id, 'aws-staging-swim-calendar')

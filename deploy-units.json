@@ -320,6 +320,26 @@
         "scripts/swim-package.py",
         "modules/aws/swimming-calendar/"
       ]
+    },
+    {
+      "id": "aws-staging-iracing-calendar",
+      "cloud": "aws",
+      "environment": "staging",
+      "path": "live/aws/staging/workloads/lambda/python/iracing-calendar",
+      "var_file": "config/environments/aws/staging/iracing-calendar.tfvars",
+      "region": "us-east-1",
+      "dependencies": [
+        "aws-staging-account",
+        "aws-staging-court-booker-api"
+      ],
+      "ci": true,
+      "watch": [
+        "live/aws/staging/workloads/lambda/python/iracing-calendar/",
+        "modules/aws/swimming-calendar/",
+        "apps/lambda/python/3.14/iracing-calendar/",
+        "config/environments/aws/staging/iracing-calendar.tfvars",
+        "scripts/iracing-package.py"
+      ]
     }
   ]
 }

@@ -62,6 +62,10 @@ def format_email(
 ) -> tuple[str, str]:
     alarm = str(payload.get("AlarmName") or "court-booker")
     state = str(payload.get("NewStateValue") or "")
+    if alarm.startswith("iracing-calendar-"):
+        return f"iRacing calendar {state.lower() or 'alert'}: {alarm}", _simple_body(
+            "The iRacing calendar refresh, download, or delivery failed. The hourly health check alerts after eight days without a successful refresh. Previously stored events remain published. Inspect source coverage and upcoming counts in the service logs.", payload)
+
     swimming_alerts = {
         "swim-calendar-sync-errors": "Daily swimming refresh failed; the previous calendar remains published.",
         "swim-calendar-feed-errors": "Swimming calendar downloads failed, or the hourly health check found no successful refresh within 36 hours.",
