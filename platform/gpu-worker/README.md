@@ -244,3 +244,11 @@ changes and binding verification. It never reads a passphrase or creates/removes
 keyslots. The operator-tested binding and reboot evidence are recorded separately;
 the newly added role still needs its own interactive convergence check. Other
 Ubuntu hosts default to `worker_unlock_enabled: false`.
+
+To add a desktop GPU to the request pool, add an `additionalDesktops` entry with
+its unique flavor `name`, node hostname, and measured CPU/RAM/scratch/one-GPU
+capacity; then add accepted backend profiles using `desktop: true` and queue
+`desktop`. Helm renders matching per-node ResourceFlavors, device-plugin placement
+and node-patch RBAC. All flavors share the single BestEffortFIFO ClusterQueue;
+node selectors bind each runtime to its backend. Each desktop is capped separately
+at 12 CPU/24 GiB. Admission disabled means every flavor's quota remains zero.

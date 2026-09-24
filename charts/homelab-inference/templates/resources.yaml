@@ -1,6 +1,20 @@
-{{- if or .Values.enabled .Values.workerEnabled }}
 {{- if .Values.enabled }}
 {{- if not (regexMatch "@sha256:[a-f0-9]{64}$" .Values.image) }}{{ fail "Pin the built gateway image digest" }}{{- end }}
+{{- end }}
+{{- $desktops := prepend .Values.additionalDesktops (dict "name" "desktop-compute" "node" .Values.node "measured" .Values.measured) }}
+{{- $desktopNodes := list }}
+{{- $desktopNames := list }}
+{{- range $desktops }}
+{{- if or (has .node $desktopNodes) (has .name $desktopNames) }}{{ fail "Desktop nodes and flavor names must be unique" }}{{- end }}
+{{- $desktopNodes = append $desktopNodes .node }}
+{{- $desktopNames = append $desktopNames .name }}
+{{- if $.Values.enabled }}
+{{- if or (le (int .measured.cpu) 0) (le (int .measured.memoryGi) 0) (le (int .measured.scratchGi) 0) (ne (int .measured.gpu) 1) }}{{ fail "Each desktop needs measured accepted capacity" }}{{- end }}
+{{- end }}
+{{- end }}
+{{- if or .Values.enabled .Values.workerEnabled }}
+{{- if .Values.enabled }}
+
 {{- if or (le (int .Values.measured.cpu) 0) (le (int .Values.measured.memoryGi) 0) (le (int .Values.measured.scratchGi) 0) (ne (int .Values.measured.gpu) 1) }}
 {{- fail "Measured accepted desktop capacity is required" }}
 {{- end }}
@@ -12,6 +26,10 @@
 {{- if not .Values.config.profiles }}{{ fail "At least one validated backend profile is required" }}{{- end }}
 {{- range .Values.config.profiles }}
 {{- if not (regexMatch "@sha256:[a-f0-9]{64}$" .image) }}{{ fail "Backend images must be immutable" }}{{- end }}
+{{- if .desktop }}
+{{- if not (has .node $desktopNodes) }}{{ fail "Desktop profile node must have an owned resource flavor" }}{{- end }}
+{{- if ne .queue "desktop" }}{{ fail "Desktop profiles share the desktop queue" }}{{- end }}
+{{- end }}
 {{- if .enabled }}
 {{- $_ := required "Backend node acceptance UID required" .acceptedNodeUID }}
 {{- end }}
@@ -34,14 +52,16 @@ scheduling:
   tolerations:
     - {key: homelab.tfdraw.dev/compute, operator: Equal, value: 'true', effect: NoSchedule}
 ---
+{{- range $desktops }}
 apiVersion: kueue.x-k8s.io/v1beta2
 kind: ResourceFlavor
-metadata: {name: desktop-compute}
+metadata: {name: {{ .name }}}
 spec:
-  nodeLabels: {kubernetes.io/hostname: {{ .Values.node }}}
+  nodeLabels: {kubernetes.io/hostname: {{ .node }}}
   nodeTaints:
     - {key: homelab.tfdraw.dev/compute, value: 'true', effect: NoSchedule}
 ---
+{{- end }}
 apiVersion: kueue.x-k8s.io/v1beta2
 kind: ClusterQueue
 metadata: {name: desktop-compute}
@@ -53,12 +73,14 @@ spec:
   resourceGroups:
     - coveredResources: [cpu, memory, ephemeral-storage, nvidia.com/gpu]
       flavors:
-        - name: desktop-compute
+        {{- range $desktops }}
+        - name: {{ .name }}
           resources:
-            - {name: cpu, nominalQuota: {{ min 12 (int .Values.measured.cpu) | quote }}}
-            - {name: memory, nominalQuota: '{{ min 24 (int .Values.measured.memoryGi) }}Gi'}
-            - {name: ephemeral-storage, nominalQuota: '{{ int .Values.measured.scratchGi }}Gi'}
-            - {name: nvidia.com/gpu, nominalQuota: '{{ ternary 1 0 .Values.enabled }}'}
+            - {name: cpu, nominalQuota: {{ ternary (min 12 (int .measured.cpu)) 0 $.Values.enabled | quote }}}
+            - {name: memory, nominalQuota: '{{ ternary (min 24 (int .measured.memoryGi)) 0 $.Values.enabled }}Gi'}
+            - {name: ephemeral-storage, nominalQuota: '{{ ternary (int .measured.scratchGi) 0 $.Values.enabled }}Gi'}
+            - {name: nvidia.com/gpu, nominalQuota: '{{ ternary 1 0 $.Values.enabled }}'}
+        {{- end }}
 ---
 apiVersion: kueue.x-k8s.io/v1beta2
 kind: LocalQueue
@@ -81,7 +103,14 @@ spec:
       labels: {app: desktop-nvidia-plugin}
     spec:
       automountServiceAccountToken: false
-      nodeSelector: {kubernetes.io/hostname: {{ .Values.node }}}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values: {{ toJson $desktopNodes }}
       runtimeClassName: nvidia
       tolerations:
         - {key: homelab.tfdraw.dev/compute, operator: Equal, value: 'true', effect: NoSchedule}
@@ -161,7 +190,7 @@ rules:
     verbs: [get]
   - apiGroups: ['']
     resources: [nodes]
-    resourceNames: [{{ .Values.node }}]
+    resourceNames: {{ toJson $desktopNodes }}
     verbs: [patch]
 ---
 apiVersion: rbac.authorization.k8s.io/v1

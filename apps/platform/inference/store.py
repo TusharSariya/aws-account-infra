@@ -129,8 +129,16 @@ class Store:
             row = db.execute("SELECT * FROM requests WHERE id=?", (key,)).fetchone()
             return dict(row) if row else None
 
+    @staticmethod
+    def expire_queued(db, now):
+        db.execute(
+            "UPDATE requests SET state='expired',error='Admission exceeded 30 seconds' WHERE state='queued' AND deadline<=?",
+            (now,),
+        )
+
     def pending(self):
-        with contextlib.closing(self.connect()) as db:
+        with self.transaction() as db:
+            self.expire_queued(db, time.time())
             return [
                 dict(r)
                 for r in db.execute(
@@ -143,10 +151,7 @@ class Store:
         now = time.time() if now is None else now
         claimed = []
         with self.transaction() as db:
-            db.execute(
-                "UPDATE requests SET state='expired',error='Admission exceeded 30 seconds' WHERE state='queued' AND deadline<=?",
-                (now,),
-            )
+            self.expire_queued(db, now)
             for profile in sorted(profiles, key=backend_order):
                 if not profile.get("healthy") or not profile.get("generation"):
                     continue

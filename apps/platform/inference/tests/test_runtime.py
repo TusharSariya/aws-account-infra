@@ -141,3 +141,14 @@ def test_node_uid_replacement_cannot_inherit_acceptance(tmp_path):
     profiles = Runtimes(kube, {"profiles": [p]}, store).reconcile()
     assert not profiles[0]["healthy"]
     assert not kube.created
+
+
+def test_expired_live_request_never_wakes_server_after_restart(tmp_path):
+    p = profile("server")
+    store = Store(tmp_path / "db")
+    request = store.submit({"model": "qwen"}, policy="cpu-only", lane="live", now=0)
+    kube = Kube([p], offline=["server"])
+    with patch("store.time.time", return_value=31):
+        Runtimes(kube, {"profiles": [p]}, store).reconcile()
+    assert not kube.created
+    assert store.get(request["id"])["state"] == "expired"
