@@ -11,6 +11,8 @@ import zipfile
 
 
 def export_requirements(app, requirements):
+    # setup-uv selects a version but does not install it on a fresh runner.
+    subprocess.run(["uv", "python", "install", "3.14"], check=True, stdout=sys.stderr)
     # Validate project metadata against its canonical index without fetching.
     # CI's dependency cache changes UV_INDEX_URL, not the committed lock identity.
     environment = dict(os.environ, UV_INDEX_URL="https://pypi.org/simple")
