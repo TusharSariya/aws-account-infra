@@ -370,6 +370,23 @@
       "watch": [
         "live/aws/staging/migrations/backup-sse-s3/"
       ]
+    },
+    {
+      "id": "aws-staging-technology-digest",
+      "cloud": "aws",
+      "environment": "staging",
+      "path": "live/aws/staging/workloads/technology-digest",
+      "var_file": "config/environments/aws/staging/technology-digest.tfvars",
+      "region": "us-east-1",
+      "dependencies": [
+        "aws-staging-account",
+        "aws-staging-court-booker-api"
+      ],
+      "ci": true,
+      "watch": [
+        "live/aws/staging/workloads/technology-digest/",
+        "config/environments/aws/staging/technology-digest.tfvars"
+      ]
     }
   ]
 }
