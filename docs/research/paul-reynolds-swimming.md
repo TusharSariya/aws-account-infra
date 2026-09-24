@@ -92,3 +92,11 @@ Raw evidence `/tmp/paul-lambda-proof/lambda-ua-result.json` and
 Production collector excludes the three Pop in Tot entries in the first week,
 so its eligible count is33 rather than36. Full Sept24-Oct24exclusive read:133
 eligible city events.
+
+## Final service boundary
+
+User clarified that YMCA and Paul Reynolds are two independent services and
+feeds. They share the runtime and a parameterized OpenTofu module, but have
+separate deployment units/state, API hostnames, Lambda functions, S3 snapshots
+and leases, schedules, failure queues and IAM roles. The combined-source
+experiment above was read-only and was never deployed.

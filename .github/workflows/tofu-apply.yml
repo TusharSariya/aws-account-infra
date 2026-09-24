@@ -155,6 +155,10 @@ jobs:
         if: contains(fromJSON(needs.detect.outputs.units).*.id, 'aws-staging-swim-calendar')
         run: uv run --frozen --directory apps/lambda/python/3.14/swim-calendar python -m swim_calendar sync
 
+      - name: Initialize Paul Reynolds calendar after apply
+        if: contains(fromJSON(needs.detect.outputs.units).*.id, 'aws-staging-paul-reynolds-swim-calendar')
+        run: uv run --frozen --directory apps/lambda/python/3.14/swim-calendar python -m swim_calendar sync --function paul-reynolds-swim-calendar-sync
+
       - name: Deploy Talos through visible guarded stages
         id: talos
         if: contains(fromJSON(needs.detect.outputs.units).*.id, 'talos-homelab')

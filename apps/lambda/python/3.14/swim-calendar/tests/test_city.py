@@ -5,7 +5,7 @@ import httpx
 import pytest
 
 from swim_calendar.city import PaulReynolds, USER_AGENT, weekly_events
-from swim_calendar.source import SwimmingSources
+from swim_calendar.source import create_source, Upace
 from swim_calendar.calendar import reconcile, render
 from icalendar import Calendar
 
@@ -72,21 +72,24 @@ def test_collect_bounds_header_and_http_failure():
         source.close()
 
 
-def test_combined_failure_and_identity_collision():
-    class Source:
-        def __init__(self, result): self.result = result
-        def collect(self, *args): return self.result
-    class Failure:
-        def collect(self, *args): raise ValueError('incomplete city response')
-    combined = SwimmingSources.__new__(SwimmingSources)
-    combined.sources = [Source({'ymca': {}}), Failure()]
-    with pytest.raises(ValueError, match='incomplete'):
-        combined.collect(WEEK, date(2026, 10, 20))
-    combined.sources = [Source({'ymca': {}}), Source({'city': {}})]
-    assert set(combined.collect(WEEK, date(2026, 10, 20))) == {'ymca', 'city'}
-    combined.sources = [Source({'same': {}}), Source({'same': {}})]
-    with pytest.raises(ValueError, match='Overlapping'):
-        combined.collect(WEEK, date(2026, 10, 20))
+def test_sources_and_calendar_identity_are_separate():
+    ymca, city = create_source('ymca'), create_source('paul_reynolds')
+    try:
+        assert isinstance(ymca, Upace)
+        assert isinstance(city, PaulReynolds)
+        assert 'Chrome/' not in ymca.client.headers['user-agent']
+    finally:
+        ymca.close()
+        city.close()
+    with pytest.raises(ValueError, match='Unknown'):
+        create_source('combined')
+    events = weekly_events(FIXTURE.read_text(), WEEK)
+    now = datetime(2026, 9, 20, tzinfo=UTC)
+    snapshot = reconcile({}, {e['id']: e for e in events}, now, now, date(2026, 10, 20))
+    city_calendar = Calendar.from_ical(render(snapshot, 'Paul Reynolds Swimming', 'paul-reynolds-swim-calendar'))
+    assert str(city_calendar['X-WR-CALNAME']) == 'Paul Reynolds Swimming'
+    assert all(str(e['UID']).endswith('@paul-reynolds-swim-calendar') for e in city_calendar.walk('VEVENT'))
+    assert str(Calendar.from_ical(render({}))['X-WR-CALNAME']) == 'Ches Penney Swimming'
 
 
 def test_empty_week_explicit_cancellation_and_duplicate_rejection():

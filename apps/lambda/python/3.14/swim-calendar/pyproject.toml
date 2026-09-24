@@ -1,7 +1,7 @@
 [project]
 name = "swim-calendar"
 version = "0.1.0"
-description = "Public Ches Penney swimming calendar"
+description = "Shared runtime for independent public swimming calendars"
 requires-python = ">=3.14"
 dependencies = [
     "icalendar>=6.3,<8",
