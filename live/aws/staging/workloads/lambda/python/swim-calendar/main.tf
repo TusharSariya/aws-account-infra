@@ -140,9 +140,9 @@ resource "aws_lambda_function" "app" {
   # checkov:skip=CKV_AWS_50:CloudWatch metrics and logs cover this small public feed.
   # checkov:skip=CKV_AWS_173:Environment contains only a bucket name, no secrets.
   # checkov:skip=CKV_AWS_272:Content-addressed locked builds are reviewed through IaC; signing is not configured.
-  for_each                       = local.functions
-  function_name                  = "swim-calendar-${each.key}"
-  role                           = aws_iam_role.lambda[each.key].arn
+  for_each      = local.functions
+  function_name = "swim-calendar-${each.key}"
+  role          = aws_iam_role.lambda[each.key].arn
   # AWS supports Python 3.14; the pinned static AWS ruleset predates this runtime.
   # tflint-ignore: aws_lambda_function_invalid_runtime
   runtime                        = "python3.14"
