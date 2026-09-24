@@ -97,8 +97,12 @@ def classify(host, objects, *, verified_ai_idle=False):
         )
         if verified_ai_idle and ai:
             continue
-        if host in dependencies(workload):
-            demand = True
+        try:
+            if host in dependencies(workload):
+                demand = True
+        except ValueError as exc:
+            # A malformed owned reservation blocks retirement, but cannot wake a host.
+            blockers.append(str(exc))
     for job in objects["jobs"]:
         if done(job) or job["metadata"].get("deletionTimestamp"):
             continue

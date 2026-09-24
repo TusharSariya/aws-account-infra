@@ -1,0 +1,4 @@
+---
+worker_cache_path: /var/lib/homelab-inference
+worker_cache_assets: []
+worker_cache_images: []

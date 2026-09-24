@@ -1,0 +1,15 @@
+---
+worker_host_name: "{{ inventory_hostname }}"
+worker_host_user: tushar
+worker_host_authorized_keys: []
+worker_host_wifi: false
+worker_host_wifi_interface: ""
+worker_host_wifi_connection: ""
+worker_host_wifi_ssid: ""
+worker_host_wifi_psk: ""
+worker_host_address: ""
+worker_host_gateway: 10.0.0.1
+worker_host_dns: [10.0.0.1]
+# Tailscale login is an interactive bootstrap prerequisite. No reusable auth key.
+worker_host_tailscale: false
+worker_host_tailscale_version: ""

@@ -1,0 +1,11 @@
+---
+worker_enrollment_enabled: false
+worker_enrollment_vm_accepted: false
+worker_enrollment_validation_vm: false
+worker_enrollment_api: https://10.0.0.231:6443
+worker_enrollment_node_ip: ""
+worker_enrollment_ca: ""
+worker_enrollment_bootstrap_token: ""
+worker_enrollment_cluster_dns: 10.96.0.10
+worker_enrollment_kube_reserved: {cpu: 500m, memory: 1Gi, ephemeral-storage: 2Gi}
+worker_enrollment_system_reserved: {cpu: '1', memory: 2Gi, ephemeral-storage: 5Gi}

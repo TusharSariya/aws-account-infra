@@ -1,0 +1,23 @@
+# Hardware acceptance and external secret creation precede activation.
+enabled: false
+workerEnabled: false
+node: ubuntu-gpu-01
+# Each additional desktop supplies name, node and measured cpu/memoryGi/scratchGi/gpu.
+additionalDesktops: []
+managementNode: talos-cp-01
+bootstrapImage: python:3.14-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6
+# Build apps/platform/inference/Dockerfile and supply its immutable image digest.
+image: ''
+imagePullSecrets: []
+devicePluginImage: nvcr.io/nvidia/k8s-device-plugin:v0.17.1
+# Populate with the immutable digest after CUDA acceptance.
+devicePluginDigest: ''
+authSecret: inference-gateway-auth
+# A separate laptop-local directory, never the existing application data paths.
+statePath: /var/lib/homelab-inference
+measured: {cpu: 0, memoryGi: 0, scratchGi: 0, gpu: 0}
+code: {}
+config:
+  queueLimit: 1024
+  executionSeconds: 120
+  profiles: []

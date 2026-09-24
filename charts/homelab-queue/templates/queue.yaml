@@ -41,7 +41,7 @@ spec:
     matchExpressions:
       - key: kubernetes.io/metadata.name
         operator: In
-        values: [homelab-models, homelab-jobs, arc-runners]
+        values: [homelab-models, homelab-jobs, arc-runners, homelab-inference]
   preemption:
     withinClusterQueue: Never
     reclaimWithinCohort: Never

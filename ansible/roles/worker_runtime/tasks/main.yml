@@ -1,0 +1,113 @@
+---
+- name: Install repository prerequisites
+  ansible.builtin.apt:
+    name: [ca-certificates, gpg, python3-debian]
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+- name: Configure Kubernetes package repository
+  ansible.builtin.deb822_repository:
+    name: kubernetes
+    types: deb
+    uris: https://pkgs.k8s.io/core:/stable:/v1.36/deb/
+    suites: /
+    signed_by: https://pkgs.k8s.io/core:/stable:/v1.36/deb/Release.key
+- name: Configure NVIDIA toolkit repository
+  ansible.builtin.deb822_repository:
+    name: nvidia-container-toolkit
+    types: deb
+    uris: https://nvidia.github.io/libnvidia-container/stable/deb/amd64
+    suites: /
+    signed_by: https://nvidia.github.io/libnvidia-container/gpgkey
+  when: worker_runtime_gpu
+- name: Install pinned runtime packages without starting unconfigured services
+  ansible.builtin.apt:
+    name:
+      - "containerd={{ worker_runtime_containerd_version }}"
+      - "kubelet={{ worker_runtime_kubelet_version }}"
+      - "haproxy={{ worker_runtime_haproxy_version }}"
+      - conntrack
+      - socat
+    state: present
+    update_cache: true
+    policy_rc_d: 101
+- name: Install signed Ubuntu NVIDIA driver and pinned toolkit
+  ansible.builtin.apt:
+    name:
+      - "{{ worker_runtime_driver_package }}={{ worker_runtime_driver_version }}"
+      - "nvidia-container-toolkit={{ worker_runtime_toolkit_version }}"
+      - "nvidia-container-toolkit-base={{ worker_runtime_toolkit_version }}"
+      - "libnvidia-container-tools={{ worker_runtime_toolkit_version }}"
+      - "libnvidia-container1={{ worker_runtime_toolkit_version }}"
+    state: present
+  when: worker_runtime_gpu
+- name: Pin package candidates against unattended upgrades
+  ansible.builtin.template:
+    src: pins.j2
+    dest: /etc/apt/preferences.d/ubuntu-worker
+    owner: root
+    group: root
+    mode: '0644'
+- name: Persist required kernel modules
+  ansible.builtin.copy:
+    content: "overlay\nbr_netfilter\n"
+    dest: /etc/modules-load.d/ubuntu-worker.conf
+    owner: root
+    group: root
+    mode: '0644'
+- name: Load required kernel modules
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: present
+  loop: [overlay, br_netfilter]
+- name: Configure forwarding
+  ansible.posix.sysctl:
+    name: "{{ item }}"
+    value: '1'
+    sysctl_file: /etc/sysctl.d/90-ubuntu-worker.conf
+    reload: true
+  loop: [net.ipv4.ip_forward, net.bridge.bridge-nf-call-iptables, net.bridge.bridge-nf-call-ip6tables]
+- name: Inspect swap
+  ansible.builtin.command: swapon --show --noheadings
+  register: worker_runtime_swap
+  changed_when: false
+  check_mode: false
+- name: Disable active swap
+  ansible.builtin.command: swapoff --all
+  when: worker_runtime_swap.stdout | length > 0
+  changed_when: true
+- name: Disable fstab swap after reboot
+  ansible.builtin.replace:
+    path: /etc/fstab
+    regexp: '^(?!#)(\S+\s+\S+\s+swap\s+.*)$'
+    replace: '# worker-managed: \1'
+- name: Create containerd configuration directory
+  ansible.builtin.file:
+    path: /etc/containerd
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+- name: Configure containerd with systemd cgroups
+  ansible.builtin.template:
+    src: containerd.toml.j2
+    dest: /etc/containerd/config.toml
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart worker containerd
+- name: Configure Talos-compatible local API proxy
+  ansible.builtin.template:
+    src: haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    owner: root
+    group: root
+    mode: '0644'
+    validate: haproxy -c -f %s
+  notify: Restart worker API proxy
+- name: Enable host runtime services
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  loop: [containerd, haproxy]

@@ -1,0 +1,294 @@
+{{- if .Values.enabled }}
+{{- if not (regexMatch "@sha256:[a-f0-9]{64}$" .Values.image) }}{{ fail "Pin the built gateway image digest" }}{{- end }}
+{{- end }}
+{{- $desktops := prepend .Values.additionalDesktops (dict "name" "desktop-compute" "node" .Values.node "measured" .Values.measured) }}
+{{- $desktopNodes := list }}
+{{- $desktopNames := list }}
+{{- range $desktops }}
+{{- if or (has .node $desktopNodes) (has .name $desktopNames) }}{{ fail "Desktop nodes and flavor names must be unique" }}{{- end }}
+{{- $desktopNodes = append $desktopNodes .node }}
+{{- $desktopNames = append $desktopNames .name }}
+{{- if $.Values.enabled }}
+{{- if or (le (int .measured.cpu) 0) (le (int .measured.memoryGi) 0) (le (int .measured.scratchGi) 0) (ne (int .measured.gpu) 1) }}{{ fail "Each desktop needs measured accepted capacity" }}{{- end }}
+{{- end }}
+{{- end }}
+{{- if or .Values.enabled .Values.workerEnabled }}
+{{- if .Values.enabled }}
+
+{{- if or (le (int .Values.measured.cpu) 0) (le (int .Values.measured.memoryGi) 0) (le (int .Values.measured.scratchGi) 0) (ne (int .Values.measured.gpu) 1) }}
+{{- fail "Measured accepted desktop capacity is required" }}
+{{- end }}
+{{- end }}
+{{- if not (regexMatch "^sha256:[a-f0-9]{64}$" .Values.devicePluginDigest) }}
+{{- fail "Pin the validated device plugin digest" }}
+{{- end }}
+{{- if .Values.enabled }}
+{{- if not .Values.config.profiles }}{{ fail "At least one validated backend profile is required" }}{{- end }}
+{{- range .Values.config.profiles }}
+{{- if not (regexMatch "@sha256:[a-f0-9]{64}$" .image) }}{{ fail "Backend images must be immutable" }}{{- end }}
+{{- if .desktop }}
+{{- if not (has .node $desktopNodes) }}{{ fail "Desktop profile node must have an owned resource flavor" }}{{- end }}
+{{- if ne .queue "desktop" }}{{ fail "Desktop profiles share the desktop queue" }}{{- end }}
+{{- end }}
+{{- if .enabled }}
+{{- $_ := required "Backend node acceptance UID required" .acceptedNodeUID }}
+{{- end }}
+{{- end }}
+{{- end }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: homelab-inference
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+---
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata: {name: nvidia}
+handler: nvidia
+scheduling:
+  tolerations:
+    - {key: homelab.tfdraw.dev/compute, operator: Equal, value: 'true', effect: NoSchedule}
+---
+{{- range $desktops }}
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ResourceFlavor
+metadata: {name: {{ .name }}}
+spec:
+  nodeLabels: {kubernetes.io/hostname: {{ .node }}}
+  nodeTaints:
+    - {key: homelab.tfdraw.dev/compute, value: 'true', effect: NoSchedule}
+---
+{{- end }}
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: ClusterQueue
+metadata: {name: desktop-compute}
+spec:
+  queueingStrategy: BestEffortFIFO
+  namespaceSelector:
+    matchLabels: {kubernetes.io/metadata.name: homelab-inference}
+  preemption: {withinClusterQueue: Never, reclaimWithinCohort: Never}
+  resourceGroups:
+    - coveredResources: [cpu, memory, ephemeral-storage, nvidia.com/gpu]
+      flavors:
+        {{- range $desktops }}
+        - name: {{ .name }}
+          resources:
+            - {name: cpu, nominalQuota: {{ ternary (min 12 (int .measured.cpu)) 0 $.Values.enabled | quote }}}
+            - {name: memory, nominalQuota: '{{ ternary (min 24 (int .measured.memoryGi)) 0 $.Values.enabled }}Gi'}
+            - {name: ephemeral-storage, nominalQuota: '{{ ternary (int .measured.scratchGi) 0 $.Values.enabled }}Gi'}
+            - {name: nvidia.com/gpu, nominalQuota: '{{ ternary 1 0 $.Values.enabled }}'}
+        {{- end }}
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: LocalQueue
+metadata: {name: desktop, namespace: homelab-inference}
+spec: {clusterQueue: desktop-compute}
+---
+apiVersion: kueue.x-k8s.io/v1beta2
+kind: LocalQueue
+metadata: {name: server-cpu, namespace: homelab-inference}
+spec: {clusterQueue: homelab-compute}
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata: {name: desktop-nvidia-plugin, namespace: homelab-inference}
+spec:
+  selector:
+    matchLabels: {app: desktop-nvidia-plugin}
+  template:
+    metadata:
+      labels: {app: desktop-nvidia-plugin}
+    spec:
+      automountServiceAccountToken: false
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values: {{ toJson $desktopNodes }}
+      runtimeClassName: nvidia
+      tolerations:
+        - {key: homelab.tfdraw.dev/compute, operator: Equal, value: 'true', effect: NoSchedule}
+        - {key: homelab.tfdraw.dev/quarantine, operator: Equal, value: 'true', effect: NoSchedule}
+      containers:
+        - name: plugin
+          image: '{{ .Values.devicePluginImage }}@{{ .Values.devicePluginDigest }}'
+          env:
+            - {name: FAIL_ON_INIT_ERROR, value: 'true'}
+            - {name: DEVICE_LIST_STRATEGY, value: envvar}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 25m, memory: 32Mi}
+            limits: {cpu: 100m, memory: 128Mi}
+          volumeMounts:
+            - {name: device-plugin, mountPath: /var/lib/kubelet/device-plugins}
+      volumes:
+        - name: device-plugin
+          hostPath: {path: /var/lib/kubelet/device-plugins, type: Directory}
+{{- end }}
+{{- if .Values.enabled }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: inference-gateway, namespace: homelab-inference}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: {name: inference-runtimes, namespace: homelab-inference}
+rules:
+  - apiGroups: ['']
+    resources: [pods]
+    verbs: [get, list, create, delete]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: {name: inference-runtimes, namespace: homelab-inference}
+subjects: [{kind: ServiceAccount, name: inference-gateway, namespace: homelab-inference}]
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: inference-runtimes}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: {name: inference-network-health, namespace: kube-system}
+rules:
+  - apiGroups: ['']
+    resources: [pods]
+    verbs: [list]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: {name: inference-network-health, namespace: kube-system}
+subjects: [{kind: ServiceAccount, name: inference-gateway, namespace: homelab-inference}]
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: inference-network-health}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata: {name: inference-node-health}
+rules:
+  - apiGroups: [certificates.k8s.io]
+    resources: [certificatesigningrequests]
+    verbs: [list]
+  - apiGroups: [certificates.k8s.io]
+    resources: [certificatesigningrequests/approval]
+    verbs: [patch]
+  - apiGroups: [certificates.k8s.io]
+    resources: [signers]
+    resourceNames: [kubernetes.io/kubelet-serving]
+    verbs: [approve]
+  - apiGroups: ['']
+    resources: [nodes]
+    resourceNames:
+      {{- range .Values.config.profiles }}
+      - {{ .node }}
+      {{- end }}
+    verbs: [get]
+  - apiGroups: ['']
+    resources: [nodes]
+    resourceNames: {{ toJson $desktopNodes }}
+    verbs: [patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata: {name: inference-node-health}
+subjects: [{kind: ServiceAccount, name: inference-gateway, namespace: homelab-inference}]
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: inference-node-health}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: inference-code, namespace: homelab-inference}
+data:
+  {{- toYaml .Values.code | nindent 2 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: inference-config, namespace: homelab-inference}
+data:
+  config.json: {{ toJson .Values.config | quote }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: inference-gateway, namespace: homelab-inference}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app: inference-gateway}
+  template:
+    metadata:
+      labels: {app: inference-gateway}
+      annotations:
+        homelab/revision: {{ toJson .Values | sha256sum | quote }}
+    spec:
+      serviceAccountName: inference-gateway
+      imagePullSecrets: {{ toJson .Values.imagePullSecrets }}
+      nodeSelector: {kubernetes.io/hostname: {{ .Values.managementNode }}}
+      tolerations:
+        - {key: node-role.kubernetes.io/control-plane, operator: Exists, effect: NoSchedule}
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        fsGroup: 1000
+        seccompProfile: {type: RuntimeDefault}
+      initContainers:
+        - name: state-permissions
+          image: {{ .Values.bootstrapImage | quote }}
+          command: [python, -B, -c, "import os; os.chown('/data', 1000, 1000); os.chmod('/data', 0o700)"]
+          securityContext:
+            runAsUser: 0
+            runAsNonRoot: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL], add: [CHOWN, FOWNER]}
+          resources:
+            requests: {cpu: 10m, memory: 16Mi}
+            limits: {cpu: 100m, memory: 32Mi}
+          volumeMounts: [{name: data, mountPath: /data}]
+      containers:
+        - name: gateway
+          image: {{ .Values.image | quote }}
+          command: [python, -B, /code/gateway.py]
+          ports: [{name: http, containerPort: 8080}]
+          readinessProbe: {httpGet: {path: /healthz, port: http}, periodSeconds: 5}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 100m, memory: 96Mi, ephemeral-storage: 16Mi}
+            limits: {cpu: 500m, memory: 256Mi, ephemeral-storage: 32Mi}
+          volumeMounts:
+            - {name: code, mountPath: /code, readOnly: true}
+            - {name: config, mountPath: /config, readOnly: true}
+            - {name: auth, mountPath: /auth, readOnly: true}
+            - {name: data, mountPath: /data}
+      volumes:
+        - {name: code, configMap: {name: inference-code}}
+        - {name: config, configMap: {name: inference-config}}
+        - {name: auth, secret: {secretName: {{ .Values.authSecret }}}}
+        - {name: data, hostPath: {path: {{ .Values.statePath }}, type: DirectoryOrCreate}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: inference-gateway, namespace: homelab-inference}
+spec:
+  selector: {app: inference-gateway}
+  ports: [{name: http, port: 8080, targetPort: http}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: inference-ingress, namespace: homelab-inference}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: {matchLabels: {app: inference-gateway}}
+      ports: [{protocol: TCP, port: 8080}]
+{{- end }}

@@ -1,0 +1,40 @@
+---
+- name: Create local cache and scratch paths
+  ansible.builtin.file:
+    path: "{{ worker_cache_path }}/{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  loop: [models, scratch]
+- name: Require checksummed assets and immutable image references
+  ansible.builtin.assert:
+    that:
+      - item.checksum is match('^sha256:[a-f0-9]{64}$')
+      - item.name is match('^[a-zA-Z0-9_.-]+$')
+  loop: "{{ worker_cache_assets }}"
+- name: Cache model assets independently of application servers
+  ansible.builtin.get_url:
+    url: "{{ item.url }}"
+    checksum: "{{ item.checksum }}"
+    dest: "{{ worker_cache_path }}/models/{{ item.name }}"
+    owner: root
+    group: root
+    mode: '0644'
+  loop: "{{ worker_cache_assets }}"
+- name: List cached container images
+  ansible.builtin.command: ctr --namespace k8s.io images list --quiet
+  register: worker_cache_present
+  changed_when: false
+  check_mode: false
+  when: worker_cache_images | length > 0
+- name: Require immutable validation images
+  ansible.builtin.assert:
+    that: item is search('@sha256:[a-f0-9]{64}$')
+  loop: "{{ worker_cache_images }}"
+- name: Cache missing validation images
+  ansible.builtin.command:
+    argv: [ctr, --namespace, k8s.io, images, pull, "{{ item }}"]
+  loop: "{{ worker_cache_images }}"
+  when: item not in worker_cache_present.stdout_lines
+  changed_when: true

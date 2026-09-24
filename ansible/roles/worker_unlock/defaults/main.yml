@@ -1,0 +1,4 @@
+---
+worker_unlock_enabled: false
+worker_unlock_luks_uuid: ''
+worker_unlock_clevis_version: 20-1ubuntu2

@@ -1,0 +1,15 @@
+{% for package, version in [('containerd', worker_runtime_containerd_version), ('kubelet', worker_runtime_kubelet_version), ('haproxy', worker_runtime_haproxy_version)] %}
+Package: {{ package }}
+Pin: version {{ version }}
+Pin-Priority: 1000
+
+{% endfor %}
+{% if worker_runtime_gpu %}
+Package: {{ worker_runtime_driver_package }}
+Pin: version {{ worker_runtime_driver_version }}
+Pin-Priority: 1000
+
+Package: nvidia-container-toolkit nvidia-container-toolkit-base libnvidia-container-tools libnvidia-container1
+Pin: version {{ worker_runtime_toolkit_version }}
+Pin-Priority: 1000
+{% endif %}

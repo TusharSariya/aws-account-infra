@@ -1,0 +1,4 @@
+---
+- name: Rebuild worker boot images
+  ansible.builtin.command: dracut --regenerate-all --force
+  changed_when: true

@@ -10,7 +10,10 @@ def workload(flavor="homelab-secondary", namespace="arc-runners"):
             "resourceVersion": "12",
         },
         "status": {
-            "admission": {"podSetAssignments": [{"flavors": {"cpu": flavor}}]},
+            "admission": {
+                "clusterQueue": "homelab-compute",
+                "podSetAssignments": [{"flavors": {"cpu": flavor}}],
+            },
             "admissionChecks": [{"name": CHECK, "state": "Pending"}],
         },
     }
@@ -40,3 +43,22 @@ def test_finished_and_already_admitted_are_not_mutated():
     assert admission_patch(w, set()) is None
     w["status"]["conditions"] = [{"type": "Finished", "status": "True"}]
     assert dependencies(w) == set()
+
+
+def test_foreign_desktop_queue_never_wakes_or_mutates():
+    w = workload("desktop-gpu", namespace="homelab-inference")
+    w["status"]["admission"]["clusterQueue"] = "desktop-compute"
+    assert dependencies(w) == set()
+    assert admission_patch(w, {"primary", "secondary"}) is None
+
+
+def test_bad_owned_flavor_stays_pending_without_stopping_other_admissions():
+    bad = workload("unregistered")
+    assert (
+        admission_patch(bad, {"primary", "secondary"})[-1]["value"][0]["state"]
+        == "Pending"
+    )
+    assert (
+        admission_patch(workload(), {"primary", "secondary"})[-1]["value"][0]["state"]
+        == "Ready"
+    )

@@ -67,7 +67,10 @@ def test_idle_ai_workload_matches_live_pod_uid_without_template_labels():
         },
         "spec": {"podSets": [{"template": {"metadata": {}}}]},
         "status": {
-            "admission": {"podSetAssignments": [{"flavors": {"cpu": "homelab-worker"}}]}
+            "admission": {
+                "clusterQueue": "homelab-compute",
+                "podSetAssignments": [{"flavors": {"cpu": "homelab-worker"}}],
+            }
         },
     }
     data["workloads"] = [workload]

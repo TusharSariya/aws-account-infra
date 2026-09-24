@@ -1,0 +1,14 @@
+global
+  user haproxy
+  group haproxy
+  maxconn 512
+defaults
+  mode tcp
+  timeout connect 5s
+  timeout client 1h
+  timeout server 1h
+frontend kubeprism_compatibility
+  bind 127.0.0.1:7445
+  default_backend main_api
+backend main_api
+  server main {{ worker_runtime_api }} check

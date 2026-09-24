@@ -1,0 +1,44 @@
+{{- if .Values.workerEnabled }}
+# Explicit helm test only; this hook never schedules on the physical desktop.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ubuntu-worker-validation
+  namespace: homelab-inference
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  restartPolicy: Never
+  nodeSelector:
+    kubernetes.io/hostname: ubuntu-enrollment-validation
+  tolerations:
+    - {key: homelab.tfdraw.dev/quarantine, operator: Equal, value: 'true', effect: NoSchedule}
+    - {key: homelab.tfdraw.dev/compute, operator: Equal, value: 'true', effect: NoSchedule}
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    seccompProfile: {type: RuntimeDefault}
+  containers:
+    - name: dns-api
+      image: python:3.14-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6
+      command: [python, -B, -c]
+      args:
+        - |
+          import socket, ssl, urllib.request, urllib.error
+          address = socket.gethostbyname('kubernetes.default.svc.cluster.local')
+          print('Cluster DNS resolved:', address, flush=True)
+          context = ssl.create_default_context(cafile='/var/run/secrets/kubernetes.io/serviceaccount/ca.crt')
+          try:
+              urllib.request.urlopen('https://kubernetes.default.svc/version', context=context, timeout=10)
+          except urllib.error.HTTPError as error:
+              assert error.code == 401, error
+          print('Cluster API TLS and service routing passed', flush=True)
+      resources:
+        requests: {cpu: 100m, memory: 32Mi}
+        limits: {cpu: 200m, memory: 64Mi}
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities: {drop: [ALL]}
+{{- end }}
