@@ -73,7 +73,8 @@ SWIM_LOCALSTACK_ENDPOINT=http://localhost:4566 \
   uv run --frozen --directory apps/lambda/python/3.14/swim-calendar pytest
 ```
 
-LocalStack tests create and clean up their own bucket. Live reads are opt-in and
+CI runs unit tests without LocalStack. LocalStack integration is local-only;
+the tests create and clean up their own bucket. Live reads are opt-in and
 must not be turned into automatic booking tests. After deployment, parse the URL,
 compare representative swims and lessons with Upace, test conditional GET, and
 confirm each supported calendar client displays Newfoundland times correctly.
