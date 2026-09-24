@@ -69,6 +69,10 @@ jobs:
         with:
           role-to-assume: ${{ vars.TOFU_APPLY_ROLE_ARN }}
           aws-region: us-east-1
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: false
+          python-version: "3.14"
       - uses: ./.github/actions/setup-opentofu
         with:
           tofu_version: 1.11.5
@@ -146,6 +150,10 @@ jobs:
               -var-file="$GITHUB_WORKSPACE/$var_file" "${extra[@]}"
             echo "::endgroup::"
           done < /tmp/deploy-units.tsv
+
+      - name: Initialize swimming calendar after apply
+        if: contains(fromJSON(needs.detect.outputs.units).*.id, 'aws-staging-swim-calendar')
+        run: uv run --frozen --directory apps/lambda/python/3.14/swim-calendar python -m swim_calendar sync
 
       - name: Deploy Talos through visible guarded stages
         id: talos

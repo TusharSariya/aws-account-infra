@@ -64,6 +64,11 @@ jobs:
         env:
           CALENDAR_LOCALSTACK_ENDPOINT: http://localhost:4566
         run: uv run --frozen --directory apps/lambda/python/3.14/court-booker pytest tests/test_calendar_storage.py
+      - name: Swimming calendar tests and S3 integration
+        if: steps.changes.outputs.run == 'true'
+        env:
+          SWIM_LOCALSTACK_ENDPOINT: http://localhost:4566
+        run: uv run --frozen --directory apps/lambda/python/3.14/swim-calendar pytest
       - name: Logs on failure
         if: steps.changes.outputs.run == 'true' && (failure())
         run: docker compose -f mocks/localstack/compose.yml logs
