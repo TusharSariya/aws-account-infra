@@ -31,6 +31,8 @@ jobs:
         with:
           tofu_version: '1.11.0'
       - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: false
       - run: pip install ansible-core==2.21.1 ansible-lint==26.6.0 pytest==8.4.2 pyyaml==6.0.2 ruff==0.12.12 cryptography==46.0.5
       - run: ansible-galaxy collection install -r ansible/requirements.yml
       - run: ansible-lint ansible
