@@ -28,15 +28,6 @@ resource "aws_iam_role_policy" "daily_backup" {
         Resource = "${module.recovery.s3_bucket_arn}/etcd/latest.tar.gz.age"
       },
       {
-        Effect   = "Allow"
-        Action   = ["kms:GenerateDataKey", "kms:Decrypt"]
-        Resource = module.recovery.kms_key_arn
-        Condition = { StringEquals = {
-          "kms:ViaService"    = "s3.${var.region}.amazonaws.com"
-          "kms:CallerAccount" = var.aws_account_id
-        } }
-      },
-      {
         Effect    = "Allow"
         Action    = "cloudwatch:PutMetricData"
         Resource  = "*"

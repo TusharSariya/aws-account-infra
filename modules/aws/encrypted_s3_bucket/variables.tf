@@ -92,3 +92,13 @@ variable "use_s3_managed_encryption" {
   type        = bool
   default     = false
 }
+
+variable "create_kms_key" {
+  description = "Manage a customer KMS key. Disable only after retiring every dependent object version and consumer."
+  type        = bool
+  default     = true
+  validation {
+    condition     = var.create_kms_key || var.use_s3_managed_encryption
+    error_message = "A customer KMS key is required unless SSE-S3 is enabled."
+  }
+}

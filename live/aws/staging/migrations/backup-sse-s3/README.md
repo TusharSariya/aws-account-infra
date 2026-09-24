@@ -10,7 +10,8 @@
   Object Lock retention. Copy preconditions required the inventoried source ETags.
 - Every copied version was verified against its original using streamed SHA-256,
   metadata/tag/retention equality and HeadObject encryption metadata. Original
-  versions remain intact and decryptable.
+  versions were initially retained, then deleted in the separately authorized
+  retirement described below.
 - Copy resources are then forgotten with `destroy = false`. They must not stay
   under ordinary Terraform object management: backup writers and lifecycle rules
   own their subsequent versions. The completed migration must never recreate an
@@ -25,26 +26,18 @@ pre-forget migration state. No backup content is stored in this repository.
 
 ## Legacy homelab versions
 
-Keep the existing homelab KMS keys enabled. SSE-S3 CopyObject creates a new version;
-it cannot rewrite an existing version ID. Recovery Object Lock versions remain
-retained, and old homelab versions still need their keys until their references
-and retention are resolved. No homelab KMS storage savings are claimed yet.
+The owner subsequently authorized deletion of all 19 noncurrent KMS-encrypted
+homelab versions and retirement of their two dedicated keys. The nine current
+SSE-S3 objects remain. See [the retirement record](../../workloads/homelab-recovery/README.md#kms-retirement---2026-09-24).
+The private migration manifest contains historical source IDs that no longer exist.
+Do not replay the example copy configuration.
 
 ## PostgreSQL writer deployment status
 
-The backup writer now explicitly requests AES256 for both staging upload and
-multipart promotion. Its unit tests and chart tests pass. OpenTofu's Helm update
-updated the live ConfigMap and CronJob, but the overall release is FAILED because
-the pre-existing CNPG operator is scaled to zero and its webhook is unavailable.
-The primary worker is NotReady/cordoned and apps-db is explicitly hibernated.
-No maintenance settings were changed. A fresh end-to-end database backup was not
-run against the hibernated database.
-
-Once the normal wake/maintenance restoration workflow finishes, run the existing
-`main_cluster_guard.require_primary_ready` preflight, then re-plan/apply
-`helm_release.postgres` through the homelab OpenTofu root. Do not reuse the stale
-saved plan. This work used the verified main cluster UID
-`43b9d80f-4676-49c0-84ab-87d3666691dc`, reached through the documented laptop host.
+The backup writer explicitly requests AES256 for both staging upload and multipart
+promotion. After normal coordinator restoration of the primary server, GitHub CI
+successfully reconciled the initially failed Helm upgrade. PostgreSQL reported
+`deployed`, and all deployment and acceptance gates passed before PR #219 merged.
 
 Sources:
 - https://aws.amazon.com/blogs/storage/encrypting-existing-amazon-s3-objects-with-the-aws-cli/

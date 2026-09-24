@@ -1,6 +1,7 @@
 # Separate from Object-Locked recovery material: latest is retained indefinitely.
 module "postgres" {
   use_s3_managed_encryption   = true
+  create_kms_key              = false
   source                      = "../../../../../modules/aws/encrypted_s3_bucket"
   bucket_name                 = "homelab-postgres-${var.aws_account_id}-${var.region}"
   kms_description             = "Homelab PostgreSQL logical backups"
@@ -64,8 +65,6 @@ resource "aws_iam_policy" "postgres_backup" {
     Statement = [
       { Effect = "Allow", Action = ["s3:PutObject", "s3:GetObject", "s3:GetObjectVersion", "s3:AbortMultipartUpload", "s3:ListMultipartUploadParts"],
       Resource = ["${module.postgres.s3_bucket_arn}/apps-db/latest.tar.gz", "${module.postgres.s3_bucket_arn}/staging/*"] },
-      { Effect = "Allow", Action = ["kms:GenerateDataKey", "kms:Decrypt"], Resource = module.postgres.kms_key_arn,
-      Condition = { StringEquals = { "kms:ViaService" = "s3.${var.region}.amazonaws.com", "kms:CallerAccount" = var.aws_account_id } } },
       { Effect = "Allow", Action = "cloudwatch:PutMetricData", Resource = "*",
       Condition = { StringEquals = { "cloudwatch:namespace" = "Homelab/Postgres" } } }
     ]
@@ -145,7 +144,6 @@ resource "aws_cloudwatch_metric_alarm" "postgres_failure" {
 output "postgres_backup" {
   value = {
     bucket           = module.postgres.s3_bucket_id
-    kms_key_arn      = module.postgres.kms_key_arn
     trust_anchor_arn = one(aws_rolesanywhere_trust_anchor.postgres[*].arn)
     profile_arn      = one(aws_rolesanywhere_profile.postgres[*].arn)
     role_arn         = one(aws_iam_role.postgres_backup[*].arn)
