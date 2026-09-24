@@ -135,3 +135,9 @@ def test_swimming_alert_does_not_claim_a_booking_failed():
         assert subject.startswith("Swimming calendar alarm:")
         assert "Court booker failed" not in body
         assert name in body
+
+
+def test_iracing_alarm_identifies_service():
+    subject, body = format_email({"AlarmName": "iracing-calendar-feed-errors", "NewStateValue": "ALARM"}, None, [], "us-east-1")
+    assert subject.startswith("iRacing calendar")
+    assert "eight days" in body

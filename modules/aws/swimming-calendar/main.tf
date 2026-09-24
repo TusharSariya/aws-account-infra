@@ -1,12 +1,12 @@
 locals {
   functions = {
-    sync = { timeout = 600, concurrency = -1 }
+    sync = { timeout = var.sync_timeout, concurrency = -1 }
     feed = { timeout = 15, concurrency = -1 }
   }
 }
 
 data "external" "package" {
-  program = ["python3", "${var.app_root}/scripts/swim-package.py"]
+  program = ["python3", "${var.app_root}/${var.package_builder}"]
   query   = { root = var.app_root }
 }
 
@@ -112,7 +112,7 @@ data "aws_iam_policy_document" "lambda" {
   }
   statement {
     actions   = each.key == "sync" ? ["s3:GetObject", "s3:PutObject"] : ["s3:GetObject"]
-    resources = each.key == "sync" ? ["${aws_s3_bucket.snapshot.arn}/current.json", "${aws_s3_bucket.snapshot.arn}/lease.json"] : ["${aws_s3_bucket.snapshot.arn}/current.json"]
+    resources = each.key == "sync" ? [for key in var.sync_object_keys : "${aws_s3_bucket.snapshot.arn}/${key}"] : ["${aws_s3_bucket.snapshot.arn}/current.json"]
   }
   # Allows the SDK to distinguish an uninitialized snapshot (404) from access denied.
   statement {
@@ -147,21 +147,21 @@ resource "aws_lambda_function" "app" {
   # tflint-ignore: aws_lambda_function_invalid_runtime
   runtime                        = "python3.14"
   architectures                  = ["arm64"]
-  handler                        = "swim_calendar.handlers.${each.key}"
+  handler                        = var.handlers[each.key]
   s3_bucket                      = aws_s3_object.release.bucket
   s3_key                         = aws_s3_object.release.key
   source_code_hash               = data.external.package.result.base64sha256
-  memory_size                    = 256
+  memory_size                    = var.memory_sizes[each.key]
   timeout                        = each.value.timeout
   reserved_concurrent_executions = each.value.concurrency
   environment {
-    variables = {
+    variables = merge({
       SNAPSHOT_BUCKET = aws_s3_bucket.snapshot.id
       CALENDAR_SOURCE = var.calendar_source
       CALENDAR_NAME   = var.calendar_name
       UID_DOMAIN      = var.uid_domain
       SERVICE_NAME    = var.service_name
-    }
+    }, var.health_threshold_seconds == 129600 ? {} : { HEALTH_THRESHOLD_SECONDS = tostring(var.health_threshold_seconds) })
   }
   depends_on = [aws_cloudwatch_log_group.lambda, aws_iam_role_policy.lambda]
 }
@@ -203,8 +203,8 @@ resource "aws_iam_role_policy" "scheduler" {
 }
 resource "aws_scheduler_schedule" "refresh" {
   # checkov:skip=CKV_AWS_297:Schedule payloads contain no secrets; AWS-owned encryption is sufficient.
-  name                         = "${var.service_name}-daily"
-  schedule_expression          = "cron(0 3 * * ? *)"
+  name                         = "${var.service_name}-${var.refresh_name_suffix}"
+  schedule_expression          = var.refresh_schedule
   schedule_expression_timezone = "America/St_Johns"
   flexible_time_window { mode = "OFF" }
   target {
@@ -248,7 +248,7 @@ resource "aws_apigatewayv2_integration" "feed" {
 resource "aws_apigatewayv2_route" "feed" {
   # checkov:skip=CKV_AWS_309:This route intentionally publishes public swimming schedules without authentication.
   api_id    = aws_apigatewayv2_api.feed.id
-  route_key = "GET /calendars/swimming.ics"
+  route_key = "GET ${var.route}"
   target    = "integrations/${aws_apigatewayv2_integration.feed.id}"
 }
 resource "aws_cloudwatch_log_group" "api" {
@@ -275,12 +275,12 @@ resource "aws_lambda_permission" "api" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.app["feed"].function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.feed.execution_arn}/*/GET/calendars/swimming.ics"
+  source_arn    = "${aws_apigatewayv2_api.feed.execution_arn}/*/GET${var.route}"
 }
 resource "aws_cloudwatch_metric_alarm" "errors" {
   for_each            = local.functions
   alarm_name          = "${var.service_name}-${each.key}-errors"
-  alarm_description   = each.key == "feed" ? "Feed failure or hourly check found snapshot older than 36 hours" : "Daily swimming refresh failed; previous snapshot retained"
+  alarm_description   = var.calendar_source == "iracing" ? "iRacing calendar ${each.key} failed; health threshold is ${var.health_threshold_seconds} seconds" : each.key == "feed" ? "Feed failure or hourly check found snapshot older than 36 hours" : "Daily swimming refresh failed; previous snapshot retained"
   namespace           = "AWS/Lambda"
   metric_name         = "Errors"
   dimensions          = { FunctionName = aws_lambda_function.app[each.key].function_name }
@@ -305,5 +305,5 @@ resource "aws_cloudwatch_metric_alarm" "delivery" {
   treat_missing_data  = "notBreaching"
   alarm_actions       = [data.aws_sns_topic.alerts.arn]
 }
-output "calendar_url" { value = "${aws_apigatewayv2_api.feed.api_endpoint}/calendars/swimming.ics" }
+output "calendar_url" { value = "${aws_apigatewayv2_api.feed.api_endpoint}${var.route}" }
 output "sync_function" { value = aws_lambda_function.app["sync"].function_name }
