@@ -23,5 +23,5 @@ output "sdk_stable_repository" {
 }
 
 output "kms_key_arn" {
-  value = aws_kms_key.codeartifact.arn
+  value = aws_codeartifact_domain.infra.encryption_key
 }

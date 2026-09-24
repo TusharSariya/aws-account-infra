@@ -1,6 +1,8 @@
 resource "aws_guardduty_detector" "this" {
-  # checkov:skip=CKV2_AWS_3:This is a single-account detector in us-east-1; org-delegated GuardDuty does not apply.
-  enable                       = true
+  # checkov:skip=CKV_AWS_238:Owner requested suspension to stop monitoring and charges; retain existing findings and configuration.
+  # checkov:skip=CKV2_AWS_3:Owner explicitly requested suspension to stop GuardDuty charges; retain the detector and findings.
+  # Owner requested suspension: retain findings, stop monitoring and charges.
+  enable                       = false
   finding_publishing_frequency = "SIX_HOURS"
 }
 

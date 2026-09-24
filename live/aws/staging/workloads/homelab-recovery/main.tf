@@ -2,6 +2,7 @@
 # use distinct prefixes; retain noncurrent versions for the same retention window.
 module "recovery" {
   use_s3_managed_encryption   = true
+  create_kms_key              = false
   source                      = "../../../../../modules/aws/encrypted_s3_bucket"
   bucket_name                 = "homelab-recovery-${var.aws_account_id}-${var.region}"
   kms_description             = "Homelab independent recovery backups"
@@ -47,8 +48,7 @@ resource "aws_iam_policy" "upload" {
     Version = "2012-10-17"
     Statement = [
       { Effect = "Allow", Action = ["s3:ListBucket", "s3:GetBucketLocation", "s3:ListBucketMultipartUploads"], Resource = module.recovery.s3_bucket_arn },
-      { Effect = "Allow", Action = ["s3:PutObject", "s3:AbortMultipartUpload", "s3:ListMultipartUploadParts"], Resource = [for prefix in ["bootstrap", "routine", "monthly"] : "${module.recovery.s3_bucket_arn}/${prefix}/*"] },
-      { Effect = "Allow", Action = ["kms:GenerateDataKey", "kms:Decrypt"], Resource = module.recovery.kms_key_arn, Condition = { StringEquals = { "kms:ViaService" = "s3.${var.region}.amazonaws.com" } } }
+      { Effect = "Allow", Action = ["s3:PutObject", "s3:AbortMultipartUpload", "s3:ListMultipartUploadParts"], Resource = [for prefix in ["bootstrap", "routine", "monthly"] : "${module.recovery.s3_bucket_arn}/${prefix}/*"] }
     ]
   })
 }
@@ -58,8 +58,7 @@ resource "aws_iam_policy" "restore" {
     Version = "2012-10-17"
     Statement = [
       { Effect = "Allow", Action = ["s3:ListBucket", "s3:ListBucketVersions", "s3:GetBucketLocation"], Resource = module.recovery.s3_bucket_arn },
-      { Effect = "Allow", Action = ["s3:GetObject", "s3:GetObjectVersion"], Resource = "${module.recovery.s3_bucket_arn}/*" },
-      { Effect = "Allow", Action = ["kms:Decrypt"], Resource = module.recovery.kms_key_arn, Condition = { StringEquals = { "kms:ViaService" = "s3.${var.region}.amazonaws.com" } } }
+      { Effect = "Allow", Action = ["s3:GetObject", "s3:GetObjectVersion"], Resource = "${module.recovery.s3_bucket_arn}/*" }
     ]
   })
 }

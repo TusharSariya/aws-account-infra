@@ -7,6 +7,7 @@ module "kms" {
   source  = "terraform-aws-modules/kms/aws"
   version = "4.1.0"
 
+  create                  = var.create_kms_key
   description             = var.kms_description
   deletion_window_in_days = var.kms_deletion_window_in_days
   enable_key_rotation     = true

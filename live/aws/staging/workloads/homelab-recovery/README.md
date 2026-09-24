@@ -27,8 +27,8 @@ The proposed bucket is `homelab-recovery-992382747916-us-east-1`:
 Upload and restore IAM policies are separate. An optional Roles Anywhere upload
 role attaches the upload policy and uses it as a permissions boundary; the
 restore policy remains unattached. See [identity setup and certificate lifecycle](IDENTITY.md). Neither grants deletion or Object
-Lock bypass. Upload policy includes KMS Decrypt for S3 multipart upload support,
-but no S3 GetObject. The uploader uses a dedicated CA, trust anchor and exact certificate CN.
+Lock bypass. Upload policy permits SSE-S3 multipart uploads,
+but no S3 GetObject or KMS access. The uploader uses a dedicated CA, trust anchor and exact certificate CN.
 The existing ECR CA and role are not reused. An independently recoverable human
 restore login remains required. No long-lived
 access keys are created by this deployment.
@@ -56,3 +56,24 @@ actions in the shared module; alert routing is separate work.
 The shared module's new `object_lock_retention_days` defaults to null so existing
 callers retain their current behavior. Never enable it on an unrelated bucket
 without reviewing the irreversible change.
+
+## KMS retirement - 2026-09-24
+
+The owner authorized deletion of historical KMS-encrypted versions. Deleted 11
+noncurrent recovery versions and 8 noncurrent PostgreSQL versions using exact
+S3 version IDs through the audited AWS MCP API. Recovery deletions explicitly
+bypassed governance retention; PostgreSQL has no Object Lock. These data versions
+were owned by backup writers, not Terraform resources.
+
+After deletion, ListObjectVersions and HeadObject confirmed all 6 recovery and
+3 PostgreSQL current objects still exist with SSE-S3 and no KMS reference. Neither
+bucket had incomplete multipart uploads. Current recovery Object Lock protection
+and bucket lifecycle rules remain in place.
+
+The existing OpenTofu root retires both dedicated KMS keys and removes KMS
+permissions from upload, restore, etcd and PostgreSQL policies. The existing
+30-day deletion window applies: AWS confirmed both keys in `PendingDeletion`,
+with deletion scheduled for October 24, 2026 at 18:42 UTC. Scheduled keys stop
+accruing key storage charges.
+CodeArtifact's key is independent and remains enabled. The shared module retains
+its default of creating a KMS key for other callers.

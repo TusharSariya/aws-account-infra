@@ -28,4 +28,14 @@ run "backup_role_cannot_delete" {
     condition     = aws_cloudwatch_metric_alarm.etcd_backup_stale.treat_missing_data == "breaching" && aws_cloudwatch_metric_alarm.etcd_backup_stale.evaluation_periods == 30
     error_message = "A missing daily heartbeat must not silently pass."
   }
+  assert {
+    condition = (
+      module.recovery.kms_key_arn == null && module.postgres.kms_key_arn == null &&
+      !strcontains(aws_iam_role_policy.daily_backup.policy, "kms:") &&
+      !strcontains(aws_iam_policy.upload.policy, "kms:") &&
+      !strcontains(aws_iam_policy.restore.policy, "kms:") &&
+      !strcontains(aws_iam_policy.postgres_backup.policy, "kms:")
+    )
+    error_message = "SSE-S3 backups must neither recreate retired keys nor grant obsolete KMS permissions."
+  }
 }
