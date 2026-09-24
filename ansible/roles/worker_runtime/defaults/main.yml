@@ -1,0 +1,10 @@
+---
+worker_runtime_gpu: false
+worker_runtime_containerd_version: 2.2.2-0ubuntu1.1
+worker_runtime_kubelet_version: 1.36.3-1.1
+worker_runtime_driver_package: nvidia-driver-595-open
+worker_runtime_driver_version: 595.91.07-0ubuntu0.26.04.1
+worker_runtime_toolkit_version: 1.20.1-1
+worker_runtime_haproxy_version: 3.2.9-1ubuntu2.2
+worker_runtime_api: 10.0.0.231:6443
+worker_runtime_pause_image: registry.k8s.io/pause:3.10.1

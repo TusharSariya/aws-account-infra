@@ -264,7 +264,21 @@
         "apps/platform/storage/",
         "scripts/homelab-ci.py",
         "scripts/kueue-postrender.py",
-        "scripts/runner_catalog.py"
+        "scripts/runner_catalog.py",
+        "charts/homelab-inference/",
+        "apps/platform/inference/"
+      ]
+    },
+    {
+      "id": "proxmox-ubuntu-validation",
+      "cloud": "proxmox",
+      "environment": "homelab",
+      "path": "live/proxmox/ubuntu-validation",
+      "var_file": "config/environments/proxmox/ubuntu-validation/validation.tfvars",
+      "dependencies": [],
+      "ci": false,
+      "watch": [
+        "live/proxmox/ubuntu-validation/"
       ]
     },
     {

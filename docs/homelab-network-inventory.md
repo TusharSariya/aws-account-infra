@@ -17,6 +17,7 @@ only named infrastructure addresses, not every DHCP client on the home LAN.
 | `10.0.0.223` | Secondary PVE | Static host management | Physical host target | Proxmox endpoint for the secondary server. |
 | `10.0.0.224` | Primary PVE | Static host management | Existing host target | Proxmox endpoint for the primary server. |
 | `10.0.0.225` | `talos-worker-02` | Guest-configured static, no router reservation | Active / Ready | VM 103 on secondary PVE; live acceptance passed 2026-09-19. |
+| `10.0.0.226` | `ubuntu-gpu-01` | Existing static Wi-Fi configuration | SSH verified 2026-09-23, not enrolled | Manual desktop power and OS selection; reserved from migration test helpers. |
 | `10.0.0.230` | Existing LAN occupant | Undocumented | Occupied | Do not allocate. Identify and record the owner before changing the static block. |
 | `10.0.0.231` | Talos API | Layer-2 virtual IP | Existing target identity | Not available to MetalLB Services. |
 | `10.0.0.232-10.0.0.253` | Kubernetes Services | MetalLB | Reserved service range | The configured MetalLB pool includes `.231-.253`; `.231` is excluded in practice because it is the API VIP. Record individual assignments when created. |

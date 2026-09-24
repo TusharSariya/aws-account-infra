@@ -22,7 +22,8 @@ RELEASES = {'kueue': ('kueue-system', '0.19.4'), 'queue': ('kueue-system', None)
             'arc': ('arc-systems', '0.14.2'), 'cache': ('homelab-cache', None), 'runners': ('arc-runners', '0.14.2'),
             'tailscale_operator': ('tailscale', '1.102.3'), 'pihole': ('homelab-services', '2.38.0'),
             'lifecycle': ('homelab-platform', None), 'argo': ('homelab-jobs', '2.0.5'),
-            'jobs': ('homelab-jobs', None), 'always_on': ('homelab-platform', None)}
+            'jobs': ('homelab-jobs', None), 'always_on': ('homelab-platform', None),
+            'inference': ('kueue-system', None)}
 
 
 def run(args, data=None):

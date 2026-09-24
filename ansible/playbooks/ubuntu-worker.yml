@@ -1,0 +1,15 @@
+---
+- name: Adopt an Ubuntu worker without changing disks or boot selection
+  hosts: ubuntu_workers
+  become: true
+  roles:
+    - role: worker_host
+      tags: [host]
+    - role: worker_runtime
+      tags: [runtime]
+    - role: worker_cache
+      tags: [cache]
+    - role: worker_unlock
+      tags: [unlock]
+    - role: worker_enrollment
+      tags: [enrollment]

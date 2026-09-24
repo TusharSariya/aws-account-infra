@@ -1,0 +1,9 @@
+---
+- name: Restart worker containerd
+  ansible.builtin.systemd_service:
+    name: containerd
+    state: restarted
+- name: Restart worker API proxy
+  ansible.builtin.systemd_service:
+    name: haproxy
+    state: restarted

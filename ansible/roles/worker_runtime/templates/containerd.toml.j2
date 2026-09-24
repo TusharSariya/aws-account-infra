@@ -1,0 +1,16 @@
+version = 3
+[plugins.'io.containerd.cri.v1.images'.pinned_images]
+  sandbox = "{{ worker_runtime_pause_image }}"
+[plugins.'io.containerd.cri.v1.runtime'.containerd]
+  default_runtime_name = "runc"
+[plugins.'io.containerd.cri.v1.runtime'.containerd.runtimes.runc]
+  runtime_type = "io.containerd.runc.v2"
+[plugins.'io.containerd.cri.v1.runtime'.containerd.runtimes.runc.options]
+  SystemdCgroup = true
+{% if worker_runtime_gpu %}
+[plugins.'io.containerd.cri.v1.runtime'.containerd.runtimes.nvidia]
+  runtime_type = "io.containerd.runc.v2"
+[plugins.'io.containerd.cri.v1.runtime'.containerd.runtimes.nvidia.options]
+  BinaryName = "/usr/bin/nvidia-container-runtime"
+  SystemdCgroup = true
+{% endif %}

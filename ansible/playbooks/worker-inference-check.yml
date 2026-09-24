@@ -1,0 +1,42 @@
+---
+- name: Validate cached CPU and CUDA inference without enrolling the desktop
+  hosts: ubuntu_workers
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Require an actual validation run
+      ansible.builtin.assert:
+        that: not ansible_check_mode
+        fail_msg: This acceptance playbook executes temporary containers; omit --check.
+    - name: Create temporary validation directory
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: worker-inference-check-
+      register: worker_validation_dir
+    - name: Run bounded inference checks
+      block:
+        - name: Stage versioned validation inputs
+          ansible.builtin.copy:
+            src: "../../platform/gpu-worker/{{ item }}"
+            dest: "{{ worker_validation_dir.path }}/{{ item }}"
+            owner: root
+            group: root
+            mode: '0600'
+          loop: [inference-smoke.py, versions.json]
+        - name: Check same-model CPU and CUDA completion and GPU memory use
+          ansible.builtin.command:
+            argv:
+              - python3
+              - "{{ worker_validation_dir.path }}/inference-smoke.py"
+              - --versions
+              - "{{ worker_validation_dir.path }}/versions.json"
+          changed_when: false
+          register: worker_validation_result
+        - name: Report inference evidence
+          ansible.builtin.debug:
+            var: worker_validation_result.stdout_lines
+      always:
+        - name: Remove temporary validation inputs
+          ansible.builtin.file:
+            path: "{{ worker_validation_dir.path }}"
+            state: absent

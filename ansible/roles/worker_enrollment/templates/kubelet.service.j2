@@ -1,0 +1,11 @@
+[Unit]
+Description=Ubuntu worker kubelet
+After=network-online.target containerd.service haproxy.service
+Wants=network-online.target
+Requires=containerd.service
+[Service]
+ExecStart=/usr/bin/kubelet --config=/var/lib/kubelet/config.yaml --kubeconfig=/etc/kubernetes/kubelet.conf --bootstrap-kubeconfig=/etc/kubernetes/bootstrap.conf --hostname-override={{ inventory_hostname }} --node-ip={{ worker_enrollment_node_ip }} --register-with-taints=homelab.tfdraw.dev/quarantine=true:NoSchedule,homelab.tfdraw.dev/compute=true:NoSchedule
+Restart=always
+RestartSec=10
+[Install]
+WantedBy=multi-user.target

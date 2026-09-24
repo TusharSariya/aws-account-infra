@@ -14,8 +14,20 @@ def finished(workload):
     )
 
 
+def owned(workload):
+    """Only the retained-server queue is inside this controller's power domain."""
+    return (
+        workload.get("status", {}).get("admission", {}).get("clusterQueue")
+        == "homelab-compute"
+    )
+
+
 def assigned_hosts(workload):
-    if finished(workload) or workload["metadata"].get("deletionTimestamp"):
+    if (
+        not owned(workload)
+        or finished(workload)
+        or workload["metadata"].get("deletionTimestamp")
+    ):
         return set()
     admission = workload.get("status", {}).get("admission")
     if not admission:
@@ -45,8 +57,14 @@ def admission_patch(workload, ready_hosts):
     status = workload.get("status", {})
     checks = copy.deepcopy(status.get("admissionChecks", []))
     check = next((c for c in checks if c["name"] == CHECK), None)
-    needed = dependencies(workload)
-    if not check or not needed or finished(workload):
+    if not owned(workload) or not check or finished(workload):
+        return None
+    invalid = None
+    try:
+        needed = dependencies(workload)
+    except ValueError as exc:
+        needed, invalid = set(), str(exc)
+    if not needed and not invalid:
         return None
     # Never evict already admitted work in response to a transient observation.
     if any(
@@ -54,8 +72,8 @@ def admission_patch(workload, ready_hosts):
         for c in status.get("conditions", [])
     ):
         return None
-    state = "Ready" if needed <= ready_hosts else "Pending"
-    message = (
+    state = "Ready" if not invalid and needed <= ready_hosts else "Pending"
+    message = invalid or (
         "Worker and dependencies ready"
         if state == "Ready"
         else "Waiting for: " + ", ".join(sorted(needed - ready_hosts))

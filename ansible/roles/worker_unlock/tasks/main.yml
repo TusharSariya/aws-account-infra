@@ -1,0 +1,28 @@
+---
+- name: Maintain bootstrapped TPM auto-unlock
+  when: worker_unlock_enabled
+  block:
+    - name: Require a stable encrypted volume identity
+      ansible.builtin.assert:
+        that: worker_unlock_luks_uuid is match('^[a-f0-9-]{36}$')
+    - name: Install pinned TPM unlock integration
+      ansible.builtin.apt:
+        name:
+          - "clevis={{ worker_unlock_clevis_version }}"
+          - "clevis-luks={{ worker_unlock_clevis_version }}"
+          - "clevis-tpm2={{ worker_unlock_clevis_version }}"
+          - "clevis-dracut={{ worker_unlock_clevis_version }}"
+        state: present
+      notify: Rebuild worker boot images
+    - name: Inspect existing TPM binding without revealing keys
+      ansible.builtin.command:
+        argv: [clevis, luks, list, -d, "/dev/disk/by-uuid/{{ worker_unlock_luks_uuid }}"]
+      register: worker_unlock_binding
+      changed_when: false
+      check_mode: false
+    - name: Require interactive TPM binding to have completed
+      ansible.builtin.assert:
+        that:
+          - "'tpm2' in worker_unlock_binding.stdout"
+          - worker_unlock_binding.stdout is search('"pcr_ids"\s*:\s*"7"')
+        fail_msg: Complete the documented interactive Clevis binding; retain the recovery passphrase.

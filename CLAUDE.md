@@ -1,7 +1,7 @@
 # Repository guidance
 
 This repository manages AWS staging infrastructure, Talos/Proxmox infrastructure,
-Helm-managed cluster workloads, and a LocalStack sandbox. GCP and Azure are future
+Helm-managed cluster workloads, Ansible-managed Ubuntu workers, and a LocalStack sandbox. GCP and Azure are future
 provider namespaces, not implemented environments.
 
 ## Commands
@@ -47,6 +47,15 @@ variables live under `config/environments`, and secrets must not be committed.
   RAG and other products still keep runtime code out of this repo.
 
 ## Scope boundaries
+
+- Ubuntu worker host configuration and enrollment belong in the fresh `ansible/`
+  roles. When changing GPU enrollment, inference routing, acceptance or rollback,
+  follow `platform/gpu-worker/README.md`. Prove mixed-cluster enrollment in the
+  disposable VM before enrolling the desktop. Ansible does not provision Talos
+  control planes or deploy charts.
+- Desktop power and Windows/Ubuntu boot selection remain manual. The retained-server
+  power coordinator owns only its existing server queue; desktop GPU waiting must
+  not wake those hosts. Inference resources reserve Kueue quota once per runtime.
 
 - Talos VM and Proxmox infrastructure changes belong in the existing OpenTofu root;
   cluster services and workloads belong in the existing Helm charts.

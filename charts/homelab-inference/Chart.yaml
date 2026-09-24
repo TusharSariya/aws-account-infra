@@ -1,0 +1,5 @@
+apiVersion: v2
+name: homelab-inference
+version: 0.1.0
+description: Opt-in durable inference and exclusive Ubuntu GPU worker capacity
+type: application

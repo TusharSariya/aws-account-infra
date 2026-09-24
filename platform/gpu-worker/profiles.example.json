@@ -1,0 +1,90 @@
+{
+  "profiles": [
+    {
+      "id": "desktop-gpu",
+      "node": "ubuntu-gpu-01",
+      "kind": "gpu",
+      "desktop": true,
+      "priority": 0,
+      "resources": {
+        "cpu": "4",
+        "memory": "8Gi",
+        "ephemeral-storage": "4Gi"
+      },
+      "model": "Qwen3-0.6B-Q8_0",
+      "modelFile": "Qwen3-0.6B-Q8_0.gguf",
+      "cachePath": "/var/lib/homelab-inference",
+      "image": "ghcr.io/ggml-org/llama.cpp@sha256:52192a23c7b258044463aebba78826cdff39a7393b713edc313324b343a7b836",
+      "queue": "desktop",
+      "enabled": false,
+      "acceptedNodeUID": "",
+      "nodeIP": "10.0.0.226"
+    },
+    {
+      "id": "desktop-cpu",
+      "node": "ubuntu-gpu-01",
+      "kind": "cpu",
+      "desktop": true,
+      "priority": 1,
+      "resources": {
+        "cpu": "8",
+        "memory": "16Gi",
+        "ephemeral-storage": "8Gi"
+      },
+      "model": "Qwen3-0.6B-Q8_0",
+      "modelFile": "Qwen3-0.6B-Q8_0.gguf",
+      "cachePath": "/var/lib/homelab-inference",
+      "image": "ghcr.io/ggml-org/llama.cpp@sha256:a94b642b3e2620749bf2ff5672df922c23a6202710e54a8f7667e58df70aba5a",
+      "queue": "desktop",
+      "enabled": false,
+      "acceptedNodeUID": "",
+      "nodeIP": "10.0.0.226"
+    },
+    {
+      "id": "primary-cpu",
+      "node": "talos-worker-01",
+      "kind": "cpu",
+      "desktop": false,
+      "priority": 2,
+      "resources": {
+        "cpu": "2",
+        "memory": "4Gi",
+        "ephemeral-storage": "4Gi"
+      },
+      "model": "Qwen3-0.6B-Q8_0",
+      "modelFile": "Qwen3-0.6B-Q8_0.gguf",
+      "cachePath": "/var/lib/homelab-inference",
+      "image": "ghcr.io/ggml-org/llama.cpp@sha256:a94b642b3e2620749bf2ff5672df922c23a6202710e54a8f7667e58df70aba5a",
+      "queue": "server-cpu",
+      "enabled": false,
+      "acceptedNodeUID": "",
+      "nodeIP": "10.0.0.222",
+      "cacheImage": "python:3.14-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6",
+      "modelURL": "https://huggingface.co/Qwen/Qwen3-0.6B-GGUF/resolve/23749fefcc72300e3a2ad315e1317431b06b590a/Qwen3-0.6B-Q8_0.gguf",
+      "modelSHA256": "9465e63a22add5354d9bb4b99e90117043c7124007664907259bd16d043bb031"
+    },
+    {
+      "id": "secondary-cpu",
+      "node": "talos-worker-02",
+      "kind": "cpu",
+      "desktop": false,
+      "priority": 3,
+      "resources": {
+        "cpu": "2",
+        "memory": "4Gi",
+        "ephemeral-storage": "4Gi"
+      },
+      "model": "Qwen3-0.6B-Q8_0",
+      "modelFile": "Qwen3-0.6B-Q8_0.gguf",
+      "cachePath": "/var/lib/homelab-inference",
+      "image": "ghcr.io/ggml-org/llama.cpp@sha256:a94b642b3e2620749bf2ff5672df922c23a6202710e54a8f7667e58df70aba5a",
+      "queue": "server-cpu",
+      "enabled": false,
+      "acceptedNodeUID": "",
+      "nodeIP": "10.0.0.225",
+      "cacheImage": "python:3.14-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6",
+      "modelURL": "https://huggingface.co/Qwen/Qwen3-0.6B-GGUF/resolve/23749fefcc72300e3a2ad315e1317431b06b590a/Qwen3-0.6B-Q8_0.gguf",
+      "modelSHA256": "9465e63a22add5354d9bb4b99e90117043c7124007664907259bd16d043bb031"
+    }
+  ]
+}

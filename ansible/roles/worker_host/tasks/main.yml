@@ -1,0 +1,65 @@
+---
+- name: Require the planned operating system and existing SSH keys
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.distribution == 'Ubuntu'
+      - ansible_facts.distribution_version == '26.04'
+      - worker_host_authorized_keys | length > 0
+- name: Set stable host identity
+  ansible.builtin.hostname:
+    name: "{{ worker_host_name }}"
+- name: Retain operator SSH access
+  ansible.posix.authorized_key:
+    user: "{{ worker_host_user }}"
+    key: "{{ item }}"
+    exclusive: false
+  loop: "{{ worker_host_authorized_keys }}"
+- name: Configure Wi-Fi reconnection for all users
+  community.general.nmcli:
+    conn_name: "{{ worker_host_wifi_connection }}"
+    ifname: "{{ worker_host_wifi_interface }}"
+    type: wifi
+    ssid: "{{ worker_host_wifi_ssid }}"
+    wifi_sec: "{{ {'key-mgmt': 'wpa-psk', 'psk': worker_host_wifi_psk, 'psk-flags': 0} if worker_host_wifi_psk | length > 0 else omit }}"
+    ip4: "{{ worker_host_address }}"
+    gw4: "{{ worker_host_gateway }}"
+    dns4: "{{ worker_host_dns }}"
+    autoconnect: true
+    state: present
+  when: worker_host_wifi
+  no_log: true
+- name: Disable automatic suspend targets while preserving manual power control
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    masked: true
+  loop: [sleep.target, suspend.target, hibernate.target, hybrid-sleep.target]
+- name: Ensure SSH starts at boot
+  ansible.builtin.systemd_service:
+    name: ssh
+    enabled: true
+    state: started
+- name: Require a pinned Tailscale version when managing Tailscale
+  ansible.builtin.assert:
+    that: worker_host_tailscale_version | length > 0
+  when: worker_host_tailscale
+- name: Pin the bootstrapped Tailscale client
+  ansible.builtin.apt:
+    name: "tailscale={{ worker_host_tailscale_version }}"
+    state: present
+  when: worker_host_tailscale
+- name: Enable authenticated Tailscale service
+  ansible.builtin.systemd_service:
+    name: tailscaled
+    enabled: true
+    state: started
+  when: worker_host_tailscale
+- name: Inspect existing Tailscale authentication
+  ansible.builtin.command: tailscale status --json
+  register: worker_host_tailnet
+  changed_when: false
+  check_mode: false
+  when: worker_host_tailscale
+- name: Require interactive Tailscale bootstrap to have completed
+  ansible.builtin.assert:
+    that: (worker_host_tailnet.stdout | from_json).BackendState == 'Running'
+  when: worker_host_tailscale

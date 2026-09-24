@@ -1,0 +1,101 @@
+---
+- name: Keep kubelet stopped until enrollment is enabled
+  ansible.builtin.systemd_service:
+    name: kubelet
+    enabled: false
+    state: stopped
+  when: not worker_enrollment_enabled
+- name: Require VM acceptance before physical desktop enrollment
+  ansible.builtin.assert:
+    that:
+      - worker_enrollment_validation_vm or worker_enrollment_vm_accepted
+      - worker_enrollment_ca | length > 0
+      - worker_enrollment_node_ip | length > 0
+    fail_msg: Prove mixed-cluster VM enrollment first and provide the trusted cluster CA.
+  when: worker_enrollment_enabled
+- name: Configure enabled enrollment
+  when: worker_enrollment_enabled
+  block:
+    - name: Create root-owned kubelet paths
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0700'
+      loop: [/etc/kubernetes, /var/lib/kubelet, /var/lib/kubelet/pki]
+    - name: Inspect existing node identity
+      ansible.builtin.stat:
+        path: /var/lib/kubelet/pki/kubelet-client-current.pem
+      register: worker_enrollment_identity
+    - name: Require a short-lived token for first enrollment
+      ansible.builtin.assert:
+        that: worker_enrollment_bootstrap_token is match('^[a-z0-9]{6}\.[a-z0-9]{16}$')
+      when: not worker_enrollment_identity.stat.exists
+      no_log: true
+    - name: Install trusted public CA
+      ansible.builtin.copy:
+        content: "{{ worker_enrollment_ca }}"
+        dest: /etc/kubernetes/ca.crt
+        owner: root
+        group: root
+        mode: '0600'
+    - name: Install temporary bootstrap credential
+      ansible.builtin.template:
+        src: bootstrap.yaml.j2
+        dest: /etc/kubernetes/bootstrap.conf
+        owner: root
+        group: root
+        mode: '0600'
+      when: not worker_enrollment_identity.stat.exists
+      no_log: true
+    - name: Install kubelet configuration
+      ansible.builtin.template:
+        src: kubelet.yaml.j2
+        dest: /var/lib/kubelet/config.yaml
+        owner: root
+        group: root
+        mode: '0600'
+      notify: Restart worker kubelet
+    - name: Install standalone worker service
+      ansible.builtin.template:
+        src: kubelet.service.j2
+        dest: /etc/systemd/system/kubelet.service
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Restart worker kubelet
+    - name: Install bootstrap credential cleanup service
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/worker-bootstrap-cleanup.service
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Remove consumed kubelet bootstrap credential
+          ConditionPathExists=/var/lib/kubelet/pki/kubelet-client-current.pem
+          [Service]
+          Type=oneshot
+          RemainAfterExit=yes
+          ExecStart=/usr/bin/rm -f /etc/kubernetes/bootstrap.conf
+    - name: Watch successful bootstrap
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/worker-bootstrap-cleanup.path
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Watch kubelet client certificate enrollment
+          [Path]
+          PathExists=/var/lib/kubelet/pki/kubelet-client-current.pem
+          [Install]
+          WantedBy=multi-user.target
+    - name: Enable automatic worker enrollment and cleanup
+      ansible.builtin.systemd_service:
+        name: "{{ item }}"
+        enabled: true
+        state: started
+        daemon_reload: true
+      loop: [kubelet, worker-bootstrap-cleanup.path]

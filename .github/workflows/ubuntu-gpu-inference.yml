@@ -1,0 +1,58 @@
+name: ubuntu-gpu-inference
+on:
+  pull_request:
+    paths:
+      - 'ansible/**'
+      - 'apps/platform/inference/**'
+      - 'controllers/homelab-capacity/**'
+      - 'charts/homelab-inference/**'
+      - 'charts/homelab-queue/**'
+      - 'charts/homelab-always-on/**'
+      - 'platform/gpu-worker/**'
+      - 'live/proxmox/ubuntu-validation/**'
+      - 'live/kubernetes/homelab-management/**'
+      - '.github/workflows/ubuntu-gpu-inference.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      ANSIBLE_CONFIG: ansible/ansible.cfg
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.19.0
+      - uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: '1.11.0'
+      - uses: astral-sh/setup-uv@v6
+      - run: pip install ansible-core==2.21.1 ansible-lint==26.6.0 pytest==8.4.2 pyyaml==6.0.2 ruff==0.12.12 cryptography==46.0.5
+      - run: ansible-galaxy collection install -r ansible/requirements.yml
+      - run: ansible-lint ansible
+      - run: |
+          for playbook in ansible/playbooks/*.yml; do
+            ansible-playbook -i ansible/inventories/example/gpu.yml "$playbook" --syntax-check
+          done
+      - run: pytest apps/platform/inference/tests -q
+      - name: Build and smoke-test the pinned gateway image
+        run: |
+          docker build --platform linux/amd64 -t homelab-inference:test apps/platform/inference
+          docker run --rm --entrypoint python -v "$PWD/apps/platform/inference:/code:ro" homelab-inference:test -c 'import sys; sys.path.insert(0, "/code"); import gateway, certificates, runtime, store'
+
+      - run: uv run --with pytest --project controllers/homelab-capacity python -m pytest controllers/homelab-capacity/tests -q
+      - run: ruff check apps/platform/inference platform/gpu-worker
+      - run: ruff format --check apps/platform/inference platform/gpu-worker
+      - run: |
+          helm lint charts/homelab-inference charts/homelab-queue charts/homelab-always-on
+          helm template test charts/homelab-queue --set power.enabled=true > /tmp/queue.yaml
+          helm template test charts/homelab-always-on > /tmp/always-on.yaml
+          tofu -chdir=live/proxmox/ubuntu-validation init -backend=false
+          tofu -chdir=live/proxmox/ubuntu-validation validate
+          tofu -chdir=live/proxmox/ubuntu-validation fmt -check
+          tofu -chdir=live/kubernetes/homelab-management init -backend=false
+          tofu -chdir=live/kubernetes/homelab-management validate

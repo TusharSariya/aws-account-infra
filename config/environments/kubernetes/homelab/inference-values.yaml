@@ -1,0 +1,4 @@
+# Worker validation only; request admission remains disabled until acceptance.
+enabled: false
+workerEnabled: true
+devicePluginDigest: sha256:af31e2b7c7f89834c4e5219860def7ac2e49a207b3d4e8610d5a26772b7738e5

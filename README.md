@@ -14,11 +14,13 @@ their resources share one abstraction.
 | `modules/aws/` | Reusable AWS-only OpenTofu modules |
 | `config/environments/` | Non-secret variables grouped by cloud and environment |
 | `live/proxmox/homelab/` | Talos VM and Proxmox infrastructure managed by OpenTofu |
-| `charts/` | Helm charts for workloads and cluster services running on Talos |
+| `charts/` | Helm charts for cluster services and workloads |
+| `ansible/` | Ubuntu worker configuration and enrollment |
+| `platform/gpu-worker/` | GPU worker and inference rollout, evidence, and rollback |
 | `apps/ecr/` | Container image sources; CI pushes each subdirectory to ECR |
 | `apps/lambda/` | Zip Lambda sources; CI uploads arm64 packages to S3 |
 | `mocks/localstack/` | Disposable local AWS sandbox |
-| `docs/plans/kubernetes.md` | Review-only Kubernetes proposal; nothing implements it yet |
+| `live/proxmox/ubuntu-validation/` | Disposable mixed Ubuntu/Talos enrollment VM |
 
 ## AWS staging
 

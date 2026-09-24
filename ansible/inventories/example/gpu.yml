@@ -1,0 +1,19 @@
+---
+all:
+  children:
+    ubuntu_workers:
+      hosts:
+        ubuntu-gpu-01:
+          ansible_host: 10.0.0.226
+          ansible_user: tushar
+          # sudo-rs wraps the custom prompt, which Ansible does not recognize.
+          ansible_become_exe: /usr/bin/sudo.ws
+          worker_host_wifi: true
+          worker_host_wifi_interface: wlp5s0
+          worker_host_wifi_connection: Rogers
+          worker_host_address: 10.0.0.226/24
+          worker_unlock_enabled: true
+          worker_unlock_luks_uuid: 74f36006-c9bf-4411-b1a6-003039a8c164
+          worker_runtime_gpu: true
+          worker_enrollment_node_ip: 10.0.0.226
+          # Supply keys, network settings and credentials via a private vars file.
