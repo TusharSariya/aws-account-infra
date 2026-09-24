@@ -271,3 +271,26 @@ def test_refresh_lease_coalesces_and_recovers_after_timeout():
     assert claim(client, 'swim-test', NOW + timedelta(seconds=662)) is None
     release(client, 'swim-test', successor)
     assert claim(client, 'swim-test', NOW + timedelta(seconds=663))
+
+
+@mock_aws
+def test_deployments_keep_independent_snapshots_and_failures(monkeypatch):
+    from swim_calendar import handlers
+    client = boto3.client('s3', region_name='us-east-1')
+    client.create_bucket(Bucket='ymca-test')
+    client.create_bucket(Bucket='city-test')
+    monkeypatch.setattr(handlers, 's3', lambda: client)
+    publish(client, 'ymca-test', Source(), NOW)
+    ymca, _ = load(client, 'ymca-test')
+    monkeypatch.setenv('CALENDAR_NAME', 'Paul Reynolds Swimming')
+    monkeypatch.setenv('UID_DOMAIN', 'paul-reynolds-swim-calendar')
+    publish(client, 'city-test', Source({}), NOW)
+    city, _ = load(client, 'city-test')
+    assert 'Paul Reynolds Swimming' in city['ics']
+    assert 'Ches Penney Swimming' in ymca['ics']
+    class Failure:
+        def collect(self, *args): raise ValueError('city unavailable')
+    with pytest.raises(ValueError):
+        publish(client, 'city-test', Failure(), NOW)
+    assert load(client, 'ymca-test')[0] == ymca
+    assert load(client, 'city-test')[0] == city

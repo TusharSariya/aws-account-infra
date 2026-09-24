@@ -8,7 +8,7 @@ import uuid
 import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError
-from swim_calendar.source import Upace, ZONE, month_end
+from swim_calendar.source import create_source, ZONE, month_end
 from swim_calendar.calendar import reconcile, render
 
 KEY = "current.json"
@@ -35,7 +35,8 @@ def publish(client, bucket, source, now, remaining=lambda: 600_000):
     end = month_end(start.date())
     fresh = source.collect(start.date(), end, remaining)
     events = reconcile((old or {}).get("events", {}), fresh, now, start, end)
-    body = render(events)
+    body = render(events, os.environ.get("CALENDAR_NAME", "Ches Penney Swimming"),
+                  os.environ.get("UID_DOMAIN", "ymca-swim-calendar"))
     snapshot = {"version": 1, "last_success": now.isoformat(), "through_exclusive": str(end),
                 "events": events, "ics": body, "etag": '"' + hashlib.sha256(body.encode()).hexdigest() + '"'}
     # Single atomic object holds both revisions and feed: no partial publication.
@@ -76,13 +77,13 @@ def sync(event, context):
         return {"status": "busy"}
     source = None
     try:
-        source = Upace()
+        source = create_source(os.environ.get("CALENDAR_SOURCE", "ymca"))
         result = publish(client, bucket, source, datetime.now(UTC),
                          context.get_remaining_time_in_millis)
         print(json.dumps({"_aws": {"Timestamp": int(datetime.now(UTC).timestamp() * 1000),
               "CloudWatchMetrics": [{"Namespace": "SwimCalendar", "Dimensions": [["Service"]],
               "Metrics": [{"Name": "SyncSuccess", "Unit": "Count"}]}]},
-              "Service": "swim-calendar", "SyncSuccess": 1, **result}))
+              "Service": os.environ.get("SERVICE_NAME", "swim-calendar"), "SyncSuccess": 1, **result}))
         return result
     except Exception:
         raise RuntimeError("Swimming calendar refresh failed; previous snapshot preserved") from None

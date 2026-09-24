@@ -25,17 +25,17 @@ def reconcile(old, fresh, now, start, end):
     return result
 
 
-def render(events):
+def render(events, name="Ches Penney Swimming", uid_domain="ymca-swim-calendar"):
     calendar = Calendar()
     calendar.add("prodid", "-//YMCA Swim Calendar//EN")
     calendar.add("version", "2.0")
     calendar.add("calscale", "GREGORIAN")
-    calendar.add("x-wr-calname", "Ches Penney Swimming")
+    calendar.add("x-wr-calname", name)
     for key, item in sorted(events.items()):
         if item["status"] != "active":
             continue
         event = Event()
-        event.add("uid", hashlib.sha256(key.encode()).hexdigest() + "@ymca-swim-calendar")
+        event.add("uid", hashlib.sha256(key.encode()).hexdigest() + "@" + uid_domain)
         for field, source in (("dtstart", "start"), ("dtend", "end"), ("dtstamp", "updated_at"),
                               ("last-modified", "updated_at"), ("created", "created_at")):
             event.add(field, datetime.fromisoformat(item[source]))

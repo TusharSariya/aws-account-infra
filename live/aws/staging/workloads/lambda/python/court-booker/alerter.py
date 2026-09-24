@@ -67,6 +67,8 @@ def format_email(
         "swim-calendar-feed-errors": "Swimming calendar downloads failed, or the hourly health check found no successful refresh within 36 hours.",
         "swim-calendar-failed-delivery": "A swimming calendar invocation exhausted delivery or execution retries. Inspect the service dead-letter queue.",
     }
+    swimming_alerts.update({name.replace("swim-calendar-", "paul-reynolds-swim-calendar-", 1): text
+                            for name, text in list(swimming_alerts.items())})
     if alarm in swimming_alerts:
         return f"Swimming calendar {state.lower() or 'alert'}: {alarm}", _simple_body(swimming_alerts[alarm], payload)
 

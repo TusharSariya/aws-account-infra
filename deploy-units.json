@@ -283,7 +283,28 @@
         "live/aws/staging/workloads/lambda/python/swim-calendar/",
         "apps/lambda/python/3.14/swim-calendar/",
         "config/environments/aws/staging/swim-calendar.tfvars",
-        "scripts/swim-package.py"
+        "scripts/swim-package.py",
+        "modules/aws/swimming-calendar/"
+      ]
+    },
+    {
+      "id": "aws-staging-paul-reynolds-swim-calendar",
+      "cloud": "aws",
+      "environment": "staging",
+      "path": "live/aws/staging/workloads/lambda/python/paul-reynolds-swim-calendar",
+      "var_file": "config/environments/aws/staging/paul-reynolds-swim-calendar.tfvars",
+      "region": "us-east-1",
+      "dependencies": [
+        "aws-staging-account",
+        "aws-staging-court-booker-api"
+      ],
+      "ci": true,
+      "watch": [
+        "live/aws/staging/workloads/lambda/python/paul-reynolds-swim-calendar/",
+        "apps/lambda/python/3.14/swim-calendar/",
+        "config/environments/aws/staging/paul-reynolds-swim-calendar.tfvars",
+        "scripts/swim-package.py",
+        "modules/aws/swimming-calendar/"
       ]
     }
   ]

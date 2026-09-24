@@ -172,3 +172,13 @@ class Upace:
                 collected[item["id"]] = item
             day += timedelta(days=1)
         return collected
+
+
+def create_source(name):
+    """Each deployed service owns exactly one upstream source."""
+    if name == "ymca":
+        return Upace()
+    if name == "paul_reynolds":
+        from swim_calendar.city import PaulReynolds
+        return PaulReynolds()
+    raise ValueError("Unknown swimming calendar source")
