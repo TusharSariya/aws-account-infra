@@ -9,7 +9,7 @@ pins the resolved AWS provider. No secrets belong in tfvars or Terraform outputs
 
 The proposed bucket is `homelab-recovery-992382747916-us-east-1`:
 
-- Versioning, KMS encryption with key rotation and 30-day deletion window,
+- Versioning, SSE-S3 encryption for new uploads, retained legacy KMS keys,
   public-access blocking and TLS-only bucket policy.
 - Object Lock enabled with 30-day GOVERNANCE retention. Object Lock cannot be
   disabled after enabling; sufficiently privileged users can bypass governance

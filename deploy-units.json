@@ -340,6 +340,36 @@
         "config/environments/aws/staging/iracing-calendar.tfvars",
         "scripts/iracing-package.py"
       ]
+    },
+    {
+      "id": "aws-staging-retired-network-ips",
+      "cloud": "aws",
+      "environment": "staging",
+      "path": "live/aws/staging/retired-network-ips",
+      "var_file": "config/environments/aws/staging/retired-network-ips.tfvars",
+      "region": "us-east-1",
+      "dependencies": [
+        "aws-staging-account"
+      ],
+      "ci": false,
+      "watch": [
+        "live/aws/staging/retired-network-ips/"
+      ]
+    },
+    {
+      "id": "aws-staging-backup-sse-s3-migration",
+      "cloud": "aws",
+      "environment": "staging",
+      "path": "live/aws/staging/migrations/backup-sse-s3",
+      "var_file": "config/environments/aws/staging/backup-sse-s3-migration.tfvars",
+      "region": "us-east-1",
+      "dependencies": [
+        "aws-staging-homelab-recovery"
+      ],
+      "ci": false,
+      "watch": [
+        "live/aws/staging/migrations/backup-sse-s3/"
+      ]
     }
   ]
 }

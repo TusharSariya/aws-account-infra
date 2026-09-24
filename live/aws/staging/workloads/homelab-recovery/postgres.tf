@@ -1,5 +1,6 @@
 # Separate from Object-Locked recovery material: latest is retained indefinitely.
 module "postgres" {
+  use_s3_managed_encryption   = true
   source                      = "../../../../../modules/aws/encrypted_s3_bucket"
   bucket_name                 = "homelab-postgres-${var.aws_account_id}-${var.region}"
   kms_description             = "Homelab PostgreSQL logical backups"

@@ -35,8 +35,8 @@ module "bucket" {
   server_side_encryption_configuration = {
     rule = {
       apply_server_side_encryption_by_default = {
-        kms_master_key_id = module.kms.key_arn
-        sse_algorithm     = "aws:kms"
+        kms_master_key_id = var.use_s3_managed_encryption ? null : module.kms.key_arn
+        sse_algorithm     = var.use_s3_managed_encryption ? "AES256" : "aws:kms"
       }
     }
   }
