@@ -30,7 +30,7 @@ def render(events):
     calendar.add("prodid", "-//YMCA Swim Calendar//EN")
     calendar.add("version", "2.0")
     calendar.add("calscale", "GREGORIAN")
-    calendar.add("x-wr-calname", "Ches Penney Swimming")
+    calendar.add("x-wr-calname", "St. John's Swimming")
     for key, item in sorted(events.items()):
         if item["status"] != "active":
             continue

@@ -1,14 +1,25 @@
-# Ches Penney Swimming
+# St. John's Swimming
 
 One public ICS feed, separate from personal court reservations. Includes main-pool
 Lane Swim / Open, Calm Water Swim, and Adult Swim Lessons (with published age limits).
-Play-pool sessions, restricted swims and aquatic fitness classes are excluded.
+YMCA play-pool sessions, restricted swims and aquatic fitness classes are excluded.
+Paul Reynolds Community Centre contributes Lane Swim, Open Swim, Leisure Swim,
+and Therapeutic Swim. City fitness classes and Pop in Tot are excluded. Locations
+distinguish the two facilities in the same general feed.
 These are activity options, not reservations or proof of free admission.
 
 EventBridge Scheduler refreshes at 03:00 America/St_Johns every day. The collector
 queries both public Upace endpoints for each date from today through one calendar
 month ahead (exclusive; month-end clamps to the next month's last day). It checks
-season boundaries, cancellations and closure blocks. It never logs in, books, or
+season boundaries, cancellations and closure blocks. Paul Reynolds is read from
+dated `/prcc/Week?StartDate=MM/DD/YYYY` pages across the same month window.
+Its dedicated HTTP client sends a full browser User-Agent, verified in a real
+Lambda A/B/A test (default 403, browser header 200, default 403). No browser,
+cookies, login, or PDF parsing is required. Weekly navigation, facility, final
+grid cell, every event duration, and occurrence dates are validated; unknown
+swimming titles or HTTP errors fail the entire refresh. Only published dates
+are imported, so holiday omissions are respected without inventing recurrence.
+Both sources must finish before the combined snapshot is published. It never logs in, books, or
 cancels anything. Recognized blocks subtract closed time from open windows;
 unfamiliar or malformed blocks fail the refresh. Past events remain for 30 days.
 

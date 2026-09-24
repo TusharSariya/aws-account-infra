@@ -172,3 +172,28 @@ class Upace:
                 collected[item["id"]] = item
             day += timedelta(days=1)
         return collected
+
+
+class SwimmingSources:
+    """Collect all sources completely before any snapshot can be published."""
+    def __init__(self):
+        from swim_calendar.city import PaulReynolds
+        self.sources = [Upace()]
+        try:
+            self.sources.append(PaulReynolds())
+        except Exception:
+            self.close()
+            raise
+
+    def close(self):
+        for source in self.sources:
+            source.close()
+
+    def collect(self, start, end, remaining=lambda: 600_000):
+        result = {}
+        for source in self.sources:
+            fresh = source.collect(start, end, remaining)
+            if result.keys() & fresh.keys():
+                raise ValueError("Overlapping swimming source identities")
+            result.update(fresh)
+        return result

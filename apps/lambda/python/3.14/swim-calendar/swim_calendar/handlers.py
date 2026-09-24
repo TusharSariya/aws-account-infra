@@ -8,7 +8,7 @@ import uuid
 import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError
-from swim_calendar.source import Upace, ZONE, month_end
+from swim_calendar.source import SwimmingSources, ZONE, month_end
 from swim_calendar.calendar import reconcile, render
 
 KEY = "current.json"
@@ -76,7 +76,7 @@ def sync(event, context):
         return {"status": "busy"}
     source = None
     try:
-        source = Upace()
+        source = SwimmingSources()
         result = publish(client, bucket, source, datetime.now(UTC),
                          context.get_remaining_time_in_millis)
         print(json.dumps({"_aws": {"Timestamp": int(datetime.now(UTC).timestamp() * 1000),
