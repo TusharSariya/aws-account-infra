@@ -1,4 +1,5 @@
 resource "aws_codeartifact_domain" "infra" {
+  # checkov:skip=CKV_AWS_221:Owner requested AWS-managed KMS encryption to avoid customer-key fees; packages stay encrypted, with same-account consumers.
   domain = "aws-account-infra"
   # Omit encryption_key to use the AWS-managed aws/codeartifact key.
 }

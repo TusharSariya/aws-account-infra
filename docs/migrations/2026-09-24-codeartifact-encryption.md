@@ -40,3 +40,8 @@ hash of every asset and the original npm distribution tags. The ordinary account
 plan reported no changes; validation, formatting, the 8 homelab backup tests and
 LocalStack smoke passed. CI must pass before merge. Do not replay the replacement
 plan: the restored package repositories are live.
+
+Resource-local Checkov exceptions CKV_AWS_221 and CKV_AWS_238 record the owner's
+explicit choices: AWS-managed domain encryption and GuardDuty suspension. Other
+security checks remain active. Native npm and pip clients successfully downloaded
+stable `upace==0.1.0` through the unchanged endpoints after restoration.
