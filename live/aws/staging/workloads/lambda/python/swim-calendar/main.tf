@@ -30,6 +30,8 @@ resource "aws_s3_bucket_versioning" "snapshot" {
   bucket = aws_s3_bucket.snapshot.id
   versioning_configuration { status = "Enabled" }
 }
+# Public schedule snapshots use S3 AES256 encryption; no sensitive records require a dedicated CMK.
+# trivy:ignore:AVD-AWS-0132
 resource "aws_s3_bucket_server_side_encryption_configuration" "snapshot" {
   bucket = aws_s3_bucket.snapshot.id
   rule {
