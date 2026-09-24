@@ -134,6 +134,10 @@ jobs:
               print(f"{unit['id']}\t{unit['path']}\t{unit['var_file']}\t{unit['cloud']}")
           PY
 
+          # Reuse large provider binaries across this serial multi-unit apply.
+          # Separate copies per root exceed the checks runner's 4-GiB scratch limit.
+          export TF_PLUGIN_CACHE_DIR="$RUNNER_TEMP/tofu-provider-cache"
+          mkdir -p "$TF_PLUGIN_CACHE_DIR"
           while IFS=$'\t' read -r id path var_file cloud; do
             echo "::group::Apply $id"
             if [[ "$cloud" == talos || "$cloud" == kubernetes ]]; then
