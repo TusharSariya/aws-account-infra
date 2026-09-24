@@ -313,3 +313,37 @@ def test_incomplete_special_times_fail_closed():
             "<h1>Petit Le Mans</h1><p>ABOUT THE 2026 EVENT</p><p>Timeslot #1: Friday at 22:00 GMT</p><p>Timeslot #2: Saturday TBD</p>",
             "https://www.iracing.com/event",
         )
+
+
+def test_official_pdf_completeness_and_simulated_track_time(monkeypatch):
+    from iracing_calendar import sources
+
+    names = [f"Series {i} - 2026 Season 4" for i in range(80)]
+    toc = "\n".join(name + " . . . 6" for name in names)
+    block = "\nOVAL\nC Class Series (OVAL)\n" + "\n".join(
+        name + "\nGT3\nClass C 4.0 --> Pro/WC 4.0\nRaces Saturday at 19 GMT\n"
+        "Week 1 (2026-09-22)    Test Circuit - Grand    Rolling start, 20 laps\n"
+        "                       Prix                    Cautions enabled\n"
+        "                       (2024-01-01 12:00 1x)\n"
+        for name in names
+    )
+
+    class Page:
+        def __init__(self, text):
+            self.text = text
+
+        def extract_text(self, **kwargs):
+            return self.text
+
+    class Reader:
+        pages = [Page(toc), Page(block)] + [Page("")] * 48
+
+    monkeypatch.setattr(sources, "PdfReader", lambda body: Reader())
+    hub = [SERIES | {"name": name, "category": "OVAL"} for name in names]
+    official = sources.official_series(b"fixture", hub)
+    first = official[0]
+    assert first["weeks"][0]["track"] == "Test Circuit - Grand Prix"
+    assert occurrences(first)[0]["start"] == "2026-09-26T19:00:00+00:00"
+    Reader.pages[1] = Page(block[: block.index(names[-1])])
+    with pytest.raises(ValueError, match="table of contents"):
+        sources.official_series(b"truncated fixture", hub)

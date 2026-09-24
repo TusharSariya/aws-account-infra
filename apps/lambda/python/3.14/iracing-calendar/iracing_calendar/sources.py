@@ -152,9 +152,8 @@ def official_series(body, hub):
     reader = PdfReader(io.BytesIO(body))
     if len(reader.pages) < 50:
         raise ValueError("Truncated official season PDF")
-    text = "\n".join(
-        page.extract_text(extraction_mode="layout") for page in reader.pages
-    )
+    pages = [page.extract_text(extraction_mode="layout") for page in reader.pages]
+    text = "\n".join(pages)
     # Skip the table of contents, whose dotted leaders are not series headings.
     heading = re.compile(
         r"^[ \t]{0,2}((?:[^\n]+?20\d{2} Season(?: \d+)?[^\n]*?|20\d{2} [^\n]+?))\s*$",
@@ -173,6 +172,15 @@ def official_series(body, hub):
         ]
         blocks.setdefault(name, "")
         blocks[name] += "\n" + block
+    toc = set()
+    for page in pages:
+        if re.search(r"^\s*OVAL\s*$", page, re.MULTILINE):
+            break
+        for line in page.splitlines():
+            if re.search(r"20\d{2} Season", line):
+                toc.add(" ".join(re.split(r"\s+\.\s+\.", line)[0].split()))
+    if len(toc) < 80 or not toc <= blocks.keys():
+        raise ValueError("Official PDF does not cover its complete table of contents")
     hub = list(hub)
     known = {series["name"] for series in hub}
     for match in headings:
