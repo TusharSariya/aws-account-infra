@@ -62,6 +62,14 @@ def format_email(
 ) -> tuple[str, str]:
     alarm = str(payload.get("AlarmName") or "court-booker")
     state = str(payload.get("NewStateValue") or "")
+    swimming_alerts = {
+        "swim-calendar-sync-errors": "Daily swimming refresh failed; the previous calendar remains published.",
+        "swim-calendar-feed-errors": "Swimming calendar downloads failed, or the hourly health check found no successful refresh within 36 hours.",
+        "swim-calendar-failed-delivery": "A swimming calendar invocation exhausted delivery or execution retries. Inspect the service dead-letter queue.",
+    }
+    if alarm in swimming_alerts:
+        return f"Swimming calendar {state.lower() or 'alert'}: {alarm}", _simple_body(swimming_alerts[alarm], payload)
+
     if state and state != "ALARM":
         return f"Court booker {state.lower()}: {alarm}", _ok_body(payload)
 

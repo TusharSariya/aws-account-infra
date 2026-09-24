@@ -125,3 +125,11 @@ def test_async_failure_destination_redacts_request_and_response(monkeypatch):
     assert "reconciliation failed" in rendered
     assert "must-not-leak" not in rendered
     assert "secret upstream" not in rendered
+
+
+def test_swimming_alert_does_not_claim_a_booking_failed():
+    for name in ("swim-calendar-sync-errors", "swim-calendar-feed-errors", "swim-calendar-failed-delivery"):
+        subject, body = format_email({"AlarmName": name, "NewStateValue": "ALARM"}, None, [], "us-east-1")
+        assert subject.startswith("Swimming calendar alarm:")
+        assert "Court booker failed" not in body
+        assert name in body

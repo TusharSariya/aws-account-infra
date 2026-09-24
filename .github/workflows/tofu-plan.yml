@@ -56,6 +56,10 @@ jobs:
         with:
           role-to-assume: ${{ vars.TOFU_PLAN_ROLE_ARN }}
           aws-region: ${{ matrix.unit.region }}
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: false
+          python-version: "3.14"
       - uses: ./.github/actions/setup-opentofu
         with:
           tofu_version: 1.11.5
@@ -70,7 +74,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          tofu plan -input=false -no-color \
+          tofu plan -input=false -no-color -lock-timeout=5m \
             -var-file="$GITHUB_WORKSPACE/${{ matrix.unit.var_file }}" \
             -var "aws_profile=" -out=tfplan 2>&1 | tee plan.txt
       - name: comment plan
