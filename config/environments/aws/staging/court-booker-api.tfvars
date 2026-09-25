@@ -12,6 +12,6 @@ default_tags = {
   repo       = "aws-account-infra"
 }
 
-booker_api_zip_key   = "stable/court-booker/5bbdc64c82de02c58c6142950c5735cf55ec7ede.zip"
+booker_api_zip_key   = "stable/court-booker/e1516dc74b9b036b0cc19df30b1cce49c5799f98.zip"
 api_schedule_enabled = true
 alert_email          = "tushar.97@hotmail.com"

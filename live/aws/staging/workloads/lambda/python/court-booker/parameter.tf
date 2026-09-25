@@ -15,3 +15,17 @@ resource "aws_ssm_parameter" "my_y" {
     ignore_changes = [value]
   }
 }
+
+resource "aws_ssm_parameter" "calendar_private_key" {
+  # checkov:skip=CKV_AWS_337:AWS-managed alias/aws/ssm encrypts a standard SecureString without a $1/month CMK.
+  name        = "/staging/court-booker-api/calendar-private-key"
+  description = "Private court-booker calendar URL key. Set or rotate with scripts/court-booker-calendar-key.sh, never tfvars. UNSET keeps the private feed closed."
+  type        = "SecureString"
+  tier        = "Standard"
+  key_id      = "alias/aws/ssm"
+  value       = "UNSET"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
