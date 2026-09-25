@@ -65,6 +65,18 @@ class FullDiffTests(unittest.TestCase):
         self.assertEqual(changes.selection(['README.md'])['checks'], [])
         self.assertEqual(changes.selection(['README.md'])['units'], [])
 
+    def test_suite_dependencies_always_select_executable_children(self):
+        children = {name for name in changes.SCOPES if name.startswith('apps-')}
+        for paths in [
+            ['.github/workflows/tofu-plan.yml'],
+            ['.github/workflows/homelab-ai-migration.yml'],
+            ['.github/workflows/tofu-plan.yml', 'apps/platform/postgres/backup.py'],
+        ]:
+            with self.subTest(paths=paths):
+                checks = set(changes.selection(paths)['checks'])
+                self.assertIn('homelab-apps-tests', checks)
+                self.assertTrue(children.issubset(checks))
+
     def test_dependencies_and_module_consumers(self):
         result = changes.selection(['modules/aws/encrypted_s3_bucket/main.tf'])
         self.assertTrue(result['units'])

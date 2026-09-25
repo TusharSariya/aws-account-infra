@@ -197,9 +197,17 @@ def selection(paths):
         ("homelab-config-tests", "config-"),
         ("homelab-apps-tests", "apps-"),
     ]:
-        # Editing the reusable workflow invalidates every job it implements.
-        if paths is None or matches(paths, [f".github/workflows/{suite}.yml"]):
-            checks.extend(k for k in SCOPES if k.startswith(prefix) and k not in checks)
+        children = [name for name in SCOPES if name.startswith(prefix)]
+        # A suite-wide dependency must run actual jobs, even when another changed
+        # path already selects one child. Unmapped suite inputs conservatively
+        # invalidate every child rather than yielding an entirely skipped suite.
+        suite_wide = paths is None or any(
+            relevant(suite, [path])
+            and not any(relevant(child, [path]) for child in children)
+            for path in paths
+        )
+        if suite_wide:
+            checks.extend(child for child in children if child not in checks)
         if any(k.startswith(prefix) for k in checks) and suite not in checks:
             checks.append(suite)
     directories = terraform_directories(paths, selected)
