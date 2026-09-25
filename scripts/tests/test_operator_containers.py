@@ -49,7 +49,9 @@ class OperatorContainerTests(unittest.TestCase):
         text = SUPERVISOR.read_text()
         self.assertIn('generate-jitconfig', text)
         self.assertIn('runner_group_id=${OPERATOR_GROUP_ID}', text)
-        self.assertIn('labels[]=${LABEL}', text)
+        # JIT registration adds no default labels; runs-on requires self-hosted.
+        for label in ('self-hosted', 'Linux', 'X64', '${LABEL}'):
+            self.assertIn('labels[]=' + label, text)
         self.assertIn('readonly LABEL=homelab-operator', text)
         self.assertIn('name="mac-operator-${OPERATOR_HOST}-${OPERATOR_SLOT}-', text)
         self.assertNotIn('homelab-talos', text)

@@ -29,8 +29,11 @@ log() {
 while [[ -f "$OPERATOR_RUN_FLAG" ]]; do
   name="mac-operator-${OPERATOR_HOST}-${OPERATOR_SLOT}-$(date -u +%Y%m%dT%H%M%SZ)"
   # Single-use configuration: consumed by the runner below, invalid afterwards.
+  # JIT registration adds no default labels, so the ones a token registration
+  # would add (self-hosted, OS, architecture) are listed explicitly; runs-on needs them.
   if ! ACTIONS_RUNNER_INPUT_JITCONFIG="$(gh api -X POST "orgs/${ORG}/actions/runners/generate-jitconfig" \
-      -f "name=${name}" -F "runner_group_id=${OPERATOR_GROUP_ID}" -f "labels[]=${LABEL}" \
+      -f "name=${name}" -F "runner_group_id=${OPERATOR_GROUP_ID}" \
+      -f "labels[]=self-hosted" -f "labels[]=Linux" -f "labels[]=X64" -f "labels[]=${LABEL}" \
       -f work_folder=_work --jq .encoded_jit_config)"; then
     log 'could not mint a JIT runner configuration; retrying in 60s'
     sleep 60
