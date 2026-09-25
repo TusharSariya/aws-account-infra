@@ -1,0 +1,19 @@
+{
+  "observed_at": "2026-09-25T03:59:32.637556+00:00",
+  "api_server": {
+    "ready": true,
+    "restart_count": 1,
+    "started_at": "2026-09-25T03:57:56Z"
+  },
+  "method": "Talos restart of the identified kube-apiserver container",
+  "before": {
+    "vm_used_MiB": 3897,
+    "vm_available_MiB": 643,
+    "api_server_rss_approx_GB": 2.6
+  },
+  "after": {
+    "vm_used_MiB": 2075,
+    "vm_available_MiB": 2464
+  },
+  "readiness": "readyz subsequently returned ok; other control-plane controllers still recovering"
+}

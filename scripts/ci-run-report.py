@@ -56,7 +56,7 @@ def report(run, jobs, cache_state, startup):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("run_id", type=int)
-    parser.add_argument("--cache-state", required=True, choices=["cold", "warm"])
+    parser.add_argument("--cache-state", required=True, choices=["cold", "warm", "unknown"])
     parser.add_argument("--startup", type=Path, action="append", default=[])
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()

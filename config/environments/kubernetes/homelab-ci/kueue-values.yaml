@@ -1,5 +1,6 @@
 controllerManager:
   manager:
+    logLevel: info
     image:
       repository: registry.k8s.io/kueue/kueue
       tag: v0.19.6@sha256:b0f5a48116f3576d8f23189a183123a63ea4d6ea2bc41250aa43750508b064c8

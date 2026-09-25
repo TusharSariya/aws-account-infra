@@ -7,5 +7,22 @@
   "changed_paths": [
     "Deployment/kueue-system/kueue-controller-manager/spec/template/spec/containers/0/image"
   ],
-  "revision": 9
+  "revision": 9,
+  "followup": {
+    "observed_at": "2026-09-25T03:42:08.744048+00:00",
+    "pods": [
+      {
+        "name": "kueue-controller-manager-55dc68c95c-97m9r",
+        "created_at": "2026-09-25T03:24:52Z",
+        "phase": "Running",
+        "containers": [
+          {
+            "name": "manager",
+            "ready": true,
+            "restarts": 2
+          }
+        ]
+      }
+    ]
+  }
 }

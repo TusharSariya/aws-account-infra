@@ -135,6 +135,8 @@ post-renderers. A structural render comparison proved that **only the manager
 container image changed**. Helm `--atomic --wait` succeeded from revision 8 to 9
 at 03:28:46 UTC; see `kueue-recovery.json`. The matching image digest is pinned in
 `kueue-values.yaml`. ClusterQueue quotas/policy and running compute were unchanged.
+The image upgrade alone did **not** stabilize the control plane: follow-up
+observations recorded further lease-timeout restarts.
 
 Private release backups are retained on the operator laptop under
 `~/.local/share/homelab-ci-recovery/20260925-kueue/`. Broader management rollout still
@@ -156,3 +158,50 @@ timeouts and elevated disk I/O pressure (60-second some/full PSI approximately
 64%/33%). These observations are a separate scheduling bottleneck; they are not
 evidence of exhausted Proxmox worker CPU. No hardware or control-plane resource
 changes were made in response to that transient measurement.
+
+### Successful pre-rollout Lambda validation
+
+[Run 36090684623](https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/36090684623)
+passed on the new workflow with the old live placement configuration. Total elapsed
+time was 782 seconds and allocated runner time was 588 seconds; the hosted selector
+used 6 seconds, with the remaining 582 runner-seconds on Proxmox. Court-booker
+packaging waited 292 seconds and executed for 459 seconds. The two calendar jobs
+started one second apart, confirming overlap. See [job timings](lambda-live.json).
+Cache state is deliberately unknown/mixed: BuildKit imported existing caches,
+while the new raw dependency export was unavailable before repository rollout.
+This is an observational success, not a matched end-to-end before/after benchmark.
+
+### Control-plane recovery and measurement confounders
+
+The control-plane VM subsequently showed sustained memory and I/O pressure; its
+API server used approximately 2.6 GB RSS in a 4.8-GB VM. API/VIP access and kubelet/CRI
+health checks timed out. Restarting the identified API-server process through Talos
+reduced observed VM used memory from 3,897 to 2,075 MiB and increased available
+memory from 643 to 2,464 MiB. API readiness recovered. See
+[the recovery receipt](control-plane-recovery.json). This is recovery evidence,
+not a software before/after benchmark or proof that memory growth cannot recur.
+
+Kueue's chart default debug verbosity emitted at least 2 MB in a 30-second sample.
+The PR sets `logLevel: info`. An initial numeric `0` attempt was rejected by the
+binary and automatically rolled back by Helm (revision 10 failed, revision 11
+restored revision 9). The corrected informational setting deployed successfully as Helm revision 12;
+the replacement manager was ready with zero restarts at first observation. See
+[the logging recovery receipt](kueue-logging-recovery.json). Long-term stability
+and resource pressure still require observation.
+
+The closest historical Lambda run on main,
+[36086620084](https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/36086620084),
+executed its single package job in 454 seconds after 91 seconds of queue time.
+The observed PR package job took 459 seconds (+1.1%), and all PR jobs used 588
+runner-seconds versus 454 (+29.5%). Splitting calendar jobs adds independent setup
+and cache-export work; iRacing testing took 35 seconds and its export step took
+12 seconds in the PR sample. Queueing also worsened during the incident. These
+uncontrolled live samples do not demonstrate an end-to-end improvement. Savings
+from selecting fewer jobs and from dynamic admission require separate matched
+workload cohorts after rollout.
+
+Across the interleaved native-ARM test measurements, all six cold-dependency
+pairs and all five post-warmup warm pairs were faster after the change. The table
+reports percentage changes in cohort medians; median paired percentage changes
+were 6.9% cold and 7.1% warm. The small sample and native-ARM platform still limit
+generalization to emulated CI and full pipeline execution.
