@@ -63,6 +63,17 @@ def verify(node, pods, reserve, pool=None, *, expected_node="talos-worker-01"):
         node["status"]["capacity"]["memory"]
     ):
         raise ValueError("Node allocatable memory exceeds reported capacity")
+    if pool.get("dynamic"):
+        result = {}
+        for resource in ("cpu", "memory"):
+            observed = sum((requests(p, resource) for p in pods if p["spec"].get("nodeName") == expected_node
+                and p.get("status", {}).get("phase") not in ("Succeeded", "Failed")
+                and "kueue.x-k8s.io/queue-name" not in p["metadata"].get("labels", {})), Decimal(0))
+            available = quantity(node["status"]["allocatable"][resource])
+            if observed > available:
+                raise ValueError("Service commitments exceed allocatable " + resource)
+            result[resource] = dict(allocatable=str(available), platform_observed=str(observed), pool=str(available-observed))
+        return result
     result = {}
     for resource in ("cpu", "memory"):
         quota = pool[resource]
@@ -110,6 +121,10 @@ def verify_storage(node, pods, summary, config, catalog):
         ).total_seconds()
         if not 0 <= age <= 300:
             raise ValueError("Fresh root and image filesystem measurements required")
+    if config.get("dynamic"):
+        # The coordinator additionally observes desired services and Pod slots.
+        free = min(quantity(fs["availableBytes"]), quantity(image_fs["availableBytes"]))
+        return {"available_bytes": str(free), "runtime_quota_owner": "retained-host-coordinator"}
     pool = quantity(config["scratch"])
     headroom = quantity(config["storageHeadroom"])
     allocatable = quantity(node["status"]["allocatable"]["ephemeral-storage"])

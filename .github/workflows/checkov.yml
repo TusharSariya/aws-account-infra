@@ -5,12 +5,11 @@ name: checkov
 # `checkov` job is itself a stable required-check context. Suppressions live in
 # /.checkov.yaml (skip-check) or inline `# checkov:skip=<id>:<reason>` comments.
 on:
-  pull_request:
-
-concurrency:
-  group: checkov-${{ github.ref }}
-  cancel-in-progress: true
-
+  workflow_call:
+    inputs:
+      directories:
+        type: string
+        required: true
 permissions:
   contents: read
 
@@ -22,19 +21,21 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/relevant-changes
-        id: changes
-        with:
-          scope: checkov
-
       - uses: ./.github/actions/talos-runner-setup
-        if: steps.changes.outputs.run == 'true'
         with:
           docker: 'true'
-      - uses: bridgecrewio/checkov-action@v12
-        if: steps.changes.outputs.run == 'true'
-        with:
-          directory: .
-          framework: terraform
-          config_file: .checkov.yaml
-          soft_fail: false
+      - name: Scan selected Terraform directories
+        env:
+          SELECTED_DIRECTORIES: ${{ inputs.directories }}
+        run: |
+          python3 - <<'PYTHON'
+          import json, os, subprocess
+          directories = json.loads(os.environ['SELECTED_DIRECTORIES'])
+          if not directories:
+              raise SystemExit('No selected Terraform directories')
+          subprocess.run(['docker', 'run', '--rm', '-v', os.getcwd() + ':/src:ro', '-w', '/src',
+                          'ghcr.io/bridgecrewio/checkov:3.3.19',
+                          *[arg for directory in directories for arg in ('-d', directory)],
+                          '--framework', 'terraform', '--config-file', '/src/.checkov.yaml',
+                          '--compact'], check=True)
+          PYTHON

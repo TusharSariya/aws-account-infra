@@ -1,0 +1,35 @@
+name: Nexus dependency archives
+description: Branch and architecture isolated public dependency archives with bounded integrity checks
+inputs:
+  mode:
+    description: restore or save
+    default: restore
+  kind:
+    description: providers, tflint, go, or python
+    required: true
+  toolchain:
+    description: Pinned toolchain identity
+    required: true
+  dependencies:
+    description: Dependency lockfile hash
+    required: true
+  scope:
+    description: Matrix target identity within the job
+    default: ''
+  password:
+    description: Cache-only writer credential; never a release credential
+    default: ''
+runs:
+  using: composite
+  steps:
+    - if: runner.environment == 'self-hosted'
+      shell: bash
+      env:
+        CACHE_MODE: ${{ inputs.mode }}
+        CACHE_KIND: ${{ inputs.kind }}
+        CACHE_TOOLCHAIN: ${{ inputs.toolchain }}
+        CACHE_DEPENDENCIES: ${{ inputs.dependencies }}
+        CACHE_PASSWORD: ${{ inputs.password }}
+        CACHE_SCOPE: ${{ github.workflow }}/${{ github.job }}/${{ inputs.scope }}
+        CACHE_BRANCH: ${{ github.head_ref || github.ref_name }}
+      run: python3 "$GITHUB_ACTION_PATH/../../../scripts/dependency_cache.py" "$CACHE_MODE" "$CACHE_KIND" --toolchain "$CACHE_TOOLCHAIN" --dependencies "$CACHE_DEPENDENCIES"

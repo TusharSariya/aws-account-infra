@@ -41,71 +41,8 @@ jobs:
       - name: Spectral
         run: npx --yes @stoplight/spectral-cli@6.15.0 lint "specs/*/openapi.yaml" -r specs/.spectral.yaml
 
-  generate:
-    needs: lint
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-docker-small"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - spec: upace
-            target: python
-            runtime: "3.12"
-          - spec: upace
-            target: typescript-fetch
-            runtime: "20"
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/talos-runner-setup
-        with:
-          docker: 'true'
-          packages: python3-venv python3-pip zip
-      - name: generate
-        run: ./scripts/sdk-generate.sh "${{ matrix.spec }}" "${{ matrix.target }}"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: sdk-${{ matrix.spec }}-${{ matrix.target }}
-          path: generated/${{ matrix.spec }}/${{ matrix.target }}
-          if-no-files-found: error
-
-  smoke:
-    needs: generate
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-checks"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - spec: upace
-            target: python
-            runtime: "3.12"
-          - spec: upace
-            target: typescript-fetch
-            runtime: "20"
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/talos-runner-setup
-        with:
-          packages: python3-venv python3-pip zip
-      - uses: actions/download-artifact@v4
-        with:
-          name: sdk-${{ matrix.spec }}-${{ matrix.target }}
-          path: generated/${{ matrix.spec }}/${{ matrix.target }}
-      - uses: actions/setup-python@v5
-        if: matrix.target == 'python'
-        with:
-          python-version: ${{ matrix.runtime }}
-      - uses: actions/setup-node@v4
-        if: matrix.target == 'typescript-fetch'
-        with:
-          node-version: ${{ matrix.runtime }}
-      - name: smoke
-        run: ./scripts/sdk-smoke.sh "${{ matrix.spec }}" "${{ matrix.target }}"
-
   publish-candidate:
-    needs: smoke
+    needs: lint
     if: (github.event_name == 'pull_request') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-docker-small"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
     strategy:
@@ -140,6 +77,8 @@ jobs:
             --run "${{ github.run_number }}" --pr "${{ github.event.pull_request.number }}")" >> "$GITHUB_OUTPUT"
       - name: generate
         run: ./scripts/sdk-generate.sh "${{ matrix.spec }}" "${{ matrix.target }}" "${{ steps.ver.outputs.version }}"
+      - name: smoke the candidate
+        run: ./scripts/sdk-smoke.sh "${{ matrix.spec }}" "${{ matrix.target }}"
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ env.SDK_CANDIDATE_ROLE_ARN }}
@@ -157,56 +96,12 @@ jobs:
           fi
           echo "skipped=false" >> "$GITHUB_OUTPUT"
           exit "$status"
-      - name: summary line
-        run: |
-          mkdir -p "$RUNNER_TEMP/publish"
-          if [[ "${{ steps.publish.outputs.skipped }}" == "true" ]]; then
-            echo "- \`${{ matrix.spec }}/${{ matrix.target }}\`: skipped (CodeArtifact domain missing)" \
-              > "$RUNNER_TEMP/publish/line.md"
-          else
-            echo "- \`${{ matrix.spec }}/${{ matrix.target }}\` \`${{ steps.ver.outputs.version }}\` → \`sdk-candidate\`" \
-              > "$RUNNER_TEMP/publish/line.md"
-          fi
-      - uses: actions/upload-artifact@v4
-        with:
-          name: candidate-line-${{ matrix.target }}
-          path: ${{ runner.temp }}/publish/line.md
-
-  comment-candidate:
-    needs: publish-candidate
-    if: ${{ (!cancelled() && github.event_name == 'pull_request' && needs.publish-candidate.result != 'cancelled') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
-    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-light"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
-    steps:
-      - uses: actions/download-artifact@v4
-        continue-on-error: true
-        with:
-          pattern: candidate-line-*
-          merge-multiple: true
-          path: lines
-      - uses: actions/github-script@v7
+      - name: Comment candidate result
+        uses: actions/github-script@v7
+        env:
+          SDK_TARGET: ${{ matrix.spec }}/${{ matrix.target }}
+          SDK_VERSION: ${{ steps.ver.outputs.version }}
+          SDK_SKIPPED: ${{ steps.publish.outputs.skipped }}
         with:
           script: |
-            const fs = require('fs');
-            const dir = 'lines';
-            let body = '### SDK candidate\n\n';
-            if (fs.existsSync(dir)) {
-              for (const f of fs.readdirSync(dir).sort()) {
-                body += fs.readFileSync(`${dir}/${f}`, 'utf8').trim() + '\n';
-              }
-            } else {
-              body += '_no candidate lines_\n';
-            }
-            body += `
-            \`\`\`bash
-            aws codeartifact login --tool pip --domain aws-account-infra --domain-owner 992382747916 --repository sdk-candidate --region us-east-1
-            aws codeartifact login --tool npm --domain aws-account-infra --domain-owner 992382747916 --repository sdk-candidate --region us-east-1
-            \`\`\`
-
-            Stable is \`sdk-stable\` after label \`publish-stable\` and Environment \`sdk\` approval. Do not use \`apply\` / \`prod\` for packages.
-            `;
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body,
-            });
+            await github.rest.issues.createComment({owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, body: `SDK candidate ${process.env.SDK_TARGET}: ${process.env.SDK_SKIPPED === 'true' ? 'skipped (repository unavailable)' : process.env.SDK_VERSION}. Stable publication still requires the sdk environment approval.`});

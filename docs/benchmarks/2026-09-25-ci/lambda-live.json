@@ -1,0 +1,41 @@
+{
+  "run_id": 36090684623,
+  "url": "https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/36090684623",
+  "source_revision": "ce4b28bd7b1061879b1b31606e3c073b2f85b4c2",
+  "cache_state": "unknown",
+  "conclusion": "success",
+  "elapsed_seconds": 782.0,
+  "runner_seconds": 588.0,
+  "jobs": [
+    {
+      "name": "select",
+      "conclusion": "success",
+      "runner": "GitHub Actions 1000006269",
+      "queue_seconds": 5.0,
+      "execution_seconds": 6.0
+    },
+    {
+      "name": "iracing-calendar",
+      "conclusion": "success",
+      "runner": "homelab-talos-checks-sfvz9-runner-qf6v4",
+      "queue_seconds": 36.0,
+      "execution_seconds": 71.0
+    },
+    {
+      "name": "package",
+      "conclusion": "success",
+      "runner": "homelab-talos-docker-small-mrtj7-runner-sgw89",
+      "queue_seconds": 292.0,
+      "execution_seconds": 459.0
+    },
+    {
+      "name": "swim-calendar",
+      "conclusion": "success",
+      "runner": "homelab-talos-checks-sfvz9-runner-x7qmg",
+      "queue_seconds": 37.0,
+      "execution_seconds": 52.0
+    }
+  ],
+  "startup_first_observations": {},
+  "limitations": "Queue time is GitHub created_at to started_at, including scheduling. Jobs without an allocated runner and inconsistent timestamps are excluded from timing totals. Startup timestamps are first observations, bounded by reconciliation cadence. Compare identical jobs/revisions and cold/warm cohorts separately."
+}

@@ -1,8 +1,9 @@
 controllerManager:
   manager:
+    logLevel: info
     image:
       repository: registry.k8s.io/kueue/kueue
-      tag: v0.19.4@sha256:cc980ec83c698369d55f3b9105fb602ba85a558cb1bf3cafa02ce38a6a695c26
+      tag: v0.19.6@sha256:b0f5a48116f3576d8f23189a183123a63ea4d6ea2bc41250aa43750508b064c8
     resources:
       requests: {cpu: 100m, memory: 256Mi}
       limits: {cpu: '1', memory: 512Mi}

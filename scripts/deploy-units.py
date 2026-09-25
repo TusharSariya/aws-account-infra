@@ -16,8 +16,8 @@ def load_units():
 
 
 def changed_files(base, head):
-    command = ["git", "diff", "--name-only", base, head, "--"]
-    return subprocess.check_output(command, cwd=ROOT, text=True).splitlines()
+    command = ["git", "diff", "--name-only", "--no-renames", "-z", base, head, "--"]
+    return subprocess.check_output(command, cwd=ROOT, text=True).rstrip("\0").split("\0")
 
 
 def ordered(units):

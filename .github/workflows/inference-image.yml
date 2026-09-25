@@ -22,7 +22,16 @@ jobs:
         with:
           docker: 'true'
           packages: gh
+      - uses: ./.github/actions/talos-build-cache
+        id: cache
+        with:
+          platform: linux/amd64
+          password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
       - uses: docker/setup-buildx-action@v3
+        with:
+          cache-binary: false
+          buildkitd-config: ${{ steps.cache.outputs.config }}
+          driver-opts: ${{ steps.cache.outputs.driver-opts }}
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -40,6 +49,9 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
           provenance: mode=max
           sbom: true
+          cache-from: ${{ steps.cache.outputs.cache-from }}
+          cache-to: ${{ steps.cache.outputs.cache-to }}
+          secret-files: ${{ steps.cache.outputs.secret-files }}
       - name: Verify imports from the published image
         env:
           DIGEST: ${{ steps.image.outputs.digest }}

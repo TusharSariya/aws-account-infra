@@ -1,0 +1,111 @@
+name: ci-validation
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-validation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  select:
+    runs-on: ubuntu-latest
+    outputs:
+      checks: ${{ steps.select.outputs.checks }}
+      applications: ${{ steps.select.outputs.applications }}
+      units: ${{ steps.select.outputs.units }}
+      terraform_dirs: ${{ steps.select.outputs.terraform_dirs }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: select
+        run: python3 scripts/ci-relevant-changes.py
+  checkov:
+    needs: select
+    if: contains(fromJSON(needs.select.outputs.checks), 'checkov') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    uses: ./.github/workflows/checkov.yml
+    secrets: inherit
+    with:
+      directories: ${{ needs.select.outputs.terraform_dirs }}
+  tflint:
+    needs: select
+    if: contains(fromJSON(needs.select.outputs.checks), 'tflint') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    uses: ./.github/workflows/tflint.yml
+    secrets: inherit
+    with:
+      directories: ${{ needs.select.outputs.terraform_dirs }}
+  trivy:
+    needs: select
+    if: contains(fromJSON(needs.select.outputs.checks), 'trivy') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    uses: ./.github/workflows/trivy.yml
+    secrets: inherit
+  shell:
+    needs: select
+    if: contains(fromJSON(needs.select.outputs.checks), 'shell') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    uses: ./.github/workflows/shell.yml
+    secrets: inherit
+  homelab-config-tests:
+    needs: select
+    if: contains(fromJSON(needs.select.outputs.checks), 'homelab-config-tests') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    uses: ./.github/workflows/homelab-config-tests.yml
+    secrets: inherit
+    with:
+      checks: ${{ needs.select.outputs.checks }}
+  homelab-apps-tests:
+    needs: select
+    if: contains(fromJSON(needs.select.outputs.checks), 'homelab-apps-tests') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    uses: ./.github/workflows/homelab-apps-tests.yml
+    secrets: inherit
+    with:
+      checks: ${{ needs.select.outputs.checks }}
+  homelab-recovery-tests:
+    needs: select
+    if: contains(fromJSON(needs.select.outputs.checks), 'homelab-recovery-tests') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    uses: ./.github/workflows/homelab-recovery-tests.yml
+    secrets: inherit
+  runner-catalog:
+    needs: select
+    if: contains(fromJSON(needs.select.outputs.checks), 'runner-catalog') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    uses: ./.github/workflows/runner-catalog.yml
+    secrets: inherit
+  kubernetes-validation:
+    needs: select
+    if: contains(fromJSON(needs.select.outputs.checks), 'kubernetes-validation') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    uses: ./.github/workflows/kubernetes-validation.yml
+    secrets: inherit
+  main-platform-validation:
+    needs: select
+    if: contains(fromJSON(needs.select.outputs.checks), 'main-platform-validation') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    uses: ./.github/workflows/main-platform-validation.yml
+    secrets: inherit
+  validation-gate:
+    needs:
+      - select
+      - checkov
+      - tflint
+      - trivy
+      - shell
+      - homelab-config-tests
+      - homelab-apps-tests
+      - homelab-recovery-tests
+      - runner-catalog
+      - kubernetes-validation
+      - main-platform-validation
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PYTHON'
+          import json, os
+          needs = json.loads(os.environ['NEEDS_JSON'])
+          assert needs['select']['result'] == 'success', 'Selection failed'
+          selected = json.loads(needs['select']['outputs']['checks'])
+          for name in selected:
+              if name in needs:
+                  assert needs[name]['result'] == 'success', name + ' did not succeed'
+          PYTHON

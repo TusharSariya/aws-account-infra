@@ -1,0 +1,399 @@
+{
+  "observed_at": "2026-09-25T03:00:14.534680+00:00",
+  "queue": {
+    "spec": {
+      "admissionChecksStrategy": {
+        "admissionChecks": [
+          {
+            "name": "homelab-host-ready"
+          }
+        ]
+      },
+      "flavorFungibility": {
+        "whenCanBorrow": "MayStopSearch",
+        "whenCanPreempt": "TryNextFlavor"
+      },
+      "namespaceSelector": {
+        "matchExpressions": [
+          {
+            "key": "kubernetes.io/metadata.name",
+            "operator": "In",
+            "values": [
+              "homelab-models",
+              "homelab-jobs",
+              "arc-runners",
+              "homelab-inference"
+            ]
+          }
+        ]
+      },
+      "preemption": {
+        "borrowWithinCohort": {
+          "policy": "Never"
+        },
+        "reclaimWithinCohort": "Never",
+        "withinClusterQueue": "Never"
+      },
+      "queueingStrategy": "StrictFIFO",
+      "resourceGroups": [
+        {
+          "coveredResources": [
+            "cpu",
+            "memory",
+            "ephemeral-storage"
+          ],
+          "flavors": [
+            {
+              "name": "homelab-worker",
+              "resources": [
+                {
+                  "name": "cpu",
+                  "nominalQuota": "31.25"
+                },
+                {
+                  "name": "memory",
+                  "nominalQuota": "84Gi"
+                },
+                {
+                  "name": "ephemeral-storage",
+                  "nominalQuota": "240Gi"
+                }
+              ]
+            },
+            {
+              "name": "homelab-secondary",
+              "resources": [
+                {
+                  "name": "cpu",
+                  "nominalQuota": "31.25"
+                },
+                {
+                  "name": "memory",
+                  "nominalQuota": "84Gi"
+                },
+                {
+                  "name": "ephemeral-storage",
+                  "nominalQuota": "240Gi"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "stopPolicy": "None"
+    },
+    "status": {
+      "admittedWorkloads": 19,
+      "conditions": [
+        {
+          "lastTransitionTime": "2026-09-22T18:58:01Z",
+          "message": "Can admit new workloads",
+          "observedGeneration": 13,
+          "reason": "Ready",
+          "status": "True",
+          "type": "Active"
+        }
+      ],
+      "flavorsReservation": [
+        {
+          "name": "homelab-worker",
+          "resources": [
+            {
+              "borrowed": "0",
+              "name": "cpu",
+              "total": "30"
+            },
+            {
+              "borrowed": "0",
+              "name": "ephemeral-storage",
+              "total": "72Gi"
+            },
+            {
+              "borrowed": "0",
+              "name": "memory",
+              "total": "84Gi"
+            }
+          ]
+        },
+        {
+          "name": "homelab-secondary",
+          "resources": [
+            {
+              "borrowed": "0",
+              "name": "cpu",
+              "total": "30"
+            },
+            {
+              "borrowed": "0",
+              "name": "ephemeral-storage",
+              "total": "68Gi"
+            },
+            {
+              "borrowed": "0",
+              "name": "memory",
+              "total": "76Gi"
+            }
+          ]
+        }
+      ],
+      "flavorsUsage": [
+        {
+          "name": "homelab-worker",
+          "resources": [
+            {
+              "borrowed": "0",
+              "name": "cpu",
+              "total": "22"
+            },
+            {
+              "borrowed": "0",
+              "name": "ephemeral-storage",
+              "total": "56Gi"
+            },
+            {
+              "borrowed": "0",
+              "name": "memory",
+              "total": "68Gi"
+            }
+          ]
+        },
+        {
+          "name": "homelab-secondary",
+          "resources": [
+            {
+              "borrowed": "0",
+              "name": "cpu",
+              "total": "26"
+            },
+            {
+              "borrowed": "0",
+              "name": "ephemeral-storage",
+              "total": "60Gi"
+            },
+            {
+              "borrowed": "0",
+              "name": "memory",
+              "total": "68Gi"
+            }
+          ]
+        }
+      ],
+      "pendingWorkloads": 39,
+      "reservingWorkloads": 25
+    }
+  },
+  "nodes": [
+    {
+      "name": "talos-cp-01",
+      "allocatable": {
+        "cpu": "1950m",
+        "ephemeral-storage": "94227975217",
+        "hugepages-2Mi": "0",
+        "memory": "4299044Ki",
+        "pods": "110"
+      },
+      "conditions": [
+        {
+          "lastHeartbeatTime": "2026-09-13T02:43:42Z",
+          "lastTransitionTime": "2026-09-13T02:43:42Z",
+          "message": "Cilium is running on this node",
+          "reason": "CiliumIsUp",
+          "status": "False",
+          "type": "NetworkUnavailable"
+        },
+        {
+          "lastHeartbeatTime": "2026-09-25T03:00:09Z",
+          "lastTransitionTime": "2026-09-13T01:27:36Z",
+          "message": "kubelet has sufficient memory available",
+          "reason": "KubeletHasSufficientMemory",
+          "status": "False",
+          "type": "MemoryPressure"
+        },
+        {
+          "lastHeartbeatTime": "2026-09-25T03:00:09Z",
+          "lastTransitionTime": "2026-09-13T01:27:36Z",
+          "message": "kubelet has no disk pressure",
+          "reason": "KubeletHasNoDiskPressure",
+          "status": "False",
+          "type": "DiskPressure"
+        },
+        {
+          "lastHeartbeatTime": "2026-09-25T03:00:09Z",
+          "lastTransitionTime": "2026-09-13T01:27:36Z",
+          "message": "kubelet has sufficient PID available",
+          "reason": "KubeletHasSufficientPID",
+          "status": "False",
+          "type": "PIDPressure"
+        },
+        {
+          "lastHeartbeatTime": "2026-09-25T03:00:09Z",
+          "lastTransitionTime": "2026-09-22T17:50:19Z",
+          "message": "kubelet is posting ready status",
+          "reason": "KubeletReady",
+          "status": "True",
+          "type": "Ready"
+        }
+      ]
+    },
+    {
+      "name": "talos-worker-01",
+      "allocatable": {
+        "cpu": "37950m",
+        "ephemeral-storage": "306828856017",
+        "hugepages-1Gi": "0",
+        "hugepages-2Mi": "0",
+        "memory": "114793136Ki",
+        "pods": "110"
+      },
+      "conditions": [
+        {
+          "lastHeartbeatTime": "2026-09-13T02:43:44Z",
+          "lastTransitionTime": "2026-09-13T02:43:44Z",
+          "message": "Cilium is running on this node",
+          "reason": "CiliumIsUp",
+          "status": "False",
+          "type": "NetworkUnavailable"
+        },
+        {
+          "lastHeartbeatTime": "2026-09-25T02:58:50Z",
+          "lastTransitionTime": "2026-09-25T01:58:35Z",
+          "message": "kubelet has sufficient memory available",
+          "reason": "KubeletHasSufficientMemory",
+          "status": "False",
+          "type": "MemoryPressure"
+        },
+        {
+          "lastHeartbeatTime": "2026-09-25T02:58:50Z",
+          "lastTransitionTime": "2026-09-25T01:58:35Z",
+          "message": "kubelet has no disk pressure",
+          "reason": "KubeletHasNoDiskPressure",
+          "status": "False",
+          "type": "DiskPressure"
+        },
+        {
+          "lastHeartbeatTime": "2026-09-25T02:58:50Z",
+          "lastTransitionTime": "2026-09-25T01:58:35Z",
+          "message": "kubelet has sufficient PID available",
+          "reason": "KubeletHasSufficientPID",
+          "status": "False",
+          "type": "PIDPressure"
+        },
+        {
+          "lastHeartbeatTime": "2026-09-25T02:58:50Z",
+          "lastTransitionTime": "2026-09-25T01:58:35Z",
+          "message": "kubelet is posting ready status",
+          "reason": "KubeletReady",
+          "status": "True",
+          "type": "Ready"
+        }
+      ]
+    },
+    {
+      "name": "talos-worker-02",
+      "allocatable": {
+        "cpu": "37950m",
+        "ephemeral-storage": "306739276497",
+        "hugepages-1Gi": "0",
+        "hugepages-2Mi": "0",
+        "memory": "114793120Ki",
+        "pods": "110"
+      },
+      "conditions": [
+        {
+          "lastHeartbeatTime": "2026-09-19T12:27:35Z",
+          "lastTransitionTime": "2026-09-19T12:27:35Z",
+          "message": "Cilium is running on this node",
+          "reason": "CiliumIsUp",
+          "status": "False",
+          "type": "NetworkUnavailable"
+        },
+        {
+          "lastHeartbeatTime": "2026-09-25T02:56:35Z",
+          "lastTransitionTime": "2026-09-25T02:53:21Z",
+          "message": "kubelet has sufficient memory available",
+          "reason": "KubeletHasSufficientMemory",
+          "status": "False",
+          "type": "MemoryPressure"
+        },
+        {
+          "lastHeartbeatTime": "2026-09-25T02:56:35Z",
+          "lastTransitionTime": "2026-09-25T02:53:21Z",
+          "message": "kubelet has no disk pressure",
+          "reason": "KubeletHasNoDiskPressure",
+          "status": "False",
+          "type": "DiskPressure"
+        },
+        {
+          "lastHeartbeatTime": "2026-09-25T02:56:35Z",
+          "lastTransitionTime": "2026-09-25T02:53:21Z",
+          "message": "kubelet has sufficient PID available",
+          "reason": "KubeletHasSufficientPID",
+          "status": "False",
+          "type": "PIDPressure"
+        },
+        {
+          "lastHeartbeatTime": "2026-09-25T02:56:35Z",
+          "lastTransitionTime": "2026-09-25T02:53:21Z",
+          "message": "kubelet is posting ready status",
+          "reason": "KubeletReady",
+          "status": "True",
+          "type": "Ready"
+        }
+      ]
+    },
+    {
+      "name": "ubuntu-gpu-01",
+      "allocatable": {
+        "cpu": "18500m",
+        "ephemeral-storage": "201200833396",
+        "hugepages-1Gi": "0",
+        "hugepages-2Mi": "0",
+        "memory": "28171320Ki",
+        "nvidia.com/gpu": "1",
+        "pods": "40"
+      },
+      "conditions": [
+        {
+          "lastHeartbeatTime": "2026-09-24T01:46:34Z",
+          "lastTransitionTime": "2026-09-24T01:46:34Z",
+          "message": "Cilium is running on this node",
+          "reason": "CiliumIsUp",
+          "status": "False",
+          "type": "NetworkUnavailable"
+        },
+        {
+          "lastHeartbeatTime": "2026-09-24T23:46:27Z",
+          "lastTransitionTime": "2026-09-24T23:52:01Z",
+          "message": "Kubelet stopped posting node status.",
+          "reason": "NodeStatusUnknown",
+          "status": "Unknown",
+          "type": "MemoryPressure"
+        },
+        {
+          "lastHeartbeatTime": "2026-09-24T23:46:27Z",
+          "lastTransitionTime": "2026-09-24T23:52:01Z",
+          "message": "Kubelet stopped posting node status.",
+          "reason": "NodeStatusUnknown",
+          "status": "Unknown",
+          "type": "DiskPressure"
+        },
+        {
+          "lastHeartbeatTime": "2026-09-24T23:46:27Z",
+          "lastTransitionTime": "2026-09-24T23:52:01Z",
+          "message": "Kubelet stopped posting node status.",
+          "reason": "NodeStatusUnknown",
+          "status": "Unknown",
+          "type": "PIDPressure"
+        },
+        {
+          "lastHeartbeatTime": "2026-09-24T23:46:27Z",
+          "lastTransitionTime": "2026-09-24T23:52:01Z",
+          "message": "Kubelet stopped posting node status.",
+          "reason": "NodeStatusUnknown",
+          "status": "Unknown",
+          "type": "Ready"
+        }
+      ]
+    }
+  ]
+}

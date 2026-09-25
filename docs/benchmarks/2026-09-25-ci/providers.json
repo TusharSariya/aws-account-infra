@@ -1,0 +1,58 @@
+{
+  "provider": "bpg/proxmox from committed lockfile",
+  "platform": "darwin_arm64",
+  "transport": "local archive; Nexus HTTP latency excluded",
+  "export_seconds": 0.2952208329952555,
+  "archive_bytes": 10243632,
+  "expanded_bytes": 27623976,
+  "runs": [
+    {
+      "variant": "before-cold",
+      "repeat": 0,
+      "total_seconds": 2.9490852919989266,
+      "restore_seconds": 0,
+      "init_seconds": 2.9490847919951193,
+      "returncode": 0
+    },
+    {
+      "variant": "after-restored",
+      "repeat": 0,
+      "total_seconds": 0.6575813749950612,
+      "restore_seconds": 0.0634964589989977,
+      "init_seconds": 0.5940825830039103,
+      "returncode": 0
+    },
+    {
+      "variant": "before-cold",
+      "repeat": 1,
+      "total_seconds": 2.3643348749901634,
+      "restore_seconds": 0,
+      "init_seconds": 2.364334333993611,
+      "returncode": 0
+    },
+    {
+      "variant": "after-restored",
+      "repeat": 1,
+      "total_seconds": 0.6536086249980144,
+      "restore_seconds": 0.06241649998992216,
+      "init_seconds": 0.5911905829998432,
+      "returncode": 0
+    },
+    {
+      "variant": "before-cold",
+      "repeat": 2,
+      "total_seconds": 2.572208124998724,
+      "restore_seconds": 0,
+      "init_seconds": 2.572207374993013,
+      "returncode": 0
+    },
+    {
+      "variant": "after-restored",
+      "repeat": 2,
+      "total_seconds": 0.6429041250084992,
+      "restore_seconds": 0.0627510830090614,
+      "init_seconds": 0.5801513750047889,
+      "returncode": 0
+    }
+  ]
+}

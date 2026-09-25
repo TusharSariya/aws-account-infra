@@ -1,0 +1,14 @@
+{
+  "observed_at": "2026-09-25T04:02:20.828331+00:00",
+  "revision": 12,
+  "status": "deployed",
+  "changed_path": "Deployment/kueue-system/kueue-controller-manager/spec/template/spec/containers/0/args/1",
+  "before": "--zap-log-level=2",
+  "after": "--zap-log-level=info",
+  "log_observations": {
+    "window_seconds": 30,
+    "before_bytes_at_least": 2000000,
+    "after_bytes": 2722,
+    "matched_load": false
+  }
+}

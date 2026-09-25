@@ -1,0 +1,2772 @@
+[
+  {
+    "created_at": "2026-09-25T02:31:39Z",
+    "head_branch": "main",
+    "head_sha": "71458e126bf2e4771bc1a9a3d6129c5e6b891d3e",
+    "id": 36086620084,
+    "name": "lambda-package",
+    "jobs": [
+      {
+        "name": "package",
+        "conclusion": "success",
+        "runner": "homelab-talos-docker-small-mrtj7-runner-sjqhf",
+        "queue_seconds": 91.0,
+        "execution_seconds": 454.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 6.0
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-runner-setup",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run astral-sh/setup-uv@v6",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run docker/setup-qemu-action@v3",
+            "seconds": 10.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-build-cache",
+            "seconds": 0.0
+          },
+          {
+            "name": "Run docker/setup-buildx-action@v3",
+            "seconds": 7.0
+          },
+          {
+            "name": "Test",
+            "seconds": 242.0
+          },
+          {
+            "name": "iRacing calendar tests",
+            "seconds": 13.0
+          },
+          {
+            "name": "Swimming calendar tests",
+            "seconds": 7.0
+          },
+          {
+            "name": "Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 1.0
+          },
+          {
+            "name": "Package and upload",
+            "seconds": 148.0
+          },
+          {
+            "name": "Skip until account apply",
+            "seconds": 0.0
+          },
+          {
+            "name": "Comment key on PR",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run docker/setup-buildx-action@v3",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run docker/setup-qemu-action@v3",
+            "seconds": 7.0
+          },
+          {
+            "name": "Post Run astral-sh/setup-uv@v6",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      }
+    ],
+    "cache_state": "unknown",
+    "url": "https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/36086620084",
+    "elapsed_seconds": 546.0,
+    "runner_seconds": 454.0
+  },
+  {
+    "created_at": "2026-09-25T02:12:48Z",
+    "head_branch": "feat/court-booker-coaching",
+    "head_sha": "87aa44b154d43a019b356d567337d207b2bafefc",
+    "id": 36085320923,
+    "name": "tofu-plan",
+    "jobs": [
+      {
+        "name": "detect",
+        "conclusion": "success",
+        "runner": "homelab-talos-light-w84qw-runner-8ccq8",
+        "queue_seconds": 49.0,
+        "execution_seconds": 11.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-runner-setup",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run units=$(python3 scripts/deploy-units.py changed \"$BASE_SHA\" \"$HEAD_SHA\")",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 1.0
+          }
+        ]
+      },
+      {
+        "name": "plan (aws-staging-court-booker-api, aws, staging, live/aws/staging/workloads/lambda/python/court-...",
+        "conclusion": "success",
+        "runner": "homelab-talos-checks-sfvz9-runner-bjp2p",
+        "queue_seconds": 25.0,
+        "execution_seconds": 108.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 4.0
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-runner-setup",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run astral-sh/setup-uv@v6",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run ./.github/actions/setup-opentofu",
+            "seconds": 2.0
+          },
+          {
+            "name": "format",
+            "seconds": 1.0
+          },
+          {
+            "name": "initialize",
+            "seconds": 51.0
+          },
+          {
+            "name": "validate",
+            "seconds": 14.0
+          },
+          {
+            "name": "plan",
+            "seconds": 22.0
+          },
+          {
+            "name": "comment plan",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run astral-sh/setup-uv@v6",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "seconds": 1.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      },
+      {
+        "name": "plan (aws-staging-court-booker, aws, staging, live/aws/staging/workloads/court-booker, config/env...",
+        "conclusion": "success",
+        "runner": "homelab-talos-checks-sfvz9-runner-mzgfk",
+        "queue_seconds": 26.0,
+        "execution_seconds": 114.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 9.0
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-runner-setup",
+            "seconds": 0.0
+          },
+          {
+            "name": "Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run astral-sh/setup-uv@v6",
+            "seconds": 4.0
+          },
+          {
+            "name": "Run ./.github/actions/setup-opentofu",
+            "seconds": 2.0
+          },
+          {
+            "name": "format",
+            "seconds": 1.0
+          },
+          {
+            "name": "initialize",
+            "seconds": 50.0
+          },
+          {
+            "name": "validate",
+            "seconds": 15.0
+          },
+          {
+            "name": "plan",
+            "seconds": 20.0
+          },
+          {
+            "name": "comment plan",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run astral-sh/setup-uv@v6",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      },
+      {
+        "name": "applications-plan",
+        "conclusion": "skipped",
+        "runner": null,
+        "queue_seconds": null,
+        "execution_seconds": null,
+        "steps": []
+      },
+      {
+        "name": "proxmox-plan",
+        "conclusion": "skipped",
+        "runner": null,
+        "queue_seconds": null,
+        "execution_seconds": null,
+        "steps": []
+      },
+      {
+        "name": "talos-plan",
+        "conclusion": "skipped",
+        "runner": null,
+        "queue_seconds": null,
+        "execution_seconds": null,
+        "steps": []
+      },
+      {
+        "name": "plan-gate",
+        "conclusion": "success",
+        "runner": "homelab-talos-light-w84qw-runner-s6l5p",
+        "queue_seconds": 31.0,
+        "execution_seconds": 10.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 0.0
+          },
+          {
+            "name": "gate",
+            "seconds": 0.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 4.0
+          }
+        ]
+      }
+    ],
+    "cache_state": "unknown",
+    "url": "https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/36085320923",
+    "elapsed_seconds": 243.0,
+    "runner_seconds": 243.0
+  },
+  {
+    "created_at": "2026-09-25T02:12:48Z",
+    "head_branch": "feat/court-booker-coaching",
+    "head_sha": "87aa44b154d43a019b356d567337d207b2bafefc",
+    "id": 36085320675,
+    "name": "lambda-package",
+    "jobs": [
+      {
+        "name": "package",
+        "conclusion": "success",
+        "runner": "homelab-talos-docker-small-mrtj7-runner-8zwgt",
+        "queue_seconds": 92.0,
+        "execution_seconds": 488.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 7.0
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-runner-setup",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run astral-sh/setup-uv@v6",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run docker/setup-qemu-action@v3",
+            "seconds": 18.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-build-cache",
+            "seconds": 0.0
+          },
+          {
+            "name": "Run docker/setup-buildx-action@v3",
+            "seconds": 6.0
+          },
+          {
+            "name": "Test",
+            "seconds": 261.0
+          },
+          {
+            "name": "iRacing calendar tests",
+            "seconds": 14.0
+          },
+          {
+            "name": "Swimming calendar tests",
+            "seconds": 7.0
+          },
+          {
+            "name": "Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 1.0
+          },
+          {
+            "name": "Package and upload",
+            "seconds": 148.0
+          },
+          {
+            "name": "Skip until account apply",
+            "seconds": 0.0
+          },
+          {
+            "name": "Comment key on PR",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run docker/setup-buildx-action@v3",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run docker/setup-qemu-action@v3",
+            "seconds": 11.0
+          },
+          {
+            "name": "Post Run astral-sh/setup-uv@v6",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      }
+    ],
+    "cache_state": "unknown",
+    "url": "https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/36085320675",
+    "elapsed_seconds": 581.0,
+    "runner_seconds": 488.0
+  },
+  {
+    "created_at": "2026-09-25T01:55:30Z",
+    "head_branch": "feat/court-booker-ack-window",
+    "head_sha": "c8e60b3655d4b92d2629b83630b3043601849b97",
+    "id": 36084098842,
+    "name": "tofu-plan",
+    "jobs": [
+      {
+        "name": "detect",
+        "conclusion": "success",
+        "runner": "homelab-talos-light-w84qw-runner-nwphj",
+        "queue_seconds": 587.0,
+        "execution_seconds": 12.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "seconds": 4.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-runner-setup",
+            "seconds": 0.0
+          },
+          {
+            "name": "Run units=$(python3 scripts/deploy-units.py changed \"$BASE_SHA\" \"$HEAD_SHA\")",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "seconds": 1.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      },
+      {
+        "name": "plan (aws-staging-court-booker-api, aws, staging, live/aws/staging/workloads/lambda/python/court-...",
+        "conclusion": "success",
+        "runner": "homelab-talos-checks-sfvz9-runner-m9bzr",
+        "queue_seconds": 58.0,
+        "execution_seconds": 104.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 4.0
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-runner-setup",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run astral-sh/setup-uv@v6",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run ./.github/actions/setup-opentofu",
+            "seconds": 2.0
+          },
+          {
+            "name": "format",
+            "seconds": 0.0
+          },
+          {
+            "name": "initialize",
+            "seconds": 48.0
+          },
+          {
+            "name": "validate",
+            "seconds": 15.0
+          },
+          {
+            "name": "plan",
+            "seconds": 22.0
+          },
+          {
+            "name": "comment plan",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run astral-sh/setup-uv@v6",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "seconds": 1.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      },
+      {
+        "name": "applications-plan",
+        "conclusion": "skipped",
+        "runner": null,
+        "queue_seconds": null,
+        "execution_seconds": null,
+        "steps": []
+      },
+      {
+        "name": "talos-plan",
+        "conclusion": "skipped",
+        "runner": null,
+        "queue_seconds": null,
+        "execution_seconds": null,
+        "steps": []
+      },
+      {
+        "name": "proxmox-plan",
+        "conclusion": "skipped",
+        "runner": null,
+        "queue_seconds": null,
+        "execution_seconds": null,
+        "steps": []
+      },
+      {
+        "name": "plan-gate",
+        "conclusion": "success",
+        "runner": "homelab-talos-light-w84qw-runner-65jcb",
+        "queue_seconds": 29.0,
+        "execution_seconds": 8.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 0.0
+          },
+          {
+            "name": "gate",
+            "seconds": 0.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      }
+    ],
+    "cache_state": "unknown",
+    "url": "https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/36084098842",
+    "elapsed_seconds": 801.0,
+    "runner_seconds": 124.0
+  },
+  {
+    "created_at": "2026-09-25T01:55:30Z",
+    "head_branch": "feat/court-booker-ack-window",
+    "head_sha": "c8e60b3655d4b92d2629b83630b3043601849b97",
+    "id": 36084098769,
+    "name": "lambda-package",
+    "jobs": [
+      {
+        "name": "package",
+        "conclusion": "success",
+        "runner": "homelab-talos-docker-small-mrtj7-runner-v5chj",
+        "queue_seconds": 90.0,
+        "execution_seconds": 601.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 6.0
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-runner-setup",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run astral-sh/setup-uv@v6",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run docker/setup-qemu-action@v3",
+            "seconds": 9.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-build-cache",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run docker/setup-buildx-action@v3",
+            "seconds": 6.0
+          },
+          {
+            "name": "Test",
+            "seconds": 381.0
+          },
+          {
+            "name": "iRacing calendar tests",
+            "seconds": 15.0
+          },
+          {
+            "name": "Swimming calendar tests",
+            "seconds": 9.0
+          },
+          {
+            "name": "Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 1.0
+          },
+          {
+            "name": "Package and upload",
+            "seconds": 151.0
+          },
+          {
+            "name": "Skip until account apply",
+            "seconds": 0.0
+          },
+          {
+            "name": "Comment key on PR",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run docker/setup-buildx-action@v3",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run docker/setup-qemu-action@v3",
+            "seconds": 6.0
+          },
+          {
+            "name": "Post Run astral-sh/setup-uv@v6",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "seconds": 1.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      }
+    ],
+    "cache_state": "unknown",
+    "url": "https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/36084098769",
+    "elapsed_seconds": 1958.0,
+    "runner_seconds": 601.0
+  },
+  {
+    "created_at": "2026-09-25T01:53:47Z",
+    "head_branch": "feat/court-booker-ack-window",
+    "head_sha": "cf56e6db198c4f391b6ab2ab66d598ea206d3e2a",
+    "id": 36083981028,
+    "name": "lambda-package",
+    "jobs": [
+      {
+        "name": "package",
+        "conclusion": "success",
+        "runner": "homelab-talos-docker-small-mrtj7-runner-hms6g",
+        "queue_seconds": 730.0,
+        "execution_seconds": 638.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 6.0
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-runner-setup",
+            "seconds": 4.0
+          },
+          {
+            "name": "Run astral-sh/setup-uv@v6",
+            "seconds": 4.0
+          },
+          {
+            "name": "Run docker/setup-qemu-action@v3",
+            "seconds": 15.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-build-cache",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run docker/setup-buildx-action@v3",
+            "seconds": 8.0
+          },
+          {
+            "name": "Test",
+            "seconds": 393.0
+          },
+          {
+            "name": "iRacing calendar tests",
+            "seconds": 14.0
+          },
+          {
+            "name": "Swimming calendar tests",
+            "seconds": 7.0
+          },
+          {
+            "name": "Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 2.0
+          },
+          {
+            "name": "Package and upload",
+            "seconds": 163.0
+          },
+          {
+            "name": "Skip until account apply",
+            "seconds": 0.0
+          },
+          {
+            "name": "Comment key on PR",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run docker/setup-buildx-action@v3",
+            "seconds": 2.0
+          },
+          {
+            "name": "Post Run docker/setup-qemu-action@v3",
+            "seconds": 11.0
+          },
+          {
+            "name": "Post Run astral-sh/setup-uv@v6",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      }
+    ],
+    "cache_state": "unknown",
+    "url": "https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/36083981028",
+    "elapsed_seconds": 1369.0,
+    "runner_seconds": 638.0
+  },
+  {
+    "created_at": "2026-09-24T20:33:02Z",
+    "head_branch": "fix/retire-backup-kms",
+    "head_sha": "16a3d3d6f31fc76987f4886c2c63b77468d76491",
+    "id": 36055621722,
+    "name": "homelab-config-tests",
+    "jobs": [
+      {
+        "name": "offline-validation",
+        "conclusion": "success",
+        "runner": "homelab-talos-docker-small-mrtj7-runner-g7p5b",
+        "queue_seconds": 739.0,
+        "execution_seconds": 166.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-runner-setup",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run ./.github/actions/setup-opentofu",
+            "seconds": 3.0
+          },
+          {
+            "name": "Validate workflow syntax",
+            "seconds": 7.0
+          },
+          {
+            "name": "Check shell and Python syntax",
+            "seconds": 0.0
+          },
+          {
+            "name": "Validate Proxmox definitions without a backend or credentials",
+            "seconds": 7.0
+          },
+          {
+            "name": "Run astral-sh/setup-uv@v6",
+            "seconds": 3.0
+          },
+          {
+            "name": "Validate Talos definitions and migration guards",
+            "seconds": 27.0
+          },
+          {
+            "name": "Validate backup role and missing-heartbeat controls",
+            "seconds": 105.0
+          },
+          {
+            "name": "Post Run astral-sh/setup-uv@v6",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      }
+    ],
+    "cache_state": "unknown",
+    "url": "https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/36055621722",
+    "elapsed_seconds": 905.0,
+    "runner_seconds": 166.0
+  },
+  {
+    "created_at": "2026-09-24T20:33:02Z",
+    "head_branch": "fix/retire-backup-kms",
+    "head_sha": "16a3d3d6f31fc76987f4886c2c63b77468d76491",
+    "id": 36055621556,
+    "name": "tofu-plan",
+    "jobs": [
+      {
+        "name": "detect",
+        "conclusion": "success",
+        "runner": "homelab-talos-light-w84qw-runner-hjz8k",
+        "queue_seconds": 697.0,
+        "execution_seconds": 12.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-runner-setup",
+            "seconds": 0.0
+          },
+          {
+            "name": "Run units=$(python3 scripts/deploy-units.py changed \"$BASE_SHA\" \"$HEAD_SHA\")",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "seconds": 1.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      },
+      {
+        "name": "plan (aws-staging-account, aws, staging, live/aws/staging/account, config/environments/aws/stagin...",
+        "conclusion": "success",
+        "runner": "homelab-talos-checks-sfvz9-runner-85zbq",
+        "queue_seconds": 60.0,
+        "execution_seconds": 104.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 4.0
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-runner-setup",
+            "seconds": 0.0
+          },
+          {
+            "name": "Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run astral-sh/setup-uv@v6",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run ./.github/actions/setup-opentofu",
+            "seconds": 3.0
+          },
+          {
+            "name": "format",
+            "seconds": 0.0
+          },
+          {
+            "name": "initialize",
+            "seconds": 47.0
+          },
+          {
+            "name": "validate",
+            "seconds": 15.0
+          },
+          {
+            "name": "plan",
+            "seconds": 21.0
+          },
+          {
+            "name": "comment plan",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run astral-sh/setup-uv@v6",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      },
+      {
+        "name": "plan (aws-staging-homelab-recovery, aws, staging, live/aws/staging/workloads/homelab-recovery, co...",
+        "conclusion": "success",
+        "runner": "homelab-talos-checks-sfvz9-runner-524h8",
+        "queue_seconds": 60.0,
+        "execution_seconds": 114.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 4.0
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-runner-setup",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run astral-sh/setup-uv@v6",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run ./.github/actions/setup-opentofu",
+            "seconds": 3.0
+          },
+          {
+            "name": "format",
+            "seconds": 0.0
+          },
+          {
+            "name": "initialize",
+            "seconds": 57.0
+          },
+          {
+            "name": "validate",
+            "seconds": 14.0
+          },
+          {
+            "name": "plan",
+            "seconds": 22.0
+          },
+          {
+            "name": "comment plan",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run astral-sh/setup-uv@v6",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      },
+      {
+        "name": "plan (aws-staging-rag, aws, staging, live/aws/staging/workloads/rag, config/environments/aws/stag...",
+        "conclusion": "success",
+        "runner": "homelab-talos-checks-sfvz9-runner-ksbvz",
+        "queue_seconds": 61.0,
+        "execution_seconds": 103.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 4.0
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-runner-setup",
+            "seconds": 0.0
+          },
+          {
+            "name": "Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run astral-sh/setup-uv@v6",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run ./.github/actions/setup-opentofu",
+            "seconds": 3.0
+          },
+          {
+            "name": "format",
+            "seconds": 0.0
+          },
+          {
+            "name": "initialize",
+            "seconds": 49.0
+          },
+          {
+            "name": "validate",
+            "seconds": 15.0
+          },
+          {
+            "name": "plan",
+            "seconds": 18.0
+          },
+          {
+            "name": "comment plan",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run astral-sh/setup-uv@v6",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      },
+      {
+        "name": "talos-plan",
+        "conclusion": "skipped",
+        "runner": null,
+        "queue_seconds": null,
+        "execution_seconds": null,
+        "steps": []
+      },
+      {
+        "name": "proxmox-plan",
+        "conclusion": "skipped",
+        "runner": null,
+        "queue_seconds": null,
+        "execution_seconds": null,
+        "steps": []
+      },
+      {
+        "name": "applications-plan",
+        "conclusion": "skipped",
+        "runner": null,
+        "queue_seconds": null,
+        "execution_seconds": null,
+        "steps": []
+      },
+      {
+        "name": "plan-gate",
+        "conclusion": "success",
+        "runner": "homelab-talos-light-w84qw-runner-sc849",
+        "queue_seconds": 50.0,
+        "execution_seconds": 7.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 0.0
+          },
+          {
+            "name": "gate",
+            "seconds": 0.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      }
+    ],
+    "cache_state": "unknown",
+    "url": "https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/36055621556",
+    "elapsed_seconds": 942.0,
+    "runner_seconds": 340.0
+  },
+  {
+    "created_at": "2026-09-24T18:46:38Z",
+    "head_branch": "feat/technology-digest",
+    "head_sha": "6307eb0e49de5bde4c42a0218d7932953c7759c5",
+    "id": 36043592627,
+    "name": "homelab-apps-tests",
+    "jobs": [
+      {
+        "name": "application-contracts",
+        "conclusion": "success",
+        "runner": "homelab-talos-docker-small-mrtj7-runner-87qdl",
+        "queue_seconds": 711.0,
+        "execution_seconds": 128.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-runner-setup",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run astral-sh/setup-uv@v6",
+            "seconds": 4.0
+          },
+          {
+            "name": "Run azure/setup-helm@v4.3.1",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run ./.github/actions/setup-opentofu",
+            "seconds": 3.0
+          },
+          {
+            "name": "Verify charts and application contracts",
+            "seconds": 105.0
+          },
+          {
+            "name": "Post Run astral-sh/setup-uv@v6",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "seconds": 1.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      }
+    ],
+    "cache_state": "unknown",
+    "url": "https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/36043592627",
+    "elapsed_seconds": 840.0,
+    "runner_seconds": 128.0
+  },
+  {
+    "created_at": "2026-09-24T18:46:38Z",
+    "head_branch": "feat/technology-digest",
+    "head_sha": "6307eb0e49de5bde4c42a0218d7932953c7759c5",
+    "id": 36043592522,
+    "name": "tofu-plan",
+    "jobs": [
+      {
+        "name": "detect",
+        "conclusion": "success",
+        "runner": "homelab-talos-light-w84qw-runner-rdj8k",
+        "queue_seconds": 673.0,
+        "execution_seconds": 12.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-runner-setup",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run units=$(python3 scripts/deploy-units.py changed \"$BASE_SHA\" \"$HEAD_SHA\")",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      },
+      {
+        "name": "plan (aws-staging-technology-digest, aws, staging, live/aws/staging/workloads/technology-digest, ...",
+        "conclusion": "success",
+        "runner": "homelab-talos-checks-sfvz9-runner-2s6lq",
+        "queue_seconds": 65.0,
+        "execution_seconds": 108.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 4.0
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-runner-setup",
+            "seconds": 0.0
+          },
+          {
+            "name": "Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run astral-sh/setup-uv@v6",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run ./.github/actions/setup-opentofu",
+            "seconds": 4.0
+          },
+          {
+            "name": "format",
+            "seconds": 0.0
+          },
+          {
+            "name": "initialize",
+            "seconds": 51.0
+          },
+          {
+            "name": "validate",
+            "seconds": 15.0
+          },
+          {
+            "name": "plan",
+            "seconds": 20.0
+          },
+          {
+            "name": "comment plan",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run astral-sh/setup-uv@v6",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "seconds": 1.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      },
+      {
+        "name": "talos-plan",
+        "conclusion": "skipped",
+        "runner": null,
+        "queue_seconds": null,
+        "execution_seconds": null,
+        "steps": []
+      },
+      {
+        "name": "proxmox-plan",
+        "conclusion": "skipped",
+        "runner": null,
+        "queue_seconds": null,
+        "execution_seconds": null,
+        "steps": []
+      },
+      {
+        "name": "applications-plan",
+        "conclusion": "skipped",
+        "runner": null,
+        "queue_seconds": null,
+        "execution_seconds": null,
+        "steps": []
+      },
+      {
+        "name": "plan-gate",
+        "conclusion": "success",
+        "runner": "homelab-talos-light-w84qw-runner-bvx9j",
+        "queue_seconds": 45.0,
+        "execution_seconds": 7.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 0.0
+          },
+          {
+            "name": "gate",
+            "seconds": 0.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      }
+    ],
+    "cache_state": "unknown",
+    "url": "https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/36043592522",
+    "elapsed_seconds": 913.0,
+    "runner_seconds": 127.0
+  },
+  {
+    "created_at": "2026-09-24T18:46:38Z",
+    "head_branch": "feat/technology-digest",
+    "head_sha": "6307eb0e49de5bde4c42a0218d7932953c7759c5",
+    "id": 36043592586,
+    "name": "homelab-config-tests",
+    "jobs": [
+      {
+        "name": "offline-validation",
+        "conclusion": "success",
+        "runner": "homelab-talos-docker-small-mrtj7-runner-g89z2",
+        "queue_seconds": 869.0,
+        "execution_seconds": 150.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-runner-setup",
+            "seconds": 0.0
+          },
+          {
+            "name": "Run ./.github/actions/setup-opentofu",
+            "seconds": 4.0
+          },
+          {
+            "name": "Validate workflow syntax",
+            "seconds": 6.0
+          },
+          {
+            "name": "Check shell and Python syntax",
+            "seconds": 0.0
+          },
+          {
+            "name": "Validate Proxmox definitions without a backend or credentials",
+            "seconds": 6.0
+          },
+          {
+            "name": "Run astral-sh/setup-uv@v6",
+            "seconds": 6.0
+          },
+          {
+            "name": "Validate Talos definitions and migration guards",
+            "seconds": 24.0
+          },
+          {
+            "name": "Validate backup role and missing-heartbeat controls",
+            "seconds": 91.0
+          },
+          {
+            "name": "Post Run astral-sh/setup-uv@v6",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      }
+    ],
+    "cache_state": "unknown",
+    "url": "https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/36043592586",
+    "elapsed_seconds": 1020.0,
+    "runner_seconds": 150.0
+  },
+  {
+    "created_at": "2026-09-24T18:45:01Z",
+    "head_branch": "fix/retire-backup-kms",
+    "head_sha": "9338f23fc9283379cf9a9258bde09a665cb32e4a",
+    "id": 36043398710,
+    "name": "tofu-plan",
+    "jobs": [
+      {
+        "name": "detect",
+        "conclusion": "success",
+        "runner": "homelab-talos-light-w84qw-runner-km8b6",
+        "queue_seconds": 770.0,
+        "execution_seconds": 13.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-runner-setup",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run units=$(python3 scripts/deploy-units.py changed \"$BASE_SHA\" \"$HEAD_SHA\")",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "seconds": 2.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      },
+      {
+        "name": "plan (aws-staging-rag, aws, staging, live/aws/staging/workloads/rag, config/environments/aws/stag...",
+        "conclusion": "success",
+        "runner": "homelab-talos-checks-sfvz9-runner-flrhw",
+        "queue_seconds": 66.0,
+        "execution_seconds": 107.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 6.0
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-runner-setup",
+            "seconds": 0.0
+          },
+          {
+            "name": "Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run astral-sh/setup-uv@v6",
+            "seconds": 9.0
+          },
+          {
+            "name": "Run ./.github/actions/setup-opentofu",
+            "seconds": 4.0
+          },
+          {
+            "name": "format",
+            "seconds": 0.0
+          },
+          {
+            "name": "initialize",
+            "seconds": 47.0
+          },
+          {
+            "name": "validate",
+            "seconds": 13.0
+          },
+          {
+            "name": "plan",
+            "seconds": 17.0
+          },
+          {
+            "name": "comment plan",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run astral-sh/setup-uv@v6",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      },
+      {
+        "name": "plan (aws-staging-homelab-recovery, aws, staging, live/aws/staging/workloads/homelab-recovery, co...",
+        "conclusion": "success",
+        "runner": "homelab-talos-checks-sfvz9-runner-lqpt5",
+        "queue_seconds": 70.0,
+        "execution_seconds": 114.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 4.0
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-runner-setup",
+            "seconds": 0.0
+          },
+          {
+            "name": "Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run astral-sh/setup-uv@v6",
+            "seconds": 5.0
+          },
+          {
+            "name": "Run ./.github/actions/setup-opentofu",
+            "seconds": 2.0
+          },
+          {
+            "name": "format",
+            "seconds": 0.0
+          },
+          {
+            "name": "initialize",
+            "seconds": 54.0
+          },
+          {
+            "name": "validate",
+            "seconds": 15.0
+          },
+          {
+            "name": "plan",
+            "seconds": 22.0
+          },
+          {
+            "name": "comment plan",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run astral-sh/setup-uv@v6",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      },
+      {
+        "name": "talos-plan",
+        "conclusion": "skipped",
+        "runner": null,
+        "queue_seconds": null,
+        "execution_seconds": null,
+        "steps": []
+      },
+      {
+        "name": "proxmox-plan",
+        "conclusion": "skipped",
+        "runner": null,
+        "queue_seconds": null,
+        "execution_seconds": null,
+        "steps": []
+      },
+      {
+        "name": "applications-plan",
+        "conclusion": "skipped",
+        "runner": null,
+        "queue_seconds": null,
+        "execution_seconds": null,
+        "steps": []
+      },
+      {
+        "name": "plan-gate",
+        "conclusion": "success",
+        "runner": "homelab-talos-light-w84qw-runner-cmqxq",
+        "queue_seconds": 36.0,
+        "execution_seconds": 7.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 1.0
+          },
+          {
+            "name": "gate",
+            "seconds": 1.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      }
+    ],
+    "cache_state": "unknown",
+    "url": "https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/36043398710",
+    "elapsed_seconds": 1012.0,
+    "runner_seconds": 241.0
+  },
+  {
+    "created_at": "2026-09-24T18:45:01Z",
+    "head_branch": "fix/retire-backup-kms",
+    "head_sha": "9338f23fc9283379cf9a9258bde09a665cb32e4a",
+    "id": 36043398691,
+    "name": "homelab-config-tests",
+    "jobs": [
+      {
+        "name": "offline-validation",
+        "conclusion": "success",
+        "runner": "homelab-talos-docker-small-mrtj7-runner-vrgb4",
+        "queue_seconds": 807.0,
+        "execution_seconds": 163.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-runner-setup",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run ./.github/actions/setup-opentofu",
+            "seconds": 3.0
+          },
+          {
+            "name": "Validate workflow syntax",
+            "seconds": 8.0
+          },
+          {
+            "name": "Check shell and Python syntax",
+            "seconds": 1.0
+          },
+          {
+            "name": "Validate Proxmox definitions without a backend or credentials",
+            "seconds": 6.0
+          },
+          {
+            "name": "Run astral-sh/setup-uv@v6",
+            "seconds": 3.0
+          },
+          {
+            "name": "Validate Talos definitions and migration guards",
+            "seconds": 26.0
+          },
+          {
+            "name": "Validate backup role and missing-heartbeat controls",
+            "seconds": 105.0
+          },
+          {
+            "name": "Post Run astral-sh/setup-uv@v6",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "seconds": 1.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      }
+    ],
+    "cache_state": "unknown",
+    "url": "https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/36043398691",
+    "elapsed_seconds": 970.0,
+    "runner_seconds": 163.0
+  },
+  {
+    "created_at": "2026-09-24T16:59:46Z",
+    "head_branch": "fix/aws-cost-cleanup",
+    "head_sha": "363465372e43eb880923a4899772824bfd77d5f2",
+    "id": 36031200124,
+    "name": "homelab-apps-tests",
+    "jobs": [
+      {
+        "name": "application-contracts",
+        "conclusion": "success",
+        "runner": "homelab-talos-docker-small-mrtj7-runner-ktcnl",
+        "queue_seconds": 217.0,
+        "execution_seconds": 126.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 4.0
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-runner-setup",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run astral-sh/setup-uv@v6",
+            "seconds": 5.0
+          },
+          {
+            "name": "Run azure/setup-helm@v4.3.1",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run ./.github/actions/setup-opentofu",
+            "seconds": 2.0
+          },
+          {
+            "name": "Verify charts and application contracts",
+            "seconds": 102.0
+          },
+          {
+            "name": "Post Run astral-sh/setup-uv@v6",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "seconds": 1.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      }
+    ],
+    "cache_state": "unknown",
+    "url": "https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/36031200124",
+    "elapsed_seconds": 343.0,
+    "runner_seconds": 126.0
+  },
+  {
+    "created_at": "2026-09-24T16:59:46Z",
+    "head_branch": "fix/aws-cost-cleanup",
+    "head_sha": "363465372e43eb880923a4899772824bfd77d5f2",
+    "id": 36031200121,
+    "name": "homelab-ci-admission",
+    "jobs": [
+      {
+        "name": "contracts",
+        "conclusion": "success",
+        "runner": "homelab-talos-checks-sfvz9-runner-7d7fr",
+        "queue_seconds": 169.0,
+        "execution_seconds": 210.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 4.0
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-runner-setup",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run astral-sh/setup-uv@v6",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run azure/setup-helm@v4.3.1",
+            "seconds": 22.0
+          },
+          {
+            "name": "Run actions/setup-go@v6",
+            "seconds": 23.0
+          },
+          {
+            "name": "Run ./.github/actions/setup-opentofu",
+            "seconds": 2.0
+          },
+          {
+            "name": "Verify admission artifacts, contracts and CEL behavior",
+            "seconds": 144.0
+          },
+          {
+            "name": "Post Run actions/setup-go@v6",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run astral-sh/setup-uv@v6",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      },
+      {
+        "name": "admission (cache, homelab-ci)",
+        "conclusion": "success",
+        "runner": "GitHub Actions 1000006229",
+        "queue_seconds": 98.0,
+        "execution_seconds": 40.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "seconds": 2.0
+          },
+          {
+            "name": "Check apply confirmation",
+            "seconds": 0.0
+          },
+          {
+            "name": "Run astral-sh/setup-uv@v6",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run ./.github/actions/setup-opentofu",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run azure/setup-helm@v4.3.1",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Run tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8",
+            "seconds": 4.0
+          },
+          {
+            "name": "Run sudo tailscale set --accept-routes=true",
+            "seconds": 0.0
+          },
+          {
+            "name": "Run umask 077",
+            "seconds": 0.0
+          },
+          {
+            "name": "Prepare independent cluster access and verified artifacts",
+            "seconds": 14.0
+          },
+          {
+            "name": "Hold application capacity during infrastructure work",
+            "seconds": 1.0
+          },
+          {
+            "name": "Guard exact plan and capacity",
+            "seconds": 7.0
+          },
+          {
+            "name": "Enroll existing repository GitHub App privately",
+            "seconds": 0.0
+          },
+          {
+            "name": "Apply saved plan and require fresh empty post-plan",
+            "seconds": 0.0
+          },
+          {
+            "name": "Preserve non-secret execution receipt",
+            "seconds": 0.0
+          },
+          {
+            "name": "Run actions/upload-artifact@v4",
+            "seconds": 1.0
+          },
+          {
+            "name": "Release only this run's maintenance hold",
+            "seconds": 1.0
+          },
+          {
+            "name": "Remove ephemeral credentials and saved plans",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run astral-sh/setup-uv@v6",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "seconds": 1.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      },
+      {
+        "name": "admission (management, homelab-management)",
+        "conclusion": "success",
+        "runner": "GitHub Actions 1000006228",
+        "queue_seconds": 3.0,
+        "execution_seconds": 92.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 7.0
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "seconds": 1.0
+          },
+          {
+            "name": "Check apply confirmation",
+            "seconds": 0.0
+          },
+          {
+            "name": "Run astral-sh/setup-uv@v6",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run ./.github/actions/setup-opentofu",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run azure/setup-helm@v4.3.1",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8",
+            "seconds": 5.0
+          },
+          {
+            "name": "Run sudo tailscale set --accept-routes=true",
+            "seconds": 0.0
+          },
+          {
+            "name": "Run umask 077",
+            "seconds": 0.0
+          },
+          {
+            "name": "Prepare independent cluster access and verified artifacts",
+            "seconds": 24.0
+          },
+          {
+            "name": "Hold application capacity during infrastructure work",
+            "seconds": 0.0
+          },
+          {
+            "name": "Guard exact plan and capacity",
+            "seconds": 40.0
+          },
+          {
+            "name": "Enroll existing repository GitHub App privately",
+            "seconds": 0.0
+          },
+          {
+            "name": "Apply saved plan and require fresh empty post-plan",
+            "seconds": 0.0
+          },
+          {
+            "name": "Preserve non-secret execution receipt",
+            "seconds": 0.0
+          },
+          {
+            "name": "Run actions/upload-artifact@v4",
+            "seconds": 2.0
+          },
+          {
+            "name": "Release only this run's maintenance hold",
+            "seconds": 0.0
+          },
+          {
+            "name": "Remove ephemeral credentials and saved plans",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8",
+            "seconds": 2.0
+          },
+          {
+            "name": "Post Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run astral-sh/setup-uv@v6",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      }
+    ],
+    "cache_state": "unknown",
+    "url": "https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/36031200121",
+    "elapsed_seconds": 518.0,
+    "runner_seconds": 342.0
+  },
+  {
+    "created_at": "2026-09-24T16:59:46Z",
+    "head_branch": "fix/aws-cost-cleanup",
+    "head_sha": "363465372e43eb880923a4899772824bfd77d5f2",
+    "id": 36031200298,
+    "name": "homelab-config-tests",
+    "jobs": [
+      {
+        "name": "offline-validation",
+        "conclusion": "success",
+        "runner": "homelab-talos-docker-small-mrtj7-runner-4cmfd",
+        "queue_seconds": 658.0,
+        "execution_seconds": 160.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-runner-setup",
+            "seconds": 0.0
+          },
+          {
+            "name": "Run ./.github/actions/setup-opentofu",
+            "seconds": 3.0
+          },
+          {
+            "name": "Validate workflow syntax",
+            "seconds": 5.0
+          },
+          {
+            "name": "Check shell and Python syntax",
+            "seconds": 0.0
+          },
+          {
+            "name": "Validate Proxmox definitions without a backend or credentials",
+            "seconds": 8.0
+          },
+          {
+            "name": "Run astral-sh/setup-uv@v6",
+            "seconds": 3.0
+          },
+          {
+            "name": "Validate Talos definitions and migration guards",
+            "seconds": 25.0
+          },
+          {
+            "name": "Validate backup role and missing-heartbeat controls",
+            "seconds": 105.0
+          },
+          {
+            "name": "Post Run astral-sh/setup-uv@v6",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      }
+    ],
+    "cache_state": "unknown",
+    "url": "https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/36031200298",
+    "elapsed_seconds": 819.0,
+    "runner_seconds": 160.0
+  },
+  {
+    "created_at": "2026-09-24T16:59:46Z",
+    "head_branch": "fix/aws-cost-cleanup",
+    "head_sha": "363465372e43eb880923a4899772824bfd77d5f2",
+    "id": 36031200220,
+    "name": "tofu-plan",
+    "jobs": [
+      {
+        "name": "applications-plan",
+        "conclusion": "success",
+        "runner": "homelab-talos-checks-sfvz9-runner-td8vc",
+        "queue_seconds": 610.0,
+        "execution_seconds": 73.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 5.0
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-runner-setup",
+            "seconds": 0.0
+          },
+          {
+            "name": "Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8",
+            "seconds": 7.0
+          },
+          {
+            "name": "Accept homelab subnet route",
+            "seconds": 0.0
+          },
+          {
+            "name": "Run ./.github/actions/setup-opentofu",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run astral-sh/setup-uv@v6",
+            "seconds": 3.0
+          },
+          {
+            "name": "Plan Kubernetes applications",
+            "seconds": 29.0
+          },
+          {
+            "name": "Comment sanitized application plan",
+            "seconds": 2.0
+          },
+          {
+            "name": "Post Run astral-sh/setup-uv@v6",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8",
+            "seconds": 14.0
+          },
+          {
+            "name": "Post Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      },
+      {
+        "name": "detect",
+        "conclusion": "success",
+        "runner": "homelab-talos-light-w84qw-runner-dm6bl",
+        "queue_seconds": null,
+        "execution_seconds": 14.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-runner-setup",
+            "seconds": 0.0
+          },
+          {
+            "name": "Run units=$(python3 scripts/deploy-units.py changed \"$BASE_SHA\" \"$HEAD_SHA\")",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      },
+      {
+        "name": "plan (aws-staging-homelab-recovery, aws, staging, live/aws/staging/workloads/homelab-recovery, co...",
+        "conclusion": "success",
+        "runner": "homelab-talos-checks-sfvz9-runner-lpc9g",
+        "queue_seconds": null,
+        "execution_seconds": 109.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 5.0
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-runner-setup",
+            "seconds": 0.0
+          },
+          {
+            "name": "Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run astral-sh/setup-uv@v6",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run ./.github/actions/setup-opentofu",
+            "seconds": 2.0
+          },
+          {
+            "name": "format",
+            "seconds": 0.0
+          },
+          {
+            "name": "initialize",
+            "seconds": 48.0
+          },
+          {
+            "name": "validate",
+            "seconds": 16.0
+          },
+          {
+            "name": "plan",
+            "seconds": 25.0
+          },
+          {
+            "name": "comment plan",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run astral-sh/setup-uv@v6",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      },
+      {
+        "name": "talos-plan",
+        "conclusion": "skipped",
+        "runner": null,
+        "queue_seconds": null,
+        "execution_seconds": null,
+        "steps": []
+      },
+      {
+        "name": "proxmox-plan",
+        "conclusion": "skipped",
+        "runner": null,
+        "queue_seconds": null,
+        "execution_seconds": null,
+        "steps": []
+      },
+      {
+        "name": "plan (aws-staging-rag, aws, staging, live/aws/staging/workloads/rag, config/environments/aws/stag...",
+        "conclusion": "success",
+        "runner": "homelab-talos-checks-sfvz9-runner-7wmwh",
+        "queue_seconds": null,
+        "execution_seconds": 104.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 7.0
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-runner-setup",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run astral-sh/setup-uv@v6",
+            "seconds": 4.0
+          },
+          {
+            "name": "Run ./.github/actions/setup-opentofu",
+            "seconds": 3.0
+          },
+          {
+            "name": "format",
+            "seconds": 0.0
+          },
+          {
+            "name": "initialize",
+            "seconds": 45.0
+          },
+          {
+            "name": "validate",
+            "seconds": 14.0
+          },
+          {
+            "name": "plan",
+            "seconds": 17.0
+          },
+          {
+            "name": "comment plan",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run astral-sh/setup-uv@v6",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      },
+      {
+        "name": "plan-gate",
+        "conclusion": "success",
+        "runner": "homelab-talos-light-w84qw-runner-gw5kv",
+        "queue_seconds": 28.0,
+        "execution_seconds": 7.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 0.0
+          },
+          {
+            "name": "gate",
+            "seconds": 0.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      }
+    ],
+    "cache_state": "unknown",
+    "url": "https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/36031200220",
+    "elapsed_seconds": 4740.0,
+    "runner_seconds": 307.0
+  },
+  {
+    "created_at": "2026-09-24T16:50:30Z",
+    "head_branch": "feat/technology-digest",
+    "head_sha": "40729197262b8a4b2fb1ffccddf3ae43aef640e9",
+    "id": 36030150386,
+    "name": "homelab-config-tests",
+    "jobs": [
+      {
+        "name": "offline-validation",
+        "conclusion": "success",
+        "runner": "homelab-talos-docker-small-mrtj7-runner-2v4qc",
+        "queue_seconds": 1211.0,
+        "execution_seconds": 160.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-runner-setup",
+            "seconds": 0.0
+          },
+          {
+            "name": "Run ./.github/actions/setup-opentofu",
+            "seconds": 3.0
+          },
+          {
+            "name": "Validate workflow syntax",
+            "seconds": 6.0
+          },
+          {
+            "name": "Check shell and Python syntax",
+            "seconds": 0.0
+          },
+          {
+            "name": "Validate Proxmox definitions without a backend or credentials",
+            "seconds": 8.0
+          },
+          {
+            "name": "Run astral-sh/setup-uv@v6",
+            "seconds": 4.0
+          },
+          {
+            "name": "Validate Talos definitions and migration guards",
+            "seconds": 26.0
+          },
+          {
+            "name": "Validate backup role and missing-heartbeat controls",
+            "seconds": 100.0
+          },
+          {
+            "name": "Post Run astral-sh/setup-uv@v6",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      }
+    ],
+    "cache_state": "unknown",
+    "url": "https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/36030150386",
+    "elapsed_seconds": 1373.0,
+    "runner_seconds": 160.0
+  },
+  {
+    "created_at": "2026-09-24T16:50:30Z",
+    "head_branch": "feat/technology-digest",
+    "head_sha": "40729197262b8a4b2fb1ffccddf3ae43aef640e9",
+    "id": 36030150178,
+    "name": "tofu-plan",
+    "jobs": [
+      {
+        "name": "detect",
+        "conclusion": "success",
+        "runner": "homelab-talos-light-w84qw-runner-f94r7",
+        "queue_seconds": 816.0,
+        "execution_seconds": 13.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-runner-setup",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run units=$(python3 scripts/deploy-units.py changed \"$BASE_SHA\" \"$HEAD_SHA\")",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "seconds": 1.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      },
+      {
+        "name": "plan (aws-staging-technology-digest, aws, staging, live/aws/staging/workloads/technology-digest, ...",
+        "conclusion": "success",
+        "runner": "homelab-talos-checks-sfvz9-runner-dwwz6",
+        "queue_seconds": 264.0,
+        "execution_seconds": 113.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 7.0
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-runner-setup",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run astral-sh/setup-uv@v6",
+            "seconds": 8.0
+          },
+          {
+            "name": "Run ./.github/actions/setup-opentofu",
+            "seconds": 3.0
+          },
+          {
+            "name": "format",
+            "seconds": 0.0
+          },
+          {
+            "name": "initialize",
+            "seconds": 48.0
+          },
+          {
+            "name": "validate",
+            "seconds": 14.0
+          },
+          {
+            "name": "plan",
+            "seconds": 19.0
+          },
+          {
+            "name": "comment plan",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run astral-sh/setup-uv@v6",
+            "seconds": 1.0
+          },
+          {
+            "name": "Post Run aws-actions/configure-aws-credentials@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "seconds": 0.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      },
+      {
+        "name": "talos-plan",
+        "conclusion": "skipped",
+        "runner": null,
+        "queue_seconds": null,
+        "execution_seconds": null,
+        "steps": []
+      },
+      {
+        "name": "proxmox-plan",
+        "conclusion": "skipped",
+        "runner": null,
+        "queue_seconds": null,
+        "execution_seconds": null,
+        "steps": []
+      },
+      {
+        "name": "applications-plan",
+        "conclusion": "skipped",
+        "runner": null,
+        "queue_seconds": null,
+        "execution_seconds": null,
+        "steps": []
+      },
+      {
+        "name": "plan-gate",
+        "conclusion": "success",
+        "runner": "homelab-talos-light-w84qw-runner-v5hjm",
+        "queue_seconds": 48.0,
+        "execution_seconds": 8.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 0.0
+          },
+          {
+            "name": "gate",
+            "seconds": 0.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      }
+    ],
+    "cache_state": "unknown",
+    "url": "https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/36030150178",
+    "elapsed_seconds": 1265.0,
+    "runner_seconds": 134.0
+  },
+  {
+    "created_at": "2026-09-24T16:50:30Z",
+    "head_branch": "feat/technology-digest",
+    "head_sha": "40729197262b8a4b2fb1ffccddf3ae43aef640e9",
+    "id": 36030150254,
+    "name": "homelab-apps-tests",
+    "jobs": [
+      {
+        "name": "application-contracts",
+        "conclusion": "success",
+        "runner": "homelab-talos-docker-small-mrtj7-runner-6mvzt",
+        "queue_seconds": 1211.0,
+        "execution_seconds": 126.0,
+        "steps": [
+          {
+            "name": "Set up job",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run ./.github/actions/talos-runner-setup",
+            "seconds": 1.0
+          },
+          {
+            "name": "Run astral-sh/setup-uv@v6",
+            "seconds": 3.0
+          },
+          {
+            "name": "Run azure/setup-helm@v4.3.1",
+            "seconds": 2.0
+          },
+          {
+            "name": "Run ./.github/actions/setup-opentofu",
+            "seconds": 3.0
+          },
+          {
+            "name": "Verify charts and application contracts",
+            "seconds": 105.0
+          },
+          {
+            "name": "Post Run astral-sh/setup-uv@v6",
+            "seconds": 0.0
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "seconds": 1.0
+          },
+          {
+            "name": "Complete job",
+            "seconds": 0.0
+          }
+        ]
+      }
+    ],
+    "cache_state": "unknown",
+    "url": "https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/36030150254",
+    "elapsed_seconds": 1338.0,
+    "runner_seconds": 126.0
+  }
+]

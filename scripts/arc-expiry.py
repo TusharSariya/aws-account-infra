@@ -57,11 +57,13 @@ def save(private, record):
 
 def remove_blocker(private, record):
     # UID precondition prevents touching a replacement object, even after a crash.
-    matches = [p for p in objects(private, 'pods') if p['metadata']['uid'] == record['blocker_uid']]
-    if matches:
-        kubectl(private, 'delete', '--raw=/api/v1/namespaces/homelab-jobs/pods/' + record['blocker'],
-                '-f', '-', value={'apiVersion': 'v1', 'kind': 'DeleteOptions',
-                                 'preconditions': {'uid': record['blocker_uid']}})
+    blockers = record.get('blockers', [{'name': record['blocker'], 'uid': record.get('blocker_uid', '')}])
+    for blocker in blockers:
+        matches = [p for p in objects(private, 'pods') if p['metadata']['uid'] == blocker['uid']]
+        if matches:
+            kubectl(private, 'delete', '--raw=/api/v1/namespaces/homelab-jobs/pods/' + blocker['name'],
+                    '-f', '-', value={'apiVersion': 'v1', 'kind': 'DeleteOptions',
+                                     'preconditions': {'uid': blocker['uid']}})
 
 
 def start(private, ref):
@@ -75,15 +77,12 @@ def start(private, ref):
     fixture = uuid.uuid4().hex
     record = dict(fixture_id=fixture, blocker='arc-expiry-' + fixture[:12], started_at=now(),
                   state='starting', ref=ref, github_run=None, candidates=[])
-    import yaml
-    pool = yaml.safe_load((Path(__file__).resolve().parents[1] /
-        'config/environments/kubernetes/homelab-ci/pool-values.yaml').read_text())
+    from kueue_capacity import quantity
     queue = json.loads(kubectl(private, 'get', 'clusterqueue', 'homelab-compute', '-o', 'json'))
-    observed_cpu = [str(resource['nominalQuota']) for group in queue['spec']['resourceGroups']
-                    for flavor in group['flavors'] for resource in flavor['resources'] if resource['name'] == 'cpu']
-    if observed_cpu != [str(pool['cpu'])]:
-        raise ValueError('Deploy the configured shared CPU pool before starting expiry observation')
-    resources = {'cpu': str(pool['cpu']), 'memory': '64Mi', 'ephemeral-storage': '16Mi'}
+    flavors = [f for g in queue['spec']['resourceGroups'] for f in g['flavors']]
+    if queue['spec']['queueingStrategy'] != 'BestEffortFIFO':
+        raise ValueError('Deploy the dynamic BestEffortFIFO queue first')
+    resources = {'cpu': '1', 'memory': '64Mi', 'ephemeral-storage': '16Mi'}
     pod = {'apiVersion': 'v1', 'kind': 'Pod', 'metadata': {'name': record['blocker'], 'namespace': 'homelab-jobs',
            'labels': {'homelab/acceptance-run': fixture, 'kueue.x-k8s.io/queue-name': 'argo',
                       'kueue.x-k8s.io/workload-priority-class': 'homelab-compute'}},
@@ -95,11 +94,25 @@ def start(private, ref):
                                     'securityContext': {'readOnlyRootFilesystem': True, 'allowPrivilegeEscalation': False,
                                                         'capabilities': {'drop': ['ALL']}},
                                     'resources': {'requests': resources, 'limits': resources}}]}}
-    created = json.loads(kubectl(private, 'create', '-f', '-', '-o', 'json', value=pod))
-    record['blocker_uid'] = created['metadata']['uid']
+    import copy
+    record['blockers'] = []
     save(private, record)
     try:
-        kubectl(private, 'wait', '--for=condition=Ready', 'pod/' + record['blocker'], '-n', 'homelab-jobs', '--timeout=90s')
+        for index, flavor in enumerate(flavors):
+            cpu = next(r['nominalQuota'] for r in flavor['resources'] if r['name']=='cpu')
+            if quantity(cpu) <= 0:
+                raise ValueError('Wake and measure both retained workers before expiry proof')
+            resource_flavor = json.loads(kubectl(private, 'get', 'resourceflavor', flavor['name'], '-o', 'json'))
+            candidate = copy.deepcopy(pod)
+            candidate['metadata']['name'] += '-' + str(index)
+            candidate['spec']['nodeSelector'] = resource_flavor['spec']['nodeLabels']
+            for field in ['requests','limits']:
+                candidate['spec']['containers'][0]['resources'][field]['cpu'] = str(cpu)
+            created = json.loads(kubectl(private, 'create', '-f', '-', '-o', 'json', value=candidate))
+            record['blockers'].append({'name':created['metadata']['name'],'uid':created['metadata']['uid']})
+            record.setdefault('blocker_uid',created['metadata']['uid'])
+            save(private, record)
+            kubectl(private, 'wait', '--for=condition=Ready', 'pod/' + created['metadata']['name'], '-n', 'homelab-jobs', '--timeout=90s')
         command(['gh', 'workflow', 'run', 'homelab-arc-acceptance.yml', '--repo', REPO, '--ref', ref,
                  '-f', 'scenario=expiry', '-f', 'fixture_id=' + fixture, '-f', 'confirm=observe-24h-expiry'])
         for _ in range(30):
@@ -197,7 +210,7 @@ def watch(private):
             except (ValueError, subprocess.TimeoutExpired):
                 record['fixture_cancel_requested'] = False
         remove_blocker(private, record)
-        owned = {record['blocker_uid'], *record['candidates']}
+        owned = {b['uid'] for b in record.get('blockers', [{'uid':record.get('blocker_uid', '')}])} | set(record['candidates'])
         for _ in range(60):
             pods = [p for p in objects(private, 'pods') if p['metadata']['uid'] in owned]
             workloads = [w for w in objects(private, 'workloads') if any(

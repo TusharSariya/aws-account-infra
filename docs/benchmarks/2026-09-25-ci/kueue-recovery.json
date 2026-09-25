@@ -1,0 +1,28 @@
+{
+  "started_at": "2026-09-25T03:24:27.096976+00:00",
+  "finished_at": "2026-09-25T03:28:46.735596+00:00",
+  "exit_code": 0,
+  "previous_revision": 8,
+  "image": "registry.k8s.io/kueue/kueue:v0.19.6@sha256:b0f5a48116f3576d8f23189a183123a63ea4d6ea2bc41250aa43750508b064c8",
+  "changed_paths": [
+    "Deployment/kueue-system/kueue-controller-manager/spec/template/spec/containers/0/image"
+  ],
+  "revision": 9,
+  "followup": {
+    "observed_at": "2026-09-25T03:42:08.744048+00:00",
+    "pods": [
+      {
+        "name": "kueue-controller-manager-55dc68c95c-97m9r",
+        "created_at": "2026-09-25T03:24:52Z",
+        "phase": "Running",
+        "containers": [
+          {
+            "name": "manager",
+            "ready": true,
+            "restarts": 2
+          }
+        ]
+      }
+    ]
+  }
+}

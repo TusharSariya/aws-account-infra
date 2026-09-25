@@ -1,20 +1,21 @@
 """Single-owner Ubuntu reconciler. Rollout starts read-only and fails closed."""
 
-from dataclasses import asdict
 import argparse
-from datetime import datetime, timezone
 import json
 import time
+from dataclasses import asdict
+from datetime import datetime, timezone
 
+from .capacity import verify, verify_storage
 from .config import INVENTORY, load
+from .effective import effective
 from .journal import Journal
 from .kube import Kube
 from .kueue import CHECK, CONTROLLER, admission_patch
-from .lifecycle import State, Observation, decide, complete, observe_off
+from .lifecycle import Observation, State, complete, decide, observe_off
 from .management import Management
 from .platform import Platform
-from .policy import classify, DAEMONSETS, owner, done, housekeeping_jobs
-from .capacity import verify, verify_storage
+from .policy import DAEMONSETS, classify, done, housekeeping_jobs, owner
 
 
 def condition(obj, name):
@@ -36,6 +37,22 @@ class Coordinator:
         }
         for state in self.states.values():
             state.restart()
+
+    def milestone(self, host, phase, *, reset=False, at=None):
+        name = host + "-startup.json"
+        record = {} if reset else self.journal.read(name, {})
+        record.setdefault(phase, time.time() if at is None else at)
+        self.journal.write(name, record)
+
+    def poll_interval(self):
+        return (
+            5
+            if any(
+                s.phase in {"waking", "restoring"} or s.wake_requested
+                for s in self.states.values()
+            )
+            else 15
+        )
 
     def persist(self, host):
         self.journal.write(host + ".json", self.states[host].to_dict())
@@ -141,6 +158,13 @@ class Coordinator:
                     for name in ["ollama", "odysseus"]
                 )
         demand, blockers = classify(host, objects, verified_ai_idle=ai_idle)
+        from .kueue import unreserved_demand
+
+        potential = {
+            h: self.journal.read(h + "-capacity.json", {}).get("quotas", {})
+            for h in INVENTORY
+        }
+        demand |= host in unreserved_demand(objects, potential)
 
         for gateway in self.config.get("gateways", []):
             if gateway["host"] != host:
@@ -219,33 +243,48 @@ class Coordinator:
                 obs.restore_ready = False
                 obs.blockers.append("Proxmox not observable")
                 return obs
+            self.milestone(host, "proxmox_available")
             obs.vm_stopped = pve["status"] == "stopped"
             obs.host_empty = not pve["other_running"] and not pve["users"]
             obs.ready = condition(node, "Ready") and not node["spec"].get(
                 "unschedulable", False
             )
+            if obs.ready:
+                self.milestone(host, "talos_ready")
             # Node readiness is only one restoration step. Keep invoking restore
             # until applications and schedules have also reached their saved state.
             obs.ready = obs.ready and (not record or record.get("phase") == "complete")
             if obs.ready:
+                self.milestone(host, "platform_restored")
                 self.management.storage(host)
                 budgets = self.config.get("capacity")
                 if budgets:
-                    verify(
-                        node,
-                        objects["pods"],
-                        budgets["pool"]["platformReserve"],
-                        budgets["pool"],
-                        expected_node=registration["node"],
-                    )
-                    summary = self.kube.stats(host)
-                    verify_storage(
-                        node,
-                        objects["pods"],
-                        summary,
-                        budgets["pool"],
-                        budgets["catalog"],
-                    )
+                    if budgets["pool"].get("dynamic", False):
+                        sample = effective(
+                            node,
+                            objects,
+                            self.kube.stats(host),
+                            record,
+                            storage_headroom=budgets["pool"].get(
+                                "storageHeadroom", "0"
+                            ),
+                        )
+                        self.journal.write(host + "-capacity.json", sample)
+                    else:
+                        verify(
+                            node,
+                            objects["pods"],
+                            budgets["pool"]["platformReserve"],
+                            budgets["pool"],
+                            expected_node=registration["node"],
+                        )
+                        verify_storage(
+                            node,
+                            objects["pods"],
+                            self.kube.stats(host),
+                            budgets["pool"],
+                            budgets["catalog"],
+                        )
                 elif self.config.get("modes", {}).get(host, "observe") != "observe":
                     raise RuntimeError(
                         "Reviewed capacity budgets are required before admission"
@@ -275,6 +314,8 @@ class Coordinator:
 
     def effect(self, host, action, objects):
         if action == "wake":
+            self.milestone(host, "demand_detected", reset=True)
+            self.milestone(host, "power_on_request")
             self.management.power(host).ensure_on()
         elif action in {"restore", "cancel"}:
             pve = self.management.pve(host)
@@ -319,7 +360,22 @@ class Coordinator:
             raise RuntimeError("Automatic shutdown acceptance is incomplete")
 
     def tick(self):
-        objects = self.kube.inventory()
+        try:
+            objects = self.kube.inventory()
+        except Exception:
+            if self.config.get("capacity", {}).get("pool", {}).get("dynamic") and any(
+                mode != "observe" for mode in self.config["modes"].values()
+            ):
+                from .kueue import reconcile_quotas
+
+                reconcile_quotas(self.kube, {})
+                for workload in self.kube.get("workloads.kueue.x-k8s.io")["items"]:
+                    patch = admission_patch(workload, set())
+                    if patch:
+                        self.kube.patch(
+                            "workloads.kueue.x-k8s.io", workload, patch, status=True
+                        )
+            raise
         seen = self.journal.read("gateway-activity.json", {})
         for gateway in self.config.get("gateways", []):
             key = gateway["namespace"] + "/" + gateway["name"]
@@ -364,7 +420,7 @@ class Coordinator:
                 if action:
                     try:
                         self.effect(host, action, objects)
-                    except Exception as exc:
+                    except Exception as exc:  # noqa: BLE001 - fail closed at external-effect boundaries
                         complete(
                             state, action, error=type(exc).__name__ + ": " + str(exc)
                         )
@@ -389,10 +445,27 @@ class Coordinator:
                                 }
                             ],
                         )
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 - fail closed at external-effect boundaries
                 state.idle_since = None
                 state.reason = "Observation failed: " + type(exc).__name__
                 self.persist(host)
+        if self.config.get("capacity", {}).get("pool", {}).get("dynamic") and any(
+            mode != "observe" for mode in self.config["modes"].values()
+        ):
+            from .kueue import reconcile_quotas
+
+            budgets = {}
+            for host in INVENTORY:
+                sample = self.journal.read(host + "-capacity.json", {})
+                fresh = (
+                    host in ready
+                    and 0 <= time.time() - sample.get("observed_at", 0) <= 30
+                )
+                if not fresh:
+                    ready.discard(host)
+                sleeping = observed.get(host, {}).get("power") == "off"
+                budgets[host] = sample.get("quotas", {}) if fresh or sleeping else {}
+            reconcile_quotas(self.kube, budgets)
         # Nexus must be healthy before primary counts as a CI dependency.
         nexus = next(
             (
@@ -405,6 +478,54 @@ class Coordinator:
         )
         if not nexus or nexus.get("status", {}).get("availableReplicas", 0) < 1:
             ready.discard("primary")
+        elif "primary" in ready:
+            self.milestone("primary", "nexus_ready")
+        for workload in objects["workloads"]:
+            if any(
+                c["type"] == "Admitted" and c["status"] == "True"
+                for c in workload.get("status", {}).get("conditions", [])
+            ):
+                from .kueue import assigned_hosts
+
+                for host in assigned_hosts(workload):
+                    self.milestone(host, "kueue_admitted")
+        for pod in objects["pods"]:
+            if pod["metadata"].get("namespace") == "arc-runners" and condition(
+                pod, "Ready"
+            ):
+                for host, entry in INVENTORY.items():
+                    if pod["spec"].get("nodeName") == entry["node"]:
+                        self.milestone(host, "runner_pod_ready")
+                        parent = owner(pod)
+                        if parent and any(
+                            r["metadata"]["uid"] == parent.get("uid")
+                            and r.get("status", {}).get("ready") is True
+                            for r in objects.get("runners", [])
+                        ):
+                            self.milestone(host, "runner_registered")
+                        statuses = pod.get("status", {}).get("containerStatuses", [])
+                        for status in statuses:
+                            if status["name"] == "runner" and status.get(
+                                "state", {}
+                            ).get("running", {}).get("startedAt"):
+                                self.milestone(
+                                    host,
+                                    "runner_container_started",
+                                    at=datetime.fromisoformat(
+                                        status["state"]["running"]["startedAt"].replace(
+                                            "Z", "+00:00"
+                                        )
+                                    ).timestamp(),
+                                )
+        allowed = None
+        if self.config.get("capacity", {}).get("pool", {}).get("dynamic"):
+            from .kueue import admission_budget
+
+            samples = {
+                h: self.journal.read(h + "-capacity.json", {}).get("quotas", {})
+                for h in ready
+            }
+            allowed = admission_budget(objects["workloads"], samples, ready)
         if any(mode != "observe" for mode in self.config["modes"].values()):
             check = self.kube.get("admissionchecks.kueue.x-k8s.io", CHECK)
             if check["spec"]["controllerName"] != CONTROLLER:
@@ -442,7 +563,12 @@ class Coordinator:
                     "admissionchecks.kueue.x-k8s.io", check, operations, status=True
                 )
             for workload in objects["workloads"]:
-                patch = admission_patch(workload, ready)
+                patch = admission_patch(
+                    workload,
+                    ready
+                    if allowed is None or workload["metadata"]["uid"] in allowed
+                    else set(),
+                )
                 if patch:
                     self.kube.patch(
                         "workloads.kueue.x-k8s.io", workload, patch, status=True
@@ -468,7 +594,7 @@ def main():
             try:
                 coordinator.reconfigure(load(args.config))
                 coordinator.tick()
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 - fail closed at external-effect boundaries
                 for host, state in coordinator.states.items():
                     state.idle_since = None
                     state.reason = "Reconciliation unavailable: " + type(exc).__name__
@@ -481,7 +607,7 @@ def main():
                 )
             if args.once:
                 break
-            time.sleep(15)
+            time.sleep(coordinator.poll_interval())
 
 
 if __name__ == "__main__":

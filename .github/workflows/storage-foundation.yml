@@ -17,6 +17,11 @@ jobs:
         with:
           docker: 'true'
           packages: shellcheck
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: python
+          toolchain: uv-python-3.14
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
       - uses: actions/setup-python@v5
         with:
           python-version: '3.14'
@@ -26,6 +31,7 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: false
+          cache-local-path: ${{ env.UV_CACHE_DIR || format('{0}/uv-cache', runner.temp) }}
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.19.0
@@ -47,3 +53,11 @@ jobs:
             -v "$GITHUB_WORKSPACE:/source:ro" \
             python:3.14-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6 \
             sh -c 'apt-get update -qq && apt-get install -y -qq xfsprogs util-linux >/dev/null && bash /source/scripts/tests/storage/quota-linux.sh'
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: python
+          toolchain: uv-python-3.14
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+          mode: save
+          password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
+        if: ${{ success() }}

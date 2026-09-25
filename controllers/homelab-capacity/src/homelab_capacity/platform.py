@@ -1,8 +1,9 @@
 """UID/CAS guarded quiescing of registered primary applications only."""
 
 import uuid
+
 from .config import INVENTORY
-from .policy import PLATFORM, AWAKE_ONLY, NODES
+from .policy import AWAKE_ONLY, NODES, PLATFORM
 
 ORDER = [
     "nexus",
@@ -135,7 +136,7 @@ class Platform:
             )
         return obj
 
-    def scale(self, entry, restoring):
+    def scale(self, entry, restoring, *, wait=True):
         resource, before = entry["resource"], entry["object"]
         obj = self.current(resource, before)
         original = before["spec"].get("replicas", 1)
@@ -149,6 +150,14 @@ class Platform:
                 [{"op": "add", "path": "/spec/replicas", "value": target}],
             )
         ns, name = before["metadata"]["namespace"], before["metadata"]["name"]
+        if not wait:
+            return target == 0 or (
+                obj["spec"].get("replicas", 1) == target
+                and obj.get("status", {}).get("observedGeneration", 0)
+                >= obj["metadata"].get("generation", 1)
+                and obj.get("status", {}).get("readyReplicas", 0) >= target
+                and obj.get("status", {}).get("updatedReplicas", target) >= target
+            )
         if target:
             return self.kube.wait(
                 "-n", ns, "rollout", "status", resource + "/" + name, "--timeout=20s"
@@ -163,7 +172,7 @@ class Platform:
                 "-n", ns, "wait", "pods", "-l", labels, "--for=delete", "--timeout=20s"
             )
 
-    def hibernate(self, record, restoring):
+    def hibernate(self, record, restoring, *, wait=True):
         before = record["cluster"]
         obj = self.current("clusters.postgresql.cnpg.io", before)
         old = before["metadata"].get("annotations", {}).get("cnpg.io/hibernation")
@@ -182,6 +191,11 @@ class Platform:
                 [{"op": "add", "path": "/metadata/annotations", "value": annotations}],
             )
         condition = "cnpg.io/hibernation=True" if target == "on" else "Ready=True"
+        if not wait:
+            return annotations == obj["metadata"].get("annotations", {}) and any(
+                c.get("type") == condition.split("=")[0] and c.get("status") == "True"
+                for c in obj.get("status", {}).get("conditions", [])
+            )
         return self.kube.wait(
             "-n",
             "homelab-data",
@@ -231,12 +245,14 @@ class Platform:
         self.schedules(record, False)
         entries = {e["object"]["metadata"]["name"]: e for e in record["objects"]}
         for name in ORDER:
-            if host == "primary" and name == "cnpg":
-                if not self.hibernate(record, False):
-                    return
-            if name in entries:
-                if not self.scale(entries[name], False):
-                    return
+            if (
+                host == "primary"
+                and name == "cnpg"
+                and not self.hibernate(record, False)
+            ):
+                return
+            if name in entries and not self.scale(entries[name], False):
+                return
         record["phase"] = "quiesced"
         self.journal.write(self.record_name(host), record)
 
@@ -266,22 +282,45 @@ class Platform:
             [{"op": "add", "path": "/spec/unschedulable", "value": False}],
         )
         entries = {e["object"]["metadata"]["name"]: e for e in record["objects"]}
-        restore_order = [
-            "local-path-provisioner",
-            "cnpg",
-            "nexus-postgres",
-            "nexus",
-        ] + list(reversed(ORDER))
-        done = set()
-        for name in restore_order:
-            if name not in entries or name in done:
-                continue
-            if not self.scale(entries[name], True):
-                return
-            done.add(name)
-            if name == "cnpg":
-                if not self.hibernate(record, True):
-                    return
+        # Start every independent chain before waiting on any one service.
+        # Reconciliation observes readiness without a serial 20-second wait per
+        # component. UID/CAS guards and the journal remain authoritative.
+        dependencies = {
+            "cnpg": {"local-path-provisioner"},
+            "nexus-postgres": {"local-path-provisioner"},
+            "nexus": {"nexus-postgres"},
+            "argocd-server": {"argocd-redis", "argocd-repo-server"},
+            "argocd-application-controller": {"argocd-redis", "argocd-repo-server"},
+        }
+        ready = set()
+        pending = dict(entries)
+        for _ in range(len(entries) + 1):
+            progress = False
+            for name, entry in list(pending.items()):
+                required = (
+                    dependencies.get(
+                        name,
+                        {"local-path-provisioner"}
+                        if name != "local-path-provisioner"
+                        else set(),
+                    )
+                    & entries.keys()
+                )
+                if not required <= ready:
+                    continue
+                if self.scale(entry, True, wait=False):
+                    ready.add(name)
+                del pending[name]
+                progress = True
+            if not progress:
+                break
+        database_ready = "cluster" not in record
+        if "cluster" in record and ("cnpg" not in entries or "cnpg" in ready):
+            database_ready = self.hibernate(record, True, wait=False)
+        record["restoration_ready"] = sorted(ready)
+        self.journal.write(self.record_name(host), record)
+        if pending or ready != entries.keys() or not database_ready:
+            return
         self.schedules(record, True)
         node = self.current("nodes", record["node"])
         annotations = node["metadata"].get("annotations", {}).copy()

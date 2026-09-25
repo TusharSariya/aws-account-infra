@@ -31,9 +31,16 @@ jobs:
         with:
           tailscale: 'true'
           packages: dnsutils openssh-client rsync
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: python
+          toolchain: uv-python-3.14
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+          scope: ${{ toJSON(matrix) }}
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: false
+          cache-local-path: ${{ env.UV_CACHE_DIR || format('{0}/uv-cache', runner.temp) }}
       - uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4
         with:
           oauth-client-id: ${{ vars.TS_OIDC_CLIENT_ID }}
@@ -48,3 +55,12 @@ jobs:
           operation: ${{ matrix.suite }}
           secrets-b64: ${{ secrets.TALOS_SECRETS_B64 }}
           lifecycle-credentials-b64: ${{ secrets.AI_LIFECYCLE_CREDENTIALS_B64 }}
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: python
+          toolchain: uv-python-3.14
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+          mode: save
+          password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
+          scope: ${{ toJSON(matrix) }}
+        if: ${{ success() }}

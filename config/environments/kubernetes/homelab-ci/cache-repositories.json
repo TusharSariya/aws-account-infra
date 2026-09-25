@@ -141,6 +141,11 @@
       "format": "raw",
       "type": "proxy",
       "remote": "https://pkgs.tailscale.com"
+    },
+    {
+      "name": "raw-dependencies",
+      "format": "raw",
+      "type": "hosted"
     }
   ]
 }

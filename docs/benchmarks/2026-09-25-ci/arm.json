@@ -1,0 +1,513 @@
+{
+  "host": "macOS-27.0-arm64-arm-64bit-Mach-O",
+  "platform": "linux/arm64 on native ARM Docker; not CI x64 emulation",
+  "before": "71458e126bf2e4771bc1a9a3d6129c5e6b891d3e",
+  "after": "bbd9fa985bf3661665e896eb83cb7715b36fee41",
+  "image_cache": "warm BuildKit layers and loaded images; only dependency/venv cache is cold",
+  "runs": [
+    {
+      "variant": "before",
+      "cohort": "cold-dependencies",
+      "repeat": 0,
+      "seconds": 10.351190333996783,
+      "returncode": 0,
+      "trace": [
+        {
+          "operation": "buildx build",
+          "seconds": 0.5360502090043155,
+          "returncode": 0
+        },
+        {
+          "operation": "run --rm",
+          "seconds": 9.149464041009196,
+          "returncode": 0
+        }
+      ],
+      "log": "cold-dependencies-before-0.log",
+      "warmup": false
+    },
+    {
+      "variant": "after",
+      "cohort": "cold-dependencies",
+      "repeat": 0,
+      "seconds": 9.582224999991013,
+      "returncode": 0,
+      "trace": [
+        {
+          "operation": "image inspect",
+          "seconds": 0.03170358299394138,
+          "returncode": 0
+        },
+        {
+          "operation": "run --rm",
+          "seconds": 9.427849625004455,
+          "returncode": 0
+        }
+      ],
+      "log": "cold-dependencies-after-0.log",
+      "warmup": false
+    },
+    {
+      "variant": "after",
+      "cohort": "cold-dependencies",
+      "repeat": 1,
+      "seconds": 9.656455584001378,
+      "returncode": 0,
+      "trace": [
+        {
+          "operation": "image inspect",
+          "seconds": 0.05362933300784789,
+          "returncode": 0
+        },
+        {
+          "operation": "run --rm",
+          "seconds": 9.47741729101108,
+          "returncode": 0
+        }
+      ],
+      "log": "cold-dependencies-after-1.log",
+      "warmup": false
+    },
+    {
+      "variant": "before",
+      "cohort": "cold-dependencies",
+      "repeat": 1,
+      "seconds": 10.058132541002124,
+      "returncode": 0,
+      "trace": [
+        {
+          "operation": "buildx build",
+          "seconds": 0.49386666700593196,
+          "returncode": 0
+        },
+        {
+          "operation": "run --rm",
+          "seconds": 9.461039708010503,
+          "returncode": 0
+        }
+      ],
+      "log": "cold-dependencies-before-1.log",
+      "warmup": false
+    },
+    {
+      "variant": "before",
+      "cohort": "cold-dependencies",
+      "repeat": 2,
+      "seconds": 9.462810833996627,
+      "returncode": 0,
+      "trace": [
+        {
+          "operation": "buildx build",
+          "seconds": 0.4619986249890644,
+          "returncode": 0
+        },
+        {
+          "operation": "run --rm",
+          "seconds": 8.90692358299566,
+          "returncode": 0
+        }
+      ],
+      "log": "cold-dependencies-before-2.log",
+      "warmup": false
+    },
+    {
+      "variant": "after",
+      "cohort": "cold-dependencies",
+      "repeat": 2,
+      "seconds": 8.98598829099501,
+      "returncode": 0,
+      "trace": [
+        {
+          "operation": "image inspect",
+          "seconds": 0.05196587499813177,
+          "returncode": 0
+        },
+        {
+          "operation": "run --rm",
+          "seconds": 8.81089058300131,
+          "returncode": 0
+        }
+      ],
+      "log": "cold-dependencies-after-2.log",
+      "warmup": false
+    },
+    {
+      "variant": "after",
+      "cohort": "cold-dependencies",
+      "repeat": 3,
+      "seconds": 9.09369029100344,
+      "returncode": 0,
+      "trace": [
+        {
+          "operation": "image inspect",
+          "seconds": 0.055592582997633144,
+          "returncode": 0
+        },
+        {
+          "operation": "run --rm",
+          "seconds": 8.913868375006132,
+          "returncode": 0
+        }
+      ],
+      "log": "cold-dependencies-after-3.log",
+      "warmup": false
+    },
+    {
+      "variant": "before",
+      "cohort": "cold-dependencies",
+      "repeat": 3,
+      "seconds": 12.253284582999186,
+      "returncode": 0,
+      "trace": [
+        {
+          "operation": "buildx build",
+          "seconds": 0.5101304580020951,
+          "returncode": 0
+        },
+        {
+          "operation": "run --rm",
+          "seconds": 11.650197333001415,
+          "returncode": 0
+        }
+      ],
+      "log": "cold-dependencies-before-3.log",
+      "warmup": false
+    },
+    {
+      "variant": "before",
+      "cohort": "cold-dependencies",
+      "repeat": 4,
+      "seconds": 9.668772375007393,
+      "returncode": 0,
+      "trace": [
+        {
+          "operation": "buildx build",
+          "seconds": 0.5057921249972424,
+          "returncode": 0
+        },
+        {
+          "operation": "run --rm",
+          "seconds": 9.048540250005317,
+          "returncode": 0
+        }
+      ],
+      "log": "cold-dependencies-before-4.log",
+      "warmup": false
+    },
+    {
+      "variant": "after",
+      "cohort": "cold-dependencies",
+      "repeat": 4,
+      "seconds": 9.058834124996793,
+      "returncode": 0,
+      "trace": [
+        {
+          "operation": "image inspect",
+          "seconds": 0.029832415995770134,
+          "returncode": 0
+        },
+        {
+          "operation": "run --rm",
+          "seconds": 8.90432862500893,
+          "returncode": 0
+        }
+      ],
+      "log": "cold-dependencies-after-4.log",
+      "warmup": false
+    },
+    {
+      "variant": "after",
+      "cohort": "cold-dependencies",
+      "repeat": 5,
+      "seconds": 8.842431583005236,
+      "returncode": 0,
+      "trace": [
+        {
+          "operation": "image inspect",
+          "seconds": 0.03294658300001174,
+          "returncode": 0
+        },
+        {
+          "operation": "run --rm",
+          "seconds": 8.685468166993815,
+          "returncode": 0
+        }
+      ],
+      "log": "cold-dependencies-after-5.log",
+      "warmup": false
+    },
+    {
+      "variant": "before",
+      "cohort": "cold-dependencies",
+      "repeat": 5,
+      "seconds": 9.727903291990515,
+      "returncode": 0,
+      "trace": [
+        {
+          "operation": "buildx build",
+          "seconds": 0.5276130419952096,
+          "returncode": 0
+        },
+        {
+          "operation": "run --rm",
+          "seconds": 9.105746291999822,
+          "returncode": 0
+        }
+      ],
+      "log": "cold-dependencies-before-5.log",
+      "warmup": false
+    },
+    {
+      "variant": "before",
+      "cohort": "warm-dependencies",
+      "repeat": 0,
+      "seconds": 9.539549624998472,
+      "returncode": 0,
+      "trace": [
+        {
+          "operation": "buildx build",
+          "seconds": 0.5320595419907477,
+          "returncode": 0
+        },
+        {
+          "operation": "run --rm",
+          "seconds": 8.894403332989896,
+          "returncode": 0
+        }
+      ],
+      "log": "warm-dependencies-before-0.log",
+      "warmup": true
+    },
+    {
+      "variant": "after",
+      "cohort": "warm-dependencies",
+      "repeat": 0,
+      "seconds": 9.123978458010242,
+      "returncode": 0,
+      "trace": [
+        {
+          "operation": "image inspect",
+          "seconds": 0.03134579199831933,
+          "returncode": 0
+        },
+        {
+          "operation": "run --rm",
+          "seconds": 8.96819158300059,
+          "returncode": 0
+        }
+      ],
+      "log": "warm-dependencies-after-0.log",
+      "warmup": true
+    },
+    {
+      "variant": "after",
+      "cohort": "warm-dependencies",
+      "repeat": 1,
+      "seconds": 5.524042582997936,
+      "returncode": 0,
+      "trace": [
+        {
+          "operation": "image inspect",
+          "seconds": 0.05590824999671895,
+          "returncode": 0
+        },
+        {
+          "operation": "run --rm",
+          "seconds": 5.3445215840038145,
+          "returncode": 0
+        }
+      ],
+      "log": "warm-dependencies-after-1.log",
+      "warmup": false
+    },
+    {
+      "variant": "before",
+      "cohort": "warm-dependencies",
+      "repeat": 1,
+      "seconds": 5.94762662499852,
+      "returncode": 0,
+      "trace": [
+        {
+          "operation": "buildx build",
+          "seconds": 0.5135640000080457,
+          "returncode": 0
+        },
+        {
+          "operation": "run --rm",
+          "seconds": 5.327004083999782,
+          "returncode": 0
+        }
+      ],
+      "log": "warm-dependencies-before-1.log",
+      "warmup": false
+    },
+    {
+      "variant": "before",
+      "cohort": "warm-dependencies",
+      "repeat": 2,
+      "seconds": 5.729796875006286,
+      "returncode": 0,
+      "trace": [
+        {
+          "operation": "buildx build",
+          "seconds": 0.5174237499886658,
+          "returncode": 0
+        },
+        {
+          "operation": "run --rm",
+          "seconds": 5.109229957990465,
+          "returncode": 0
+        }
+      ],
+      "log": "warm-dependencies-before-2.log",
+      "warmup": false
+    },
+    {
+      "variant": "after",
+      "cohort": "warm-dependencies",
+      "repeat": 2,
+      "seconds": 5.376808540997445,
+      "returncode": 0,
+      "trace": [
+        {
+          "operation": "image inspect",
+          "seconds": 0.09455304199946113,
+          "returncode": 0
+        },
+        {
+          "operation": "run --rm",
+          "seconds": 5.162636209002812,
+          "returncode": 0
+        }
+      ],
+      "log": "warm-dependencies-after-2.log",
+      "warmup": false
+    },
+    {
+      "variant": "after",
+      "cohort": "warm-dependencies",
+      "repeat": 3,
+      "seconds": 5.267756332992576,
+      "returncode": 0,
+      "trace": [
+        {
+          "operation": "image inspect",
+          "seconds": 0.03004904200497549,
+          "returncode": 0
+        },
+        {
+          "operation": "run --rm",
+          "seconds": 5.117983708012616,
+          "returncode": 0
+        }
+      ],
+      "log": "warm-dependencies-after-3.log",
+      "warmup": false
+    },
+    {
+      "variant": "before",
+      "cohort": "warm-dependencies",
+      "repeat": 3,
+      "seconds": 5.773386333006783,
+      "returncode": 0,
+      "trace": [
+        {
+          "operation": "buildx build",
+          "seconds": 0.5318001659907168,
+          "returncode": 0
+        },
+        {
+          "operation": "run --rm",
+          "seconds": 5.1385105829976965,
+          "returncode": 0
+        }
+      ],
+      "log": "warm-dependencies-before-3.log",
+      "warmup": false
+    },
+    {
+      "variant": "before",
+      "cohort": "warm-dependencies",
+      "repeat": 4,
+      "seconds": 5.765397582988953,
+      "returncode": 0,
+      "trace": [
+        {
+          "operation": "buildx build",
+          "seconds": 0.5098732499900507,
+          "returncode": 0
+        },
+        {
+          "operation": "run --rm",
+          "seconds": 5.163971415997366,
+          "returncode": 0
+        }
+      ],
+      "log": "warm-dependencies-before-4.log",
+      "warmup": false
+    },
+    {
+      "variant": "after",
+      "cohort": "warm-dependencies",
+      "repeat": 4,
+      "seconds": 5.357670332989073,
+      "returncode": 0,
+      "trace": [
+        {
+          "operation": "image inspect",
+          "seconds": 0.030970125008025207,
+          "returncode": 0
+        },
+        {
+          "operation": "run --rm",
+          "seconds": 5.209599000008893,
+          "returncode": 0
+        }
+      ],
+      "log": "warm-dependencies-after-4.log",
+      "warmup": false
+    },
+    {
+      "variant": "after",
+      "cohort": "warm-dependencies",
+      "repeat": 5,
+      "seconds": 5.323908083009883,
+      "returncode": 0,
+      "trace": [
+        {
+          "operation": "image inspect",
+          "seconds": 0.03955158399185166,
+          "returncode": 0
+        },
+        {
+          "operation": "run --rm",
+          "seconds": 5.166447833005805,
+          "returncode": 0
+        }
+      ],
+      "log": "warm-dependencies-after-5.log",
+      "warmup": false
+    },
+    {
+      "variant": "before",
+      "cohort": "warm-dependencies",
+      "repeat": 5,
+      "seconds": 5.742529833994922,
+      "returncode": 0,
+      "trace": [
+        {
+          "operation": "buildx build",
+          "seconds": 0.5106500830006553,
+          "returncode": 0
+        },
+        {
+          "operation": "run --rm",
+          "seconds": 5.129843542003073,
+          "returncode": 0
+        }
+      ],
+      "log": "warm-dependencies-before-5.log",
+      "warmup": false
+    }
+  ]
+}

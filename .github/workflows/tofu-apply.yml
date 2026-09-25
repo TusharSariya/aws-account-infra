@@ -17,7 +17,7 @@ permissions:
 jobs:
   detect:
     if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-light"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
+    runs-on: ubuntu-latest
     outputs:
       units: ${{ steps.units.outputs.units }}
       suite: ${{ steps.units.outputs.suite }}
@@ -26,18 +26,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/talos-runner-setup
       - id: units
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.sha }}
-        run: |
-          {
-            echo "units=$(python3 scripts/deploy-units.py changed "$BASE_SHA" "$HEAD_SHA")"
-            echo "suite=$(python3 scripts/deploy-units.py acceptance "$BASE_SHA" "$HEAD_SHA")"
-            echo "storage=$(python3 scripts/deploy-units.py storage "$BASE_SHA" "$HEAD_SHA")"
-          } >> "$GITHUB_OUTPUT"
-
+        run: python3 scripts/ci-relevant-changes.py
   apply:
     needs: detect
     if: needs.detect.outputs.units != '[]' && contains(github.event.pull_request.labels.*.name, 'apply') && github.event.pull_request.head.repo.full_name == github.repository
@@ -52,6 +42,16 @@ jobs:
           aws: 'true'
           tailscale: 'true'
           packages: dnsutils openssh-client rsync gh
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: python
+          toolchain: uv-python-3.14
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: providers
+          toolchain: tofu-1.11.5
+          dependencies: ${{ hashFiles('**/.terraform.lock.hcl') }}
       - name: Check application credentials before any deployment
         if: contains(fromJSON(needs.detect.outputs.units).*.id, 'kubernetes-homelab')
         env:
@@ -72,6 +72,7 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: false
+          cache-local-path: ${{ env.UV_CACHE_DIR || format('{0}/uv-cache', runner.temp) }}
           python-version: "3.14"
       - uses: ./.github/actions/setup-opentofu
         with:
@@ -98,6 +99,7 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: false
+          cache-local-path: ${{ env.UV_CACHE_DIR || format('{0}/uv-cache', runner.temp) }}
         if: contains(fromJSON(needs.detect.outputs.units).*.id, 'talos-homelab') || contains(fromJSON(needs.detect.outputs.units).*.id, 'kubernetes-homelab')
       - name: Wake and hold retained hosts before Proxmox changes
         if: contains(fromJSON(needs.detect.outputs.units).*.id, 'proxmox-homelab')
@@ -136,7 +138,7 @@ jobs:
 
           # Reuse large provider binaries across this serial multi-unit apply.
           # Separate copies per root exceed the checks runner's 4-GiB scratch limit.
-          export TF_PLUGIN_CACHE_DIR="$RUNNER_TEMP/tofu-provider-cache"
+          export TF_PLUGIN_CACHE_DIR="${TF_PLUGIN_CACHE_DIR:-$RUNNER_TEMP/tofu-provider-cache}"
           mkdir -p "$TF_PLUGIN_CACHE_DIR"
           while IFS=$'\t' read -r id path var_file cloud; do
             echo "::group::Apply $id"
@@ -198,6 +200,22 @@ jobs:
           action: release
           private-path: ${{ steps.power_hold.outputs.private-path }}
 
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: python
+          toolchain: uv-python-3.14
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+          mode: save
+          password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
+        if: ${{ success() }}
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: providers
+          toolchain: tofu-1.11.5
+          dependencies: ${{ hashFiles('**/.terraform.lock.hcl') }}
+          mode: save
+          password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
+        if: ${{ success() }}
   worker-maintenance:
     needs: [detect, apply]
     if: needs.apply.result == 'success' && contains(fromJSON(needs.detect.outputs.units).*.id, 'talos-homelab') && contains(github.event.pull_request.labels.*.name, 'worker-reboot')
@@ -234,8 +252,8 @@ jobs:
 
   apply-gate:
     needs: [detect, apply, worker-maintenance, acceptance, storage-foundation, lifecycle-maintenance]
-    if: ${{ !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
-    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-light"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
+    if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/talos-runner-setup
@@ -250,15 +268,12 @@ jobs:
   enable-auto-merge:
     needs: [apply, apply-gate, acceptance, worker-maintenance]
     if: ${{ !cancelled() && !github.event.pull_request.draft && needs.apply.result == 'success' && needs.apply-gate.result == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
-    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-light"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
+    # This API-only completion must not hold the deployment lock during a worker wake.
+    runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/talos-runner-setup
-        with:
-          packages: gh
       - name: enable auto-merge
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

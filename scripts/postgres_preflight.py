@@ -2,6 +2,10 @@
 import json
 import os
 import socket
+from pathlib import Path
+
+import yaml
+from kueue_capacity import quantity
 
 
 def verify(kubectl, run):
@@ -31,10 +35,22 @@ def verify(kubectl, run):
     if runtime['spec'].get('replicas', 1) != 0:
         raise ValueError('AI must be intentionally off before capacity rollout')
     queue = get('get', 'clusterqueue', 'homelab-compute')
-    resources = queue['spec']['resourceGroups'][0]['flavors'][0]['resources']
-    quotas = {r['name']: str(r['nominalQuota']) for r in resources}
-    if quotas.get('cpu') not in ('31250m', '31.25') or quotas.get('memory') != '84Gi':
-        raise ValueError('Apply the reviewed 31.25 CPU / 84 GiB queue reduction first')
+    # The managed queue upgrade happens after this PR's application apply.
+    # Accept the exact reviewed rollback state during that transition too; fixed
+    # budgets must never become ceilings for the dynamic queue.
+    rollback = yaml.safe_load((Path(__file__).resolve().parents[1] /
+        'config/environments/kubernetes/homelab-ci/pool-rollback-values.yaml').read_text())
+    legacy = {'cpu': rollback['cpu'], 'memory': rollback['memory'], 'ephemeral-storage': rollback['scratch']}
+    flavors = [flavor for group in queue['spec']['resourceGroups'] for flavor in group['flavors']]
+    if not flavors:
+        raise ValueError('Apply the dynamic capacity queue or reviewed rollback queue first')
+    for flavor in flavors:
+        quotas = {r['name']: str(r['nominalQuota']) for r in flavor['resources']}
+        dynamic = queue['spec'].get('queueingStrategy') == 'BestEffortFIFO' and {'cpu', 'memory', 'ephemeral-storage', 'pods'} <= quotas.keys()
+        reviewed_rollback = (queue['spec'].get('queueingStrategy') == rollback['strategy'] and
+            quotas.keys() == legacy.keys() and all(quantity(quotas[key]) == quantity(value) for key, value in legacy.items()))
+        if not (dynamic or reviewed_rollback):
+            raise ValueError('Apply the dynamic capacity queue or reviewed rollback queue first')
     storage = get('get', 'storageclass', 'worker-local-retain')
     if storage['reclaimPolicy'] != 'Retain' or storage.get('allowVolumeExpansion', False):
         raise ValueError('Expected retained non-expandable worker local-path storage')

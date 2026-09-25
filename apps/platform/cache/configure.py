@@ -82,6 +82,7 @@ def reconcile():
         read.extend(f'nx-repository-view-{fmt}-{name}-{action}' for action in ('browse','read'))
     roles={r['id'] for r in request('security/roles')}
     writer=[f'nx-repository-view-docker-docker-build-{action}' for action in ('browse','read','add','edit')]
+    writer += [f'nx-repository-view-raw-raw-dependencies-{action}' for action in ('browse', 'read', 'add', 'edit')]
     privileges = {p['name'] for p in request('security/privileges')}
     if 'cache-metrics-read' not in privileges:
         request('security/privileges/wildcard', 'POST', {'name': 'cache-metrics-read',
