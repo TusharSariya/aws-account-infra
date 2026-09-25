@@ -33,7 +33,11 @@ def run(args, data=None):
         destination.write_bytes(result.stdout + b'\n' + result.stderr)
         destination.chmod(0o600)
     if result.returncode:
-        raise ValueError('Command failed: ' + Path(str(args[0])).name + '; private output suppressed')
+        # Name only the subcommand words (never paths, flags or output): enough to
+        # locate the failing call without exposing private diagnostics.
+        words = [str(a) for a in args[1:4] if str(a).isalpha()]
+        raise ValueError('Command failed: ' + ' '.join([Path(str(args[0])).name] + words)
+                         + ' (exit ' + str(result.returncode) + '); private output suppressed')
     return result.stdout
 
 

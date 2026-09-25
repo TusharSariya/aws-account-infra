@@ -33,7 +33,9 @@ runs:
       if: runner.environment == 'self-hosted'
       shell: bash
       env:
-        CACHE_WORKFLOW: ${{ github.workflow }}/${{ github.job }}/${{ inputs.scope }}
+        # Job id scope (not caller workflow name) so PR callers import main's
+        # cache for the same reusable job; reused job ids pass an explicit scope.
+        CACHE_WORKFLOW: ${{ github.job }}/${{ inputs.scope }}
         CACHE_BRANCH: ${{ github.head_ref || github.ref_name }}
         CACHE_PLATFORM: ${{ inputs.platform }}
       run: |

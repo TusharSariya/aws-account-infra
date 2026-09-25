@@ -72,7 +72,7 @@ jobs:
         with:
           kind: python
           toolchain: uv-python-3.14
-          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', 'config/ci-python-pins.txt') }}
       - uses: ./.github/actions/nexus-dependency-cache
         with:
           kind: go
@@ -117,7 +117,7 @@ jobs:
         with:
           kind: python
           toolchain: uv-python-3.14
-          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', 'config/ci-python-pins.txt') }}
           mode: save
           password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
         if: ${{ success() }}
@@ -146,8 +146,9 @@ jobs:
           - {scope: cache, root: homelab-ci}
     needs: contracts
     if: (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
-    # Bootstrap, upgrade and recovery cannot depend on ARC or CI_EXECUTOR.
-    runs-on: ubuntu-latest
+    # Bootstrap, upgrade and recovery cannot depend on ARC or CI_EXECUTOR: the
+    # macOS operator runner when vars.CI_OPERATOR == 'mac', else hosted.
+    runs-on: ${{ vars.CI_OPERATOR == 'mac' && fromJSON('["self-hosted","homelab-operator"]') || 'ubuntu-latest' }}
     environment: prod
     timeout-minutes: 45
     steps:
@@ -176,6 +177,7 @@ jobs:
           role-to-assume: ${{ inputs.mode == 'apply' && vars.TOFU_APPLY_ROLE_ARN || vars.TOFU_PLAN_ROLE_ARN }}
           aws-region: us-east-1
       - uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8
+        if: runner.os != 'macOS'
         with:
           use-cache: false
           oauth-client-id: ${{ vars.TS_OIDC_CLIENT_ID }}
@@ -183,7 +185,29 @@ jobs:
           tags: tag:github-ci
           version: 1.102.4
           hostname: gh-ci-admission-${{ github.run_id }}-${{ github.run_attempt }}
-      - run: sudo tailscale set --accept-routes=true
+      - if: runner.os != 'macOS'
+        run: sudo tailscale set --accept-routes=true
+      - name: Verify tailnet reachability of the cluster (non-secret)
+        if: runner.os != 'macOS'
+        run: |
+          tailscale status --json | python3 -c '
+          import json, sys
+          state = json.load(sys.stdin)
+          print("backend", state["BackendState"], "self", state["Self"]["HostName"], state["Self"].get("Tags"))
+          for peer in state["Peer"].values():
+              if peer.get("PrimaryRoutes"):
+                  print("subnet router", peer["HostName"], peer["PrimaryRoutes"], "online" if peer.get("Online") else "offline")'
+          awk 'NR > 1 {print "route", $1, $2, $3}' /proc/net/route
+          for target in 10.0.0.221:50000 10.0.0.222:50000 10.0.0.231:6443; do
+            if python3 -c 'import socket, sys; host, port = sys.argv[1].rsplit(":", 1); socket.create_connection((host, int(port)), 5).close()' "$target"; then
+              echo "$target reachable"
+            else
+              echo "::warning::$target not reachable over the tailnet"
+            fi
+          done
+      - name: Require the operator Mac's existing tailnet session
+        if: runner.os == 'macOS'
+        run: tailscale status --json | python3 -c 'import json,sys; state = json.load(sys.stdin)["BackendState"]; assert state == "Running", "tailscale BackendState is " + state'
       - id: private
         run: |
           umask 077

@@ -7,7 +7,101 @@ import zipfile
 from pathlib import Path
 from unittest.mock import Mock
 
-from dependency_cache import IntegrityError, key, pack, transfer, unpack
+from dependency_cache import BASE, IntegrityError, key, pack, run, transfer, unpack
+
+
+class FakeNexus:
+    """Serve stored archives by URL and record uploads; unknown URLs are 404."""
+
+    def __init__(self, store=None):
+        self.store = dict(store or {})
+        self.requested, self.uploaded = [], []
+
+    def open(self, target, timeout=None):
+        if isinstance(target, str):
+            self.requested.append(target)
+            if target not in self.store:
+                raise urllib.error.HTTPError(target, 404, "missing", {}, None)
+            return io.BytesIO(self.store[target])
+        self.uploaded.append(target.full_url)
+        return io.BytesIO()
+
+
+class FallbackAndSkipTests(unittest.TestCase):
+    ARGS = ("python", "uv-python-3.14", "hash")
+
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.root = Path(temp.name)
+        source = self.root / "source"
+        source.mkdir()
+        (source / "wheel").write_bytes(b"public wheel")
+        self.archive = pack(source)
+        self.directory = self.root / "cache"
+        self.directory.mkdir()
+        self.env_file = self.root / "github_env"
+
+    def url(self, branch):
+        return BASE + key(*self.ARGS, branch, scope="job/") + ".zip"
+
+    def restore(self, branch, nexus):
+        return run("restore", *self.ARGS, branch, self.directory, scope="job/",
+                   env_file=self.env_file, opener=nexus)
+
+    def exported(self):
+        lines = self.env_file.read_text().splitlines()
+        return dict(line.split("=", 1) for line in lines)
+
+    def test_branch_miss_falls_back_to_main_read_only(self):
+        nexus = FakeNexus({self.url("main"): self.archive})
+        receipt = self.restore("feature/cache", nexus)
+        self.assertEqual(receipt["result"], "hit")
+        self.assertEqual(receipt["fallback"], "main")
+        self.assertEqual(nexus.requested, [self.url("feature/cache"), self.url("main")])
+        self.assertEqual((self.directory / "wheel").read_bytes(), b"public wheel")
+        marker = self.exported()["HOMELAB_DEPENDENCY_CACHE_HIT_PYTHON"]
+        self.assertEqual(marker, key(*self.ARGS, "feature/cache", scope="job/"))
+        # Without a hit marker a save uploads, and only ever to the branch key.
+        run("save", *self.ARGS, "feature/cache", self.directory, scope="job/",
+            password="secret", environ={}, opener=nexus)
+        self.assertEqual(nexus.uploaded, [self.url("feature/cache")])
+
+    def test_branch_hit_does_not_consult_main(self):
+        nexus = FakeNexus({self.url("feature/cache"): self.archive,
+                           self.url("main"): b"never read"})
+        receipt = self.restore("feature/cache", nexus)
+        self.assertEqual(receipt["result"], "hit")
+        self.assertNotIn("fallback", receipt)
+        self.assertEqual(nexus.requested, [self.url("feature/cache")])
+
+    def test_main_never_falls_back_and_misses_export_no_marker(self):
+        nexus = FakeNexus()
+        self.assertEqual(self.restore("main", nexus)["result"], "miss")
+        self.assertEqual(nexus.requested, [self.url("main")])
+        self.assertNotIn("HOMELAB_DEPENDENCY_CACHE_HIT_PYTHON", self.exported())
+        self.assertEqual(self.exported()["UV_CACHE_DIR"], str(self.directory))
+        nexus = FakeNexus()
+        self.assertEqual(self.restore("feature/cache", nexus)["result"], "miss")
+        self.assertEqual(nexus.requested, [self.url("feature/cache"), self.url("main")])
+
+    def test_save_after_hit_is_skipped_without_packing(self):
+        nexus = FakeNexus({self.url("main"): self.archive})
+        self.restore("feature/cache", nexus)
+        (self.directory / "credentials").write_text("would fail packing")
+        receipt = run("save", *self.ARGS, "feature/cache", self.directory,
+                      scope="job/", password="secret", environ=self.exported(),
+                      opener=nexus)
+        self.assertEqual(receipt["result"], "unchanged")
+        self.assertEqual(nexus.uploaded, [])
+
+    def test_save_with_stale_marker_still_uploads(self):
+        nexus = FakeNexus()
+        environ = {"HOMELAB_DEPENDENCY_CACHE_HIT_PYTHON": key(*self.ARGS, "other", scope="job/")}
+        receipt = run("save", *self.ARGS, "feature/cache", self.directory,
+                      scope="job/", password="secret", environ=environ, opener=nexus)
+        self.assertEqual(receipt["result"], "saved")
+        self.assertEqual(nexus.uploaded, [self.url("feature/cache")])
 
 
 class ArchiveTests(unittest.TestCase):

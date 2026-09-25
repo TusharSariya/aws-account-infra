@@ -6,15 +6,27 @@ permissions:
   contents: read
 jobs:
   offline:
-    runs-on: ubuntu-latest
+    if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-checks"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: ./.github/actions/talos-runner-setup
+      - uses: ./.github/actions/nexus-dependency-cache
         with:
-          python-version: '3.13'
+          kind: python
+          toolchain: uv-python-3.14
+          scope: pilot-platform
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', 'config/ci-python-pins.txt') }}
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: false
+          cache-local-path: ${{ env.UV_CACHE_DIR || format('{0}/uv-cache', runner.temp) }}
+      - uses: azure/setup-kubectl@v4
+        with:
+          version: v1.36.3
       - run: python3 -m unittest discover -s pilot/monitoring/tests -v
-      - run: pip install ruff==0.12.12 pyyaml==6.0.2
-      - run: ruff check pilot --exclude vendor && ruff format --check pilot --exclude vendor
+      - run: uv run --with ruff==0.12.12 ruff check pilot --exclude vendor
+      - run: uv run --with ruff==0.12.12 ruff format --check pilot --exclude vendor
       - name: Validate portable monitoring and shell helpers
         run: |
           python3 pilot/monitoring/kubernetes/validate.py
@@ -23,7 +35,7 @@ jobs:
       - name: Verify vendored Argo CD checksums and management placement
         run: |
           kubectl kustomize pilot/argocd > /tmp/argocd.yaml
-          python3 pilot/argocd/validate.py /tmp/argocd.yaml
+          uv run --python 3.13 --with PyYAML==6.0.3 python pilot/argocd/validate.py /tmp/argocd.yaml
       - name: Validate Prometheus alert rules with the pinned release
         run: |
           python3 - <<'PYTHON'
@@ -35,3 +47,12 @@ jobs:
           subprocess.run([str(promtool), 'check', 'rules', 'pilot/monitoring/config/alerts.yml'], check=True)
           subprocess.run([str(promtool), 'test', 'rules', 'alert-tests.yml'], cwd='pilot/monitoring/config', check=True)
           PYTHON
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: python
+          toolchain: uv-python-3.14
+          scope: pilot-platform
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', 'config/ci-python-pins.txt') }}
+          mode: save
+          password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
+        if: ${{ success() }}

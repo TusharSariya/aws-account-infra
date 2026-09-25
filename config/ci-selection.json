@@ -2,7 +2,6 @@
   "checkov": [],
   "tflint": [],
   "trivy": [],
-  "shell": [],
   "homelab-config-tests": [
     "live/proxmox/**",
     "live/aws/staging/workloads/homelab-recovery/**",
@@ -24,7 +23,8 @@
     "scripts/tests/test_proxmox_access.py",
     ".github/workflows/homelab-config-tests.yml",
     ".github/workflows/homelab-etcd-backup.yml",
-    ".github/workflows/tofu-*.yml"
+    ".github/workflows/tofu-*.yml",
+    "scripts/ci-child-markers.py"
   ],
   "homelab-apps-tests": [
     "live/kubernetes/**",
@@ -70,7 +70,8 @@
     "deploy-units.json",
     ".github/actions/kubernetes-deploy/**",
     ".github/workflows/homelab-apps-tests.yml",
-    ".github/workflows/tofu-*.yml"
+    ".github/workflows/tofu-*.yml",
+    "scripts/ci-child-markers.py"
   ],
   "homelab-recovery-tests": [
     ".github/workflows/homelab-recovery-tests.yml",
@@ -84,10 +85,21 @@
     "scripts/tests/test_homelab_backup.py",
     ".github/workflows/homelab-etcd-backup.yml"
   ],
-  "runner-catalog": [
+  "config-shell": [
+    "scripts/*.sh",
+    "scripts/git-hooks/*",
+    "mocks/localstack/smoke.sh",
+    "tests/**",
+    ".shellcheckrc"
+  ],
+  "config-runner-catalog": [
     ".github/workflows/**",
     ".github/actions/**",
     "scripts/runner_catalog.py",
+    "scripts/tests/test_ci_executor_routing.py",
+    "scripts/tests/test_operator_containers.py",
+    "scripts/mac-operator-*",
+    "platform/operator-runner/**",
     "scripts/kueue*",
     "scripts/tests/test_build_cache.py",
     "scripts/tests/test_capacity*",
@@ -98,16 +110,23 @@
     "live/kubernetes/homelab-ci/**",
     "live/kubernetes/homelab-management/**"
   ],
-  "kubernetes-validation": [
+  "offline-validation": [
     "validation/kubernetes/**",
-    ".github/workflows/kubernetes-validation.yml"
-  ],
-  "main-platform-validation": [
     "platform/main-control-plane/**",
     "kubernetes/platform/main/**",
     "scripts/main_cluster_guard.py",
     "scripts/tests/test_main_cluster_iac.py",
-    ".github/workflows/main-platform-validation.yml"
+    ".github/workflows/offline-validation.yml",
+    "scripts/ci-child-markers.py"
+  ],
+  "validation-kubernetes": [
+    "validation/kubernetes/**"
+  ],
+  "validation-main-platform": [
+    "platform/main-control-plane/**",
+    "kubernetes/platform/main/**",
+    "scripts/main_cluster_guard.py",
+    "scripts/tests/test_main_cluster_iac.py"
   ],
   "config-proxmox": [
     "live/proxmox/**",
@@ -131,6 +150,7 @@
     "scripts/tests/test_deploy_units.py",
     "scripts/deploy-units.py",
     "deploy-units.json",
+    "config/ci-python-pins.txt",
     "scripts/tests/test_ci_optimization.py",
     "scripts/ci-run-report.py"
   ],

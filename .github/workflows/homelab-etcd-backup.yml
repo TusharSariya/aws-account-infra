@@ -12,6 +12,8 @@ concurrency:
 jobs:
   backup:
     if: github.ref == 'refs/heads/main'
+    # Hosted by design, not CI_OPERATOR: the daily cron cannot depend on the
+    # operator Mac being awake and online, and daily age encryption is Linux amd64.
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: prod

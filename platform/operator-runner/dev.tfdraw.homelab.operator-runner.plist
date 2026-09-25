@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Template installed by scripts/mac-operator-runner.sh into /Library/LaunchDaemons.
+  The script rewrites /Users/ghrunner and ghrunner when RUNNER_USER or RUNNER_HOME
+  differ. A LaunchDaemon with UserName runs without a login session for the
+  dedicated runner user. It never starts at load or restarts itself: the runner is
+  online only between `mac-operator-runner.sh start` and `stop`.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>dev.tfdraw.homelab.operator-runner</string>
+  <key>UserName</key>
+  <string>ghrunner</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/ghrunner/actions-runner/run.sh</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>/Users/ghrunner/actions-runner</string>
+  <key>RunAtLoad</key>
+  <false/>
+  <key>KeepAlive</key>
+  <false/>
+  <key>Umask</key>
+  <integer>63</integer>
+  <key>StandardOutPath</key>
+  <string>/Users/ghrunner/actions-runner/_diag/launchd.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/ghrunner/actions-runner/_diag/launchd.err.log</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    <key>HOME</key>
+    <string>/Users/ghrunner</string>
+  </dict>
+</dict>
+</plist>

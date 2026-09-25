@@ -20,13 +20,6 @@ SCOPES = {
         ".trivyignore",
         ".trivyignore.yaml",
     ],
-    "shell": [
-        "scripts/*.sh",
-        "scripts/git-hooks/*",
-        "mocks/localstack/smoke.sh",
-        "tests/**",
-        ".shellcheckrc",
-    ],
     "localstack": [
         "mocks/localstack/**",
         "scripts/localstack.sh",
@@ -67,6 +60,7 @@ SHARED = [
     ".github/actions/**",
     "scripts/ci-relevant-changes.py",
     "config/ci-selection.json",
+    "config/ci-python-pins.txt",
     ".github/workflows/ci-validation.yml",
     "apps/containers/ci-runner/**",
     "scripts/cache*.py",
@@ -167,6 +161,30 @@ def terraform_directories(paths, units):
     return sorted(directories & affected)
 
 
+def ecr_images(paths):
+    """Images under apps/ecr/<name>/Dockerfile that ecr-push must rebuild.
+
+    Every image on manual/first-push selection or when ecr-push.yml changes;
+    otherwise only images with a changed path under their directory. SHARED is
+    deliberately excluded so CI plumbing changes do not push images.
+    """
+    names = sorted(
+        p.parent.name for p in (ROOT / "apps/ecr").glob("*/Dockerfile") if p.is_file()
+    )
+    if paths is None or ".github/workflows/ecr-push.yml" in paths:
+        return names
+    return [n for n in names if any(p.startswith(f"apps/ecr/{n}/") for p in paths)]
+
+
+def sdk_required(paths):
+    """Whether spec or generator changes require a stable SDK publication."""
+    return paths is None or any(
+        p.startswith(("sdk/targets/", "scripts/sdk-"))
+        or (p.startswith("specs/") and p.endswith("openapi.yaml"))
+        for p in paths
+    )
+
+
 def selection(paths):
     spec = importlib.util.spec_from_file_location(
         "deploy_units", ROOT / "scripts/deploy-units.py"
@@ -196,12 +214,17 @@ def selection(paths):
     for suite, prefix in [
         ("homelab-config-tests", "config-"),
         ("homelab-apps-tests", "apps-"),
+        ("offline-validation", "validation-"),
     ]:
         children = [name for name in SCOPES if name.startswith(prefix)]
         # A suite-wide dependency must run actual jobs, even when another changed
         # path already selects one child. Unmapped suite inputs conservatively
         # invalidate every child rather than yielding an entirely skipped suite.
-        suite_wide = paths is None or any(
+        # The suite's own workflow file is suite-wide even though broad child
+        # globs such as .github/** also match it.
+        suite_wide = (
+            paths is None or f".github/workflows/{suite}.yml" in paths
+        ) or any(
             relevant(suite, [path])
             and not any(relevant(child, [path]) for child in children)
             for path in paths
@@ -221,16 +244,15 @@ def selection(paths):
         "applications": apps,
         "units": selected,
         "aws_units": [u for u in selected if u["cloud"] == "aws"],
+        "images": ecr_images(paths),
+        "sdk_required": str(sdk_required(paths)).lower(),
     }
 
 
 def main():
     event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
     paths = changed_paths(event, os.environ["GITHUB_EVENT_NAME"])
-    scope = os.environ.get("CHECK_SCOPE")
-    values = (
-        {"run": paths is None or relevant(scope, paths)} if scope else selection(paths)
-    )
+    values = selection(paths)
     with open(os.environ["GITHUB_OUTPUT"], "a") as output:
         output.writelines(
             key

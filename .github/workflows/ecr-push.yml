@@ -40,42 +40,10 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/talos-runner-setup
+      # Shared selector: merge-base diff with --no-renames; every image on
+      # dispatch, a new branch or an ecr-push.yml change.
       - id: images
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
-          HEAD_SHA: ${{ github.sha }}
-        run: |
-          python3 - <<'PY' >> "$GITHUB_OUTPUT"
-          import json
-          import os
-          from pathlib import Path
-
-          root = Path("apps/ecr")
-          all_names = sorted(
-              p.parent.name for p in root.glob("*/Dockerfile") if p.is_file()
-          )
-          event = os.environ["EVENT_NAME"]
-          if event == "workflow_dispatch" or not os.environ.get("BASE_SHA") or set(os.environ.get("BASE_SHA", "")) == {"0"}:
-              selected = all_names
-          else:
-              import subprocess
-
-              changed = subprocess.check_output(
-                  ["git", "diff", "--name-only", os.environ["BASE_SHA"], os.environ["HEAD_SHA"], "--"],
-                  text=True,
-              ).splitlines()
-              selected = []
-              workflow_changed = any(path == ".github/workflows/ecr-push.yml" for path in changed)
-              if workflow_changed:
-                  selected = all_names
-              else:
-                  for name in all_names:
-                      prefix = f"apps/ecr/{name}/"
-                      if any(path.startswith(prefix) for path in changed):
-                          selected.append(name)
-          print("images=" + json.dumps(selected, separators=(",", ":")))
-          PY
+        run: python3 scripts/ci-relevant-changes.py
 
   push:
     needs: detect

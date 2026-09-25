@@ -29,6 +29,11 @@ class BuildCacheTests(unittest.TestCase):
         main = settings('Ollama image', 'linux/amd64', 'main')
         self.assertEqual(len(main['cache-from'].splitlines()), 1)
         self.assertIn(main['cache-from'], first['cache-from'])
+        # Branch ref is imported first; main's is a read-only fallback never exported to.
+        branch_ref = first['cache-to'].split(',')[1]
+        self.assertEqual(first['cache-from'].splitlines()[0], 'type=registry,' + branch_ref)
+        self.assertEqual(first['cache-from'].splitlines()[1], main['cache-from'])
+        self.assertNotIn(main['cache-from'].split(',')[1], first['cache-to'])
 
     def test_export_is_maximal_oci_and_nonfatal(self):
         result = settings('build', 'linux/amd64', 'main')

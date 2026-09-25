@@ -1,6 +1,8 @@
 import io
 import unittest
+from unittest.mock import patch
 import urllib.error
+import cache_transport
 from cache_transport import Transport, rewrite_metadata
 
 
@@ -24,12 +26,19 @@ class Opener:
 
 
 class TransportTests(unittest.TestCase):
+    def setUp(self):
+        sleeper = patch.object(cache_transport.time, 'sleep')
+        self.sleep = sleeper.start()
+        self.addCleanup(sleeper.stop)
+
     def test_bounded_cache_then_upstream(self):
         opener = Opener([urllib.error.URLError('offline')] * 4 + [Response(b'complete')])
         body, _, source, attempts = Transport(opener=opener).read('/go/example.org/module/@v/v1.0.0.mod')
         with body:
             self.assertEqual(body.read(), b'complete')
         self.assertEqual((source, attempts), ('upstream', 3))
+        # Backoff only between attempts on the same source; the switch is immediate.
+        self.assertEqual([c.args[0] for c in self.sleep.call_args_list], [1, 1, 2])
         self.assertEqual(len(opener.urls), 5)
         self.assertIn('/repository/go/', opener.urls[1])
         self.assertTrue(opener.urls[2].startswith('https://proxy.golang.org/'))
@@ -78,6 +87,7 @@ class TransportTests(unittest.TestCase):
             Transport(opener=opener).read('/go/example.org/missing/@v/v1.0.0.mod')
         self.assertEqual(failure.exception.code, 404)
         self.assertEqual(len(opener.urls), 5)
+        self.sleep.assert_not_called()
 
     def test_exact_python_fallback_artifact(self):
         metadata = b'{"urls":[{"filename":"x-1.whl","url":"https://files.pythonhosted.org/packages/ab/x-1.whl"}]}'

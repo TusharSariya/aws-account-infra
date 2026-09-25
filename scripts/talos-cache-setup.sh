@@ -13,10 +13,11 @@ if ! curl --silent --fail --max-time 1 "$base/health" >/dev/null; then
     > "$cache_dir/server.log" 2>&1 < /dev/null &
   echo "$!" > "$cache_dir/pid"
 fi
-for attempt in {1..20}; do
+# Up to about 10s: a cold interpreter on a CPU-starved pod can take several seconds.
+for attempt in {1..50}; do
   if curl --silent --fail --max-time 1 "$base/health" >/dev/null; then break; fi
-  if (( attempt == 20 )); then echo "Dependency transport failed to start" >&2; exit 1; fi
-  sleep 0.1
+  if (( attempt == 50 )); then echo "Dependency transport failed to start" >&2; exit 1; fi
+  sleep 0.2
 done
 curl --silent --fail --max-time 1 "$base/health" >/dev/null
 # The proxy buffers complete artifacts before replying, so cold large downloads

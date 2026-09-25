@@ -8,10 +8,6 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, labeled, unlabeled]
 
-concurrency:
-  group: sdk-publish-stable
-  cancel-in-progress: false
-
 permissions:
   id-token: write
   contents: read
@@ -28,39 +24,26 @@ jobs:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-light"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
     outputs:
-      required: ${{ steps.detect.outputs.required }}
+      required: ${{ steps.detect.outputs.sdk_required }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: ./.github/actions/talos-runner-setup
+      # Shared selector (scripts/ci-relevant-changes.py sdk_required).
       - id: detect
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.sha }}
-        run: |
-          python3 - <<'PY' >> "$GITHUB_OUTPUT"
-          import os
-          import subprocess
-
-          changed = subprocess.check_output(
-              ["git", "diff", "--name-only", os.environ["BASE_SHA"], os.environ["HEAD_SHA"], "--"],
-              text=True,
-          ).splitlines()
-          required = any(
-              path.startswith("sdk/targets/")
-              or path.startswith("scripts/sdk-")
-              or (path.startswith("specs/") and path.endswith("openapi.yaml"))
-              for path in changed
-          )
-          print(f"required={'true' if required else 'false'}")
-          PY
+        run: python3 scripts/ci-relevant-changes.py
 
   publish-stable:
     needs: detect
     if: (needs.detect.outputs.required == 'true' && contains(github.event.pull_request.labels.*.name, 'publish-stable')) && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-docker-small"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
     environment: sdk
+    # Serialize stable publication per target only. A single group would
+    # serialize the two matrix legs and let another run replace the pending leg.
+    concurrency:
+      group: sdk-publish-stable-${{ matrix.target }}
+      cancel-in-progress: false
     strategy:
       fail-fast: false
       matrix:

@@ -24,8 +24,6 @@ jobs:
       TFLINT_CONFIG_FILE: ${{ github.workspace }}/.tflint.hcl
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: ./.github/actions/talos-runner-setup
       - uses: ./.github/actions/nexus-dependency-cache
         with:

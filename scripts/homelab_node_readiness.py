@@ -3,8 +3,27 @@
 
 import json
 import os
+import re
 import subprocess
+import sys
 import time
+
+
+class NotReady(ValueError):
+    """A node or its networking agent is unavailable; subject is node[/daemon]."""
+
+    def __init__(self, message, subject):
+        super().__init__(message + subject)
+        self.subject = subject
+
+
+def diagnostic(error):
+    # Only a bounded node/daemon identifier crosses the private output boundary
+    # (talos-ci.py forwards lines that match its allowlist, nothing else).
+    subject = getattr(error, "subject", "")
+    if re.fullmatch(r"[a-z0-9-]{1,40}(?:/(?:cilium|cilium-envoy|kube-proxy))?", subject):
+        return "ACCEPTANCE_DIAGNOSTIC: readiness node " + subject
+    return None
 
 
 def ready(obj):
@@ -45,7 +64,7 @@ def verify(nodes, pods):
         if sleeping or quarantined_desktop:
             continue
         if not ready(node):
-            raise ValueError("Unexpected unavailable node: " + name)
+            raise NotReady("Unexpected unavailable node: ", name)
         for daemon in ["cilium", "cilium-envoy", "kube-proxy"]:
             matches = [
                 p
@@ -58,7 +77,7 @@ def verify(nodes, pods):
                 )
             ]
             if len(matches) != 1 or not ready(matches[0]):
-                raise ValueError("Networking is not ready: " + name + "/" + daemon)
+                raise NotReady("Networking is not ready: ", name + "/" + daemon)
 
 
 def main():
@@ -77,8 +96,11 @@ def main():
             verify(nodes, pods)
             print("PASS: networking ready on awake nodes")
             return
-        except ValueError:
+        except ValueError as error:
             if time.monotonic() >= deadline:
+                line = diagnostic(error)
+                if line:
+                    print(line, file=sys.stderr)
                 raise
             time.sleep(5)
 

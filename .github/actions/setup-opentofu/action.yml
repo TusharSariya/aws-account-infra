@@ -10,6 +10,8 @@ inputs:
 runs:
   using: composite
   steps:
+    # Hosted runners and the macOS operator runner (name mac-operator-*, never
+    # homelab-talos-*) take the upstream action, which supports darwin arm64.
     - uses: opentofu/setup-opentofu@v1
       if: runner.environment != 'self-hosted' || !startsWith(runner.name, 'homelab-talos-')
       with:
