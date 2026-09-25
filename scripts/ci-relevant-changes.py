@@ -67,6 +67,7 @@ SHARED = [
     ".github/actions/**",
     "scripts/ci-relevant-changes.py",
     "config/ci-selection.json",
+    "config/ci-python-pins.txt",
     ".github/workflows/ci-validation.yml",
     "apps/containers/ci-runner/**",
     "scripts/cache*.py",

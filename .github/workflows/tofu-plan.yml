@@ -50,7 +50,7 @@ jobs:
         with:
           kind: python
           toolchain: uv-python-3.14
-          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', 'config/ci-python-pins.txt') }}
           scope: ${{ toJSON(matrix) }}
       - uses: ./.github/actions/nexus-dependency-cache
         with:
@@ -105,7 +105,7 @@ jobs:
         with:
           kind: python
           toolchain: uv-python-3.14
-          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', 'config/ci-python-pins.txt') }}
           mode: save
           password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
           scope: ${{ toJSON(matrix) }}
@@ -278,7 +278,7 @@ jobs:
         with:
           kind: python
           toolchain: uv-python-3.14
-          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', 'config/ci-python-pins.txt') }}
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.TOFU_PLAN_ROLE_ARN }}
@@ -331,7 +331,7 @@ jobs:
         with:
           kind: python
           toolchain: uv-python-3.14
-          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', 'config/ci-python-pins.txt') }}
           mode: save
           password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
         if: ${{ success() }}

@@ -35,7 +35,7 @@ jobs:
         with:
           kind: python
           toolchain: uv-python-3.14
-          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', 'config/ci-python-pins.txt') }}
           scope: ${{ toJSON(matrix) }}
       - uses: astral-sh/setup-uv@v6
         with:
@@ -60,7 +60,7 @@ jobs:
         with:
           kind: python
           toolchain: uv-python-3.14
-          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', 'config/ci-python-pins.txt') }}
           mode: save
           password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
           scope: ${{ toJSON(matrix) }}

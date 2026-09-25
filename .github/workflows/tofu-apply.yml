@@ -49,7 +49,7 @@ jobs:
         with:
           kind: python
           toolchain: uv-python-3.14
-          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', 'config/ci-python-pins.txt') }}
       - uses: ./.github/actions/nexus-dependency-cache
         with:
           kind: providers
@@ -222,7 +222,7 @@ jobs:
         with:
           kind: python
           toolchain: uv-python-3.14
-          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', 'config/ci-python-pins.txt') }}
           mode: save
           password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
         if: ${{ success() }}

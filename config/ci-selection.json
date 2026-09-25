@@ -132,6 +132,7 @@
     "scripts/tests/test_deploy_units.py",
     "scripts/deploy-units.py",
     "deploy-units.json",
+    "config/ci-python-pins.txt",
     "scripts/tests/test_ci_optimization.py",
     "scripts/ci-run-report.py"
   ],
