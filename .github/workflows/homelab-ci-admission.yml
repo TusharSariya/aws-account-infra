@@ -187,6 +187,24 @@ jobs:
           hostname: gh-ci-admission-${{ github.run_id }}-${{ github.run_attempt }}
       - if: runner.os != 'macOS'
         run: sudo tailscale set --accept-routes=true
+      - name: Verify tailnet reachability of the cluster (non-secret)
+        if: runner.os != 'macOS'
+        run: |
+          tailscale status --json | python3 -c '
+          import json, sys
+          state = json.load(sys.stdin)
+          print("backend", state["BackendState"], "self", state["Self"]["HostName"], state["Self"].get("Tags"))
+          for peer in state["Peer"].values():
+              if peer.get("PrimaryRoutes"):
+                  print("subnet router", peer["HostName"], peer["PrimaryRoutes"], "online" if peer.get("Online") else "offline")'
+          awk 'NR > 1 {print "route", $1, $2, $3}' /proc/net/route
+          for target in 10.0.0.221:50000 10.0.0.222:50000 10.0.0.231:6443; do
+            if python3 -c 'import socket, sys; host, port = sys.argv[1].rsplit(":", 1); socket.create_connection((host, int(port)), 5).close()' "$target"; then
+              echo "$target reachable"
+            else
+              echo "::warning::$target not reachable over the tailnet"
+            fi
+          done
       - name: Require the operator Mac's existing tailnet session
         if: runner.os == 'macOS'
         run: tailscale status --json | python3 -c 'import json,sys; state = json.load(sys.stdin)["BackendState"]; assert state == "Running", "tailscale BackendState is " + state'
