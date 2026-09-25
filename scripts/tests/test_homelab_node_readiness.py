@@ -1,7 +1,10 @@
 from copy import deepcopy
 
 import pytest
-from homelab_node_readiness import verify
+import re
+from pathlib import Path
+
+from homelab_node_readiness import NotReady, diagnostic, verify
 
 
 def fixtures():
@@ -72,3 +75,20 @@ def test_quarantined_offline_desktop_does_not_gate_retained_servers():
     desktop['status']['conditions'][0]['status'] = 'True'
     with pytest.raises(ValueError, match='Networking is not ready'):
         verify(nodes + [desktop], pods)
+
+
+def test_timeout_diagnostic_names_only_the_unready_subject():
+    nodes, pods = fixtures()
+    source = (Path(__file__).resolve().parents[1] / "talos-ci.py").read_text()
+    allow = re.search(r"re\.fullmatch\(r'(ACCEPTANCE_DIAGNOSTIC: [^']+)'", source).group(1)
+    for broken, expected in [(pods[:-1], "talos-worker-02/kube-proxy"), (pods, None)]:
+        if expected is None:
+            nodes[1]["status"]["conditions"][0]["status"] = "False"
+            expected = "talos-worker-01"
+        with pytest.raises(NotReady) as raised:
+            verify(nodes, broken)
+        line = diagnostic(raised.value)
+        assert line == "ACCEPTANCE_DIAGNOSTIC: readiness node " + expected
+        assert re.fullmatch(allow, line)
+    assert diagnostic(ValueError("other")) is None
+    assert diagnostic(NotReady("x: ", "Bad Name; secret")) is None

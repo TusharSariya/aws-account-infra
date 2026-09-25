@@ -51,13 +51,19 @@ runs:
       env:
         PRIVATE: ${{ steps.private.outputs.path }}
       run: uv run scripts/talos-ci.py connect --private "$PRIVATE"
+    # Network acceptance checks readiness on every awake node, so it also holds
+    # the secondary host: a power transition mid-check fails the readiness poll.
+    # Cost: with --wait this wakes talos-worker-02 for every network acceptance.
     - name: Hold retained workers during cluster operations
       shell: bash
       env:
         PRIVATE: ${{ steps.private.outputs.path }}
+        OPERATION: ${{ inputs.operation }}
       run: |
+        hosts=primary
+        if [[ "$OPERATION" == network ]]; then hosts=primary,secondary; fi
         install -m 700 "$HOME/.cache/aws-account-infra/talos/kubectl-v1.36.3" "$PRIVATE/kubectl"
-        PATH="$PRIVATE:$PATH" python3 scripts/homelab-power-hold.py acquire --kubeconfig "$PRIVATE/kubeconfig" --receipt "$PRIVATE/power-hold.json" --hosts primary --wait
+        PATH="$PRIVATE:$PATH" python3 scripts/homelab-power-hold.py acquire --kubeconfig "$PRIVATE/kubeconfig" --receipt "$PRIVATE/power-hold.json" --hosts "$hosts" --wait
     - name: Execute selected acceptance or maintenance operation
       shell: bash
       env:

@@ -166,7 +166,7 @@ def run_private(command, env):
         # Never forward command output, exception text, resource YAML or credentials.
         import re
         for line in result.stderr.splitlines():
-            if re.fullmatch(r'ACCEPTANCE_DIAGNOSTIC: (?:(?:network|readiness|storage|capacity|lifecycle) line [0-9]{1,4}|probe (?:api-read|namespace-dry-run) (?:success|failure|timeout)|error (?:Forbidden|InternalError|Unauthorized|failed-calling-webhook|connection-refused|timeout|no-endpoints-available|AlreadyExists|ServiceUnavailable|certificate|EOF))', line):
+            if re.fullmatch(r'ACCEPTANCE_DIAGNOSTIC: (?:(?:network|readiness|storage|capacity|lifecycle) line [0-9]{1,4}|readiness node [a-z0-9-]{1,40}(?:/(?:cilium|cilium-envoy|kube-proxy))?|probe (?:api-read|namespace-dry-run) (?:success|failure|timeout)|error (?:Forbidden|InternalError|Unauthorized|failed-calling-webhook|connection-refused|timeout|no-endpoints-available|AlreadyExists|ServiceUnavailable|certificate|EOF))', line):
                 print(line, file=sys.stderr)
         raise StageError('Private command failed: ' + Path(str(command[0])).name
                          + '; exit ' + str(result.returncode) + '; output suppressed')
