@@ -1,83 +1,62 @@
-"""Operator runners on the Mac run the ARC image in containers with a bounded footprint."""
+"""Operator runners on the Mac: one fresh ARC-image container per job, bounded footprint."""
 from pathlib import Path
 import re
 import subprocess
 import unittest
 
-import yaml
-
 ROOT = Path(__file__).resolve().parents[2]
-COMPOSE = ROOT / 'platform/operator-runner/compose.yaml'
-ENTRYPOINT = ROOT / 'platform/operator-runner/container-entrypoint.sh'
+SUPERVISOR = ROOT / 'platform/operator-runner/supervise.sh'
 VALUES = ROOT / 'config/environments/kubernetes/homelab-ci/arc-runner-values.yaml'
 SCRIPT = ROOT / 'scripts/mac-operator-containers.sh'
 
 
-class OperatorContainerTests(unittest.TestCase):
-    def setUp(self):
-        self.compose = yaml.safe_load(COMPOSE.read_text())
-        self.services = self.compose['services']
+def docker_run_flags():
+    text = SUPERVISOR.read_text()
+    match = re.search(r'docker run (.*?)"\$OPERATOR_RUNNER_IMAGE" /home/runner/run\.sh', text, re.S)
+    assert match, 'supervisor must start the pinned image with run.sh'
+    return match[1].replace('\\\n', ' ').split()
 
+
+class OperatorContainerTests(unittest.TestCase):
     def test_runners_share_the_arc_image_pin_and_the_linux_code_path(self):
         pinned = set(re.findall(r'ghcr\.io/tusharsariyaorg/homelab-ci-runner@sha256:[0-9a-f]{64}', VALUES.read_text()))
         self.assertEqual(len(pinned), 1, 'arc-runner-values.yaml must pin exactly one runner digest')
-        # The script resolves the digest from the ARC values at run time, so the
-        # compose file must not carry a second copy that could drift.
-        self.assertNotIn('@sha256:', COMPOSE.read_text())
+        # The script resolves the digest from the ARC values at run time; no second copy.
+        digest = re.compile(r'@sha256:[0-9a-f]{64}')
+        self.assertIsNone(digest.search(SUPERVISOR.read_text()))
+        self.assertIsNone(digest.search(SCRIPT.read_text()))
         self.assertIn('pinned_image', SCRIPT.read_text())
-        for name, service in self.services.items():
-            with self.subTest(service=name):
-                self.assertEqual(service['platform'], 'linux/amd64')
-                self.assertEqual(service['image'], '${OPERATOR_RUNNER_IMAGE:?set by scripts/mac-operator-containers.sh}')
+        self.assertIn('--platform linux/amd64', ' '.join(docker_run_flags()))
 
-    def test_every_runner_is_isolated_and_bounded(self):
-        self.assertEqual(sorted(self.services), ['runner-1', 'runner-2', 'runner-3'])
-        for name, service in self.services.items():
-            with self.subTest(service=name):
-                self.assertEqual(service['cap_add'], ['NET_ADMIN'])
-                self.assertEqual(service['devices'], ['/dev/net/tun:/dev/net/tun'])
-                self.assertNotIn('privileged', service)
-                self.assertNotIn('network_mode', service)
-                self.assertNotIn('pid', service)
-                self.assertEqual(service['cpus'], 4)
-                self.assertEqual(service['mem_limit'], '4g')
-                env = service['environment']
-                self.assertEqual(env['RUNNER_LABELS'], 'homelab-operator')
-                self.assertEqual(env['RUNNER_URL'], 'https://github.com/TusharSariyaOrg')
-                self.assertTrue(env['RUNNER_NAME_PREFIX'].startswith('mac-operator-'))
-                self.assertEqual(env['RUNNER_INDEX'], name.split('-')[1])
-                mounts = [volume.split(':') for volume in service['volumes']]
-                host_mounts = [m for m in mounts if m[0].startswith('.') or m[0].startswith('/')]
-                self.assertEqual(host_mounts, [['./container-entrypoint.sh', '/opt/operator-runner/entrypoint.sh', 'ro']])
-                self.assertFalse(any('docker.sock' in volume for volume in service['volumes']))
-                named = {m[0] for m in mounts if m[0][0].isalpha()}
-                self.assertEqual(named, {'state-' + env['RUNNER_INDEX'], 'work-' + env['RUNNER_INDEX']})
-        self.assertEqual(set(self.compose['volumes']),
-                         {'state-1', 'state-2', 'state-3', 'work-1', 'work-2', 'work-3'})
+    def test_every_job_gets_a_fresh_isolated_bounded_container(self):
+        flags = docker_run_flags()
+        joined = ' '.join(flags)
+        self.assertIn('--rm', flags)
+        self.assertIn('--init', flags)
+        self.assertEqual(flags.count('--cap-add'), 1)
+        self.assertIn('--cap-add NET_ADMIN', joined)
+        self.assertIn('--device /dev/net/tun:/dev/net/tun', joined)
+        self.assertIn('--cpus 4', joined)
+        self.assertIn('--memory 4g', joined)
+        for forbidden in ('--privileged', '-v ', '--volume', '--mount', 'docker.sock', '--network host', '--pid'):
+            self.assertNotIn(forbidden, joined + ' ')
+        # The single-use JIT configuration reaches the container only as an
+        # environment variable of that one container.
+        self.assertIn('-e ACTIONS_RUNNER_INPUT_JITCONFIG', joined)
+        self.assertNotIn('ACTIONS_RUNNER_INPUT_JITCONFIG=', joined)
 
-    def test_entrypoint_keeps_the_token_out_of_the_running_container(self):
-        text = ENTRYPOINT.read_text()
-        # Root only to chown the volumes, then re-exec as the unprivileged runner user.
-        self.assertIn('exec runuser -u runner -- "$0" "$@"', text)
-        self.assertIn("[[ \"$(id -un)\" == runner ]]", text)
-        for service in self.services.values():
-            self.assertEqual(service['user'], '0:0')
-        self.assertIn('unset RUNNER_TOKEN', text)
-        self.assertIn('--runnergroup', text)
-        self.assertIn('--replace', text)
-        self.assertIn('--disableupdate', text)
-        self.assertNotIn('echo "$RUNNER_TOKEN', text)
+    def test_jit_registration_targets_the_restricted_group_and_leaves_no_credentials(self):
+        text = SUPERVISOR.read_text()
+        self.assertIn('generate-jitconfig', text)
+        self.assertIn('runner_group_id=${OPERATOR_GROUP_ID}', text)
+        self.assertIn('labels[]=${LABEL}', text)
+        self.assertIn('readonly LABEL=homelab-operator', text)
+        self.assertIn('name="mac-operator-${OPERATOR_HOST}-${OPERATOR_SLOT}-', text)
+        self.assertNotIn('homelab-talos', text)
+        self.assertNotIn('config.sh', text)
         self.assertNotIn('set -x', text)
-        subprocess.run(['bash', '-n', str(ENTRYPOINT)], check=True)
+        self.assertNotIn('echo "$ACTIONS_RUNNER_INPUT_JITCONFIG', text)
+        self.assertIn('unset ACTIONS_RUNNER_INPUT_JITCONFIG', text)
+        self.assertIn('readonly GROUP=homelab-operator', SCRIPT.read_text())
+        subprocess.run(['bash', '-n', str(SUPERVISOR)], check=True)
         subprocess.run(['bash', '-n', str(SCRIPT)], check=True)
-
-    def test_compose_renders_with_the_script_environment(self):
-        try:
-            result = subprocess.run(
-                ['docker', 'compose', '-f', str(COMPOSE), 'config', '--no-interpolate', '--quiet'],
-                capture_output=True, text=True)
-        except FileNotFoundError:
-            self.skipTest('docker unavailable on this runner')
-        if result.returncode != 0 and 'compose' in result.stderr and 'not a docker command' in result.stderr:
-            self.skipTest('docker compose plugin unavailable')
-        self.assertEqual(result.returncode, 0, result.stderr)

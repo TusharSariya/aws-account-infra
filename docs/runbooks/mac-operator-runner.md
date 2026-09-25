@@ -8,10 +8,10 @@ These jobs cannot run on ARC, and hosted runners become only the fallback.
 Two forms exist, both labelled `homelab-operator` and both in the same org runner
 group:
 
-- **Container runners (default).** Three persistent Linux containers under OrbStack
-  from `platform/operator-runner/compose.yaml`, running the exact ARC runner image
-  digest, so jobs take the ARC (Linux) code path and up to three operator jobs run in
-  parallel. See "Container runners" below.
+- **Container runners (default).** Up to three ephemeral Linux containers under
+  OrbStack, one fresh container per job from `platform/operator-runner/supervise.sh`,
+  running the exact ARC runner image digest, so jobs take the ARC (Linux) code path
+  and operator jobs run in parallel. See "Container runners" below.
 - **Native macOS runner (fallback).** One `actions/runner` process under a LaunchDaemon
   as the `ghrunner` user, using Homebrew tools and the Mac's own tailnet session. See
   "Install (native macOS runner)" below.
@@ -99,9 +99,10 @@ run on the Mac. Only three controls protect it:
 
 - the runners are offline outside maintenance windows;
 - the org runner group is restricted to this repository;
-- the native runner uses a dedicated non-admin user, and the container runners run
-  as the unprivileged `runner` user inside OrbStack's Linux VM with no host mounts,
-  no Docker socket and only `NET_ADMIN` for the job's own Tailscale node.
+- the native runner uses a dedicated non-admin user, and each container runner is a
+  fresh, single-job container running as the unprivileged `runner` user inside
+  OrbStack's Linux VM with no host mounts, no Docker socket, no stored credentials
+  and only `NET_ADMIN` for the job's own Tailscale node.
 
 Usability consequence: while `CI_OPERATOR=mac`, a PR touching `live/proxmox` or
 `live/talos` cannot pass `plan-gate` until the owner brings the Mac runner online. The
@@ -190,13 +191,21 @@ brew install opentofu uv helm kubernetes-cli jq gh tailscale python@3.13 awscli
 
 ## Container runners
 
-`scripts/mac-operator-containers.sh` manages three persistent runner containers
-(`runner-1..3`, GitHub names `mac-operator-<localhostname>-1..3`). Each is the ARC
-runner image at the digest pinned in
-`config/environments/kubernetes/homelab-ci/arc-runner-values.yaml`, run as
+`scripts/mac-operator-containers.sh start` launches three supervisor loops
+(`platform/operator-runner/supervise.sh`). Each loop mints a single-use just-in-time
+runner configuration for the `homelab-operator` org runner group, starts a **fresh**
+container from the ARC runner image at the digest pinned in
+`config/environments/kubernetes/homelab-ci/arc-runner-values.yaml`, runs exactly one
+job, and discards the container. GitHub deletes the runner record when the job ends.
+Runner names are `mac-operator-<localhostname>-<slot>-<timestamp>`. The image runs as
 `linux/amd64` under OrbStack's Rosetta, so `uname -m` is `x86_64` and every pinned
 Linux tool, checksum and composite-action branch is the one ARC already uses.
 `scripts/tests/test_operator_containers.py` pins the footprint.
+
+Ephemeral containers are not an optimization; the ARC code path requires them.
+`talos-cache-setup.sh` asserts a fresh runner (no pre-existing pip configuration),
+`tailscale/github-action` refuses an already-downloaded archive, and `/etc/hosts`
+edits would accumulate. A persistent container fails its second job.
 
 What a job sees inside a container:
 
@@ -211,29 +220,28 @@ What a job sees inside a container:
   back upstream with pinned checksums; `nexus-dependency-cache` records
   `unavailable` and the job rebuilds its caches. Expect operator jobs to be a
   little slower than on ARC, never to fail for that reason.
-- Nothing from macOS is mounted except the read-only entrypoint. No Docker socket:
+- Nothing from macOS is mounted, no Docker socket, no privileged mode:
   `docker: 'true'` jobs still cannot run here.
-- `_work` and the runner credentials persist per runner in named volumes;
-  containers themselves are disposable (`docker compose down` keeps the volumes).
+- No stored credentials. The JIT configuration is passed as an environment variable
+  to that one container only and is invalid after the job.
 - Each container is capped at 4 CPUs and 4 GiB; OrbStack's VM has 12 GiB.
 
-Install and operate (admin account, checkout of this repository, OrbStack running):
+Operate (owner account with `gh` `admin:org`, checkout of this repository, OrbStack
+running):
 
 ```bash
 ./scripts/mac-operator-containers.sh image      # pull the pinned digest (needs read:packages) or: image --build
-./scripts/mac-operator-containers.sh token-help
-RUNNER_TOKEN="$(gh api -X POST orgs/TusharSariyaOrg/actions/runners/registration-token --jq .token)" \
-  ./scripts/mac-operator-containers.sh register # once; RUNNERS=1..3 to register fewer
-./scripts/mac-operator-containers.sh start      # window opens
-./scripts/mac-operator-containers.sh status     # compose ps + GitHub online/busy per runner
-./scripts/mac-operator-containers.sh stop       # window closes
+./scripts/mac-operator-containers.sh start      # window opens; RUNNERS=1..9 (default 3)
+./scripts/mac-operator-containers.sh status     # supervisors, containers, GitHub online/busy
+./scripts/mac-operator-containers.sh stop       # window closes after running jobs finish (--now to interrupt)
+./scripts/mac-operator-containers.sh cleanup    # delete stale offline mac-operator-* records
 ```
 
-`register` passes the token only to a one-off container that stores the runner
-credentials in its state volume and exits; the token is never written into the
-persistent container configuration. `remove` needs a removal token and deletes the
-containers and volumes. The native runner may stay installed; both forms match the
-routing label, and GitHub picks whichever is idle.
+The supervisors run as the owner user because minting JIT configurations needs the
+`admin:org` `gh` login; they never mount anything into the containers, and job code
+runs only inside them. Supervisor logs are in `~/.local/state/homelab-operator/`.
+The native runner may stay installed; both forms match the routing label, and GitHub
+picks whichever is idle.
 
 ## Install (native macOS runner)
 
