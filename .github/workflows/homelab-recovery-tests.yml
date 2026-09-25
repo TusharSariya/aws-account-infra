@@ -6,21 +6,19 @@ permissions:
   contents: read
 
 jobs:
-  backup-contracts:
+  identity:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-light"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-checks"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/talos-runner-setup
       - name: Check recovery compatibility and failure guards
         run: python3 -m unittest discover -s scripts/tests -p test_homelab_backup.py
-
-  identity:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-light"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/talos-runner-setup
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: providers
+          toolchain: tofu-1.11.5
+          dependencies: ${{ hashFiles('**/.terraform.lock.hcl') }}
       - uses: ./.github/actions/setup-opentofu
         with:
           tofu_version: 1.11.5
@@ -33,3 +31,11 @@ jobs:
           tofu test
       - name: Exercise disposable certificate chain
         run: bash scripts/tests/homelab-backup-certificates.sh
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: providers
+          toolchain: tofu-1.11.5
+          dependencies: ${{ hashFiles('**/.terraform.lock.hcl') }}
+          mode: save
+          password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
+        if: ${{ success() }}
