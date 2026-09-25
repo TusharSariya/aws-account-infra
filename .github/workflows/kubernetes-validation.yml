@@ -13,17 +13,21 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.24.6'
-          cache: false
       - run: pip install ruff==0.12.12
       - run: ruff check validation/kubernetes
       - run: ruff format --check validation/kubernetes
       - run: python3 -m unittest discover -s validation/kubernetes/tests -v
+      - name: Install kubeconform v0.7.0
+        working-directory: ${{ runner.temp }}
+        run: |
+          set -euo pipefail
+          curl -fsSLO https://github.com/yannh/kubeconform/releases/download/v0.7.0/kubeconform-linux-amd64.tar.gz
+          echo 'c31518ddd122663b3f3aa874cfe8178cb0988de944f29c74a0b9260920d115d3  kubeconform-linux-amd64.tar.gz' | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/bin"
+          tar -xzf kubeconform-linux-amd64.tar.gz -C "$RUNNER_TEMP/bin" kubeconform
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
       - name: Validate generated Kubernetes manifests without cluster credentials
         run: |
-          go install github.com/yannh/kubeconform/cmd/kubeconform@v0.7.0
           python3 validation/kubernetes/render-fixtures.py /tmp/kubernetes-validation-rendered
           kubeconform -strict -summary /tmp/kubernetes-validation-rendered/*-job.json
       - name: Validate scenario and profile catalog
