@@ -1,6 +1,7 @@
 name: lambda-package
 
-# Build arm64 zips under apps/lambda/python/<runtime>/<name>.
+# Test court-booker natively on the checks runner, then build arm64 zips under
+# apps/lambda/python/<runtime>/<name> (QEMU ARM helper on x64 runners).
 # PRs upload candidate/<name>/<sha>.zip; main uploads stable/<name>/<sha>.zip.
 # Does not retarget Lambda; set booker_api_zip_key to a stable/ key and apply.
 
@@ -28,6 +29,34 @@ env:
   LAMBDA_STABLE_ROLE_ARN: arn:aws:iam::992382747916:role/github-ci-lambda-stable
 
 jobs:
+  test:
+    needs: select
+    if: contains(fromJSON(needs.select.outputs.applications), 'court-booker') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-24.04-arm","talos":"homelab-talos-checks"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/talos-runner-setup
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: python
+          toolchain: uv-python-3.14
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: false
+          cache-local-path: ${{ env.UV_CACHE_DIR || format('{0}/uv-cache', runner.temp) }}
+          python-version: '3.14'
+      - name: Court-booker tests
+        run: uv run --frozen --directory apps/lambda/python/3.14/court-booker pytest
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: python
+          toolchain: uv-python-3.14
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+          mode: save
+          password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
+        if: ${{ success() }}
   package:
     if: contains(fromJSON(needs.select.outputs.applications), 'court-booker') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-24.04-arm","talos":"homelab-talos-docker-small"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
@@ -65,13 +94,6 @@ jobs:
           buildkitd-config: ${{ steps.cache.outputs.config }}
           driver-opts: ${{ steps.cache.outputs.driver-opts }}
         if: runner.arch == 'X64'
-      - name: Test
-        run: |
-          if [[ "$RUNNER_ARCH" == X64 ]]; then
-            bash scripts/lambda-package-arm.sh test
-          else
-            uv run --directory apps/lambda/python/3.14/court-booker pytest
-          fi
       - id: aws
         continue-on-error: true
         uses: aws-actions/configure-aws-credentials@v4
@@ -115,7 +137,7 @@ jobs:
           mode: save
           password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
         if: ${{ success() }}
-    needs: select
+    needs: [select, test]
   select:
     runs-on: ubuntu-latest
     outputs:

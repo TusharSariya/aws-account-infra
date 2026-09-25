@@ -18,8 +18,8 @@ The `apply-gate` retains the deployment/acceptance requirements. Selected failur
 cancellations and unexpected skips cannot pass `plan-gate`. Pure validation cancels
 superseded runs; mutation ordering and stable publication stay serialized.
 
-Calendar tests select independently. Court-booker uses one content-addressed ARM
-helper for testing and packaging. Calendar infrastructure still owns calendar
+Calendar tests select independently. Court-booker tests run natively on the checks
+runner; the content-addressed ARM helper is used for packaging only. Calendar infrastructure still owns calendar
 packaging. SDK candidate generation, smoke testing and publishing share one job
 per target; stable SDK publication retains its existing approval workflow.
 
