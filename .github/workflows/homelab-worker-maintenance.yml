@@ -25,7 +25,10 @@ jobs:
     # Circular maintenance: the macOS operator runner when vars.CI_OPERATOR == 'mac', else hosted.
     runs-on: ${{ vars.CI_OPERATOR == 'mac' && fromJSON('["self-hosted","macOS","homelab-operator"]') || 'ubuntu-latest' }}
     timeout-minutes: 25
-    environment: prod
+    # Dispatch: main-only operator environment. workflow_call from a tofu-apply
+    # PR run keeps the unrestricted prod environment (refs/pull/N/merge).
+    environment:
+      name: ${{ github.event_name == 'workflow_dispatch' && 'operator' || 'prod' }}
     steps:
       - name: Require explicit worker target
         env:

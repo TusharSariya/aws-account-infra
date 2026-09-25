@@ -22,7 +22,8 @@ jobs:
     # Circular maintenance: the macOS operator runner when vars.CI_OPERATOR == 'mac', else hosted.
     runs-on: ${{ vars.CI_OPERATOR == 'mac' && fromJSON('["self-hosted","macOS","homelab-operator"]') || 'ubuntu-latest' }}
     timeout-minutes: 35
-    environment: prod
+    # Dispatch-only operator job: the operator environment deploys from main only.
+    environment: operator
     steps:
       - name: Require explicit disposable test and worker target
         env:
