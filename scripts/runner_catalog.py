@@ -34,12 +34,13 @@ def catalog(config_path=CONFIG):
 
 
 def rendered_values(config_path=CONFIG):
-    # Evaluate the production locals, without backend or provider access.
+    # Evaluate the production locals, without backend or provider access. This is
+    # CPU-bound, not a network wait; the timeout covers a cold, starved checks pod.
     with TemporaryDirectory() as directory:
         path = Path(directory)
         source = (ROOT / 'live/kubernetes/homelab-management/runners.tf').read_text().split('# Preserve')[0]
         (path / 'main.tf').write_text('locals { config = ' + json.dumps(str(config_path)) + ' }\n' + source)
-        output = subprocess.check_output(['tofu', '-chdir=' + directory, 'console'], input=b'jsonencode(local.runner_values)\n', timeout=30)
+        output = subprocess.check_output(['tofu', '-chdir=' + directory, 'console'], input=b'jsonencode(local.runner_values)\n', timeout=120)
         return json.loads(json.loads(output))
 
 
