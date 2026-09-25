@@ -1,0 +1,362 @@
+{
+  "run_id": "36104102485",
+  "workflow": "tofu-plan",
+  "attempt": 1,
+  "conclusion": "success",
+  "head_sha": "36cbc27",
+  "created_at": "2026-09-25T06:42:43Z",
+  "wall_s": 253,
+  "arc_pods": 14,
+  "hosted_jobs": 4,
+  "arc_exec_s": 843,
+  "hosted_exec_s": 68,
+  "arc_queue_sum_s": 891,
+  "requested_cpu": 29,
+  "critical_path": "plan-gate (+253s, queue 3s, exec 5s)",
+  "labels": {
+    "homelab-talos-checks": {
+      "jobs": 6,
+      "queue_avg": 54,
+      "queue_max": 55,
+      "exec_avg": 44,
+      "exec_sum": 263
+    },
+    "homelab-talos-docker-small": {
+      "jobs": 3,
+      "queue_avg": 82,
+      "queue_max": 84,
+      "exec_avg": 109,
+      "exec_sum": 328
+    },
+    "homelab-talos-light": {
+      "jobs": 5,
+      "queue_avg": 64,
+      "queue_max": 67,
+      "exec_avg": 50,
+      "exec_sum": 252
+    },
+    "ubuntu-latest": {
+      "jobs": 4,
+      "queue_avg": 4,
+      "queue_max": 5,
+      "exec_avg": 17,
+      "exec_sum": 68
+    }
+  },
+  "jobs": [
+    {
+      "name": "plan-gate",
+      "label": "ubuntu-latest",
+      "queue_s": 3,
+      "exec_s": 5,
+      "end_offset_s": 253,
+      "conclusion": "success"
+    },
+    {
+      "name": "homelab-apps-tests / postgres",
+      "label": "homelab-talos-docker-small",
+      "queue_s": 83,
+      "exec_s": 151,
+      "end_offset_s": 244,
+      "conclusion": "success"
+    },
+    {
+      "name": "homelab-recovery-tests / identity",
+      "label": "homelab-talos-light",
+      "queue_s": 65,
+      "exec_s": 158,
+      "end_offset_s": 234,
+      "conclusion": "success"
+    },
+    {
+      "name": "checkov / checkov",
+      "label": "homelab-talos-docker-small",
+      "queue_s": 84,
+      "exec_s": 138,
+      "end_offset_s": 232,
+      "conclusion": "success"
+    },
+    {
+      "name": "homelab-apps-tests / documents",
+      "label": "homelab-talos-docker-small",
+      "queue_s": 80,
+      "exec_s": 39,
+      "end_offset_s": 129,
+      "conclusion": "success"
+    },
+    {
+      "name": "homelab-config-tests / talos",
+      "label": "homelab-talos-checks",
+      "queue_s": 55,
+      "exec_s": 58,
+      "end_offset_s": 123,
+      "conclusion": "success"
+    },
+    {
+      "name": "trivy / trivy",
+      "label": "homelab-talos-checks",
+      "queue_s": 54,
+      "exec_s": 57,
+      "end_offset_s": 121,
+      "conclusion": "success"
+    },
+    {
+      "name": "tflint / tflint",
+      "label": "homelab-talos-checks",
+      "queue_s": 54,
+      "exec_s": 48,
+      "end_offset_s": 112,
+      "conclusion": "success"
+    },
+    {
+      "name": "shell / shell",
+      "label": "homelab-talos-light",
+      "queue_s": 64,
+      "exec_s": 36,
+      "end_offset_s": 110,
+      "conclusion": "success"
+    },
+    {
+      "name": "homelab-apps-tests / charts",
+      "label": "homelab-talos-checks",
+      "queue_s": 53,
+      "exec_s": 46,
+      "end_offset_s": 109,
+      "conclusion": "success"
+    },
+    {
+      "name": "runner-catalog / catalog",
+      "label": "homelab-talos-light",
+      "queue_s": 67,
+      "exec_s": 21,
+      "end_offset_s": 98,
+      "conclusion": "success"
+    },
+    {
+      "name": "homelab-apps-tests / lifecycle",
+      "label": "homelab-talos-checks",
+      "queue_s": 52,
+      "exec_s": 30,
+      "end_offset_s": 92,
+      "conclusion": "success"
+    },
+    {
+      "name": "homelab-recovery-tests / backup-contracts",
+      "label": "homelab-talos-light",
+      "queue_s": 63,
+      "exec_s": 18,
+      "end_offset_s": 91,
+      "conclusion": "success"
+    },
+    {
+      "name": "homelab-config-tests / workflow",
+      "label": "homelab-talos-light",
+      "queue_s": 62,
+      "exec_s": 19,
+      "end_offset_s": 91,
+      "conclusion": "success"
+    },
+    {
+      "name": "homelab-config-tests / proxmox",
+      "label": "homelab-talos-checks",
+      "queue_s": 55,
+      "exec_s": 24,
+      "end_offset_s": 90,
+      "conclusion": "success"
+    },
+    {
+      "name": "kubernetes-validation / offline",
+      "label": "ubuntu-latest",
+      "queue_s": 5,
+      "exec_s": 45,
+      "end_offset_s": 60,
+      "conclusion": "success"
+    },
+    {
+      "name": "main-platform-validation / offline",
+      "label": "ubuntu-latest",
+      "queue_s": 3,
+      "exec_s": 12,
+      "end_offset_s": 25,
+      "conclusion": "success"
+    },
+    {
+      "name": "detect",
+      "label": "ubuntu-latest",
+      "queue_s": 3,
+      "exec_s": 6,
+      "end_offset_s": 10,
+      "conclusion": "success"
+    }
+  ]
+}
+{
+  "run_id": "36104102381",
+  "workflow": "tofu-apply",
+  "attempt": 1,
+  "conclusion": "success",
+  "head_sha": "36cbc27",
+  "created_at": "2026-09-25T06:42:43Z",
+  "wall_s": 367,
+  "arc_pods": 5,
+  "hosted_jobs": 2,
+  "arc_exec_s": 519,
+  "hosted_exec_s": 11,
+  "arc_queue_sum_s": 429,
+  "requested_cpu": 12,
+  "critical_path": "apply-gate (+367s, queue 3s, exec 6s)",
+  "labels": {
+    "homelab-talos-checks": {
+      "jobs": 4,
+      "queue_avg": 64,
+      "queue_max": 65,
+      "exec_avg": 106,
+      "exec_sum": 425
+    },
+    "homelab-talos-docker-small": {
+      "jobs": 1,
+      "queue_avg": 171,
+      "queue_max": 171,
+      "exec_avg": 94,
+      "exec_sum": 94
+    },
+    "ubuntu-latest": {
+      "jobs": 2,
+      "queue_avg": 4,
+      "queue_max": 4,
+      "exec_avg": 6,
+      "exec_sum": 11
+    }
+  },
+  "jobs": [
+    {
+      "name": "apply-gate",
+      "label": "ubuntu-latest",
+      "queue_s": 3,
+      "exec_s": 6,
+      "end_offset_s": 367,
+      "conclusion": "success"
+    },
+    {
+      "name": "acceptance / acceptance (pvc)",
+      "label": "homelab-talos-checks",
+      "queue_s": 65,
+      "exec_s": 234,
+      "end_offset_s": 358,
+      "conclusion": "success"
+    },
+    {
+      "name": "storage-foundation / isolated",
+      "label": "homelab-talos-docker-small",
+      "queue_s": 171,
+      "exec_s": 94,
+      "end_offset_s": 324,
+      "conclusion": "success"
+    },
+    {
+      "name": "acceptance / acceptance (network)",
+      "label": "homelab-talos-checks",
+      "queue_s": 65,
+      "exec_s": 80,
+      "end_offset_s": 204,
+      "conclusion": "success"
+    },
+    {
+      "name": "acceptance / acceptance (lifecycle)",
+      "label": "homelab-talos-checks",
+      "queue_s": 65,
+      "exec_s": 67,
+      "end_offset_s": 191,
+      "conclusion": "success"
+    },
+    {
+      "name": "acceptance / acceptance (capacity)",
+      "label": "homelab-talos-checks",
+      "queue_s": 63,
+      "exec_s": 44,
+      "end_offset_s": 166,
+      "conclusion": "success"
+    },
+    {
+      "name": "detect",
+      "label": "ubuntu-latest",
+      "queue_s": 4,
+      "exec_s": 5,
+      "end_offset_s": 59,
+      "conclusion": "success"
+    }
+  ]
+}
+{
+  "run_id": "36104585441",
+  "workflow": "lambda-package",
+  "attempt": 1,
+  "conclusion": "success",
+  "head_sha": "e1516dc",
+  "created_at": "2026-09-25T06:48:55Z",
+  "wall_s": 721,
+  "arc_pods": 3,
+  "hosted_jobs": 1,
+  "arc_exec_s": 544,
+  "hosted_exec_s": 8,
+  "arc_queue_sum_s": 404,
+  "requested_cpu": 8,
+  "critical_path": "package (+721s, queue 268s, exec 441s)",
+  "labels": {
+    "homelab-talos-checks": {
+      "jobs": 2,
+      "queue_avg": 68,
+      "queue_max": 68,
+      "exec_avg": 52,
+      "exec_sum": 103
+    },
+    "homelab-talos-docker-small": {
+      "jobs": 1,
+      "queue_avg": 268,
+      "queue_max": 268,
+      "exec_avg": 441,
+      "exec_sum": 441
+    },
+    "ubuntu-latest": {
+      "jobs": 1,
+      "queue_avg": 4,
+      "queue_max": 4,
+      "exec_avg": 8,
+      "exec_sum": 8
+    }
+  },
+  "jobs": [
+    {
+      "name": "package",
+      "label": "homelab-talos-docker-small",
+      "queue_s": 268,
+      "exec_s": 441,
+      "end_offset_s": 721,
+      "conclusion": "success"
+    },
+    {
+      "name": "iracing-calendar",
+      "label": "homelab-talos-checks",
+      "queue_s": 68,
+      "exec_s": 53,
+      "end_offset_s": 133,
+      "conclusion": "success"
+    },
+    {
+      "name": "swim-calendar",
+      "label": "homelab-talos-checks",
+      "queue_s": 68,
+      "exec_s": 50,
+      "end_offset_s": 130,
+      "conclusion": "success"
+    },
+    {
+      "name": "select",
+      "label": "ubuntu-latest",
+      "queue_s": 4,
+      "exec_s": 8,
+      "end_offset_s": 12,
+      "conclusion": "success"
+    }
+  ]
+}
