@@ -120,7 +120,9 @@ class ExecutorRouting(unittest.TestCase):
         self.assertEqual(seen, HOSTED_ONLY, 'stale HOSTED_ONLY entry')
 
     def test_operator_jobs_require_the_prod_environment(self):
-        # prod only deploys from main, so non-main refs never reach the Mac.
+        # prod holds the operator secrets and OIDC trust; it is unrestricted because PR
+        # plans and apply-before-merge deploy from refs/pull/N/merge. See
+        # docs/runbooks/mac-operator-runner.md for the main-only hardening path.
         operator_jobs = [(workflow, name, job) for workflow, name, runs_on, job in job_specs()
                          if 'CI_OPERATOR' in runs_on or 'homelab-operator' in runs_on]
         self.assertTrue(operator_jobs)

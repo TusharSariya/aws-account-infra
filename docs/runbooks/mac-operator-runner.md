@@ -20,40 +20,37 @@ Class 2 jobs use exactly this expression, which
 runs-on: ${{ vars.CI_OPERATOR == 'mac' && fromJSON('["self-hosted","macOS","homelab-operator"]') || 'ubuntu-latest' }}
 ```
 
-| Workflow / job | Trigger | Environment |
-| --- | --- | --- |
-| `homelab-ci-admission` / `admission` (not `contracts`) | PR plan, dispatch plan/apply | `operator` on dispatch, else `prod` |
-| `tofu-plan` / `proxmox-plan`, `talos-plan` | PR | `prod` |
-| `tofu-apply` / `apply`, only when a Proxmox or Talos unit is selected (other units follow `CI_EXECUTOR`) | PR with `apply` label | `prod` |
-| `homelab-worker-maintenance` / `worker-reboot` | dispatch, or called from `tofu-apply` | `operator` on dispatch, else `prod` |
-| `homelab-lifecycle-maintenance` / `proof` | dispatch, or called from `tofu-apply` | `operator` on dispatch, else `prod` |
-| `homelab-ai-migration` / `reset` | dispatch | `operator` |
-| `homelab-capacity-host` / `reconcile` | dispatch | `operator` |
-| `homelab-quota-acceptance` / `proof` | dispatch | `operator` |
+Every class 2 job also declares `environment: prod`.
 
-Jobs with both triggers use
-`environment: {name: "${{ github.event_name == 'workflow_dispatch' && 'operator' || 'prod' }}"}`.
-A reusable workflow called from a `tofu-apply` PR run sees `pull_request`, so it takes `prod`.
+| Workflow / job | Trigger |
+| --- | --- |
+| `homelab-ci-admission` / `admission` (not `contracts`) | PR plan, dispatch plan/apply |
+| `tofu-plan` / `proxmox-plan`, `talos-plan` | PR |
+| `tofu-apply` / `apply`, only when a Proxmox or Talos unit is selected (other units follow `CI_EXECUTOR`) | PR with `apply` label |
+| `homelab-worker-maintenance` / `worker-reboot` | dispatch, or called from `tofu-apply` |
+| `homelab-lifecycle-maintenance` / `proof` | dispatch, or called from `tofu-apply` |
+| `homelab-ai-migration` / `reset` | dispatch |
+| `homelab-capacity-host` / `reconcile` | dispatch |
+| `homelab-quota-acceptance` / `proof` | dispatch |
 
 ## Security model
 
-Environments:
+Environment:
 
-- **`operator`: deploys from `main` only (applied).** GitHub checks the deployment
-  branch policy before it assigns a runner. Every dispatched operator job therefore
-  fails at the environment gate unless it was dispatched from `main`.
-- **`prod`: unrestricted.** PR plans and the apply-before-merge flow deploy from
-  `refs/pull/N/merge`, so a main-only policy would break them.
+- **Every operator job uses `prod`, which is unrestricted.** `prod` holds the
+  Talos, lifecycle and capacity secrets. The AWS apply role and the Tailscale
+  `tag:github-ci` OIDC login trust only `environment:prod`. PR plans and the
+  apply-before-merge flow deploy from `refs/pull/N/merge`, so a main-only policy on
+  `prod` would break them. `test_operator_jobs_require_the_prod_environment` fails
+  any job that routes to `CI_OPERATOR` or `homelab-operator` without
+  `environment: prod`.
 - **Required reviewers: unavailable.** GitHub rejects that rule for a private
   repository on the Team plan.
+- **No branch restriction on any operator job yet.** See "Future hardening" below.
 
-Controls:
+Controls on the runner itself:
 
-1. **Every operator job declares `prod`, `operator` or the dispatch expression
-   (enforced by test).** `test_operator_jobs_declare_a_deployment_environment` also
-   requires `operator` for dispatch-only workflows and the expression for workflows
-   that are both dispatched and called or PR-triggered.
-2. **Org runner group** `homelab-operator`, restricted to this repository (owner action).**
+1. **Org runner group `homelab-operator`, restricted to this repository (owner action).**
    This needs an org owner token with `admin:org`, which the current `gh` token
    does not have:
 
@@ -67,23 +64,24 @@ Controls:
    Then register (or re-register) with `RUNNER_GROUP=homelab-operator` set (see
    Install). A repository-level registration, the default, is already scoped to
    this repository.
-3. **The runner is offline outside maintenance windows.** The LaunchDaemon has
+2. **The runner is offline outside maintenance windows.** The LaunchDaemon has
    `RunAtLoad` and `KeepAlive` set to false. Install leaves it stopped. Start it for
    a window and stop it afterwards.
-4. **Dedicated non-admin user.** `ghrunner` is a hidden, standard account with
+3. **Dedicated non-admin user.** `ghrunner` is a hidden, standard account with
    shell `/usr/bin/false` and no sudo. It has no `~/.kube`, `~/.aws` or `~/.talos`
    and no access to the owner's keychain. Jobs get AWS credentials through OIDC,
-   and Talos secrets from environment secrets into `$RUNNER_TEMP`, then delete them.
+   and Talos secrets from `prod` environment secrets into `$RUNNER_TEMP`, then
+  delete them.
 
 Forking is disabled and the repository has a single admin collaborator, so fork PRs
 cannot reach the runner.
 
-### Residual risk: PR-triggered operator jobs
+### Residual risk
 
-`tofu-plan` Proxmox/Talos plans, `tofu-apply` hardware applies, admission PR plans and
-the reusable maintenance calls from `tofu-apply` run under the unrestricted `prod`
-environment. While `CI_OPERATOR=mac` and the runner is online, code from any
-same-repository branch can therefore run on the Mac. Only three controls protect it:
+Every operator job, dispatched or PR-triggered, runs under the unrestricted `prod`
+environment. While `CI_OPERATOR=mac` and the runner is online, a workflow from any
+same-repository branch that targets `homelab-operator` with `environment: prod` can
+run on the Mac. Only three controls protect it:
 
 - the runner is offline outside maintenance windows;
 - the org runner group is restricted to this repository;
@@ -93,25 +91,59 @@ Usability consequence: while `CI_OPERATOR=mac`, a PR touching `live/proxmox` or
 `live/talos` cannot pass `plan-gate` until the owner brings the Mac runner online. The
 alternative is to unset `CI_OPERATOR`, which falls back to hosted runners.
 
-### Owner prerequisites for the `operator` environment
+## Future hardening: main-only operator environment
 
-The `operator` environment starts empty. Dispatched operator jobs fail until these
-steps are done:
+Dispatched maintenance could run under a separate `operator` environment that
+deploys from `main` only. PR plans, `tofu-apply` hardware applies and the reusable
+calls from `tofu-apply` would keep `prod`, because they deploy from
+`refs/pull/N/merge`. An attempt was reverted because every prerequisite below must
+be in place first; otherwise every maintenance dispatch breaks.
 
-- Copy the `prod` environment secrets it uses into `operator`: `TALOS_SECRETS_B64`,
-  `AI_LIFECYCLE_CREDENTIALS_B64`, `CAPACITY_CLIENT_CREDENTIALS_B64`,
-  `CAPACITY_HOST_CREDENTIALS_B64`, `CAPACITY_HOST_SSH_KEY`, and
-  `ARC_GITHUB_APP_JSON_B64` if it is used. Also copy the variable
-  `CAPACITY_HOST_KNOWN_HOSTS`.
-- AWS: the `TOFU_APPLY_ROLE_ARN` trust (`modules/aws/account_identity/github_oidc.tf`)
-  accepts only `environment:prod`. A dispatched admission `mode=apply` under `operator`
-  cannot assume it until the trust also lists `environment:operator`.
-  `TOFU_PLAN_ROLE_ARN` trusts any subject in the repository.
-- Tailscale: the `tag:github-ci` OIDC credential subject is
-  `repo:TusharSariyaOrg/aws-account-infra:environment:prod`
-  (`live/proxmox/homelab/CI.md`). The hosted fallback for dispatched operator jobs
-  needs a credential that also accepts `environment:operator`. The Mac path does not
-  use the Tailscale action.
+1. **Create the environment with a main-only branch policy:**
+
+   ```bash
+   gh api -X PUT repos/TusharSariyaOrg/aws-account-infra/environments/operator \
+     -F 'deployment_branch_policy[protected_branches]=false' \
+     -F 'deployment_branch_policy[custom_branch_policies]=true'
+   gh api -X POST repos/TusharSariyaOrg/aws-account-infra/environments/operator/deployment-branch-policies \
+     -f name=main -f type=branch
+   gh api repos/TusharSariyaOrg/aws-account-infra/environments/operator \
+     --jq '{deployment_branch_policy, protection_rules}'
+   ```
+
+2. **Copy the `prod` secrets and variable it needs.** Secrets cannot be read back
+   from GitHub, so re-enter each value from its original private source:
+   - `TALOS_SECRETS_B64`
+   - `AI_LIFECYCLE_CREDENTIALS_B64`
+   - `CAPACITY_CLIENT_CREDENTIALS_B64`
+   - `CAPACITY_HOST_CREDENTIALS_B64`
+   - `CAPACITY_HOST_SSH_KEY`
+   - `ARC_GITHUB_APP_JSON_B64`, if it is used
+
+   ```bash
+   gh secret set TALOS_SECRETS_B64 --env operator < /PRIVATE/talos-secrets.b64   # repeat per secret
+   gh variable set CAPACITY_HOST_KNOWN_HOSTS --env operator \
+     --body "$(gh variable get CAPACITY_HOST_KNOWN_HOSTS --env prod)"
+   ```
+
+3. **Widen the AWS apply-role trust.** In `modules/aws/account_identity/github_oidc.tf:107`
+   the `TOFU_APPLY_ROLE_ARN` trust accepts only `environment:prod`. It must also
+   accept `${local.github_sub_prefix}:environment:operator`, applied through the
+   `aws-staging-account` root. The plan role already trusts any subject in the
+   repository.
+4. **Update the Tailscale login rule.** The `tag:github-ci` OIDC trust credential
+   subject is `repo:TusharSariyaOrg/aws-account-infra:environment:prod`
+   (`live/proxmox/homelab/CI.md`). Add a credential or rule for
+   `...:environment:operator` so that the hosted fallback of dispatched jobs can join
+   the tailnet. The Mac path does not use the Tailscale action.
+5. **Switch the workflows.** Dispatch-only workflows (`homelab-ai-migration`,
+   `homelab-capacity-host`, `homelab-quota-acceptance`) use `environment: operator`.
+   `homelab-ci-admission/admission`, `homelab-worker-maintenance` and
+   `homelab-lifecycle-maintenance` use
+   `environment: {name: "${{ github.event_name == 'workflow_dispatch' && 'operator' || 'prod' }}"}`.
+   Extend `test_ci_executor_routing.py` to require `operator` for dispatch-only
+   workflows. Revert commit `67f275e` (which undid `922a823`) to restore both
+   changes.
 
 ## Prerequisites
 
@@ -191,7 +223,7 @@ The runner name never starts with `homelab-talos-`. That keeps it on the upstrea
    gh run watch "$(gh run list --workflow homelab-worker-maintenance.yml --limit 1 --json databaseId --jq '.[0].databaseId')"
    ```
 
-   The job passes the main-only `operator` environment gate. It then runs on
+   The job enters the `prod` environment. It then runs on
    `mac-operator-*` and asserts the tailnet session. It fetches the pinned
    darwin/arm64 talosctl and kubectl and runs the operation.
 4. Close the window:

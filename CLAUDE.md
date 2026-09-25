@@ -56,15 +56,11 @@ variables live under `config/environments`, and secrets must not be committed.
   `scripts/tests/test_ci_executor_routing.py`. See `docs/runbooks/mac-operator-runner.md`.
 - Hosted runners are the fallback only (either variable unset). `homelab-etcd-backup` and
   `ci-runner-image/build` stay hosted by design.
-- Environments (enforced by the routing test):
-  - Dispatched operator jobs use the `operator` environment, which deploys from `main`
-    only (applied). Dispatch-only workflows declare `operator`.
-  - Workflows that are also PR-triggered or called from `tofu-apply` use
-    `${{ github.event_name == 'workflow_dispatch' && 'operator' || 'prod' }}`.
-  - `prod` stays unrestricted because PR plans and apply-before-merge deploy from
-    `refs/pull/N/merge`.
-  - Required reviewers are unavailable on the current plan.
-- PR-triggered operator jobs rely only on these controls: the runner stays offline outside
+- Every operator job declares `environment: prod`, and the routing test enforces it. `prod`
+  is unrestricted because PR plans and apply-before-merge deploy from `refs/pull/N/merge`.
+  Required reviewers are unavailable on the current plan. A main-only `operator`
+  environment is future hardening; its prerequisites are in the runbook.
+- Operator jobs therefore rely only on these controls: the runner stays offline outside
   maintenance windows, runs as a dedicated non-admin user, and belongs to the
   repo-restricted org runner group `homelab-operator`.
 
