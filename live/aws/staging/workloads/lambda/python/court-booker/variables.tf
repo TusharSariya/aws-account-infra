@@ -53,7 +53,7 @@ variable "ack_mode" {
 
 variable "ack_required" {
   type        = number
-  default     = 2
+  default     = 1
   description = "Number of friend accepts that confirm a booked court."
 
   validation {

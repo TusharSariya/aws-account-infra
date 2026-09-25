@@ -6,7 +6,7 @@
 
 locals {
   ack_functions = local.ack_enabled ? {
-    workflow = { timeout = 60, handler = "booker.ack_workflow.lambda_handler" }
+    workflow = { timeout = 300, handler = "booker.ack_workflow.lambda_handler" }
     api      = { timeout = 15, handler = "booker.ack_api.lambda_handler" }
   } : {}
 

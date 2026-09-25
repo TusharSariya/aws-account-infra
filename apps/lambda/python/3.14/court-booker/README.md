@@ -77,7 +77,7 @@ When the bot books a court (`status == "booked"`), the booking state machine sta
 per reservation). `booker.ack_workflow` emails each friend on that court's roster, plus
 the owner, a personal link `…/acks/<token>` on the calendar HTTP API. Friends accept or
 decline on a page served by `booker.ack_api`. Opening the link (GET) never changes
-anything; only the form POST records an answer. When `ack_required` friends (default 2)
+anything; only the form POST records an answer. When `ack_required` friends (default 1)
 accept, the court is confirmed. The owner's link has a "keep it anyway" override. A
 decline does not cancel early. A late accept after quorum sees "court is full".
 

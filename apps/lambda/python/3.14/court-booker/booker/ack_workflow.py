@@ -188,7 +188,7 @@ def prepare(event: dict, *, repository: AckRepository, config: BookingsConfig, n
     meta, created = repository.create_window(
         reservation_id,
         {
-            "required": int(event.get("ack_required") or 2),
+            "required": int(event.get("ack_required") or 1),
             "deadline": iso(deadline),
             "activity": activity,
             "date": str(booking["target_date"]),
