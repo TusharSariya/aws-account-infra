@@ -109,9 +109,14 @@ jobs:
           cache-binary: false
           buildkitd-config: ${{ steps.cache.outputs.config }}
           driver-opts: ${{ steps.cache.outputs.driver-opts }}
+      # Pure-Python postgres unit tests run in the charts job (apps-postgres step)
+      # so this docker job only carries the image build and integration run.
       - name: Validate postgres
+        env:
+          # The backup image is FROM the pinned CloudNativePG server image, so the
+          # integration servers reuse the loaded image instead of a second ghcr pull.
+          POSTGRES_SERVER_IMAGE: homelab-postgres-backup:local
         run: |
-          uv run --with PyYAML==6.0.3 --with boto3==1.42.49 --with 'psycopg[binary]==3.3.3' python -m unittest discover -s scripts/tests -p 'test_postgres_*.py'
           source scripts/build-cache-flags.sh
           docker buildx build ${build_cache_args[@]+"${build_cache_args[@]}"} --load --platform linux/amd64 -f apps/containers/postgres-backup/Dockerfile -t homelab-postgres-backup:local .
           bash scripts/tests/postgres-integration.sh
@@ -124,7 +129,7 @@ jobs:
           password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
         if: ${{ success() }}
   charts:
-    if: contains(fromJSON(inputs.checks), 'apps-charts') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    if: (contains(fromJSON(inputs.checks), 'apps-charts') || contains(fromJSON(inputs.checks), 'apps-postgres')) && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-checks"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
     steps:
       - uses: actions/checkout@v4
@@ -150,7 +155,11 @@ jobs:
         with:
           tofu_version: 1.11.5
           tofu_wrapper: false
+      - name: Validate postgres units
+        if: contains(fromJSON(inputs.checks), 'apps-postgres')
+        run: uv run --with PyYAML==6.0.3 --with boto3==1.42.49 --with 'psycopg[binary]==3.3.3' python -m unittest discover -s scripts/tests -p 'test_postgres_*.py'
       - name: Validate charts
+        if: contains(fromJSON(inputs.checks), 'apps-charts')
         run: |
           python3 scripts/homelab-apps.py setup
           uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p test_homelab_apps.py
