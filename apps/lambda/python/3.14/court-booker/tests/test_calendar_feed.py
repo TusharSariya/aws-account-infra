@@ -25,7 +25,7 @@ def reservation(**changes):
 @pytest.fixture
 def repository():
     repo = Mock()
-    repo.validate_token.return_value = True
+    repo.validate_token.return_value = "public"
     repo.get_metadata.return_value = {"initialized": True}
     repo.list_events.return_value = [reservation()]
     repo.claim_refresh.return_value = None
@@ -37,7 +37,7 @@ def request(**extra):
 
 
 def test_invalid_token_cannot_read_or_refresh(repository):
-    repository.validate_token.return_value = False
+    repository.validate_token.return_value = None
     client = Mock()
     assert serve(request(), repository, client)["statusCode"] == 404
     repository.get_metadata.assert_not_called()

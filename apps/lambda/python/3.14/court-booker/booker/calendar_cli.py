@@ -25,6 +25,12 @@ def build_parser():
     )
     create = subscription.add_parser("create")
     create.add_argument("label")
+    create.add_argument(
+        "--scope",
+        choices=("public", "private"),
+        default="public",
+        help="public links omit private bookings; private links see everything",
+    )
     create.add_argument("--base-url", default=os.environ.get("CALENDAR_BASE_URL"))
     subscription.add_parser("list")
     subscription.add_parser("revoke").add_argument("id")
@@ -86,8 +92,10 @@ def main(argv=None):
             return 0
         repository = CalendarRepository()
         if args.action == "create":
-            result = repository.create_subscription(args.label)
-            print(f"Subscription {result['id']}: {result['label']}")
+            result = repository.create_subscription(args.label, scope=args.scope)
+            print(
+                f"Subscription {result['id']}: {result['label']} ({args.scope})"
+            )
             print(
                 f"{args.base_url.rstrip('/')}/calendars/{result['token']}/bookings.ics"
             )
@@ -101,6 +109,7 @@ def main(argv=None):
                             for key in (
                                 "id",
                                 "label",
+                                "scope",
                                 "created_at",
                                 "revoked_at",
                                 "revoked",

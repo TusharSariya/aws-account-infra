@@ -23,9 +23,32 @@ FIELDS = (
     "court",
     "location",
     "status",
+    "visibility",
 )
+SCOPES = ("public", "private")
 META = {"PK": "CALENDAR", "SK": "META"}
 LEASE_SECONDS = 240
+
+
+def visibility_of(item):
+    """Records written before visibility existed are public."""
+    return "private" if item.get("visibility") == "private" else "public"
+
+
+def _merge_visibility(old, new):
+    """Private is sticky: a record never drops from private back to public."""
+    private = visibility_of(old) == "private" or visibility_of(new) == "private"
+    merged = {**new, "visibility": "private" if private else "public"}
+    merged.pop("title", None)
+    title = new.get("title") or old.get("title")
+    if title:
+        merged["title"] = title
+    return merged
+
+
+def _scope_of(subscription):
+    """Subscriptions created before scopes existed (and unknown values) are public."""
+    return "private" if subscription.get("scope") == "private" else "public"
 
 
 def utcnow(now=None):
@@ -152,11 +175,16 @@ class CalendarRepository:
             old = self._get(key)
             if lease_id and old.get("version") != expected_version:
                 return False
-            changed = any(old.get(k) != reservation[k] for k in FIELDS)
+            merged = _merge_visibility(old, reservation)
+            previous = {**old, "visibility": visibility_of(old)} if old else {}
+            changed = any(
+                previous.get(k) != merged.get(k) for k in (*FIELDS, "title")
+            )
             timestamp = utcnow(now).isoformat()
             item = {
                 **key,
-                **{k: reservation[k] for k in FIELDS},
+                **{k: merged[k] for k in FIELDS},
+                **({"title": merged["title"]} if merged.get("title") else {}),
                 "version": uuid.uuid4().hex,
                 "sequence": int(old.get("sequence", -1)) + int(changed),
                 "created_at": old.get("created_at", timestamp),
@@ -218,9 +246,11 @@ class CalendarRepository:
                 continue
         raise RuntimeError("calendar reservation write contention")
 
-    def create_subscription(self, label, now=None):
+    def create_subscription(self, label, scope="public", now=None):
         if not isinstance(label, str) or not label.strip() or len(label) > 200:
             raise ValueError("subscription label must contain 1 to 200 characters")
+        if scope not in SCOPES:
+            raise ValueError("subscription scope must be public or private")
         subscription_id = uuid.uuid4().hex
         token = subscription_id + "." + secrets.token_urlsafe(32)
         item = {
@@ -230,33 +260,40 @@ class CalendarRepository:
             "label": label.strip(),
             "created_at": utcnow(now).isoformat(),
             "revoked": False,
+            "scope": scope,
             "token_hash": hashlib.sha256(token.encode()).hexdigest(),
         }
         self.table.put_item(Item=item, ConditionExpression=Attr("PK").not_exists())
-        return {k: item[k] for k in ("id", "label", "created_at")} | {"token": token}
+        return {k: item[k] for k in ("id", "label", "created_at", "scope")} | {
+            "token": token
+        }
 
     def validate_token(self, token):
+        """Return the subscription scope for a valid token, otherwise None."""
         if not isinstance(token, str) or len(token) > 256:
-            return False
+            return None
         parts = token.split(".")
         if (
             len(parts) != 2
             or len(parts[0]) != 32
             or not all(c in "0123456789abcdef" for c in parts[0])
         ):
-            return False
+            return None
         item = self._get({"PK": "SUBSCRIPTIONS", "SK": parts[0]})
-        return bool(
-            item
-            and not item.get("revoked")
-            and hmac.compare_digest(
+        if (
+            not item
+            or item.get("revoked")
+            or not hmac.compare_digest(
                 item["token_hash"], hashlib.sha256(token.encode()).hexdigest()
             )
-        )
+        ):
+            return None
+        return _scope_of(item)
 
     def list_subscriptions(self):
         return [
             {k: r[k] for k in ("id", "label", "created_at", "revoked")}
+            | {"scope": _scope_of(r)}
             for r in self._query("SUBSCRIPTIONS")
         ]
 

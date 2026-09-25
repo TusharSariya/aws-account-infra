@@ -29,6 +29,8 @@ class BookingRequest:
     calendar_url: str = ""
     equipment_id: int | None = None
     timezone: str = "America/St_Johns"
+    visibility: str = "public"
+    title: str | None = None
 
 
 class StubUpace:
