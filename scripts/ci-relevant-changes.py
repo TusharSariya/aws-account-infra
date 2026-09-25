@@ -190,6 +190,7 @@ def selection(paths):
     for suite, prefix in [
         ("homelab-config-tests", "config-"),
         ("homelab-apps-tests", "apps-"),
+        ("offline-validation", "validation-"),
     ]:
         children = [name for name in SCOPES if name.startswith(prefix)]
         # A suite-wide dependency must run actual jobs, even when another changed

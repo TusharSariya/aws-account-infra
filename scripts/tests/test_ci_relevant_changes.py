@@ -36,7 +36,7 @@ class RelevantChangesTests(unittest.TestCase):
         )
 
     def test_retired_micro_suites_have_no_scope(self):
-        for name in ["shell", "runner-catalog"]:
+        for name in ["shell", "runner-catalog", "kubernetes-validation", "main-platform-validation"]:
             self.assertNotIn(name, changes.SCOPES)
         checks = set(changes.selection(["scripts/runner_catalog.py"])["checks"])
         self.assertTrue({"config-runner-catalog", "homelab-config-tests"} <= checks)
@@ -89,7 +89,8 @@ class FullDiffTests(unittest.TestCase):
                 self.assertTrue(children.issubset(checks))
 
     def test_suite_workflow_edit_selects_every_child(self):
-        for suite, prefix in [('homelab-config-tests', 'config-'), ('homelab-apps-tests', 'apps-')]:
+        for suite, prefix in [('homelab-config-tests', 'config-'), ('homelab-apps-tests', 'apps-'),
+                              ('offline-validation', 'validation-')]:
             with self.subTest(suite=suite):
                 children = {name for name in changes.SCOPES if name.startswith(prefix)}
                 checks = set(changes.selection([f'.github/workflows/{suite}.yml'])['checks'])
@@ -97,6 +98,19 @@ class FullDiffTests(unittest.TestCase):
                 self.assertTrue(children <= checks, sorted(children - checks))
         config = {'config-workflow', 'config-shell', 'config-runner-catalog', 'config-proxmox', 'config-talos'}
         self.assertEqual({n for n in changes.SCOPES if n.startswith('config-')}, config)
+
+    def test_offline_validation_children_select_independently(self):
+        kubernetes = set(changes.selection(['validation/kubernetes/core.py'])['checks'])
+        self.assertTrue({'offline-validation', 'validation-kubernetes'} <= kubernetes)
+        self.assertNotIn('validation-main-platform', kubernetes)
+        platform = set(changes.selection(['scripts/main_cluster_guard.py'])['checks'])
+        self.assertTrue({'offline-validation', 'validation-main-platform'} <= platform)
+        self.assertNotIn('validation-kubernetes', platform)
+        for workflow in ['tofu-plan.yml', 'ci-validation.yml']:
+            text = (changes.ROOT / '.github/workflows' / workflow).read_text()
+            self.assertIn('uses: ./.github/workflows/offline-validation.yml', text)
+            self.assertNotIn('kubernetes-validation', text)
+            self.assertNotIn('main-platform-validation', text)
 
     def test_child_marker_check_fails_closed(self):
         spec = importlib.util.spec_from_file_location(

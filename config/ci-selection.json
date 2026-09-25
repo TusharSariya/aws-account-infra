@@ -107,16 +107,23 @@
     "live/kubernetes/homelab-ci/**",
     "live/kubernetes/homelab-management/**"
   ],
-  "kubernetes-validation": [
+  "offline-validation": [
     "validation/kubernetes/**",
-    ".github/workflows/kubernetes-validation.yml"
-  ],
-  "main-platform-validation": [
     "platform/main-control-plane/**",
     "kubernetes/platform/main/**",
     "scripts/main_cluster_guard.py",
     "scripts/tests/test_main_cluster_iac.py",
-    ".github/workflows/main-platform-validation.yml"
+    ".github/workflows/offline-validation.yml",
+    "scripts/ci-child-markers.py"
+  ],
+  "validation-kubernetes": [
+    "validation/kubernetes/**"
+  ],
+  "validation-main-platform": [
+    "platform/main-control-plane/**",
+    "kubernetes/platform/main/**",
+    "scripts/main_cluster_guard.py",
+    "scripts/tests/test_main_cluster_iac.py"
   ],
   "config-proxmox": [
     "live/proxmox/**",

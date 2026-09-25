@@ -336,7 +336,7 @@ jobs:
           password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
         if: ${{ success() }}
   plan-gate:
-    needs: [detect, plan, proxmox-plan, talos-plan, applications-plan, checkov, tflint, trivy, homelab-config-tests, homelab-apps-tests, homelab-recovery-tests, kubernetes-validation, main-platform-validation]
+    needs: [detect, plan, proxmox-plan, talos-plan, applications-plan, checkov, tflint, trivy, homelab-config-tests, homelab-apps-tests, homelab-recovery-tests, offline-validation]
     if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
     runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-light"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
     steps:
@@ -408,13 +408,10 @@ jobs:
     if: contains(fromJSON(needs.detect.outputs.checks), 'homelab-recovery-tests') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     uses: ./.github/workflows/homelab-recovery-tests.yml
     secrets: inherit
-  kubernetes-validation:
+  offline-validation:
     needs: detect
-    if: contains(fromJSON(needs.detect.outputs.checks), 'kubernetes-validation') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    uses: ./.github/workflows/kubernetes-validation.yml
+    if: contains(fromJSON(needs.detect.outputs.checks), 'offline-validation') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    uses: ./.github/workflows/offline-validation.yml
     secrets: inherit
-  main-platform-validation:
-    needs: detect
-    if: contains(fromJSON(needs.detect.outputs.checks), 'main-platform-validation') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    uses: ./.github/workflows/main-platform-validation.yml
-    secrets: inherit
+    with:
+      checks: ${{ needs.detect.outputs.checks }}
