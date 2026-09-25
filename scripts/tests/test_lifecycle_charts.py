@@ -36,9 +36,13 @@ class ChartTests(unittest.TestCase):
     def test_reviewed_idle_timeout_reaches_controller_configuration(self):
         docs = render('lifecycle')
         config = next(doc for doc in docs if doc['kind'] == 'ConfigMap' and doc['metadata']['name'] == 'ai-lifecycle-config')
-        self.assertEqual(json.loads(config['data']['config.json'])['idleTimeoutSeconds'], 300)
+        rendered = json.loads(config['data']['config.json'])
+        self.assertEqual(rendered['idleTimeoutSeconds'], 300)
         defaults = yaml.safe_load((ROOT / 'charts/homelab-lifecycle/values.yaml').read_text())
         self.assertEqual(defaults['config']['idleTimeoutSeconds'], 1800)
+        # The control plane is a 2 vCPU guest; the reviewed cadence is 10 s, not 2 s.
+        self.assertEqual(rendered['tickSeconds'], 10)
+        self.assertEqual(defaults['config']['tickSeconds'], 10)
 
     def test_controller_owns_only_runtime_and_has_no_secret_or_host_access(self):
         docs = render('lifecycle')

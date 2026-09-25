@@ -13,7 +13,7 @@ sys.path[:0] = [str(ROOT / 'apps/platform/lifecycle'), str(ROOT / 'apps/platform
 from capacity import Decision
 from kube import Conflict, Unavailable
 from leadership import LEASE_PATH
-from runtime import Runtime, RUNTIME, STATE, MODELS, PLATFORM
+from runtime import Runtime, RUNTIME, STATE, MODELS, PLATFORM, TICK_BOUNDS, tick_seconds
 from state import Rejected
 
 
@@ -152,6 +152,29 @@ class RuntimeTests(unittest.TestCase):
         with self.assertRaises(Conflict):
             self.api.put(RUNTIME, stale)
         self.assertEqual(self.api.objects[RUNTIME]['spec']['replicas'], 1)
+
+    def test_steady_state_tick_reads_but_never_rewrites_the_runtime(self):
+        def runtime_writes():
+            return sum(1 for value in self.api.writes if value['metadata'].get('name') == 'ai-runtime')
+        written = runtime_writes()
+        for _ in range(5):
+            self.runtime.tick()
+        # Only the Lease renewal is written per tick; the Deployment is untouched.
+        self.assertEqual(runtime_writes(), written)
+        self.assertEqual(self.runtime.current_status()['desired'], 'off')
+        # A real change still commits in one write.
+        self.operate('start', 0)
+        self.assertEqual(runtime_writes(), written + 1)
+        self.assertEqual(self.api.objects[RUNTIME]['spec']['replicas'], 1)
+
+    def test_tick_cadence_is_bounded_under_the_heartbeat_gap(self):
+        self.assertEqual(tick_seconds({}), 10)
+        self.assertEqual(tick_seconds({'tickSeconds': TICK_BOUNDS[0]}), TICK_BOUNDS[0])
+        for invalid in (1, TICK_BOUNDS[1] + 1, 10.0, '10', True):
+            with self.subTest(value=invalid), self.assertRaises(ValueError):
+                tick_seconds({'tickSeconds': invalid})
+        runtime = Runtime(self.api, 'cadence', {**self.runtime.config, 'tickSeconds': 5})
+        self.assertEqual(runtime.tick_seconds, 5)
 
     def test_template_updates_are_applied_while_off_without_starting_ai(self):
         self.api.template['spec']['template']['metadata']['labels']['revision'] = 'new'

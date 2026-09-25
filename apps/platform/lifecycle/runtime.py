@@ -8,7 +8,7 @@ from capacity import CapacityGate
 from collector import PROJECTS
 from kube import Conflict, Unavailable
 from leadership import Leadership
-from state import Observation, Rejected, initial, command, begin, finish, heartbeat
+from state import HEARTBEAT_SECONDS, Observation, Rejected, initial, command, begin, finish, heartbeat
 from workload_state import is_terminated
 from identity import probe
 from queue_status import observe as observe_queue
@@ -18,6 +18,26 @@ MODELS = '/api/v1/namespaces/homelab-models'
 DEPLOYMENTS = '/apis/apps/v1/namespaces/homelab-models/deployments'
 RUNTIME = DEPLOYMENTS + '/ai-runtime'
 STATE = 'homelab/lifecycle-state'
+# Reconciliation cadence. The lower bound keeps API load bounded on the 2-vCPU
+# control plane; the upper bound leaves slack under the heartbeat gap check so a
+# slow tick still counts as continuous observation.
+TICK_SECONDS = 10
+TICK_BOUNDS = (2, HEARTBEAT_SECONDS - 3)
+
+
+def tick_seconds(config):
+    value = config.get('tickSeconds', TICK_SECONDS)
+    if type(value) is not int or not TICK_BOUNDS[0] <= value <= TICK_BOUNDS[1]:
+        raise ValueError('tickSeconds must be an integer between %d and %d' % TICK_BOUNDS)
+    return value
+
+
+def intent(resource):
+    result = deepcopy(resource)
+    result.pop('status', None)
+    for field in ('resourceVersion', 'managedFields'):
+        result['metadata'].pop(field, None)
+    return result
 
 
 class Runtime:
@@ -29,6 +49,7 @@ class Runtime:
         self.lock = threading.RLock()
         self.observer = Observation(self.config.get('idleTimeoutSeconds', 1800))
         self.capacity = self.new_capacity_gate()
+        self.tick_seconds = tick_seconds(self.config)
         self.status = None
         self.status_at = 0
         self.last_alert = None
@@ -103,7 +124,7 @@ class Runtime:
             state['interruption'] = {'revision': state['revision'], 'reason': 'observed container termination', 'tickets': retired}
             self.observer.idle_since = None
 
-    def persist(self, obj, state, replicas=None):
+    def persist(self, obj, state, replicas=None, observed=None):
         self.leader.fence(obj, state)
         value = deepcopy(obj)
         value.pop('status', None)
@@ -112,18 +133,17 @@ class Runtime:
         value['metadata']['annotations']['homelab/command-revision'] = str(state['revision'])
         if replicas is not None:
             value['spec']['replicas'] = replicas
+        # A steady-state tick whose intent equals the object read from the API
+        # writes nothing: the Lease already proves liveness, and every write is
+        # an etcd transaction plus a watch event for each client on the cluster.
+        if observed is not None and intent(value) == intent(observed):
+            return observed
         # Deployment status reconciliation can race with an unchanged command.
         # Retry once only when every field of the observed intent is identical.
         try:
             return self.api.put(RUNTIME, value)
         except Conflict:
             current = self.api.call('GET', RUNTIME)
-            def intent(resource):
-                result = deepcopy(resource)
-                result.pop('status', None)
-                for field in ('resourceVersion', 'managedFields'):
-                    result['metadata'].pop(field, None)
-                return result
             if intent(current) != intent(obj):
                 raise
             self.leader.fence(current, state)
@@ -209,14 +229,16 @@ class Runtime:
             if not self.acquire():
                 return
             obj, state, pods, approved, revision = self.read()
+            observed = deepcopy(obj)
             obj, state, replicas, status = self.evaluate(obj, state, pods, approved, revision, self.samples())
-            saved = self.persist(obj, state, replicas)
+            saved = self.persist(obj, state, replicas, observed=observed)
             self.status, self.status_at = status, time.monotonic()
             self.alert(saved, status)
 
     def current_status(self):
         with self.lock:
-            if not self.leader.active() or self.status is None or time.monotonic() - self.status_at > 10:
+            if (not self.leader.active() or self.status is None
+                    or time.monotonic() - self.status_at > 2 * self.tick_seconds):
                 raise Unavailable('Verified lifecycle Status is temporarily unavailable')
             return deepcopy(self.status)
 

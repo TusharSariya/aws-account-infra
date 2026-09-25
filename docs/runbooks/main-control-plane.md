@@ -121,6 +121,25 @@ If the command fails, inspect the journal. It deliberately does not try an
 unattended reverse migration. Do not rerun over an existing checkpoint, copy or
 journal. Source-stopped/copy-incomplete is distinct from destination-started.
 
+## Memory exhaustion (2026-09-25)
+
+Symptoms: `10.0.0.231` unreachable ("no route to host") while `10.0.0.221`
+answers `talosctl`; `talosctl -n 10.0.0.221 services` shows etcd, kubelet and cri
+health failing; `dmesg` full of `OOM controller triggered` for BestEffort
+kube-system pods; the laptop shows load above 60, 60%+ iowait and 200 MB/s of
+sustained reads from `system.qcow2`. The power coordinator logs `reconcile-error`
+continuously and cannot retire either host.
+
+Diagnose without touching the guest: `talosctl -n 10.0.0.221 -e 10.0.0.221 memory`,
+`processes -s rss`, `logs etcd | grep -E 'slow fdatasync|took too long'`, and the
+QEMU monitor (`query-blockstats`, `screendump`) on `/var/lib/main-control-plane/vm/qmp.sock`.
+Recovery is `ops.sh stop` then `ops.sh start` once the reviewed budget in
+`live/talos/homelab/README.md` (kubelet reservations, `GOMEMLIMIT`, audit policy,
+Cilium requests, 10 s lifecycle cadence) has been applied or is queued to apply
+immediately after; a restart alone drifts back into the same state. Release any
+durable CI power hold afterwards with its receipt or, when the receipt is gone,
+after confirming the owning run has ended.
+
 ## Placement and ownership
 
 After identity/network checks, generate and server-dry-run the
