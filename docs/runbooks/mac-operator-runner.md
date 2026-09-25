@@ -18,34 +18,42 @@ Class 2 jobs use exactly this expression, which
 
 ```yaml
 runs-on: ${{ vars.CI_OPERATOR == 'mac' && fromJSON('["self-hosted","macOS","homelab-operator"]') || 'ubuntu-latest' }}
-environment: prod
 ```
 
-| Workflow / job | Trigger |
-| --- | --- |
-| `homelab-ci-admission` / `admission` (not `contracts`) | PR plan, dispatch plan/apply |
-| `tofu-plan` / `proxmox-plan`, `talos-plan` | PR |
-| `tofu-apply` / `apply`, only when a Proxmox or Talos unit is selected (other units follow `CI_EXECUTOR`) | PR with `apply` label |
-| `homelab-worker-maintenance` / `worker-reboot` | dispatch, or called from `tofu-apply` |
-| `homelab-lifecycle-maintenance` / `proof` | dispatch, or called from `tofu-apply` |
-| `homelab-ai-migration` / `reset` | dispatch |
-| `homelab-capacity-host` / `reconcile` | dispatch |
-| `homelab-quota-acceptance` / `proof` | dispatch |
+| Workflow / job | Trigger | Environment |
+| --- | --- | --- |
+| `homelab-ci-admission` / `admission` (not `contracts`) | PR plan, dispatch plan/apply | `operator` on dispatch, else `prod` |
+| `tofu-plan` / `proxmox-plan`, `talos-plan` | PR | `prod` |
+| `tofu-apply` / `apply`, only when a Proxmox or Talos unit is selected (other units follow `CI_EXECUTOR`) | PR with `apply` label | `prod` |
+| `homelab-worker-maintenance` / `worker-reboot` | dispatch, or called from `tofu-apply` | `operator` on dispatch, else `prod` |
+| `homelab-lifecycle-maintenance` / `proof` | dispatch, or called from `tofu-apply` | `operator` on dispatch, else `prod` |
+| `homelab-ai-migration` / `reset` | dispatch | `operator` |
+| `homelab-capacity-host` / `reconcile` | dispatch | `operator` |
+| `homelab-quota-acceptance` / `proof` | dispatch | `operator` |
+
+Jobs with both triggers use
+`environment: {name: "${{ github.event_name == 'workflow_dispatch' && 'operator' || 'prod' }}"}`.
+A reusable workflow called from a `tofu-apply` PR run sees `pull_request`, so it takes `prod`.
 
 ## Security model
 
-Controls, in the order they apply:
+Environments:
 
-1. **`prod` deploys only from `main` (applied).** The `prod` environment has a
-   deployment branch policy that allows `main` only. GitHub checks it before it
-   assigns a runner, so a job on any other ref that targets the Mac fails at the
-   environment gate. Required reviewers are **not** available: GitHub rejects that
-   rule for a private repository on the Team plan.
-2. **Every operator job declares `environment: prod` (enforced by test).**
-   `test_operator_jobs_require_the_prod_environment` fails any job that routes to
-   `CI_OPERATOR` or `homelab-operator` without it. Without the environment, the branch
-   policy would not apply.
-3. **Org runner group `homelab-operator`, restricted to this repository (owner action).**
+- **`operator`: deploys from `main` only (applied).** GitHub checks the deployment
+  branch policy before it assigns a runner. Every dispatched operator job therefore
+  fails at the environment gate unless it was dispatched from `main`.
+- **`prod`: unrestricted.** PR plans and the apply-before-merge flow deploy from
+  `refs/pull/N/merge`, so a main-only policy would break them.
+- **Required reviewers: unavailable.** GitHub rejects that rule for a private
+  repository on the Team plan.
+
+Controls:
+
+1. **Every operator job declares `prod`, `operator` or the dispatch expression
+   (enforced by test).** `test_operator_jobs_declare_a_deployment_environment` also
+   requires `operator` for dispatch-only workflows and the expression for workflows
+   that are both dispatched and called or PR-triggered.
+2. **Org runner group** `homelab-operator`, restricted to this repository (owner action).**
    This needs an org owner token with `admin:org`, which the current `gh` token
    does not have:
 
@@ -59,16 +67,51 @@ Controls, in the order they apply:
    Then register (or re-register) with `RUNNER_GROUP=homelab-operator` set (see
    Install). A repository-level registration, the default, is already scoped to
    this repository.
-4. **The runner is offline outside maintenance windows.** The LaunchDaemon has
+3. **The runner is offline outside maintenance windows.** The LaunchDaemon has
    `RunAtLoad` and `KeepAlive` set to false. Install leaves it stopped. Start it for
    a window and stop it afterwards.
-5. **Dedicated non-admin user.** `ghrunner` is a hidden, standard account with
+4. **Dedicated non-admin user.** `ghrunner` is a hidden, standard account with
    shell `/usr/bin/false` and no sudo. It has no `~/.kube`, `~/.aws` or `~/.talos`
    and no access to the owner's keychain. Jobs get AWS credentials through OIDC,
-   and Talos secrets from repository secrets into `$RUNNER_TEMP`, then delete them.
+   and Talos secrets from environment secrets into `$RUNNER_TEMP`, then delete them.
 
 Forking is disabled and the repository has a single admin collaborator, so fork PRs
 cannot reach the runner.
+
+### Residual risk: PR-triggered operator jobs
+
+`tofu-plan` Proxmox/Talos plans, `tofu-apply` hardware applies, admission PR plans and
+the reusable maintenance calls from `tofu-apply` run under the unrestricted `prod`
+environment. While `CI_OPERATOR=mac` and the runner is online, code from any
+same-repository branch can therefore run on the Mac. Only three controls protect it:
+
+- the runner is offline outside maintenance windows;
+- the org runner group is restricted to this repository;
+- the runner uses a dedicated non-admin user.
+
+Usability consequence: while `CI_OPERATOR=mac`, a PR touching `live/proxmox` or
+`live/talos` cannot pass `plan-gate` until the owner brings the Mac runner online. The
+alternative is to unset `CI_OPERATOR`, which falls back to hosted runners.
+
+### Owner prerequisites for the `operator` environment
+
+The `operator` environment starts empty. Dispatched operator jobs fail until these
+steps are done:
+
+- Copy the `prod` environment secrets it uses into `operator`: `TALOS_SECRETS_B64`,
+  `AI_LIFECYCLE_CREDENTIALS_B64`, `CAPACITY_CLIENT_CREDENTIALS_B64`,
+  `CAPACITY_HOST_CREDENTIALS_B64`, `CAPACITY_HOST_SSH_KEY`, and
+  `ARC_GITHUB_APP_JSON_B64` if it is used. Also copy the variable
+  `CAPACITY_HOST_KNOWN_HOSTS`.
+- AWS: the `TOFU_APPLY_ROLE_ARN` trust (`modules/aws/account_identity/github_oidc.tf`)
+  accepts only `environment:prod`. A dispatched admission `mode=apply` under `operator`
+  cannot assume it until the trust also lists `environment:operator`.
+  `TOFU_PLAN_ROLE_ARN` trusts any subject in the repository.
+- Tailscale: the `tag:github-ci` OIDC credential subject is
+  `repo:TusharSariyaOrg/aws-account-infra:environment:prod`
+  (`live/proxmox/homelab/CI.md`). The hosted fallback for dispatched operator jobs
+  needs a credential that also accepts `environment:operator`. The Mac path does not
+  use the Tailscale action.
 
 ## Prerequisites
 
@@ -148,7 +191,7 @@ The runner name never starts with `homelab-talos-`. That keeps it on the upstrea
    gh run watch "$(gh run list --workflow homelab-worker-maintenance.yml --limit 1 --json databaseId --jq '.[0].databaseId')"
    ```
 
-   The job waits for the `prod` environment. It then runs on
+   The job passes the main-only `operator` environment gate. It then runs on
    `mac-operator-*` and asserts the tailnet session. It fetches the pinned
    darwin/arm64 talosctl and kubectl and runs the operation.
 4. Close the window:
@@ -174,10 +217,8 @@ starts or the run is cancelled.
   `talos-runner-setup` does not enable `HOMELAB_DEPENDENCY_CACHE` or call
   `talos-cache-setup.sh`, and `nexus-dependency-cache` is skipped. Downloads go
   upstream with pinned checksums.
-- **Branch policy covers PR runs too.** The PR-triggered operator jobs (`tofu-plan`
-  Proxmox/Talos plans, `tofu-apply` hardware applies, admission PR plans) declare
-  `prod`, so the main-only branch policy governs them on hosted runners as well as
-  on the Mac.
+- **PR hardware plans wait for the Mac.** See "Residual risk" above: while
+  `CI_OPERATOR=mac`, PR-triggered operator jobs queue until the runner is online.
 - **Persistent host.** The workspace (`_work`) and the talos tool cache survive
   between jobs. Workflows keep secrets in `$RUNNER_TEMP` and remove them. Cached
   tools are re-hashed before use.
