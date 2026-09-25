@@ -42,13 +42,13 @@ def repo():
 # --- bookings.yaml ---------------------------------------------------------
 
 
-def test_coaching_rules_are_private_and_disabled():
+def test_coaching_rules_are_private_and_enabled():
     coaching = [rule for rule in _config().weekly if rule.visibility == "private"]
     assert [(r.activity, r.weekday, r.time) for r in coaching] == [
         ("court1", "Wed", "09:00"),
         ("court1", "Fri", "09:00"),
     ]
-    assert all(r.title == "Coaching" and not r.enabled for r in coaching)
+    assert all(r.title == "Coaching" and r.enabled for r in coaching)
     assert all(r.duration_min == 60 and r.people == 1 for r in coaching)
     public = [rule for rule in _config().weekly if rule.visibility == "public"]
     assert public and all(rule.title is None for rule in public)
