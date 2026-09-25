@@ -3,10 +3,13 @@
 import base64
 import json
 import ssl
-import urllib.request
-from .config import INVENTORY
 import subprocess
+import time
+import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+
+from .config import INVENTORY
 
 RESOURCES = {
     "pods": "pods",
@@ -24,6 +27,7 @@ RESOURCES = {
     "pv": "pv",
     "pvc": "pvc",
     "leases": "leases.coordination.k8s.io",
+    "runners": "ephemeralrunners.actions.github.com",
 }
 
 
@@ -41,8 +45,8 @@ class Kube:
             self.command + list(args),
             input=data,
             text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
+            check=False,
             timeout=30,
         )
         if result.returncode:
@@ -77,8 +81,8 @@ class Kube:
         result = subprocess.run(
             self.command + list(args),
             text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
+            check=False,
             timeout=30,
         )
         if result.returncode == 0:
@@ -96,7 +100,23 @@ class Kube:
         return json.loads(self.run(*args, "-o", "json"))
 
     def inventory(self):
-        return {key: self.get(resource)["items"] for key, resource in RESOURCES.items()}
+        started = time.monotonic()
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            futures = {
+                key: executor.submit(self.get, resource)
+                for key, resource in RESOURCES.items()
+            }
+            result = {}
+            for key, future in futures.items():
+                response = future.result()
+                if not isinstance(response.get("items"), list) or response.get(
+                    "metadata", {}
+                ).get("continue"):
+                    raise ValueError("Incomplete Kubernetes inventory: " + key)
+                result[key] = response["items"]
+        if time.monotonic() - started > 30:
+            raise ValueError("Kubernetes inventory exceeded freshness deadline")
+        return result
 
     def patch(self, resource, obj, operations, status=False):
         args = [

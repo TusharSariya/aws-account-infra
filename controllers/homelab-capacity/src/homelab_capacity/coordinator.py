@@ -38,6 +38,22 @@ class Coordinator:
         for state in self.states.values():
             state.restart()
 
+    def milestone(self, host, phase, *, reset=False, at=None):
+        name = host + "-startup.json"
+        record = {} if reset else self.journal.read(name, {})
+        record.setdefault(phase, time.time() if at is None else at)
+        self.journal.write(name, record)
+
+    def poll_interval(self):
+        return (
+            5
+            if any(
+                s.phase in {"waking", "restoring"} or s.wake_requested
+                for s in self.states.values()
+            )
+            else 15
+        )
+
     def persist(self, host):
         self.journal.write(host + ".json", self.states[host].to_dict())
 
@@ -227,15 +243,19 @@ class Coordinator:
                 obs.restore_ready = False
                 obs.blockers.append("Proxmox not observable")
                 return obs
+            self.milestone(host, "proxmox_available")
             obs.vm_stopped = pve["status"] == "stopped"
             obs.host_empty = not pve["other_running"] and not pve["users"]
             obs.ready = condition(node, "Ready") and not node["spec"].get(
                 "unschedulable", False
             )
+            if obs.ready:
+                self.milestone(host, "talos_ready")
             # Node readiness is only one restoration step. Keep invoking restore
             # until applications and schedules have also reached their saved state.
             obs.ready = obs.ready and (not record or record.get("phase") == "complete")
             if obs.ready:
+                self.milestone(host, "platform_restored")
                 self.management.storage(host)
                 budgets = self.config.get("capacity")
                 if budgets:
@@ -294,6 +314,8 @@ class Coordinator:
 
     def effect(self, host, action, objects):
         if action == "wake":
+            self.milestone(host, "demand_detected", reset=True)
+            self.milestone(host, "power_on_request")
             self.management.power(host).ensure_on()
         elif action in {"restore", "cancel"}:
             pve = self.management.pve(host)
@@ -456,6 +478,45 @@ class Coordinator:
         )
         if not nexus or nexus.get("status", {}).get("availableReplicas", 0) < 1:
             ready.discard("primary")
+        elif "primary" in ready:
+            self.milestone("primary", "nexus_ready")
+        for workload in objects["workloads"]:
+            if any(
+                c["type"] == "Admitted" and c["status"] == "True"
+                for c in workload.get("status", {}).get("conditions", [])
+            ):
+                from .kueue import assigned_hosts
+
+                for host in assigned_hosts(workload):
+                    self.milestone(host, "kueue_admitted")
+        for pod in objects["pods"]:
+            if pod["metadata"].get("namespace") == "arc-runners" and condition(
+                pod, "Ready"
+            ):
+                for host, entry in INVENTORY.items():
+                    if pod["spec"].get("nodeName") == entry["node"]:
+                        self.milestone(host, "runner_pod_ready")
+                        parent = owner(pod)
+                        if parent and any(
+                            r["metadata"]["uid"] == parent.get("uid")
+                            and r.get("status", {}).get("ready") is True
+                            for r in objects.get("runners", [])
+                        ):
+                            self.milestone(host, "runner_registered")
+                        statuses = pod.get("status", {}).get("containerStatuses", [])
+                        for status in statuses:
+                            if status["name"] == "runner" and status.get(
+                                "state", {}
+                            ).get("running", {}).get("startedAt"):
+                                self.milestone(
+                                    host,
+                                    "runner_container_started",
+                                    at=datetime.fromisoformat(
+                                        status["state"]["running"]["startedAt"].replace(
+                                            "Z", "+00:00"
+                                        )
+                                    ).timestamp(),
+                                )
         allowed = None
         if self.config.get("capacity", {}).get("pool", {}).get("dynamic"):
             from .kueue import admission_budget
@@ -546,7 +607,7 @@ def main():
                 )
             if args.once:
                 break
-            time.sleep(15)
+            time.sleep(coordinator.poll_interval())
 
 
 if __name__ == "__main__":
