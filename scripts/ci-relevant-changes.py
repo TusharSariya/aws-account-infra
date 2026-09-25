@@ -161,6 +161,30 @@ def terraform_directories(paths, units):
     return sorted(directories & affected)
 
 
+def ecr_images(paths):
+    """Images under apps/ecr/<name>/Dockerfile that ecr-push must rebuild.
+
+    Every image on manual/first-push selection or when ecr-push.yml changes;
+    otherwise only images with a changed path under their directory. SHARED is
+    deliberately excluded so CI plumbing changes do not push images.
+    """
+    names = sorted(
+        p.parent.name for p in (ROOT / "apps/ecr").glob("*/Dockerfile") if p.is_file()
+    )
+    if paths is None or ".github/workflows/ecr-push.yml" in paths:
+        return names
+    return [n for n in names if any(p.startswith(f"apps/ecr/{n}/") for p in paths)]
+
+
+def sdk_required(paths):
+    """Whether spec or generator changes require a stable SDK publication."""
+    return paths is None or any(
+        p.startswith(("sdk/targets/", "scripts/sdk-"))
+        or (p.startswith("specs/") and p.endswith("openapi.yaml"))
+        for p in paths
+    )
+
+
 def selection(paths):
     spec = importlib.util.spec_from_file_location(
         "deploy_units", ROOT / "scripts/deploy-units.py"
@@ -220,16 +244,15 @@ def selection(paths):
         "applications": apps,
         "units": selected,
         "aws_units": [u for u in selected if u["cloud"] == "aws"],
+        "images": ecr_images(paths),
+        "sdk_required": str(sdk_required(paths)).lower(),
     }
 
 
 def main():
     event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
     paths = changed_paths(event, os.environ["GITHUB_EVENT_NAME"])
-    scope = os.environ.get("CHECK_SCOPE")
-    values = (
-        {"run": paths is None or relevant(scope, paths)} if scope else selection(paths)
-    )
+    values = selection(paths)
     with open(os.environ["GITHUB_OUTPUT"], "a") as output:
         output.writelines(
             key

@@ -122,6 +122,32 @@ class FullDiffTests(unittest.TestCase):
         self.assertEqual(markers.missing(selected, 'config-', ['config-shell', 'config-talos']), [])
         self.assertEqual(markers.missing(selected, 'apps-', [], exempt=['apps-postgres']), [])
 
+    def test_ecr_images_follow_image_directories(self):
+        names = sorted(p.parent.name for p in (changes.ROOT / 'apps/ecr').glob('*/Dockerfile'))
+        self.assertIn('court-booker', names)
+        self.assertEqual(changes.selection(['apps/ecr/court-booker/app.py'])['images'], ['court-booker'])
+        self.assertEqual(changes.selection(['.github/workflows/ecr-push.yml'])['images'], names)
+        self.assertEqual(changes.selection(None)['images'], names)
+        self.assertEqual(changes.selection(['README.md'])['images'], [])
+        # README.md sits directly in apps/ecr and a directory without a Dockerfile is never an image.
+        self.assertEqual(changes.ecr_images(['apps/ecr/README.md', 'apps/ecr/no-dockerfile/x.py']), [])
+        # CI plumbing changes select every check but never push images.
+        self.assertEqual(changes.selection(['scripts/ci-relevant-changes.py'])['images'], [])
+
+    def test_sdk_required_follows_specs_and_generators(self):
+        for path in ['sdk/targets/python/x', 'scripts/sdk-generate.sh', 'specs/upace/openapi.yaml']:
+            self.assertEqual(changes.selection([path])['sdk_required'], 'true', path)
+        for path in ['specs/upace/README.md', 'README.md']:
+            self.assertEqual(changes.selection([path])['sdk_required'], 'false', path)
+        self.assertEqual(changes.selection(None)['sdk_required'], 'true')
+
+    def test_workflows_use_the_shared_selector(self):
+        for workflow in ['ecr-push.yml', 'sdk-publish-stable.yml']:
+            text = (changes.ROOT / '.github/workflows' / workflow).read_text()
+            self.assertIn('python3 scripts/ci-relevant-changes.py', text)
+            self.assertNotIn('"git", "diff"', text)
+        self.assertFalse((changes.ROOT / '.github/actions/relevant-changes').exists())
+
     def test_dependencies_and_module_consumers(self):
         result = changes.selection(['modules/aws/encrypted_s3_bucket/main.tf'])
         self.assertTrue(result['units'])
