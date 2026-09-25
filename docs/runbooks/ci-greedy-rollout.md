@@ -13,8 +13,11 @@ runs main-push/manual validation through `ci-validation`. `homelab-config-tests`
 runs its children (workflow contracts, ShellCheck/Bats, runner catalog, Proxmox,
 Talos) as guarded steps of one `offline` checks pod; each step records a marker and
 a final step fails when a selected child did not run, so a silently skipped step
-cannot pass `plan-gate`. Editing a suite's own workflow file selects all of its
-children. Checkov/TFLint scan affected Terraform directories and local-module consumers
+cannot pass `plan-gate`. `homelab-apps-tests` runs lifecycle, PostgreSQL units and
+charts the same way in its `charts` checks pod; documents runs on a checks pod with
+the subreaper tests under `setpriv --no-new-privs`, and only the PostgreSQL image
+build and integration run keep a Docker pod. Editing a suite's own workflow file
+selects all of its children. Checkov/TFLint scan affected Terraform directories and local-module consumers
 in one runner per tool, amortizing installation across shared changes. PRs compare merge bases; pushes compare before/after;
 renames include both paths. Selection errors fail the required `plan-gate`.
 The `apply-gate` retains the deployment/acceptance requirements. Selected failures,

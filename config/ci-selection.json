@@ -70,7 +70,8 @@
     "deploy-units.json",
     ".github/actions/kubernetes-deploy/**",
     ".github/workflows/homelab-apps-tests.yml",
-    ".github/workflows/tofu-*.yml"
+    ".github/workflows/tofu-*.yml",
+    "scripts/ci-child-markers.py"
   ],
   "homelab-recovery-tests": [
     ".github/workflows/homelab-recovery-tests.yml",
