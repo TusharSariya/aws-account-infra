@@ -1,0 +1,51 @@
+{
+  "primary-capacity.json": {
+    "quotas": {
+      "cpu": "32.650",
+      "memory": "99485401088",
+      "pods": "91",
+      "ephemeral-storage": "272183421649"
+    },
+    "commitments": {
+      "cpu": "5.300",
+      "memory": "18062770176",
+      "ephemeral-storage": "436207616",
+      "pods": "19"
+    },
+    "allocatable": {
+      "cpu": "37.950",
+      "memory": "117548171264",
+      "ephemeral-storage": "306828856017",
+      "pods": "110"
+    },
+    "observed_at": 1790315630.018025
+  },
+  "secondary-capacity.json": {
+    "quotas": {
+      "cpu": "37.850",
+      "memory": "117537677312",
+      "pods": "107",
+      "ephemeral-storage": "295252126417"
+    },
+    "commitments": {
+      "cpu": "0.100",
+      "memory": "10485760",
+      "ephemeral-storage": "0",
+      "pods": "3"
+    },
+    "allocatable": {
+      "cpu": "37.950",
+      "memory": "117548163072",
+      "ephemeral-storage": "306739276497",
+      "pods": "110"
+    },
+    "observed_at": 1790315634.609464
+  },
+  "observations.json": {
+    "observed_at": 1790315635.9630685,
+    "admission_ready": [
+      "primary",
+      "secondary"
+    ]
+  }
+}

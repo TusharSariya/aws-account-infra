@@ -2,7 +2,9 @@
 
 PR: https://github.com/TusharSariyaOrg/aws-account-infra/pull/224
 
-These results distinguish matched component measurements, historical context,
+**Update:** The implementation is now merged and deployed. See [live rollout and benchmark results](live-results.md) for verified quotas, queue bypass, and actual Nexus cold/warm measurements. The sections below preserve the earlier pre-rollout observations.
+
+These original results distinguish matched component measurements, historical context,
 and live read-only capacity observations. **They do not establish an end-to-end
 CI or physical wake speedup.** Dynamic quotas and BestEffortFIFO were not deployed
 when the snapshots were taken. Full post-rollout cold/warm acceptance remains open.
@@ -113,7 +115,7 @@ see `runner-image.json`. Routine image builds and inference validation now use
 Proxmox. Manual runner-image bootstrap and independent infrastructure management
 retain their hosted recovery path. Hosted selector/gate jobs remain thin.
 
-Still required: green final PR gates, merge, hosted management saved-plan apply,
+At the time of this pre-rollout record, the outstanding work was: green final PR gates, merge, hosted management saved-plan apply,
 coordinator deployment, real BestEffortFIFO bypass/cancellation proof, matched
 Nexus cold/warm cohorts, secondary overflow and resource exhaustion checks, and
 complete physical shutdown/wake phase timing. These results must be appended after

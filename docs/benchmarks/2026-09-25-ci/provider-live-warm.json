@@ -1,0 +1,191 @@
+{
+  "run_id": 36097268153,
+  "run_attempt": 3,
+  "timing_start": "2026-09-25T06:09:38Z",
+  "url": "https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/36097268153",
+  "source_revision": "06beb58df5cc0d9febd8f3e70d33f6b3f8427070",
+  "cache_state": "warm",
+  "conclusion": "success",
+  "elapsed_seconds": 113.0,
+  "runner_seconds": 62.0,
+  "jobs": [
+    {
+      "name": "applications-plan",
+      "conclusion": "success",
+      "runner": "homelab-talos-checks-wng8m-runner-sx75d",
+      "reused_from_previous_attempt": false,
+      "queue_seconds": 45.0,
+      "execution_seconds": 56.0
+    },
+    {
+      "name": "proxmox-plan",
+      "conclusion": "skipped",
+      "runner": null,
+      "reused_from_previous_attempt": false,
+      "queue_seconds": null,
+      "execution_seconds": null
+    },
+    {
+      "name": "talos-plan",
+      "conclusion": "skipped",
+      "runner": null,
+      "reused_from_previous_attempt": false,
+      "queue_seconds": null,
+      "execution_seconds": null
+    },
+    {
+      "name": "homelab-config-tests / workflow",
+      "conclusion": "success",
+      "runner": "homelab-talos-light-w84qw-runner-7kqh5",
+      "reused_from_previous_attempt": true,
+      "queue_seconds": null,
+      "execution_seconds": null
+    },
+    {
+      "name": "main-platform-validation / offline",
+      "conclusion": "success",
+      "runner": "GitHub Actions 1000006307",
+      "reused_from_previous_attempt": true,
+      "queue_seconds": null,
+      "execution_seconds": null
+    },
+    {
+      "name": "homelab-apps-tests / documents",
+      "conclusion": "success",
+      "runner": "homelab-talos-docker-small-mrtj7-runner-5pm6l",
+      "reused_from_previous_attempt": true,
+      "queue_seconds": null,
+      "execution_seconds": null
+    },
+    {
+      "name": "homelab-config-tests / talos",
+      "conclusion": "success",
+      "runner": "homelab-talos-checks-sfvz9-runner-c7pcz",
+      "reused_from_previous_attempt": true,
+      "queue_seconds": null,
+      "execution_seconds": null
+    },
+    {
+      "name": "checkov / checkov",
+      "conclusion": "success",
+      "runner": "homelab-talos-docker-small-mrtj7-runner-gvrv6",
+      "reused_from_previous_attempt": true,
+      "queue_seconds": null,
+      "execution_seconds": null
+    },
+    {
+      "name": "shell / shell",
+      "conclusion": "success",
+      "runner": "homelab-talos-light-w84qw-runner-c9ktf",
+      "reused_from_previous_attempt": true,
+      "queue_seconds": null,
+      "execution_seconds": null
+    },
+    {
+      "name": "detect",
+      "conclusion": "success",
+      "runner": "GitHub Actions 1000006306",
+      "reused_from_previous_attempt": true,
+      "queue_seconds": null,
+      "execution_seconds": null
+    },
+    {
+      "name": "homelab-apps-tests / lifecycle",
+      "conclusion": "success",
+      "runner": "homelab-talos-checks-sfvz9-runner-p8h5f",
+      "reused_from_previous_attempt": true,
+      "queue_seconds": null,
+      "execution_seconds": null
+    },
+    {
+      "name": "plan",
+      "conclusion": "skipped",
+      "runner": null,
+      "reused_from_previous_attempt": false,
+      "queue_seconds": null,
+      "execution_seconds": null
+    },
+    {
+      "name": "homelab-apps-tests / postgres",
+      "conclusion": "success",
+      "runner": "homelab-talos-docker-small-mrtj7-runner-n7vxs",
+      "reused_from_previous_attempt": true,
+      "queue_seconds": null,
+      "execution_seconds": null
+    },
+    {
+      "name": "homelab-recovery-tests / backup-contracts",
+      "conclusion": "success",
+      "runner": "homelab-talos-light-w84qw-runner-gcxph",
+      "reused_from_previous_attempt": true,
+      "queue_seconds": null,
+      "execution_seconds": null
+    },
+    {
+      "name": "runner-catalog / catalog",
+      "conclusion": "success",
+      "runner": "homelab-talos-light-w84qw-runner-79xx2",
+      "reused_from_previous_attempt": true,
+      "queue_seconds": null,
+      "execution_seconds": null
+    },
+    {
+      "name": "homelab-apps-tests / charts",
+      "conclusion": "success",
+      "runner": "homelab-talos-checks-sfvz9-runner-qql5x",
+      "reused_from_previous_attempt": true,
+      "queue_seconds": null,
+      "execution_seconds": null
+    },
+    {
+      "name": "kubernetes-validation / offline",
+      "conclusion": "success",
+      "runner": "GitHub Actions 1000006308",
+      "reused_from_previous_attempt": true,
+      "queue_seconds": null,
+      "execution_seconds": null
+    },
+    {
+      "name": "tflint / tflint",
+      "conclusion": "success",
+      "runner": "homelab-talos-checks-sfvz9-runner-tkxqp",
+      "reused_from_previous_attempt": true,
+      "queue_seconds": null,
+      "execution_seconds": null
+    },
+    {
+      "name": "trivy / trivy",
+      "conclusion": "success",
+      "runner": "homelab-talos-checks-sfvz9-runner-g7wf8",
+      "reused_from_previous_attempt": true,
+      "queue_seconds": null,
+      "execution_seconds": null
+    },
+    {
+      "name": "homelab-config-tests / proxmox",
+      "conclusion": "success",
+      "runner": "homelab-talos-checks-sfvz9-runner-bcnt8",
+      "reused_from_previous_attempt": true,
+      "queue_seconds": null,
+      "execution_seconds": null
+    },
+    {
+      "name": "homelab-recovery-tests / identity",
+      "conclusion": "success",
+      "runner": "homelab-talos-light-w84qw-runner-qvz79",
+      "reused_from_previous_attempt": true,
+      "queue_seconds": null,
+      "execution_seconds": null
+    },
+    {
+      "name": "plan-gate",
+      "conclusion": "success",
+      "runner": "GitHub Actions 1000006343",
+      "reused_from_previous_attempt": false,
+      "queue_seconds": 3.0,
+      "execution_seconds": 6.0
+    }
+  ],
+  "startup_first_observations": {},
+  "limitations": "Queue time is GitHub created_at to started_at, including scheduling. Reruns start at run_started_at; reused earlier jobs are excluded from this attempt's runner time. Jobs without an allocated runner and inconsistent timestamps are excluded from timing totals. Startup timestamps are first observations, bounded by reconciliation cadence. Compare identical jobs/revisions and cold/warm cohorts separately."
+}

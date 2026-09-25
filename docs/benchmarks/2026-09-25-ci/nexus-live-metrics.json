@@ -1,0 +1,70 @@
+{
+  "cold": [
+    {
+      "cache": "3e19e61b907e399419054720245e9f1b0e5b0c9421c5a52ad86b13e4426d8d1b",
+      "operation": "restore",
+      "result": "miss",
+      "seconds": 0.072,
+      "bytes": 0,
+      "at": "2026-09-25T06:07:24.6067726Z"
+    },
+    {
+      "cache": "aee005d146e0cd3217d946fe2fd1a6f225415a7e2ab9fcac33bf15dd6023fdb5",
+      "operation": "restore",
+      "result": "miss",
+      "seconds": 0.064,
+      "bytes": 0,
+      "at": "2026-09-25T06:07:25.4902294Z"
+    },
+    {
+      "cache": "3e19e61b907e399419054720245e9f1b0e5b0c9421c5a52ad86b13e4426d8d1b",
+      "operation": "save",
+      "result": "saved",
+      "seconds": 2.271,
+      "bytes": 22330993,
+      "at": "2026-09-25T06:08:12.6793988Z"
+    },
+    {
+      "cache": "aee005d146e0cd3217d946fe2fd1a6f225415a7e2ab9fcac33bf15dd6023fdb5",
+      "operation": "save",
+      "result": "saved",
+      "seconds": 0.329,
+      "bytes": 1817946,
+      "at": "2026-09-25T06:08:13.8243711Z"
+    }
+  ],
+  "warm": [
+    {
+      "cache": "3e19e61b907e399419054720245e9f1b0e5b0c9421c5a52ad86b13e4426d8d1b",
+      "operation": "restore",
+      "result": "hit",
+      "seconds": 0.722,
+      "bytes": 22330993,
+      "at": "2026-09-25T06:10:36.4668003Z"
+    },
+    {
+      "cache": "aee005d146e0cd3217d946fe2fd1a6f225415a7e2ab9fcac33bf15dd6023fdb5",
+      "operation": "restore",
+      "result": "hit",
+      "seconds": 0.175,
+      "bytes": 1817946,
+      "at": "2026-09-25T06:10:37.4502470Z"
+    },
+    {
+      "cache": "3e19e61b907e399419054720245e9f1b0e5b0c9421c5a52ad86b13e4426d8d1b",
+      "operation": "save",
+      "result": "saved",
+      "seconds": 2.218,
+      "bytes": 22330993,
+      "at": "2026-09-25T06:11:15.6474916Z"
+    },
+    {
+      "cache": "aee005d146e0cd3217d946fe2fd1a6f225415a7e2ab9fcac33bf15dd6023fdb5",
+      "operation": "save",
+      "result": "saved",
+      "seconds": 0.542,
+      "bytes": 3633703,
+      "at": "2026-09-25T06:11:16.9880283Z"
+    }
+  ]
+}

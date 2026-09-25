@@ -1,0 +1,338 @@
+[
+  {
+    "sample": "queue-proof-before",
+    "assertions": [
+      "PASS: cpu exhaustion, StrictFIFO and queued cancellation observed",
+      "PASS: all acceptance Pods and Workloads removed; run c5e5352c1ba3"
+    ],
+    "measurements": {
+      "run_id": "c5e5352c1ba3",
+      "strategy": "StrictFIFO",
+      "scenario": "cpu",
+      "events": [
+        {
+          "event": "created",
+          "name": "queue-proof-c5e5352c1ba3-blocker",
+          "at": 1790314589.9249794
+        },
+        {
+          "event": "observed",
+          "name": "queue-proof-c5e5352c1ba3-blocker",
+          "admitted": true,
+          "at": 1790314618.8034081
+        },
+        {
+          "event": "created",
+          "name": "queue-proof-c5e5352c1ba3-older",
+          "at": 1790314619.1234076
+        },
+        {
+          "event": "observed",
+          "name": "queue-proof-c5e5352c1ba3-older",
+          "admitted": false,
+          "at": 1790314619.449689
+        },
+        {
+          "event": "created",
+          "name": "queue-proof-c5e5352c1ba3-later",
+          "at": 1790314621.7679882
+        },
+        {
+          "event": "observed",
+          "name": "queue-proof-c5e5352c1ba3-later",
+          "admitted": false,
+          "at": 1790314621.9839532
+        },
+        {
+          "event": "contention-window-passed",
+          "strategy": "StrictFIFO",
+          "seconds": 20,
+          "at": 1790314648.58448
+        },
+        {
+          "event": "observed",
+          "name": "queue-proof-c5e5352c1ba3-later",
+          "admitted": true,
+          "at": 1790314692.6803489
+        },
+        {
+          "event": "created",
+          "name": "queue-proof-c5e5352c1ba3-completion",
+          "at": 1790314697.5617712
+        },
+        {
+          "event": "observed",
+          "name": "queue-proof-c5e5352c1ba3-completion",
+          "admitted": true,
+          "at": 1790314728.614977
+        },
+        {
+          "event": "created",
+          "name": "queue-proof-c5e5352c1ba3-normal",
+          "at": 1790314734.8078163
+        },
+        {
+          "event": "observed",
+          "name": "queue-proof-c5e5352c1ba3-normal",
+          "admitted": true,
+          "at": 1790314763.4624906
+        },
+        {
+          "event": "created",
+          "name": "queue-proof-c5e5352c1ba3-after-normal",
+          "at": 1790314763.7945826
+        },
+        {
+          "event": "observed",
+          "name": "queue-proof-c5e5352c1ba3-after-normal",
+          "admitted": false,
+          "at": 1790314764.1238372
+        },
+        {
+          "event": "observed",
+          "name": "queue-proof-c5e5352c1ba3-after-normal",
+          "admitted": true,
+          "at": 1790314836.9698327
+        }
+      ]
+    }
+  },
+  {
+    "sample": "queue-proof-after",
+    "assertions": [
+      "PASS: cpu exhaustion, BestEffortFIFO and queued cancellation observed",
+      "PASS: all acceptance Pods and Workloads removed; run 90519ffb04b8"
+    ],
+    "measurements": {
+      "run_id": "90519ffb04b8",
+      "strategy": "BestEffortFIFO",
+      "scenario": "cpu",
+      "events": [
+        {
+          "event": "created",
+          "name": "queue-proof-90519ffb04b8-blocker",
+          "at": 1790315684.6769307
+        },
+        {
+          "event": "observed",
+          "name": "queue-proof-90519ffb04b8-blocker",
+          "admitted": true,
+          "at": 1790315715.725419
+        },
+        {
+          "event": "created",
+          "name": "queue-proof-90519ffb04b8-older",
+          "at": 1790315716.0459192
+        },
+        {
+          "event": "observed",
+          "name": "queue-proof-90519ffb04b8-older",
+          "admitted": false,
+          "at": 1790315716.2755268
+        },
+        {
+          "event": "created",
+          "name": "queue-proof-90519ffb04b8-later",
+          "at": 1790315718.60243
+        },
+        {
+          "event": "observed",
+          "name": "queue-proof-90519ffb04b8-later",
+          "admitted": true,
+          "at": 1790315754.2982574
+        },
+        {
+          "event": "contention-window-passed",
+          "strategy": "BestEffortFIFO",
+          "seconds": 20,
+          "at": 1790315780.907437
+        },
+        {
+          "event": "observed",
+          "name": "queue-proof-90519ffb04b8-later",
+          "admitted": true,
+          "at": 1790315781.4529235
+        },
+        {
+          "event": "created",
+          "name": "queue-proof-90519ffb04b8-completion",
+          "at": 1790315784.6966047
+        },
+        {
+          "event": "observed",
+          "name": "queue-proof-90519ffb04b8-completion",
+          "admitted": true,
+          "at": 1790315833.3900054
+        },
+        {
+          "event": "created",
+          "name": "queue-proof-90519ffb04b8-normal",
+          "at": 1790315839.9782171
+        },
+        {
+          "event": "observed",
+          "name": "queue-proof-90519ffb04b8-normal",
+          "admitted": true,
+          "at": 1790315873.250753
+        },
+        {
+          "event": "created",
+          "name": "queue-proof-90519ffb04b8-after-normal",
+          "at": 1790315873.5953655
+        },
+        {
+          "event": "observed",
+          "name": "queue-proof-90519ffb04b8-after-normal",
+          "admitted": false,
+          "at": 1790315873.834502
+        },
+        {
+          "event": "observed",
+          "name": "queue-proof-90519ffb04b8-after-normal",
+          "admitted": true,
+          "at": 1790315952.3353467
+        }
+      ]
+    }
+  },
+  {
+    "sample": "memory-proof",
+    "assertions": [
+      "PASS: memory exhaustion, fitting-job bypass and queued cancellation observed",
+      "PASS: all acceptance Pods and Workloads removed; run 939f131831a7"
+    ],
+    "measurements": {
+      "run_id": "939f131831a7",
+      "strategy": "BestEffortFIFO",
+      "scenario": "memory",
+      "events": [
+        {
+          "event": "created",
+          "name": "queue-proof-939f131831a7-blocker",
+          "at": 1790316829.5874755
+        },
+        {
+          "event": "observed",
+          "name": "queue-proof-939f131831a7-blocker",
+          "admitted": true,
+          "at": 1790316854.0557144
+        },
+        {
+          "event": "created",
+          "name": "queue-proof-939f131831a7-older",
+          "at": 1790316854.400956
+        },
+        {
+          "event": "observed",
+          "name": "queue-proof-939f131831a7-older",
+          "admitted": false,
+          "at": 1790316854.6836224
+        },
+        {
+          "event": "created",
+          "name": "queue-proof-939f131831a7-later",
+          "at": 1790316856.9831474
+        },
+        {
+          "event": "observed",
+          "name": "queue-proof-939f131831a7-later",
+          "admitted": true,
+          "at": 1790316892.6844704
+        },
+        {
+          "event": "contention-window-passed",
+          "strategy": "BestEffortFIFO",
+          "seconds": 20,
+          "at": 1790316919.0585377
+        },
+        {
+          "event": "observed",
+          "name": "queue-proof-939f131831a7-later",
+          "admitted": true,
+          "at": 1790316919.6585789
+        },
+        {
+          "event": "created",
+          "name": "queue-proof-939f131831a7-completion",
+          "at": 1790316923.099479
+        },
+        {
+          "event": "observed",
+          "name": "queue-proof-939f131831a7-completion",
+          "admitted": true,
+          "at": 1790316971.903791
+        }
+      ]
+    }
+  },
+  {
+    "sample": "scratch-proof",
+    "assertions": [
+      "PASS: ephemeral-storage exhaustion, fitting-job bypass and queued cancellation observed",
+      "PASS: all acceptance Pods and Workloads removed; run f81d576d58f9"
+    ],
+    "measurements": {
+      "run_id": "f81d576d58f9",
+      "strategy": "BestEffortFIFO",
+      "scenario": "ephemeral-storage",
+      "events": [
+        {
+          "event": "created",
+          "name": "queue-proof-f81d576d58f9-blocker",
+          "at": 1790317006.0347393
+        },
+        {
+          "event": "observed",
+          "name": "queue-proof-f81d576d58f9-blocker",
+          "admitted": true,
+          "at": 1790317050.2184076
+        },
+        {
+          "event": "created",
+          "name": "queue-proof-f81d576d58f9-older",
+          "at": 1790317050.5784962
+        },
+        {
+          "event": "observed",
+          "name": "queue-proof-f81d576d58f9-older",
+          "admitted": false,
+          "at": 1790317050.8997965
+        },
+        {
+          "event": "created",
+          "name": "queue-proof-f81d576d58f9-later",
+          "at": 1790317053.245856
+        },
+        {
+          "event": "observed",
+          "name": "queue-proof-f81d576d58f9-later",
+          "admitted": true,
+          "at": 1790317089.174598
+        },
+        {
+          "event": "contention-window-passed",
+          "strategy": "BestEffortFIFO",
+          "seconds": 20,
+          "at": 1790317115.800951
+        },
+        {
+          "event": "observed",
+          "name": "queue-proof-f81d576d58f9-later",
+          "admitted": true,
+          "at": 1790317116.2935467
+        },
+        {
+          "event": "created",
+          "name": "queue-proof-f81d576d58f9-completion",
+          "at": 1790317119.9074888
+        },
+        {
+          "event": "observed",
+          "name": "queue-proof-f81d576d58f9-completion",
+          "admitted": true,
+          "at": 1790317168.5916915
+        }
+      ]
+    }
+  }
+]

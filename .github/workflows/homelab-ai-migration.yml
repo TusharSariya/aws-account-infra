@@ -29,6 +29,7 @@ jobs:
           enable-cache: false
       - uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4
         with:
+          use-cache: false
           oauth-client-id: ${{ vars.TS_OIDC_CLIENT_ID }}
           audience: ${{ vars.TS_OIDC_AUDIENCE }}
           tags: tag:github-ci
