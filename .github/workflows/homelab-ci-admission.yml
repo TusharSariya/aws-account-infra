@@ -214,13 +214,17 @@ jobs:
         env:
           PRIVATE: ${{ steps.private.outputs.path }}
         run: uv run --with PyYAML==6.0.3 python scripts/homelab-ci.py plan --scope "${{ matrix.scope }}" --private "$PRIVATE"
-      - name: Enroll existing repository GitHub App privately
-        if: inputs.mode == 'apply'
+      - name: Preserve existing ARC identity or enroll supplied bootstrap credentials
+        if: inputs.mode == 'apply' && matrix.scope == 'cache'
         env:
           PRIVATE: ${{ steps.private.outputs.path }}
           ARC_GITHUB_APP_JSON_B64: ${{ secrets.ARC_GITHUB_APP_JSON_B64 }}
         run: |
           umask 077
+          if [[ -z "$ARC_GITHUB_APP_JSON_B64" ]]; then
+            uv run --with PyYAML==6.0.3 python scripts/homelab-ci.py enroll --scope "${{ matrix.scope }}" --private "$PRIVATE"
+            exit 0
+          fi
           python3 - <<'PY'
           import base64, os, pathlib
           pathlib.Path(os.environ['PRIVATE'], 'github-app.json').write_bytes(base64.b64decode(os.environ['ARC_GITHUB_APP_JSON_B64'], validate=True))

@@ -161,10 +161,24 @@ def preflight(kube):
 
 
 def enroll(kube, source):
+    required = {'github_app_id','github_app_installation_id','github_app_private_key'}
+    if source is None:
+        # Routine upgrades retain the enrolled identity; only bootstrap/rotation
+        # requires copying a private key from an external credential source.
+        message = 'Valid existing ARC identity required; supply private bootstrap credentials'
+        try:
+            secret = json.loads(run(kube + ['get', 'secret', 'github-app', '-n', 'arc-runners', '-o', 'json']))
+            if not isinstance(secret, dict) or secret.get('type') != 'Opaque' or set(secret.get('data', {})) != required:
+                raise ValueError(message)
+            values = [base64.b64decode(secret['data'][key], validate=True).decode() for key in required]
+            if not all(values):
+                raise ValueError(message)
+        except (ValueError, TypeError, UnicodeError):
+            raise ValueError(message) from None
+        return
     if not source or source.is_symlink() or source.stat().st_mode & 0o077 or source.stat().st_uid != os.getuid():
         raise ValueError('Provide a private owned GitHub App JSON file')
     value = json.loads(source.read_text())
-    required = {'github_app_id','github_app_installation_id','github_app_private_key'}
     if set(value) != required or any(not isinstance(v, str) or not v for v in value.values()):
         raise ValueError('GitHub App JSON must contain exactly the three ARC string fields')
     # Namespace is adopted by the queue Helm release. No credential enters OpenTofu.
@@ -330,7 +344,7 @@ def main():
             return
         if args.operation == 'enroll':
             enroll(kube, args.app_json)
-            print('PASS: GitHub App Secret enrolled privately')
+            print('PASS: GitHub App Secret verified or enrolled privately')
             return
         backend()
         if args.operation == 'apply':
