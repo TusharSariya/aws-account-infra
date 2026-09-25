@@ -1,0 +1,29 @@
+{
+  "pod": "homelab-talos-docker-small-mrtj7-runner-bc7w2",
+  "node": "talos-worker-02",
+  "container": "init-dind-externals",
+  "state": {
+    "terminated": {
+      "exitCode": 137,
+      "finishedAt": "2026-09-25T03:36:02Z",
+      "reason": "OOMKilled",
+      "startedAt": "2026-09-25T03:35:42Z"
+    }
+  },
+  "resources": {
+    "limits": {
+      "cpu": "100m",
+      "ephemeral-storage": "1Gi",
+      "memory": "128Mi"
+    },
+    "requests": {
+      "cpu": "100m",
+      "ephemeral-storage": "1Gi",
+      "memory": "128Mi"
+    }
+  },
+  "proposed_memory": "512Mi",
+  "proposed_cpu": "250m",
+  "whole_pod_reservation_change": false,
+  "live_retest": "pending managed ARC rollout"
+}

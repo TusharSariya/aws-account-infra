@@ -140,3 +140,19 @@ Private release backups are retained on the operator laptop under
 `~/.local/share/homelab-ci-recovery/20260925-kueue/`. Broader management rollout still
 uses the existing hosted saved-plan workflow. This recovery affects comparisons of
 full pipeline behavior: report it separately from selective CI and greedy quotas.
+
+### Runner initialization failure during live validation
+
+One Docker runner's `init-dind-externals` copy process terminated with
+`OOMKilled`/137 after 20 seconds at its 128-MiB limit; see
+[the sanitized Pod receipt](runner-init-oom.json). The proposed init budget is
+512 MiB and 250m CPU. Catalog rendering and 16 catalog/admission contract tests
+pass, including unchanged whole-Pod reservations: the subsequent runner plus
+Docker sidecar already dominates the init peak. A live retest requires the managed
+ARC rollout. No additional concurrent jobs are claimed from this change alone.
+
+During the same validation window the always-on laptop had intermittent API
+timeouts and elevated disk I/O pressure (60-second some/full PSI approximately
+64%/33%). These observations are a separate scheduling bottleneck; they are not
+evidence of exhausted Proxmox worker CPU. No hardware or control-plane resource
+changes were made in response to that transient measurement.
