@@ -21,6 +21,8 @@ x-runner: &runner
   image: ${OPERATOR_RUNNER_IMAGE:?set by scripts/mac-operator-containers.sh}
   platform: linux/amd64
   entrypoint: [/opt/operator-runner/entrypoint.sh]
+  # Root only long enough to chown the volumes; the entrypoint drops to `runner`.
+  user: "0:0"
   restart: unless-stopped
   init: true
   # tailscale/github-action needs a TUN device and NET_ADMIN; nothing else.

@@ -7,8 +7,18 @@
 #   run        (default) restore credentials from the state volume and run jobs.
 #   remove     deregister using a removal token, then clear the state volume.
 set -euo pipefail
-cd /home/runner
 STATE=/home/runner/state
+WORK=/home/runner/_work
+# Named volumes are created root-owned. The container starts as root only to hand
+# the two volumes to the runner user, then re-executes itself unprivileged.
+if [[ "$(id -u)" == 0 ]]; then
+  mkdir -p "$STATE" "$WORK"
+  chown runner:runner "$STATE" "$WORK"
+  chmod 700 "$STATE"
+  exec runuser -u runner -- "$0" "$@"
+fi
+[[ "$(id -un)" == runner ]] || { echo 'entrypoint must run as the runner user' >&2; exit 1; }
+cd /home/runner
 CREDENTIALS=".runner .credentials .credentials_rsaparams"
 NAME="${RUNNER_NAME_PREFIX:?}-${RUNNER_INDEX:?}"
 

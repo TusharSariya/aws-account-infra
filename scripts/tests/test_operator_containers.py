@@ -57,6 +57,11 @@ class OperatorContainerTests(unittest.TestCase):
 
     def test_entrypoint_keeps_the_token_out_of_the_running_container(self):
         text = ENTRYPOINT.read_text()
+        # Root only to chown the volumes, then re-exec as the unprivileged runner user.
+        self.assertIn('exec runuser -u runner -- "$0" "$@"', text)
+        self.assertIn("[[ \"$(id -un)\" == runner ]]", text)
+        for service in self.services.values():
+            self.assertEqual(service['user'], '0:0')
         self.assertIn('unset RUNNER_TOKEN', text)
         self.assertIn('--runnergroup', text)
         self.assertIn('--replace', text)
