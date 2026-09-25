@@ -1,0 +1,10 @@
+{
+  "run": "https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/36087908551",
+  "source_revision": "f2f6194580523ae0f711e9f392e1b9479a9a8ace",
+  "manifest": {
+    "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+    "digest": "sha256:632ba78099718ee6222de48537bd932027e3a4b693095b7e4f200054c5dfc103",
+    "size": 3267
+  },
+  "verification": "Published privately; runner UID, AWS CLI, Docker Compose, Python, ShellCheck, Bats, actionlint and gitleaks checks passed. Pin awaits management rollout."
+}

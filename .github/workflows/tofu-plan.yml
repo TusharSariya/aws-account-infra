@@ -50,11 +50,13 @@ jobs:
           kind: python
           toolchain: uv-python-3.14
           dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+          scope: ${{ toJSON(matrix) }}
       - uses: ./.github/actions/nexus-dependency-cache
         with:
           kind: providers
           toolchain: tofu-1.11.5
           dependencies: ${{ hashFiles('**/.terraform.lock.hcl') }}
+          scope: ${{ toJSON(matrix) }}
       - uses: aws-actions/configure-aws-credentials@v4
         if: matrix.unit.cloud == 'aws'
         with:
@@ -105,6 +107,7 @@ jobs:
           dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
           mode: save
           password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
+          scope: ${{ toJSON(matrix) }}
         if: ${{ success() }}
       - uses: ./.github/actions/nexus-dependency-cache
         with:
@@ -113,6 +116,7 @@ jobs:
           dependencies: ${{ hashFiles('**/.terraform.lock.hcl') }}
           mode: save
           password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
+          scope: ${{ toJSON(matrix) }}
         if: ${{ success() }}
   proxmox-plan:
     needs: detect

@@ -33,7 +33,7 @@ template:
     restartPolicy: Never
     initContainers:
       - name: init-dind-externals
-        image: ghcr.io/tusharsariyaorg/homelab-ci-runner@sha256:ad674f57f1a60d4cf048eab6c85c043cba14c4f415faddd9be348b0bce78c6d8
+        image: ghcr.io/tusharsariyaorg/homelab-ci-runner@sha256:632ba78099718ee6222de48537bd932027e3a4b693095b7e4f200054c5dfc103
         command: [cp, -r, /home/runner/externals/., /home/runner/tmpDir/]
         resources:
           requests: {cpu: 100m, memory: 128Mi, ephemeral-storage: 1Gi}
@@ -76,7 +76,7 @@ template:
       - name: runner
         # Required for job-specific Tailscale TUN; isolated from host namespaces/mounts.
         securityContext: {privileged: true}
-        image: ghcr.io/tusharsariyaorg/homelab-ci-runner@sha256:ad674f57f1a60d4cf048eab6c85c043cba14c4f415faddd9be348b0bce78c6d8
+        image: ghcr.io/tusharsariyaorg/homelab-ci-runner@sha256:632ba78099718ee6222de48537bd932027e3a4b693095b7e4f200054c5dfc103
         command: [/home/runner/run.sh]
         env:
           - name: HOMELAB_RUNNER_POD_UID

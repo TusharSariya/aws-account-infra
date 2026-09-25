@@ -23,6 +23,35 @@ class ArchiveTests(unittest.TestCase):
                 unpack(b"not a zip", target)
             self.assertEqual((target / "module").read_bytes(), b"public dependency")
 
+    def test_python_cache_excludes_uv_environments_but_keeps_wheels(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / "cache"
+            wheel = root / "archive-v0/wheel/yaml/__init__.py"
+            wheel.parent.mkdir(parents=True)
+            wheel.write_bytes(b"public wheel")
+            environment = root / "archive-v0/environment"
+            environment.mkdir()
+            (environment / "pyvenv.cfg").write_text("home = /usr/bin")
+            (environment / "python").symlink_to("/usr/bin/python3")
+            environments = root / "environments-v2"
+            environments.mkdir()
+            (environments / "link").symlink_to(environment)
+            source = root / "sdists-v9"
+            source.mkdir()
+            (source / ".git").write_text("uv cache boundary")
+            target = Path(temp) / "restored"
+            unpack(pack(root, kind="python"), target)
+            self.assertEqual(
+                (target / "archive-v0/wheel/yaml/__init__.py").read_bytes(),
+                b"public wheel",
+            )
+            self.assertFalse((target / "archive-v0/environment").exists())
+            self.assertFalse((target / "environments-v2").exists())
+            self.assertFalse((target / "sdists-v9").exists())
+            (root / "unexpected-link").symlink_to("/etc/passwd")
+            with self.assertRaises(IntegrityError):
+                pack(root, kind="python")
+
     def test_key_isolation(self):
         args = ["go", "1.26", "hash", "main", "Linux", "x86_64"]
         baseline = key(*args)

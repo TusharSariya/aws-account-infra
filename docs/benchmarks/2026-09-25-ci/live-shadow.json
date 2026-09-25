@@ -1,0 +1,110 @@
+{
+  "observed_at": "2026-09-25T03:02:41.774377+00:00",
+  "mode": "read-only shadow calculation; live quotas unchanged",
+  "inventory_timings": [
+    {
+      "variant": "before",
+      "repeat": 0,
+      "seconds": 9.426547745999414,
+      "resources": 14
+    },
+    {
+      "variant": "after",
+      "repeat": 0,
+      "seconds": 4.859395350009436,
+      "resources": 16
+    },
+    {
+      "variant": "after",
+      "repeat": 1,
+      "seconds": 4.123993676999817,
+      "resources": 16
+    },
+    {
+      "variant": "before",
+      "repeat": 1,
+      "seconds": 4.788223676994676,
+      "resources": 14
+    },
+    {
+      "variant": "before",
+      "repeat": 2,
+      "seconds": 5.558963408024283,
+      "resources": 14
+    },
+    {
+      "variant": "after",
+      "repeat": 2,
+      "seconds": 5.56576880501234,
+      "resources": 16
+    },
+    {
+      "variant": "after",
+      "repeat": 3,
+      "seconds": 6.257779978011968,
+      "resources": 16
+    },
+    {
+      "variant": "before",
+      "repeat": 3,
+      "seconds": 6.770703158021206,
+      "resources": 14
+    },
+    {
+      "variant": "before",
+      "repeat": 4,
+      "seconds": 5.063137912016828,
+      "resources": 14
+    },
+    {
+      "variant": "after",
+      "repeat": 4,
+      "seconds": 4.0395061089948285,
+      "resources": 16
+    }
+  ],
+  "potential_capacity": {
+    "primary": {
+      "quotas": {
+        "cpu": "32.640",
+        "memory": "99468623872",
+        "pods": "90",
+        "ephemeral-storage": "270315518673"
+      },
+      "commitments": {
+        "cpu": "5.310",
+        "memory": "18079547392",
+        "ephemeral-storage": "436207616",
+        "pods": "20"
+      },
+      "allocatable": {
+        "cpu": "37.950",
+        "memory": "117548171264",
+        "ephemeral-storage": "306828856017",
+        "pods": "110"
+      },
+      "observed_at": 1790305361.484782
+    },
+    "secondary": {
+      "quotas": {
+        "cpu": "37.850",
+        "memory": "117537669120",
+        "pods": "107",
+        "ephemeral-storage": "295074532049"
+      },
+      "commitments": {
+        "cpu": "0.100",
+        "memory": "10485760",
+        "ephemeral-storage": "0",
+        "pods": "3"
+      },
+      "allocatable": {
+        "cpu": "37.950",
+        "memory": "117548154880",
+        "ephemeral-storage": "306739276497",
+        "pods": "110"
+      },
+      "observed_at": 1790305361.761176
+    }
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "method": "Controlled 50ms latency per inventory GET, no network or cluster. Measures algorithm concurrency only, not actual wake savings.",
+  "runs": [
+    {
+      "seconds": 0.7403274579992285,
+      "calls": 14,
+      "complete": true,
+      "variant": "before",
+      "repeat": 0
+    },
+    {
+      "seconds": 0.2188713329960592,
+      "calls": 16,
+      "complete": true,
+      "variant": "after",
+      "repeat": 0
+    },
+    {
+      "seconds": 0.21790624999266583,
+      "calls": 16,
+      "complete": true,
+      "variant": "after",
+      "repeat": 1
+    },
+    {
+      "seconds": 0.7416129170014756,
+      "calls": 14,
+      "complete": true,
+      "variant": "before",
+      "repeat": 1
+    },
+    {
+      "seconds": 0.748332457995275,
+      "calls": 14,
+      "complete": true,
+      "variant": "before",
+      "repeat": 2
+    },
+    {
+      "seconds": 0.21269604199915193,
+      "calls": 16,
+      "complete": true,
+      "variant": "after",
+      "repeat": 2
+    },
+    {
+      "seconds": 0.2140779589972226,
+      "calls": 16,
+      "complete": true,
+      "variant": "after",
+      "repeat": 3
+    },
+    {
+      "seconds": 0.7498562920081895,
+      "calls": 14,
+      "complete": true,
+      "variant": "before",
+      "repeat": 3
+    },
+    {
+      "seconds": 0.7568959579948569,
+      "calls": 14,
+      "complete": true,
+      "variant": "before",
+      "repeat": 4
+    },
+    {
+      "seconds": 0.21629912499338388,
+      "calls": 16,
+      "complete": true,
+      "variant": "after",
+      "repeat": 4
+    }
+  ]
+}

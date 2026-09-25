@@ -49,10 +49,24 @@ def key(kind, toolchain, dependency_hash, branch, system=None, machine=None, sco
     return hashlib.sha256(json.dumps(identity).encode()).hexdigest()
 
 
-def pack(directory, output=None):
+def python_ephemeral(path, directory):
+    """uv stores disposable virtualenvs alongside wheel archives; never export them."""
+    parts = path.relative_to(directory).parts
+    if parts[0].startswith(("environments-v", "builds-v", "interpreter-v", "sdists-v")):
+        return True
+    return (
+        len(parts) > 1
+        and parts[0].startswith("archive-v")
+        and (directory / parts[0] / parts[1] / "pyvenv.cfg").is_file()
+    )
+
+
+def pack(directory, output=None, *, kind=None):
     files, manifest = {}, {}
     total = 0
     for path in sorted(directory.rglob("*")):
+        if kind == "python" and python_ephemeral(path, directory):
+            continue
         if path.is_symlink():
             if not path.resolve().is_relative_to(directory.resolve()):
                 raise IntegrityError("Dependency cache link escapes its directory")
@@ -166,7 +180,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def transfer(mode, identity, directory, password="", opener=None):
+def transfer(mode, identity, directory, password="", opener=None, *, kind=None):
     start = time.monotonic()
     result, size = "miss", 0
     opener = opener or urllib.request.build_opener(NoRedirect())
@@ -187,7 +201,7 @@ def transfer(mode, identity, directory, password="", opener=None):
                 result = "no-writer"
             else:
                 with tempfile.TemporaryFile(dir=directory.parent) as body:
-                    pack(directory, body)
+                    pack(directory, body, kind=kind)
                     size = body.tell()
                     if size > ARCHIVE_LIMIT:
                         raise ExportTooLarge("Compressed archive exceeds limit")
@@ -244,7 +258,13 @@ def main():
         os.environ["CACHE_BRANCH"],
         scope=os.environ.get("CACHE_SCOPE", ""),
     )
-    transfer(args.mode, identity, directory, os.environ.get("CACHE_PASSWORD", ""))
+    transfer(
+        args.mode,
+        identity,
+        directory,
+        os.environ.get("CACHE_PASSWORD", ""),
+        kind=args.kind,
+    )
     if args.mode == "restore":
         variables = {
             "providers": ["TF_PLUGIN_CACHE_DIR"],

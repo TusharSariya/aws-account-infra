@@ -37,11 +37,11 @@ exports are skipped. Receipts report result, bytes and elapsed time.
 PostgreSQL and inference builds use the existing branch/platform BuildKit cache,
 including PostgreSQL integration builds. Provenance, SBOMs and immutable published
 references are preserved. The runner Dockerfile adds Bats, verified actionlint
-1.7.7 and verified gitleaks 8.21.2. Existing runner image digests are deliberately
-not replaced with an unbuilt image. Run the existing hosted `ci-runner-image`
-workflow (routine builds on Proxmox; manual dispatch remains hosted for bootstrap),
-review its receipt, then pin the verified digest through the management
-workflow. Verified installation fallback supports the image transition and recovery.
+1.7.7 and verified gitleaks 8.21.2. The runner image was built, verified and privately published by the existing
+workflow; its receipt is in `docs/benchmarks/2026-09-25-ci/runner-image.json`.
+The ARC values now pin that verified digest. Management rollout remains required.
+Routine image builds use Proxmox; manual dispatch remains hosted for bootstrap.
+Verified installation fallback supports the image transition and recovery.
 
 ## Stage 2: dynamic admission
 
@@ -131,8 +131,8 @@ cache, lifecycle, PostgreSQL, Talos and infrastructure contract suites were also
 Workflow lint, CEL policy cases, OpenTofu validation and static pre-push scanners are
 part of the verification record in the PR. Court-booker ARM execution passed locally.
 
-**Live acceptance is incomplete:** hosted management plan/apply and runner image
-publication/pinning require the existing deployment approvals. Nexus cold/warm
+**Live acceptance is incomplete:** hosted management plan/apply and deployment of the pinned runner image
+remain subject to the existing deployment controls. Nexus cold/warm
 runs, full shutdown/wake timing, real mixed-job overlap, reduced-capacity admission,
 and all physical-worker acceptance scenarios must be observed after rollout.
 No startup savings or live cache hit rate is claimed by this implementation.
