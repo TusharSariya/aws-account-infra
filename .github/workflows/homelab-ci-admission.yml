@@ -62,8 +62,10 @@ concurrency:
 jobs:
   contracts:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    # PR tests use the server; dispatched bootstrap remains independent of ARC.
-    runs-on: ${{ github.event_name == 'pull_request' && 'homelab-talos-checks' || 'ubuntu-latest' }}
+    # PR tests use the server; dispatched bootstrap remains independent of ARC:
+    # it runs on the off-cluster operator runners, or hosted when they are unset.
+    runs-on: ${{ github.event_name == 'pull_request' && 'homelab-talos-checks' || (vars.CI_OPERATOR == 'mac' && fromJSON('["self-hosted","homelab-operator"]') || 'ubuntu-latest') }}
+    environment: prod
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4

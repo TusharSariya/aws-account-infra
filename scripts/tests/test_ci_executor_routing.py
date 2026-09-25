@@ -50,7 +50,8 @@ HARD_WIRED_ARC = {
     ('homelab-arc-acceptance', '*'),
     ('inference-image', 'build'),
     ('postgres-backup-image', 'build'),
-    # PRs use homelab-talos-checks; dispatched bootstrap falls back to hosted.
+    # PRs use homelab-talos-checks; dispatched bootstrap uses the off-cluster
+    # operator runners (CI_OPERATOR) and falls back to hosted.
     ('homelab-ci-admission', 'contracts'),
 }
 ALLOWLIST = CIRCULAR | OFF_CLUSTER | HARD_WIRED_ARC

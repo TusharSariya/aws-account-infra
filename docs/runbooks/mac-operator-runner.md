@@ -35,7 +35,7 @@ Every class 2 job also declares `environment: prod`.
 
 | Workflow / job | Trigger |
 | --- | --- |
-| `homelab-ci-admission` / `admission` (not `contracts`) | PR plan, dispatch plan/apply |
+| `homelab-ci-admission` / `admission`; `contracts` only when dispatched (PR runs use ARC) | PR plan, dispatch plan/apply |
 | `tofu-plan` / `proxmox-plan`, `talos-plan` | PR |
 | `tofu-apply` / `apply`, only when a Proxmox or Talos unit is selected (other units follow `CI_EXECUTOR`) | PR with `apply` label |
 | `homelab-worker-maintenance` / `worker-reboot` | dispatch, or called from `tofu-apply` |
