@@ -1,6 +1,6 @@
 # Selective CI, Nexus archives and measured worker capacity
 
-Baseline: `0bf4e8f`. Implementation is split into three commits: selective CI and
+Baseline: `0bf4e8f`. Implementation is split into three stages: selective CI and
 caching, dynamic admission, and startup acceleration. Existing hardware, physical
 shutdown, the configured 300-second idle window, ARC `minRunners: 0`, no ARC maximum,
 equal Kueue priority, disabled preemption, environment approvals and storage

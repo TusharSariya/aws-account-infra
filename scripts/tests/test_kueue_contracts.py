@@ -145,7 +145,7 @@ class Contracts(unittest.TestCase):
             kubeconfig.chmod(0o600)
             with patch.object(sys, 'argv', ['homelab-ci.py', 'status', '--private', directory]), \
                     patch.dict(os.environ, {}, clear=True), \
-                    patch.object(helper, 'run', return_value=b'{"items":[]}'), \
+                    patch.object(helper, 'run', side_effect=[b'{"items":[]}', b'{"items":[]}', b'{"spec":{"queueingStrategy":"BestEffortFIFO","resourceGroups":[]}}']), \
                     patch.object(helper, 'artifacts') as fetch, redirect_stdout(io.StringIO()):
                 helper.main()
             fetch.assert_not_called()
