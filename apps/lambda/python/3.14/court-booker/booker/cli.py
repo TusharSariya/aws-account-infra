@@ -60,17 +60,23 @@ def main(argv: list[str] | None = None) -> int:
     if not args.activity or not args.date or not args.hhmm:
         print("adhoc book needs --activity, --date, and --time (or pass --weekly)", file=sys.stderr)
         return 2
-    parse_hhmm(args.hhmm)
+    target_date = date.fromisoformat(args.date)
+    visibility, title = config.visibility_for(
+        args.activity, datetime.combine(target_date, parse_hhmm(args.hhmm))
+    )
     request = BookingRequest(
         activity_key=args.activity,
         activity_label=config.activity_label(args.activity),
-        target_date=date.fromisoformat(args.date),
+        target_date=target_date,
         hhmm=args.hhmm,
         duration_min=args.duration,
         people=args.people,
         dry_run=args.dry_run,
         calendar_url=config.calendar_url,
         equipment_id=config.equipment_id(args.activity),
+        timezone=config.timezone,
+        visibility=visibility,
+        title=title,
     )
     result = browser.cancel(request, creds) if args.cancel else browser.book(request, creds)
     return _emit([result], as_json=args.json)

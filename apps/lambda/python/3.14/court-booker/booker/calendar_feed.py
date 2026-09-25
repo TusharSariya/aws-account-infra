@@ -13,10 +13,12 @@ import boto3
 from botocore.config import Config
 
 from booker.calendar_ics import render_calendar
-from booker.calendar_repository import CalendarRepository
+from booker.calendar_repository import CalendarRepository, visibility_of
 from booker.secrets import _client_kwargs
 
 logger = logging.getLogger(__name__)
+
+CALENDAR_NAMES = {"public": "Court bookings", "private": "Court bookings (private)"}
 
 
 @lru_cache(maxsize=1)
@@ -65,14 +67,29 @@ def _request_refresh(repository, client, now):
 def serve(event: dict, repository, client, now: datetime | None = None) -> dict:
     now = now or datetime.now(UTC)
     token = (event.get("pathParameters") or {}).get("token", "")
-    if not isinstance(token, str) or not token or not repository.validate_token(token):
-        return _response(404, "Not found")
-    metadata = repository.get_metadata()
-    reservations = (
-        repository.list_events(now=now) if metadata.get("initialized") else []
+    scope = (
+        repository.validate_token(token) if isinstance(token, str) and token else None
     )
+    if not scope:
+        return _response(404, "Not found")
+    # Anything other than an explicit private scope gets the public view.
+    private = scope == "private"
+    metadata = repository.get_metadata()
+    reservations = [
+        item
+        for item in (
+            repository.list_events(now=now) if metadata.get("initialized") else []
+        )
+        if private or visibility_of(item) == "public"
+    ]
     # Snapshot first. A completed async refresh becomes visible on the next poll.
-    body = render_calendar(reservations) if metadata.get("initialized") else None
+    body = (
+        render_calendar(
+            reservations, name=CALENDAR_NAMES["private" if private else "public"]
+        )
+        if metadata.get("initialized")
+        else None
+    )
     _request_refresh(repository, client, now)
     if body is None:
         return _response(503, "Calendar is initializing", **{"Retry-After": "60"})

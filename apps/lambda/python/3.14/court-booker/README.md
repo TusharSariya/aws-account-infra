@@ -19,8 +19,33 @@ The API deployment also runs `booker.calendar_writer.lambda_handler`,
 `booker.calendar_feed.lambda_handler`, and
 `booker.calendar_reconcile.lambda_handler` from the same versioned zip.
 `GET /calendars/{token}/bookings.ics` serves one shared calendar for both configured
-courts, including reservations made manually through Upace. Every subscription
-sees the same events. Calendar operations never create or cancel Upace reservations.
+courts, including reservations made manually through Upace. Calendar operations never
+create or cancel Upace reservations.
+
+### Visibility and subscription scopes
+
+Every reservation is `public` or `private`. Visibility comes only from `bookings.yaml`:
+a weekly rule with `visibility: private` (and an optional `title`) marks any booking
+of that activity, weekday and start time as private. The booker and reconciliation
+both classify through `BookingsConfig.visibility_for`; neither trusts the Scheduler
+payload. A private rule classifies its slot even while `enabled: false`, so disabling
+a rule never makes its earlier bookings public. Private is sticky in storage: a
+record never drops from private back to public, and a cancellation keeps its
+visibility. Records stored before visibility existed read as public. Manual Upace
+bookings that match no private rule stay public.
+
+Each subscription has a scope:
+
+| Scope | Sees | Calendar name | Private event summary |
+| --- | --- | --- | --- |
+| `public` (default) | public bookings only | `Court bookings` | omitted |
+| `private` | everything | `Court bookings (private)` | `<title> - <court>`, e.g. `Coaching - 3-1 - Squash & Racquetball Court 1` |
+
+Subscriptions created before scopes existed have no stored scope and are treated as
+`public`, so existing links (including an earlier "owner" link) stop showing private
+bookings. Create a new `--scope private` link for yourself and optionally revoke the
+old one. Both scopes are bearer links on the same route; treat a private link with
+the same care as any other secret.
 
 Each subscription is a separate bearer link. Store it as a secret. Only its SHA-256
 hash is persisted, and creation prints the URL once. Listing does not reveal the
@@ -37,7 +62,8 @@ export CALENDAR_RECONCILE_FUNCTION=court-booker-api-calendar-reconcile
 export CALENDAR_BASE_URL=https://YOUR_API_ID.execute-api.us-east-1.amazonaws.com
 
 uv run --directory apps/lambda/python/3.14/court-booker python -m booker calendar sync
-uv run --directory apps/lambda/python/3.14/court-booker python -m booker subscription create owner
+uv run --directory apps/lambda/python/3.14/court-booker python -m booker subscription create friend
+uv run --directory apps/lambda/python/3.14/court-booker python -m booker subscription create me --scope private
 uv run --directory apps/lambda/python/3.14/court-booker python -m booker subscription list
 uv run --directory apps/lambda/python/3.14/court-booker python -m booker subscription revoke SUBSCRIPTION_ID
 ```
@@ -71,6 +97,19 @@ sync can require another calendar poll before changes become visible. Use Outloo
 one-time copy. There is no scheduled reconciliation in v1.
 
 ## Verification and rollout
+
+### Enabling a private weekly rule
+
+Private rules must not fire under a zip that predates visibility, or their bookings
+would publish as public. Roll out in two steps:
+
+1. Merge the rule with `enabled: false` alongside the code. The API plan shows no
+   schedule changes; CI builds `stable/court-booker/<sha>.zip`.
+2. Pin `booker_api_zip_key` in `config/environments/aws/staging/court-booker-api.tfvars`
+   to that zip, set the rule to `enabled: true`, and apply `aws-staging-court-booker-api`.
+   The Playwright root reads the same file; its schedules stay DISABLED.
+
+Then create a private subscription, subscribe to it, and run `calendar sync`.
 
 ```bash
 uv run --directory apps/lambda/python/3.14/court-booker pytest
