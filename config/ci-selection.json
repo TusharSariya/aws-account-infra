@@ -2,7 +2,6 @@
   "checkov": [],
   "tflint": [],
   "trivy": [],
-  "shell": [],
   "homelab-config-tests": [
     "live/proxmox/**",
     "live/aws/staging/workloads/homelab-recovery/**",
@@ -24,7 +23,8 @@
     "scripts/tests/test_proxmox_access.py",
     ".github/workflows/homelab-config-tests.yml",
     ".github/workflows/homelab-etcd-backup.yml",
-    ".github/workflows/tofu-*.yml"
+    ".github/workflows/tofu-*.yml",
+    "scripts/ci-child-markers.py"
   ],
   "homelab-apps-tests": [
     "live/kubernetes/**",
@@ -84,7 +84,14 @@
     "scripts/tests/test_homelab_backup.py",
     ".github/workflows/homelab-etcd-backup.yml"
   ],
-  "runner-catalog": [
+  "config-shell": [
+    "scripts/*.sh",
+    "scripts/git-hooks/*",
+    "mocks/localstack/smoke.sh",
+    "tests/**",
+    ".shellcheckrc"
+  ],
+  "config-runner-catalog": [
     ".github/workflows/**",
     ".github/actions/**",
     "scripts/runner_catalog.py",

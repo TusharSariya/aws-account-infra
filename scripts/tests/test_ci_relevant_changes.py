@@ -26,15 +26,26 @@ class RelevantChangesTests(unittest.TestCase):
             "mocks/localstack/smoke.sh",
             "tests/display-mode.bats",
             ".shellcheckrc",
-            ".github/workflows/shell.yml",
         ]:
-            self.assertTrue(changes.relevant("shell", [path]))
+            self.assertTrue(changes.relevant("config-shell", [path]))
+            self.assertIn("config-shell", changes.selection([path])["checks"])
+            self.assertIn("homelab-config-tests", changes.selection([path])["checks"])
+        self.assertIn(
+            "config-shell",
+            changes.selection([".github/workflows/homelab-config-tests.yml"])["checks"],
+        )
+
+    def test_retired_micro_suites_have_no_scope(self):
+        for name in ["shell", "runner-catalog"]:
+            self.assertNotIn(name, changes.SCOPES)
+        checks = set(changes.selection(["scripts/runner_catalog.py"])["checks"])
+        self.assertTrue({"config-runner-catalog", "homelab-config-tests"} <= checks)
 
     def test_deleted_shell_paths_still_select_shell_checks(self):
         # The production detector uses git diff --name-only --no-renames, so a
         # deleted path reaches the same matcher as an existing path.
-        self.assertTrue(changes.relevant("shell", ["scripts/retired-script.sh"]))
-        self.assertTrue(changes.relevant("shell", ["tests/retired-test.bats"]))
+        self.assertTrue(changes.relevant("config-shell", ["scripts/retired-script.sh"]))
+        self.assertTrue(changes.relevant("config-shell", ["tests/retired-test.bats"]))
 
     def test_runtime_and_filter_changes_invalidate_checks(self):
         for scope in changes.SCOPES:
@@ -44,10 +55,10 @@ class RelevantChangesTests(unittest.TestCase):
     def test_shell_shared_ci_dependencies(self):
         for path in [
             ".github/actions/talos-runner-setup/action.yml",
-            ".github/actions/relevant-changes/action.yml",
+            ".github/actions/nexus-dependency-cache/action.yml",
             "scripts/ci-relevant-changes.py",
         ]:
-            self.assertTrue(changes.relevant("shell", [path]))
+            self.assertTrue(changes.relevant("config-shell", [path]))
 
     def test_localstack_dependencies(self):
         self.assertTrue(changes.relevant("localstack", ["apps/ecr/court-booker/tests/test_api.py"]))
@@ -76,6 +87,26 @@ class FullDiffTests(unittest.TestCase):
                 checks = set(changes.selection(paths)['checks'])
                 self.assertIn('homelab-apps-tests', checks)
                 self.assertTrue(children.issubset(checks))
+
+    def test_suite_workflow_edit_selects_every_child(self):
+        for suite, prefix in [('homelab-config-tests', 'config-'), ('homelab-apps-tests', 'apps-')]:
+            with self.subTest(suite=suite):
+                children = {name for name in changes.SCOPES if name.startswith(prefix)}
+                checks = set(changes.selection([f'.github/workflows/{suite}.yml'])['checks'])
+                self.assertIn(suite, checks)
+                self.assertTrue(children <= checks, sorted(children - checks))
+        config = {'config-workflow', 'config-shell', 'config-runner-catalog', 'config-proxmox', 'config-talos'}
+        self.assertEqual({n for n in changes.SCOPES if n.startswith('config-')}, config)
+
+    def test_child_marker_check_fails_closed(self):
+        spec = importlib.util.spec_from_file_location(
+            'markers', changes.ROOT / 'scripts/ci-child-markers.py')
+        markers = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(markers)
+        selected = ['homelab-config-tests', 'config-shell', 'config-talos', 'apps-postgres']
+        self.assertEqual(markers.missing(selected, 'config-', ['config-shell']), ['config-talos'])
+        self.assertEqual(markers.missing(selected, 'config-', ['config-shell', 'config-talos']), [])
+        self.assertEqual(markers.missing(selected, 'apps-', [], exempt=['apps-postgres']), [])
 
     def test_dependencies_and_module_consumers(self):
         result = changes.selection(['modules/aws/encrypted_s3_bucket/main.tf'])

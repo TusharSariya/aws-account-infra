@@ -20,13 +20,6 @@ SCOPES = {
         ".trivyignore",
         ".trivyignore.yaml",
     ],
-    "shell": [
-        "scripts/*.sh",
-        "scripts/git-hooks/*",
-        "mocks/localstack/smoke.sh",
-        "tests/**",
-        ".shellcheckrc",
-    ],
     "localstack": [
         "mocks/localstack/**",
         "scripts/localstack.sh",
@@ -202,7 +195,11 @@ def selection(paths):
         # A suite-wide dependency must run actual jobs, even when another changed
         # path already selects one child. Unmapped suite inputs conservatively
         # invalidate every child rather than yielding an entirely skipped suite.
-        suite_wide = paths is None or any(
+        # The suite's own workflow file is suite-wide even though broad child
+        # globs such as .github/** also match it.
+        suite_wide = (
+            paths is None or f".github/workflows/{suite}.yml" in paths
+        ) or any(
             relevant(suite, [path])
             and not any(relevant(child, [path]) for child in children)
             for path in paths

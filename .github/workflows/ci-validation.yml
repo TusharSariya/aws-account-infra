@@ -44,11 +44,6 @@ jobs:
     if: contains(fromJSON(needs.select.outputs.checks), 'trivy') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     uses: ./.github/workflows/trivy.yml
     secrets: inherit
-  shell:
-    needs: select
-    if: contains(fromJSON(needs.select.outputs.checks), 'shell') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    uses: ./.github/workflows/shell.yml
-    secrets: inherit
   homelab-config-tests:
     needs: select
     if: contains(fromJSON(needs.select.outputs.checks), 'homelab-config-tests') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
@@ -68,11 +63,6 @@ jobs:
     if: contains(fromJSON(needs.select.outputs.checks), 'homelab-recovery-tests') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     uses: ./.github/workflows/homelab-recovery-tests.yml
     secrets: inherit
-  runner-catalog:
-    needs: select
-    if: contains(fromJSON(needs.select.outputs.checks), 'runner-catalog') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    uses: ./.github/workflows/runner-catalog.yml
-    secrets: inherit
   kubernetes-validation:
     needs: select
     if: contains(fromJSON(needs.select.outputs.checks), 'kubernetes-validation') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
@@ -89,11 +79,9 @@ jobs:
       - checkov
       - tflint
       - trivy
-      - shell
       - homelab-config-tests
       - homelab-apps-tests
       - homelab-recovery-tests
-      - runner-catalog
       - kubernetes-validation
       - main-platform-validation
     if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}

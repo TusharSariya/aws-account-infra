@@ -9,9 +9,12 @@ identities remain in place.
 ## Stage 1: selection and caching
 
 PR routine validation shares the hosted `tofu-plan/detect` job. The same selector
-runs main-push/manual validation through `ci-validation`. Reusable suites retain
-separate jobs for Proxmox, Talos, workflow contracts, lifecycle, documents,
-PostgreSQL and charts. Checkov/TFLint scan affected Terraform directories and local-module consumers
+runs main-push/manual validation through `ci-validation`. `homelab-config-tests`
+runs its children (workflow contracts, ShellCheck/Bats, runner catalog, Proxmox,
+Talos) as guarded steps of one `offline` checks pod; each step records a marker and
+a final step fails when a selected child did not run, so a silently skipped step
+cannot pass `plan-gate`. Editing a suite's own workflow file selects all of its
+children. Checkov/TFLint scan affected Terraform directories and local-module consumers
 in one runner per tool, amortizing installation across shared changes. PRs compare merge bases; pushes compare before/after;
 renames include both paths. Selection errors fail the required `plan-gate`.
 The `apply-gate` retains the deployment/acceptance requirements. Selected failures,
