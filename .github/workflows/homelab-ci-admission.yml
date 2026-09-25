@@ -146,8 +146,9 @@ jobs:
           - {scope: cache, root: homelab-ci}
     needs: contracts
     if: (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
-    # Bootstrap, upgrade and recovery cannot depend on ARC or CI_EXECUTOR.
-    runs-on: ubuntu-latest
+    # Bootstrap, upgrade and recovery cannot depend on ARC or CI_EXECUTOR: the
+    # macOS operator runner when vars.CI_OPERATOR == 'mac', else hosted.
+    runs-on: ${{ vars.CI_OPERATOR == 'mac' && fromJSON('["self-hosted","macOS","homelab-operator"]') || 'ubuntu-latest' }}
     environment: prod
     timeout-minutes: 45
     steps:
@@ -176,6 +177,7 @@ jobs:
           role-to-assume: ${{ inputs.mode == 'apply' && vars.TOFU_APPLY_ROLE_ARN || vars.TOFU_PLAN_ROLE_ARN }}
           aws-region: us-east-1
       - uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8
+        if: runner.os != 'macOS'
         with:
           use-cache: false
           oauth-client-id: ${{ vars.TS_OIDC_CLIENT_ID }}
@@ -183,7 +185,11 @@ jobs:
           tags: tag:github-ci
           version: 1.102.4
           hostname: gh-ci-admission-${{ github.run_id }}-${{ github.run_attempt }}
-      - run: sudo tailscale set --accept-routes=true
+      - if: runner.os != 'macOS'
+        run: sudo tailscale set --accept-routes=true
+      - name: Require the operator Mac's existing tailnet session
+        if: runner.os == 'macOS'
+        run: tailscale status --json | python3 -c 'import json,sys; state = json.load(sys.stdin)["BackendState"]; assert state == "Running", "tailscale BackendState is " + state'
       - id: private
         run: |
           umask 077

@@ -32,7 +32,9 @@ jobs:
   apply:
     needs: detect
     if: needs.detect.outputs.units != '[]' && contains(github.event.pull_request.labels.*.name, 'apply') && github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ${{ (contains(fromJSON(needs.detect.outputs.units).*.id, 'proxmox-homelab') || contains(fromJSON(needs.detect.outputs.units).*.id, 'talos-homelab')) && 'ubuntu-latest' || fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-checks"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
+    # Proxmox/Talos units mutate the hosts ARC runs on: operator Mac when
+    # vars.CI_OPERATOR == 'mac', else hosted. Everything else follows CI_EXECUTOR.
+    runs-on: ${{ (contains(fromJSON(needs.detect.outputs.units).*.id, 'proxmox-homelab') || contains(fromJSON(needs.detect.outputs.units).*.id, 'talos-homelab')) && (vars.CI_OPERATOR == 'mac' && fromJSON('["self-hosted","macOS","homelab-operator"]') || 'ubuntu-latest') || fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-checks"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
     environment: prod
     outputs:
       needs_worker_reboot: ${{ steps.talos.outputs.needs-worker-reboot }}
@@ -80,7 +82,7 @@ jobs:
           tofu_version: 1.11.5
           tofu_wrapper: false
       - name: Connect to Proxmox tailnet
-        if: contains(fromJSON(needs.detect.outputs.units).*.id, 'proxmox-homelab') || contains(fromJSON(needs.detect.outputs.units).*.id, 'talos-homelab') || contains(fromJSON(needs.detect.outputs.units).*.id, 'kubernetes-homelab')
+        if: runner.os != 'macOS' && (contains(fromJSON(needs.detect.outputs.units).*.id, 'proxmox-homelab') || contains(fromJSON(needs.detect.outputs.units).*.id, 'talos-homelab') || contains(fromJSON(needs.detect.outputs.units).*.id, 'kubernetes-homelab'))
         uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4
         with:
           use-cache: false
@@ -90,7 +92,7 @@ jobs:
           version: 1.102.4
           hostname: gh-proxmox-apply-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Accept homelab subnet route
-        if: contains(fromJSON(needs.detect.outputs.units).*.id, 'proxmox-homelab') || contains(fromJSON(needs.detect.outputs.units).*.id, 'talos-homelab') || contains(fromJSON(needs.detect.outputs.units).*.id, 'kubernetes-homelab')
+        if: runner.os != 'macOS' && (contains(fromJSON(needs.detect.outputs.units).*.id, 'proxmox-homelab') || contains(fromJSON(needs.detect.outputs.units).*.id, 'talos-homelab') || contains(fromJSON(needs.detect.outputs.units).*.id, 'kubernetes-homelab'))
         run: |
           # Resolve from the tailnet map, not the OS resolver which we opt out below.
           if [[ '${{ contains(fromJSON(needs.detect.outputs.units).*.id, 'proxmox-homelab') }}' == true ]]; then
@@ -98,6 +100,20 @@ jobs:
             printf '%s pve.tail2f646b.ts.net\n' "$pve_ip" | sudo tee -a /etc/hosts > /dev/null
           fi
           sudo tailscale set --accept-routes=true --accept-dns=false
+      - name: Require the operator Mac's tailnet session and MagicDNS
+        # Never edits the persistent Mac's /etc/hosts: the Mac keeps MagicDNS,
+        # so the Proxmox name must already resolve through the tailnet.
+        if: runner.os == 'macOS' && (contains(fromJSON(needs.detect.outputs.units).*.id, 'proxmox-homelab') || contains(fromJSON(needs.detect.outputs.units).*.id, 'talos-homelab') || contains(fromJSON(needs.detect.outputs.units).*.id, 'kubernetes-homelab'))
+        env:
+          NEED_PVE: ${{ contains(fromJSON(needs.detect.outputs.units).*.id, 'proxmox-homelab') }}
+        run: |
+          tailscale status --json | python3 -c 'import json,sys; state = json.load(sys.stdin)["BackendState"]; assert state == "Running", "tailscale BackendState is " + state'
+          if [[ "$NEED_PVE" == true ]]; then
+            python3 -c 'import socket; socket.getaddrinfo("pve.tail2f646b.ts.net", 443)' || {
+              echo '::error::pve.tail2f646b.ts.net does not resolve on the operator Mac; enable Tailscale MagicDNS (Use Tailscale DNS) instead of editing /etc/hosts.'
+              exit 1
+            }
+          fi
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: false
@@ -122,7 +138,7 @@ jobs:
           PROXMOX_VE_ENDPOINT: https://pve.tail2f646b.ts.net/
           PROXMOX_VE_API_TOKEN: ${{ secrets.PROXMOX_APPLY_API_TOKEN }}
         run: |
-          python3 - <<'PY' > /tmp/deploy-units.tsv
+          python3 - <<'PY' > "$RUNNER_TEMP/deploy-units.tsv"
           import json
           import os
 
@@ -157,7 +173,7 @@ jobs:
             tofu -chdir="$path" apply -input=false -auto-approve -lock-timeout=60s \
               -var-file="$GITHUB_WORKSPACE/$var_file" "${extra[@]}"
             echo "::endgroup::"
-          done < /tmp/deploy-units.tsv
+          done < "$RUNNER_TEMP/deploy-units.tsv"
 
       - name: Initialize iRacing calendar after apply
         if: contains(fromJSON(needs.detect.outputs.units).*.id, 'aws-staging-iracing-calendar')

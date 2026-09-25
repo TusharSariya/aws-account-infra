@@ -122,7 +122,8 @@ jobs:
   proxmox-plan:
     needs: detect
     if: contains(fromJSON(needs.detect.outputs.units).*.id, 'proxmox-homelab') && github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
+    # Off-cluster: the macOS operator runner when vars.CI_OPERATOR == 'mac', else hosted.
+    runs-on: ${{ vars.CI_OPERATOR == 'mac' && fromJSON('["self-hosted","macOS","homelab-operator"]') || 'ubuntu-latest' }}
     timeout-minutes: 30
     environment: prod
     env:
@@ -144,6 +145,7 @@ jobs:
           role-to-assume: ${{ vars.TOFU_PLAN_ROLE_ARN }}
           aws-region: us-east-1
       - uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4
+        if: runner.os != 'macOS'
         with:
           use-cache: false
           oauth-client-id: ${{ vars.TS_OIDC_CLIENT_ID }}
@@ -151,11 +153,15 @@ jobs:
           tags: tag:github-ci
           version: 1.102.4
           hostname: gh-proxmox-plan-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Require the operator Mac's existing tailnet session
+        if: runner.os == 'macOS'
+        run: tailscale status --json | python3 -c 'import json,sys; state = json.load(sys.stdin)["BackendState"]; assert state == "Running", "tailscale BackendState is " + state'
       - uses: ./.github/actions/setup-opentofu
         with:
           tofu_version: 1.11.5
           tofu_wrapper: false
       - name: Accept the laptop management subnet route
+        if: runner.os != 'macOS'
         run: sudo tailscale set --accept-routes=true
       - name: Wake and hold both retained Proxmox hosts
         id: power_hold
@@ -200,7 +206,8 @@ jobs:
   talos-plan:
     needs: detect
     if: contains(fromJSON(needs.detect.outputs.units).*.id, 'talos-homelab') && github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
+    # Off-cluster: the macOS operator runner when vars.CI_OPERATOR == 'mac', else hosted.
+    runs-on: ${{ vars.CI_OPERATOR == 'mac' && fromJSON('["self-hosted","macOS","homelab-operator"]') || 'ubuntu-latest' }}
     timeout-minutes: 20
     environment: prod
     steps:
@@ -210,6 +217,7 @@ jobs:
           role-to-assume: ${{ vars.TOFU_PLAN_ROLE_ARN }}
           aws-region: us-east-1
       - uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 # v4
+        if: runner.os != 'macOS'
         with:
           use-cache: false
           oauth-client-id: ${{ vars.TS_OIDC_CLIENT_ID }}
@@ -218,7 +226,11 @@ jobs:
           version: 1.102.4
           hostname: gh-talos-plan-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Accept homelab subnet route
+        if: runner.os != 'macOS'
         run: sudo tailscale set --accept-routes=true
+      - name: Require the operator Mac's existing tailnet session
+        if: runner.os == 'macOS'
+        run: tailscale status --json | python3 -c 'import json,sys; state = json.load(sys.stdin)["BackendState"]; assert state == "Running", "tailscale BackendState is " + state'
       - uses: ./.github/actions/setup-opentofu
         with:
           tofu_version: 1.11.5

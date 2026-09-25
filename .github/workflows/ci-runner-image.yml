@@ -23,6 +23,8 @@ jobs:
   build:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     # Manual bootstrap stays independent of ARC/Nexus; routine builds use Proxmox.
+    # Never the operator Mac (CI_OPERATOR): it builds a linux/amd64 image with
+    # Docker, which the operator runner does not provide.
     runs-on: ${{ github.event_name == 'workflow_dispatch' && 'ubuntu-latest' || fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-build"}')[vars.CI_EXECUTOR || 'github-hosted'] }}
     timeout-minutes: 20
     environment: prod
