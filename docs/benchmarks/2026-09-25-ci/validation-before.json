@@ -1,0 +1,159 @@
+{
+  "run_id": 36098874952,
+  "run_attempt": 1,
+  "timing_start": "2026-09-25T05:30:49Z",
+  "url": "https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/36098874952",
+  "source_revision": "98f78767eeaf66d231405db64cf631f342d895e4",
+  "cache_state": "unknown",
+  "conclusion": "success",
+  "elapsed_seconds": 102.0,
+  "runner_seconds": 102.0,
+  "jobs": [
+    {
+      "name": "detect",
+      "conclusion": "success",
+      "runner": "GitHub Actions 1000006317",
+      "reused_from_previous_attempt": false,
+      "queue_seconds": 2.0,
+      "execution_seconds": 5.0
+    },
+    {
+      "name": "trivy / trivy",
+      "conclusion": "success",
+      "runner": "homelab-talos-checks-sfvz9-runner-lkfg5",
+      "reused_from_previous_attempt": false,
+      "queue_seconds": 32.0,
+      "execution_seconds": 54.0
+    },
+    {
+      "name": "runner-catalog / catalog",
+      "conclusion": "success",
+      "runner": "homelab-talos-light-w84qw-runner-p4wxd",
+      "reused_from_previous_attempt": false,
+      "queue_seconds": 34.0,
+      "execution_seconds": 22.0
+    },
+    {
+      "name": "homelab-config-tests / workflow",
+      "conclusion": "success",
+      "runner": "homelab-talos-light-w84qw-runner-w7vkg",
+      "reused_from_previous_attempt": false,
+      "queue_seconds": 35.0,
+      "execution_seconds": 17.0
+    },
+    {
+      "name": "shell",
+      "conclusion": "skipped",
+      "runner": null,
+      "reused_from_previous_attempt": false,
+      "queue_seconds": null,
+      "execution_seconds": null
+    },
+    {
+      "name": "kubernetes-validation",
+      "conclusion": "skipped",
+      "runner": null,
+      "reused_from_previous_attempt": false,
+      "queue_seconds": null,
+      "execution_seconds": null
+    },
+    {
+      "name": "tflint",
+      "conclusion": "skipped",
+      "runner": null,
+      "reused_from_previous_attempt": false,
+      "queue_seconds": null,
+      "execution_seconds": null
+    },
+    {
+      "name": "homelab-apps-tests",
+      "conclusion": "skipped",
+      "runner": null,
+      "reused_from_previous_attempt": false,
+      "queue_seconds": null,
+      "execution_seconds": null
+    },
+    {
+      "name": "homelab-config-tests / talos",
+      "conclusion": "skipped",
+      "runner": null,
+      "reused_from_previous_attempt": false,
+      "queue_seconds": null,
+      "execution_seconds": null
+    },
+    {
+      "name": "applications-plan",
+      "conclusion": "skipped",
+      "runner": null,
+      "reused_from_previous_attempt": false,
+      "queue_seconds": null,
+      "execution_seconds": null
+    },
+    {
+      "name": "main-platform-validation",
+      "conclusion": "skipped",
+      "runner": null,
+      "reused_from_previous_attempt": false,
+      "queue_seconds": null,
+      "execution_seconds": null
+    },
+    {
+      "name": "talos-plan",
+      "conclusion": "skipped",
+      "runner": null,
+      "reused_from_previous_attempt": false,
+      "queue_seconds": null,
+      "execution_seconds": null
+    },
+    {
+      "name": "checkov",
+      "conclusion": "skipped",
+      "runner": null,
+      "reused_from_previous_attempt": false,
+      "queue_seconds": null,
+      "execution_seconds": null
+    },
+    {
+      "name": "proxmox-plan",
+      "conclusion": "skipped",
+      "runner": null,
+      "reused_from_previous_attempt": false,
+      "queue_seconds": null,
+      "execution_seconds": null
+    },
+    {
+      "name": "homelab-recovery-tests",
+      "conclusion": "skipped",
+      "runner": null,
+      "reused_from_previous_attempt": false,
+      "queue_seconds": null,
+      "execution_seconds": null
+    },
+    {
+      "name": "plan",
+      "conclusion": "skipped",
+      "runner": null,
+      "reused_from_previous_attempt": false,
+      "queue_seconds": null,
+      "execution_seconds": null
+    },
+    {
+      "name": "homelab-config-tests / proxmox",
+      "conclusion": "skipped",
+      "runner": null,
+      "reused_from_previous_attempt": false,
+      "queue_seconds": null,
+      "execution_seconds": null
+    },
+    {
+      "name": "plan-gate",
+      "conclusion": "success",
+      "runner": "GitHub Actions 1000006320",
+      "reused_from_previous_attempt": false,
+      "queue_seconds": 3.0,
+      "execution_seconds": 4.0
+    }
+  ],
+  "startup_first_observations": {},
+  "limitations": "Queue time is GitHub created_at to started_at, including scheduling. Reruns start at run_started_at; reused earlier jobs are excluded from this attempt's runner time. Jobs without an allocated runner and inconsistent timestamps are excluded from timing totals. Startup timestamps are first observations, bounded by reconciliation cadence. Compare identical jobs/revisions and cold/warm cohorts separately."
+}

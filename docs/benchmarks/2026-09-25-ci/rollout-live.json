@@ -1,0 +1,30 @@
+{
+  "run_id": 36099609521,
+  "attempt": 2,
+  "receipts": {
+    "management": {
+      "apply": "success",
+      "post_plan_empty": true,
+      "changes": [
+        "helm_release.always_on",
+        "helm_release.inference",
+        "helm_release.kueue",
+        "helm_release.queue",
+        "helm_release.runners[\"homelab-talos\"]",
+        "helm_release.runners[\"homelab-talos-build\"]",
+        "helm_release.runners[\"homelab-talos-checks\"]",
+        "helm_release.runners[\"homelab-talos-docker-small\"]",
+        "helm_release.runners[\"homelab-talos-light\"]"
+      ],
+      "execution": "github"
+    },
+    "cache": {
+      "apply": "success",
+      "post_plan_empty": true,
+      "changes": [
+        "helm_release.cache"
+      ],
+      "execution": "github"
+    }
+  }
+}
