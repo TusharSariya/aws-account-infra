@@ -22,6 +22,26 @@ weekly:
     duration_min: 60
     people: 1
     enabled: false
+  # Coaching. visibility: private keeps these off public (friends') calendar
+  # links; only private-scope subscriptions see them, titled "Coaching - <court>".
+  # Private rules classify bookings even while disabled. Enable only after the
+  # API zip that understands visibility is pinned, or bookings publish as public.
+  - activity: court1
+    weekday: Wed
+    time: "09:00"
+    duration_min: 60
+    people: 1
+    visibility: private
+    title: Coaching
+    enabled: false
+  - activity: court1
+    weekday: Fri
+    time: "09:00"
+    duration_min: 60
+    people: 1
+    visibility: private
+    title: Coaching
+    enabled: false
 # booking_date/time = court slot. invoke_at = EventBridge. Omit one and the
 # other is filled with a horizon_hours (72) offset. Set both to decouple.
 # Disable after a oneshot fires — a later apply with a past `at()` will error.

@@ -134,6 +134,7 @@ def sync(repo, rows, before_return=None):
         timezone="America/St_Johns",
         equipment_ids={"court": 1},
         activity_label=lambda _: "Court 1",
+        visibility_for=lambda *_: ("public", None),
     )
     return reconcile(
         repo,
@@ -246,6 +247,7 @@ def test_upstream_errors_preserve_previous_calendar(repo, failure_stage):
         timezone="America/St_Johns",
         equipment_ids={"court": 1},
         activity_label=lambda _: "Court 1",
+        visibility_for=lambda *_: ("public", None),
     )
     with pytest.raises(RuntimeError):
         reconcile(

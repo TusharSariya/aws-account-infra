@@ -1,5 +1,13 @@
 resource "aws_scheduler_schedule_group" "booker" {
   name = "court-booker-api"
+
+  lifecycle {
+    # Checked on the always-present group so disabled rules are validated too.
+    precondition {
+      condition     = alltrue([for rule in local.bookings.weekly : contains(["public", "private"], try(rule.visibility, "public"))])
+      error_message = "Every weekly rule in bookings.yaml must set visibility to public or private (default public)."
+    }
+  }
 }
 
 resource "aws_scheduler_schedule" "weekly" {

@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 
 from booker.config import BookingsConfig, load_bookings
 from booker.results import LATE, BookingFailed, BookingResult
-from booker.schedule import resolve_weekly_target
+from booker.schedule import parse_hhmm, resolve_weekly_target
 from booker.secrets import Credentials, load_credentials
 from booker.stub import BookingRequest
 from booker.timing import Stopwatch
@@ -90,6 +90,7 @@ def _run_weekly(
             activity=activity,
             time=hhmm,
         )
+    visibility, title = _classify(config, activity, target.target_date, hhmm)
     request = BookingRequest(
         activity_key=activity,
         activity_label=config.activity_label(activity),
@@ -101,8 +102,15 @@ def _run_weekly(
         calendar_url=config.calendar_url,
         equipment_id=config.equipment_id(activity),
         timezone=config.timezone,
+        visibility=visibility,
+        title=title,
     )
     return browser.book(request, creds)
+
+
+def _classify(config: BookingsConfig, activity: str, target_date: date, hhmm: str) -> tuple[str, str | None]:
+    """Visibility comes from bookings.yaml, never from the invoking payload."""
+    return config.visibility_for(activity, datetime.combine(target_date, parse_hhmm(hhmm)))
 
 
 def _run_adhoc(
@@ -113,17 +121,22 @@ def _run_adhoc(
     browser,
 ) -> BookingResult:
     activity = str(event["activity"])
+    target_date = date.fromisoformat(str(event["date"]))
+    hhmm = str(event["time"])
+    visibility, title = _classify(config, activity, target_date, hhmm)
     request = BookingRequest(
         activity_key=activity,
         activity_label=config.activity_label(activity),
-        target_date=date.fromisoformat(str(event["date"])),
-        hhmm=str(event["time"]),
+        target_date=target_date,
+        hhmm=hhmm,
         duration_min=int(event.get("duration_min") or 60),
         people=int(event.get("people") or 1),
         dry_run=bool(event.get("dry_run", False)),
         calendar_url=config.calendar_url,
         equipment_id=config.equipment_id(activity),
         timezone=config.timezone,
+        visibility=visibility,
+        title=title,
     )
     if event.get("cancel"):
         return browser.cancel(request, creds)

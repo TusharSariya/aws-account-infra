@@ -30,6 +30,7 @@ def test_manual_reservations_background_polls_and_revocation(monkeypatch):
         timezone="America/St_Johns",
         equipment_ids={"court1": 7412, "court2": 12739},
         activity_label=lambda key: {"court1": "Court 1", "court2": "Court 2"}[key],
+        visibility_for=lambda *_: ("public", None),
     )
     rows = [
         HeldReservation(501, 7412, None, "2026-09-24 17:00:00", "2026-09-24 18:30:00")

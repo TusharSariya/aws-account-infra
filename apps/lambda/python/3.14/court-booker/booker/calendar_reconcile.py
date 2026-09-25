@@ -27,6 +27,8 @@ def reconcile(repository, session, config, credentials, lease_id, *, now=None):
     labels = {
         value: config.activity_label(key) for key, value in config.equipment_ids.items()
     }
+    activities = {value: key for key, value in config.equipment_ids.items()}
+    zone = ZoneInfo(config.timezone)
     reservations = {}
     for row in rows:
         equipment_id = (
@@ -43,13 +45,18 @@ def reconcile(repository, session, config, credentials, lease_id, *, now=None):
             timezone=config.timezone,
             status="cancelled" if row.cancelled else "confirmed",
         )
-        when = (
-            utc_datetime(normalized["start"])
-            .astimezone(ZoneInfo(config.timezone))
-            .date()
-        )
+        local_start = utc_datetime(normalized["start"]).astimezone(zone)
+        when = local_start.date()
         if not start <= when < end:
             continue
+        # Rows matching a private weekly rule (enabled or not) are private. The
+        # repository keeps an existing private record private regardless.
+        visibility, title = config.visibility_for(
+            activities[equipment_id], local_start.replace(tzinfo=None)
+        )
+        normalized["visibility"] = visibility
+        if title:
+            normalized["title"] = title
         if normalized["reservation_id"] in reservations:
             raise ValueError("duplicate reservation in upstream response")
         reservations[normalized["reservation_id"]] = normalized
@@ -73,7 +80,10 @@ def reconcile(repository, session, config, credentials, lease_id, *, now=None):
                     "court",
                     "location",
                     "status",
+                    "visibility",
+                    "title",
                 )
+                if k in old
             }
             reservations[reservation_id]["status"] = "cancelled"
     changed = 0

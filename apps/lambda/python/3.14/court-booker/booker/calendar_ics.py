@@ -15,12 +15,12 @@ def _utc(value: str) -> datetime:
     return parsed.astimezone(UTC)
 
 
-def render_calendar(reservations: list[dict]) -> bytes:
+def render_calendar(reservations: list[dict], name: str = "Court bookings") -> bytes:
     calendar = Calendar()
     calendar.add("prodid", "-//Court Booker//Shared Reservations//EN")
     calendar.add("version", "2.0")
     calendar.add("calscale", "GREGORIAN")
-    calendar.add("x-wr-calname", "Court bookings")
+    calendar.add("x-wr-calname", name)
     for reservation in sorted(
         reservations, key=lambda item: str(item["reservation_id"])
     ):
@@ -40,7 +40,9 @@ def render_calendar(reservations: list[dict]) -> bytes:
             "created", _utc(reservation.get("created_at", reservation["updated_at"]))
         )
         event.add("sequence", int(reservation["sequence"]))
-        event.add("summary", reservation["court"])
+        title = reservation.get("title")
+        summary = f"{title} - {reservation['court']}" if title else reservation["court"]
+        event.add("summary", summary)
         event.add("location", reservation["location"])
         event.add("status", "CONFIRMED")
         calendar.add_component(event)

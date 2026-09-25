@@ -182,6 +182,7 @@ def _held_calendar(held: HeldReservation, request: BookingRequest, *, status="co
         reservation_id=held.id, equipment_id=request.equipment_id,
         start=held.start_time, end=held.end_time, court=request.activity_label,
         status=status, timezone=request.timezone,
+        visibility=request.visibility, title=request.title,
     )
 
 
@@ -411,6 +412,7 @@ class UpaceHttpBooker:
                 reservation_id=reservation_id, equipment_id=request.equipment_id,
                 start=start.isoformat(), end=(start + timedelta(minutes=request.duration_min)).isoformat(),
                 court=request.activity_label, timezone=request.timezone,
+                visibility=request.visibility, title=request.title,
             ), **meta,
         )
 
