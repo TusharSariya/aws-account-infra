@@ -8,10 +8,6 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, labeled, unlabeled]
 
-concurrency:
-  group: sdk-publish-stable
-  cancel-in-progress: false
-
 permissions:
   id-token: write
   contents: read
@@ -61,6 +57,11 @@ jobs:
     if: (needs.detect.outputs.required == 'true' && contains(github.event.pull_request.labels.*.name, 'publish-stable')) && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-docker-small"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
     environment: sdk
+    # Serialize stable publication per target only. A single group would
+    # serialize the two matrix legs and let another run replace the pending leg.
+    concurrency:
+      group: sdk-publish-stable-${{ matrix.target }}
+      cancel-in-progress: false
     strategy:
       fail-fast: false
       matrix:

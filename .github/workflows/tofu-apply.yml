@@ -4,9 +4,21 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, labeled, unlabeled]
 
-concurrency:
-  group: tofu-apply
-  cancel-in-progress: false
+# The shared tofu-apply lock is held per job, not per run: apply,
+# worker-maintenance, acceptance and lifecycle-maintenance take it, while
+# detect, storage-foundation, apply-gate and enable-auto-merge do not. A no-op
+# PR (no apply label, no acceptance suite) therefore never queues behind or gets
+# replaced by another PR's apply. Accepted trade-offs:
+#   1. The lock is released between apply and acceptance, so another PR's apply
+#      or a dispatched tofu-apply workflow can interleave and acceptance may
+#      validate a cluster that includes someone else's change.
+#   2. GitHub keeps one pending entry per group, so a queued acceptance can be
+#      replaced by another run's apply; apply-gate then fails as cancelled and
+#      needs a rerun (previously the whole pending run was replaced instead).
+# Dispatch workflows (admission apply, ai-migration, capacity-host,
+# quota-acceptance) keep their workflow-level tofu-apply group and compete in
+# the same namespace. The called maintenance workflows resolve their own group
+# to a run-scoped name under workflow_call, so there is no nested deadlock.
 
 permissions:
   actions: read
@@ -32,6 +44,9 @@ jobs:
   apply:
     needs: detect
     if: needs.detect.outputs.units != '[]' && contains(github.event.pull_request.labels.*.name, 'apply') && github.event.pull_request.head.repo.full_name == github.repository
+    concurrency:
+      group: tofu-apply
+      cancel-in-progress: false
     # Proxmox/Talos units mutate the hosts ARC runs on: operator Mac when
     # vars.CI_OPERATOR == 'mac', else hosted. Everything else follows CI_EXECUTOR.
     runs-on: ${{ (contains(fromJSON(needs.detect.outputs.units).*.id, 'proxmox-homelab') || contains(fromJSON(needs.detect.outputs.units).*.id, 'talos-homelab')) && (vars.CI_OPERATOR == 'mac' && fromJSON('["self-hosted","macOS","homelab-operator"]') || 'ubuntu-latest') || fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-checks"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
@@ -237,6 +252,9 @@ jobs:
   worker-maintenance:
     needs: [detect, apply]
     if: needs.apply.result == 'success' && contains(fromJSON(needs.detect.outputs.units).*.id, 'talos-homelab') && contains(github.event.pull_request.labels.*.name, 'worker-reboot')
+    concurrency:
+      group: tofu-apply
+      cancel-in-progress: false
     uses: ./.github/workflows/homelab-worker-maintenance.yml
     with:
       confirm: talos-worker-01
@@ -250,6 +268,11 @@ jobs:
       (needs.apply.result == 'success' ||
        (needs.apply.result == 'skipped' && (!contains(github.event.pull_request.labels.*.name, 'apply') || needs.detect.outputs.units == '[]'))) &&
       (needs.worker-maintenance.result == 'success' || needs.worker-maintenance.result == 'skipped') }}
+    # Acceptance runs even without the apply label and mutates the cluster
+    # (holds, fixture namespaces), so it takes the lock too.
+    concurrency:
+      group: tofu-apply
+      cancel-in-progress: false
     uses: ./.github/workflows/homelab-acceptance.yml
     with:
       suite: ${{ needs.detect.outputs.suite }}
@@ -258,6 +281,9 @@ jobs:
   lifecycle-maintenance:
     needs: [detect, apply, acceptance]
     if: ${{ !cancelled() && needs.detect.result == 'success' && needs.apply.result == 'success' && needs.acceptance.result == 'success' && contains(github.event.pull_request.labels.*.name, 'lifecycle-maintenance') }}
+    concurrency:
+      group: tofu-apply
+      cancel-in-progress: false
     uses: ./.github/workflows/homelab-lifecycle-maintenance.yml
     with:
       confirm: verify-ai-lifecycle-and-restore

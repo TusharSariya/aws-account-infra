@@ -137,6 +137,19 @@ class Contracts(unittest.TestCase):
                         self.assertIn('head.repo.full_name == github.repository',job['if'])
                     self.assertIn('fromJSON',job['runs-on'])
 
+    def test_deployment_locks_are_held_by_mutating_jobs_only(self):
+        lock = {'group': 'tofu-apply', 'cancel-in-progress': 'false'}
+        apply = yaml.load((ROOT/'.github/workflows/tofu-apply.yml').read_text(), Loader=yaml.BaseLoader)
+        self.assertNotIn('concurrency', apply)
+        locked = {name for name, job in apply['jobs'].items() if 'concurrency' in job}
+        self.assertEqual(locked, {'apply', 'worker-maintenance', 'acceptance', 'lifecycle-maintenance'})
+        for name in locked:
+            self.assertEqual(apply['jobs'][name]['concurrency'], lock, name)
+        sdk = yaml.load((ROOT/'.github/workflows/sdk-publish-stable.yml').read_text(), Loader=yaml.BaseLoader)
+        self.assertNotIn('concurrency', sdk)
+        self.assertEqual(sdk['jobs']['publish-stable']['concurrency'],
+                         {'group': 'sdk-publish-stable-${{ matrix.target }}', 'cancel-in-progress': 'false'})
+
     def test_status_needs_no_registry_or_helm_access(self):
         helper = module('homelab_ci_status', 'scripts/homelab-ci.py')
         with TemporaryDirectory() as directory:
