@@ -19,6 +19,12 @@ HASHES = {
     ('Darwin', 'arm64'): 'ab4c27a959ff6c52f62c6cc2af07b22ca86ed27f1a138ed57582fa67f7b50f98',
     ('Linux', 'x86_64'): '7e1d4b7d5846964bdcf63a794e3c8161bb6ef2983d5ace58ea5322f3bf32a27e',
 }
+KUBECTL_VERSION = 'v1.36.3'
+# Published dl.k8s.io/release/<version>/bin/<os>/<arch>/kubectl.sha256 values.
+KUBECTL = {
+    ('Darwin', 'arm64'): ('darwin/arm64', 'fc8582acde13869a606730a79379d6515f30c68afcced0b5ac8789d5d002b7d6'),
+    ('Linux', 'x86_64'): ('linux/amd64', 'ebbd080e7c2e275093b55915722043257eb24004363e20acb3c4d71919f88336'),
+}
 
 
 def private_dir(path):
@@ -123,10 +129,12 @@ def setup(acceptance=False, charts=True):
                           '06210eef7c23d15f7699c79e2fe3a1ec9c389024c5c5c006ea04022d322449a2')
         prepare_local_path_chart()
     if acceptance:
-        if platform.system() != 'Linux' or platform.machine() != 'x86_64':
-            raise ValueError('CI acceptance requires Linux amd64')
-        kubectl = binary.parent / 'kubectl-v1.36.3'
-        download_verified('https://dl.k8s.io/release/v1.36.3/bin/linux/amd64/kubectl', kubectl,
-                          'ebbd080e7c2e275093b55915722043257eb24004363e20acb3c4d71919f88336')
+        system = (platform.system(), platform.machine())
+        if system not in KUBECTL:
+            raise ValueError('CI acceptance requires Linux amd64 or macOS arm64')
+        target, expected = KUBECTL[system]
+        kubectl = binary.parent / f'kubectl-{KUBECTL_VERSION}'
+        download_verified(f'https://dl.k8s.io/release/{KUBECTL_VERSION}/bin/{target}/kubectl',
+                          kubectl, expected)
         kubectl.chmod(0o700)
     return binary

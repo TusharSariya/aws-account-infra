@@ -15,6 +15,7 @@ provider namespaces, not implemented environments.
 ./scripts/localstack.sh smoke
 tofu -chdir=live/proxmox/homelab plan
 helm lint charts/*
+./scripts/mac-operator-runner.sh status
 ```
 
 OpenTofu roots and dependencies are declared in `deploy-units.json`. Update the manifest
@@ -45,6 +46,26 @@ variables live under `config/environments`, and secrets must not be committed.
   SSM SecureString (`/staging/court-booker/my-y` and `/staging/court-booker-api/my-y`); they
   do not share credentials storage. Put values with `scripts/court-booker-put-secret.sh`.
   RAG and other products still keep runtime code out of this repo.
+
+## CI invariants
+
+- Routine CI runs on ARC through `vars.CI_EXECUTOR`.
+- Cluster-mutating maintenance (admission, Proxmox/Talos plan and apply, worker,
+  lifecycle, migration, capacity-host and quota jobs) runs on the `homelab-operator`
+  runners on the owner's Mac through `vars.CI_OPERATOR=mac`, using the exact expression
+  pinned in `scripts/tests/test_ci_executor_routing.py`. The default form is three
+  Linux containers running the ARC runner image (`platform/operator-runner/`,
+  `scripts/mac-operator-containers.sh`); the native macOS runner is the fallback. See
+  `docs/runbooks/mac-operator-runner.md`.
+- Hosted runners are the fallback only (either variable unset). `homelab-etcd-backup` and
+  `ci-runner-image/build` stay hosted by design.
+- Every operator job declares `environment: prod`, and the routing test enforces it. `prod`
+  is unrestricted because PR plans and apply-before-merge deploy from `refs/pull/N/merge`.
+  Required reviewers are unavailable on the current plan. A main-only `operator`
+  environment is future hardening; its prerequisites are in the runbook.
+- Operator jobs therefore rely only on these controls: the runner stays offline outside
+  maintenance windows, runs as a dedicated non-admin user, and belongs to the
+  repo-restricted org runner group `homelab-operator`.
 
 ## Scope boundaries
 

@@ -1,12 +1,78 @@
 """Exercise ARM helper reuse without invoking Docker or AWS."""
+import collections
 import importlib.util
 import os
 from pathlib import Path
+import re
 import subprocess
 import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
+PINS = ROOT / 'config/ci-python-pins.txt'
+WITH_PIN = re.compile(
+    r"""--with[ =](['"]?)([A-Za-z0-9_.-]+(?:\[[A-Za-z0-9_,.-]+\])?==[A-Za-z0-9_.+!-]+)\1""")
+CACHE_ACTION = re.compile(r'uses: \./\.github/actions/(nexus-dependency-cache|talos-build-cache)\s*$')
+
+
+def ci_files():
+    return sorted((ROOT / '.github/workflows').glob('*.yml')) + sorted((ROOT / '.github/actions').rglob('*.yml'))
+
+
+def cache_calls(path):
+    """Return action/job/kind/scope per cache step; plain text so no PyYAML is needed."""
+    calls, job, current, in_jobs = [], None, None, False
+    for line in path.read_text().splitlines():
+        if line and not line[0].isspace():
+            in_jobs, current = line.rstrip() == 'jobs:', None
+            continue
+        match = re.fullmatch(r'  ([A-Za-z0-9_-]+):\s*', line)
+        if in_jobs and match:
+            job, current = match.group(1), None
+            continue
+        match = CACHE_ACTION.search(line)
+        if match:
+            current = {'action': match.group(1), 'job': job, 'kind': '', 'scope': ''}
+            calls.append(current)
+            continue
+        if current is not None:
+            if re.match(r'\s+- ', line):
+                current = None
+            elif match := re.fullmatch(r'\s+(kind|scope):\s*(.*?)\s*', line):
+                current[match.group(1)] = match.group(2)
+    return calls
+
+
+class CacheKeyTests(unittest.TestCase):
+    def test_python_cache_key_tracks_pins_not_workflow_text(self):
+        pins = set(PINS.read_text().split())
+        used = {m.group(2) for path in ci_files() for m in WITH_PIN.finditer(path.read_text())}
+        self.assertTrue(used)
+        self.assertEqual(sorted(used - pins), [], 'add these --with pins to config/ci-python-pins.txt')
+        self.assertEqual(sorted(pins - used), [], 'remove stale pins from config/ci-python-pins.txt')
+        hashes = 0
+        for path in ci_files():
+            for line in path.read_text().splitlines():
+                if 'hashFiles(' in line and 'uv.lock' in line:
+                    hashes += 1
+                    self.assertNotIn('.github/workflows/*.yml', line, path.name)
+                    self.assertIn("'config/ci-python-pins.txt'", line, path.name)
+        self.assertGreater(hashes, 0)
+
+    def test_cache_scopes_are_unique_across_workflow_files(self):
+        # Cache actions scope by job id (not caller workflow name) so PR and main
+        # callers of one reusable workflow share main's read-only fallback. A job
+        # id reused in another workflow file must pass a distinguishing scope.
+        owners = collections.defaultdict(set)
+        for path in sorted((ROOT / '.github/workflows').glob('*.yml')):
+            for call in cache_calls(path):
+                owners[(call['action'], call['job'], call['kind'], call['scope'])].add(path.name)
+        self.assertTrue(owners)
+        collisions = {k: sorted(v) for k, v in owners.items() if len(v) > 1}
+        self.assertEqual(collisions, {})
+        for action in ('nexus-dependency-cache', 'talos-build-cache'):
+            text = (ROOT / '.github/actions' / action / 'action.yml').read_text()
+            self.assertNotIn('github.workflow }}', text)
 
 
 class OptimizationTests(unittest.TestCase):

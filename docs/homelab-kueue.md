@@ -23,9 +23,9 @@ Review three PRs in order: foundation; admission/runners; routing/acceptance. Ke
 3. Deploy AI/lifecycle/Argo chart changes through the existing application root with AI off. New compute templates carry an admission gate even if Kueue has not yet installed its webhook. Operational templates have neither gate nor queue label.
 4. The original rollout required complete live acceptance before setting `CI_EXECUTOR=talos`. The owner explicitly directed the default switch on 2026-09-17. Keep remaining live acceptance gaps recorded; do not treat this routing choice as proof they passed.
 
-Changing `CI_EXECUTOR` is explicit; unknown values fail workflow runner selection. There is no automatic paid fallback. CI/admission bootstrap, Proxmox/Talos changes and worker/recovery operations always use hosted runners. Routine application-only/AWS deployments can use Talos; a combined Proxmox/Talos apply stays hosted. Required plan/apply/publish gates retain their conditions.
+Changing `CI_EXECUTOR` is explicit; unknown values fail workflow runner selection. There is no automatic paid fallback. CI/admission bootstrap, Proxmox/Talos changes and worker/recovery operations never use ARC: they run on the macOS operator runner when `vars.CI_OPERATOR=mac`, otherwise hosted. Routine application-only/AWS deployments can use Talos; a combined Proxmox/Talos apply follows `CI_OPERATOR`. Required plan/apply/publish gates retain their conditions.
 
-Routine selection, gating and validation jobs (`detect`/`select`, `plan-gate`, `apply-gate`, `validation-gate`, `enable-auto-merge`, and the offline Kubernetes, main-platform and pilot validations) run on ARC through the same `CI_EXECUTOR` switch. Only cluster-mutating bootstrap/maintenance jobs, the off-cluster Proxmox/Talos plans and a combined Proxmox/Talos apply remain hosted; the Pages deployment already follows the switch. Leaving `vars.CI_EXECUTOR` unset restores hosted execution as the fallback. `scripts/tests/test_ci_executor_routing.py` enforces this with an explicit, reasoned allowlist of hosted-by-design and hard-wired ARC jobs.
+Routine selection, gating and validation jobs (`detect`/`select`, `plan-gate`, `apply-gate`, `validation-gate`, `enable-auto-merge`, and the offline Kubernetes, main-platform and pilot validations) run on ARC through the same `CI_EXECUTOR` switch. The Pages deployment already follows the switch. Cluster-mutating bootstrap/maintenance jobs, the off-cluster Proxmox/Talos plans and a combined Proxmox/Talos apply form the operator class. They route through `vars.CI_OPERATOR`: `mac` selects the `[self-hosted, macOS, homelab-operator]` runner described in [the operator runner runbook](runbooks/mac-operator-runner.md), and every such job declares `environment: prod`, which is unrestricted because PR plans and apply-before-merge need it. A main-only `operator` environment is documented there as future hardening. The daily etcd backup and the `ci-runner-image` bootstrap build stay hosted by design. Leaving either variable unset restores hosted execution as the fallback. `scripts/tests/test_ci_executor_routing.py` enforces this with an explicit, reasoned allowlist of operator, hosted-only and hard-wired ARC jobs.
 
 ## Historical retirement of the old CI VM
 
@@ -134,10 +134,12 @@ through the OpenTofu moved block; do not uninstall active runners.
 - Docker: Checkov's Docker action, config/application tests using Docker,
   LocalStack/Compose, SDK generation/publication, image builds/publication,
   ARM packaging/upload and disposable storage quota enforcement.
-- Independent hosted: admission bootstrap/upgrades and their dispatched contracts (PR-only offline contracts run on Talos),
-  Proxmox/Talos plans or combined hardware apply, node/lifecycle/storage
-  maintenance, migration, independent etcd backup and recovery. Mac recovery
-  remains available. There is no automatic paid fallback.
+- Operator (macOS runner via `CI_OPERATOR=mac`, hosted otherwise): admission
+  bootstrap/upgrades, Proxmox/Talos plans or combined hardware apply,
+  node/lifecycle/storage maintenance and migration.
+- Independent hosted: dispatched admission contracts (PR-only offline contracts run
+  on Talos), independent etcd backup and recovery. Mac recovery remains available.
+  There is no automatic paid fallback.
 
 The prerequisite action takes explicit `packages`, `aws`, `docker` and `tailscale`
 inputs. Non-Docker jobs never wait for a Docker daemon. Workflow-only changes keep

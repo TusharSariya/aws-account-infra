@@ -8,8 +8,8 @@ on:
 permissions:
   contents: read
 jobs:
-  lifecycle:
-    if: contains(fromJSON(inputs.checks), 'apps-lifecycle') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+  documents:
+    if: contains(fromJSON(inputs.checks), 'apps-documents') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-checks"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
     steps:
       - uses: actions/checkout@v4
@@ -18,7 +18,7 @@ jobs:
         with:
           kind: python
           toolchain: uv-python-3.14
-          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', 'config/ci-python-pins.txt') }}
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: false
@@ -26,48 +26,21 @@ jobs:
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.19.0
-      - name: Restore pinned chart dependencies
-        run: uv run --with PyYAML==6.0.3 python scripts/homelab-apps.py setup
-      - name: Validate lifecycle
-        run: |
-          uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p "test_ai_*.py"
-          uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p "test_lifecycle_*.py"
-          uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p test_local_lifecycle.py
-      - uses: ./.github/actions/nexus-dependency-cache
-        with:
-          kind: python
-          toolchain: uv-python-3.14
-          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
-          mode: save
-          password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
-        if: ${{ success() }}
-  documents:
-    if: contains(fromJSON(inputs.checks), 'apps-documents') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-docker-small"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/talos-runner-setup
-        with:
-          docker: 'true'
-      - uses: ./.github/actions/nexus-dependency-cache
-        with:
-          kind: python
-          toolchain: uv-python-3.14
-          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
-      - uses: astral-sh/setup-uv@v6
-        with:
-          enable-cache: false
-          cache-local-path: ${{ env.UV_CACHE_DIR || format('{0}/uv-cache', runner.temp) }}
-      - uses: azure/setup-helm@v4.3.1
-        with:
-          version: v3.19.0
+      # The subreaper process tests used to run in a pinned python:3.14-slim
+      # container (uid 1000, --cap-drop ALL, no-new-privileges) on a Docker pod.
+      # They need no capability (PR_SET_CHILD_SUBREAPER is unprivileged), so they
+      # now run on the checks pod under util-linux setpriv: no-new-privs blocks
+      # sudo/setuid escalation and inheritable caps are cleared. The bounding set
+      # cannot be dropped without CAP_SETPCAP; the non-root runner user has no
+      # permitted or effective capabilities anyway. Lost versus the container: the
+      # private PID namespace, the read-only repo mount and the image digest pin.
       - name: Validate documents
         run: |
           source=$(python3 scripts/odysseus-image-context.py "$RUNNER_TEMP/document-source")
           python3 scripts/odysseus-document-acceptance.py "$source"
           python3 scripts/odysseus-scheduler-acceptance.py "$source"
           uv run --with httpx==0.28.1 --with requests==2.34.2 python -m unittest discover -s scripts/tests -p "test_odysseus_*.py"
-          docker run --rm --user 1000:1000 --cap-drop ALL --security-opt no-new-privileges -v "$PWD:/repo:ro" -w /repo python:3.14-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6 python -m unittest discover -s scripts/tests -p test_odysseus_processes.py
+          setpriv --no-new-privs --inh-caps=-all uv run --no-project --python 3.14 python -m unittest discover -s scripts/tests -p test_odysseus_processes.py
           python3 -m unittest discover -s scripts/tests -p test_odysseus_backup.py
           bash -n scripts/odysseus-backup.sh
           bash -n scripts/odysseus-setup-wizard.sh
@@ -75,7 +48,7 @@ jobs:
         with:
           kind: python
           toolchain: uv-python-3.14
-          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', 'config/ci-python-pins.txt') }}
           mode: save
           password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
         if: ${{ success() }}
@@ -91,7 +64,7 @@ jobs:
         with:
           kind: python
           toolchain: uv-python-3.14
-          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', 'config/ci-python-pins.txt') }}
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: false
@@ -109,9 +82,14 @@ jobs:
           cache-binary: false
           buildkitd-config: ${{ steps.cache.outputs.config }}
           driver-opts: ${{ steps.cache.outputs.driver-opts }}
+      # Pure-Python postgres unit tests run in the charts job (apps-postgres step)
+      # so this docker job only carries the image build and integration run.
       - name: Validate postgres
+        env:
+          # The backup image is FROM the pinned CloudNativePG server image, so the
+          # integration servers reuse the loaded image instead of a second ghcr pull.
+          POSTGRES_SERVER_IMAGE: homelab-postgres-backup:local
         run: |
-          uv run --with PyYAML==6.0.3 --with boto3==1.42.49 --with 'psycopg[binary]==3.3.3' python -m unittest discover -s scripts/tests -p 'test_postgres_*.py'
           source scripts/build-cache-flags.sh
           docker buildx build ${build_cache_args[@]+"${build_cache_args[@]}"} --load --platform linux/amd64 -f apps/containers/postgres-backup/Dockerfile -t homelab-postgres-backup:local .
           bash scripts/tests/postgres-integration.sh
@@ -119,12 +97,12 @@ jobs:
         with:
           kind: python
           toolchain: uv-python-3.14
-          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', 'config/ci-python-pins.txt') }}
           mode: save
           password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
         if: ${{ success() }}
   charts:
-    if: contains(fromJSON(inputs.checks), 'apps-charts') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    if: (contains(fromJSON(inputs.checks), 'apps-charts') || contains(fromJSON(inputs.checks), 'apps-postgres') || contains(fromJSON(inputs.checks), 'apps-lifecycle')) && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-checks"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
     steps:
       - uses: actions/checkout@v4
@@ -133,8 +111,9 @@ jobs:
         with:
           kind: python
           toolchain: uv-python-3.14
-          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', 'config/ci-python-pins.txt') }}
       - uses: ./.github/actions/nexus-dependency-cache
+        if: contains(fromJSON(inputs.checks), 'apps-charts')
         with:
           kind: providers
           toolchain: tofu-1.11.5
@@ -144,24 +123,50 @@ jobs:
           enable-cache: false
           cache-local-path: ${{ env.UV_CACHE_DIR || format('{0}/uv-cache', runner.temp) }}
       - uses: azure/setup-helm@v4.3.1
+        if: contains(fromJSON(inputs.checks), 'apps-charts') || contains(fromJSON(inputs.checks), 'apps-lifecycle')
         with:
           version: v3.19.0
       - uses: ./.github/actions/setup-opentofu
+        if: contains(fromJSON(inputs.checks), 'apps-charts')
         with:
           tofu_version: 1.11.5
           tofu_wrapper: false
-      - name: Validate charts
+      - name: Restore pinned chart dependencies
+        if: contains(fromJSON(inputs.checks), 'apps-charts') || contains(fromJSON(inputs.checks), 'apps-lifecycle')
+        run: python3 scripts/homelab-apps.py setup
+      - name: Validate lifecycle
+        if: contains(fromJSON(inputs.checks), 'apps-lifecycle')
         run: |
-          python3 scripts/homelab-apps.py setup
+          uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p "test_ai_*.py"
+          uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p "test_lifecycle_*.py"
+          uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p test_local_lifecycle.py
+          echo apps-lifecycle >> "$RUNNER_TEMP/apps-ran"
+      - name: Validate postgres units
+        if: contains(fromJSON(inputs.checks), 'apps-postgres')
+        run: |
+          uv run --with PyYAML==6.0.3 --with boto3==1.42.49 --with 'psycopg[binary]==3.3.3' python -m unittest discover -s scripts/tests -p 'test_postgres_*.py'
+          echo apps-postgres >> "$RUNNER_TEMP/apps-ran"
+      - name: Validate charts
+        if: contains(fromJSON(inputs.checks), 'apps-charts')
+        run: |
           uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p test_homelab_apps.py
           python3 -m unittest discover -s scripts/tests -p test_deploy_units.py
           tofu -chdir=live/kubernetes/homelab init -backend=false -input=false -lockfile=readonly
           tofu -chdir=live/kubernetes/homelab validate
+          echo apps-charts >> "$RUNNER_TEMP/apps-ran"
+      # apps-documents runs in its own job, which carries its own result.
+      - name: Every selected child ran
+        env:
+          SELECTED_CHECKS: ${{ inputs.checks }}
+          MARKER_PREFIX: apps-
+          MARKER_FILE: apps-ran
+          MARKER_EXEMPT: apps-documents
+        run: python3 scripts/ci-child-markers.py
       - uses: ./.github/actions/nexus-dependency-cache
         with:
           kind: python
           toolchain: uv-python-3.14
-          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', 'config/ci-python-pins.txt') }}
           mode: save
           password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
         if: ${{ success() }}
@@ -172,4 +177,4 @@ jobs:
           dependencies: ${{ hashFiles('**/.terraform.lock.hcl') }}
           mode: save
           password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
-        if: ${{ success() }}
+        if: success() && contains(fromJSON(inputs.checks), 'apps-charts')

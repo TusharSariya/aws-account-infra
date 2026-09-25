@@ -9,9 +9,15 @@ identities remain in place.
 ## Stage 1: selection and caching
 
 PR routine validation shares the hosted `tofu-plan/detect` job. The same selector
-runs main-push/manual validation through `ci-validation`. Reusable suites retain
-separate jobs for Proxmox, Talos, workflow contracts, lifecycle, documents,
-PostgreSQL and charts. Checkov/TFLint scan affected Terraform directories and local-module consumers
+runs main-push/manual validation through `ci-validation`. `homelab-config-tests`
+runs its children (workflow contracts, ShellCheck/Bats, runner catalog, Proxmox,
+Talos) as guarded steps of one `offline` checks pod; each step records a marker and
+a final step fails when a selected child did not run, so a silently skipped step
+cannot pass `plan-gate`. `homelab-apps-tests` runs lifecycle, PostgreSQL units and
+charts the same way in its `charts` checks pod; documents runs on a checks pod with
+the subreaper tests under `setpriv --no-new-privs`, and only the PostgreSQL image
+build and integration run keep a Docker pod. Editing a suite's own workflow file
+selects all of its children. Checkov/TFLint scan affected Terraform directories and local-module consumers
 in one runner per tool, amortizing installation across shared changes. PRs compare merge bases; pushes compare before/after;
 renames include both paths. Selection errors fail the required `plan-gate`.
 The `apply-gate` retains the deployment/acceptance requirements. Selected failures,
@@ -27,15 +33,25 @@ Nexus `raw-dependencies` shares the existing bounded default blob store. The
 existing cache-only writer gains raw archive privileges; release credentials are
 not used. Archives contain only dedicated provider, TFLint, Go or public Python
 cache directories under `RUNNER_TEMP`. Keys include format, OS, architecture,
-toolchain, dependency hashes, branch and job scope. No state, backend initialization,
+toolchain, dependency hashes, branch and job scope. Job scope is the job id plus an
+optional input, not the caller workflow name, so a reusable job keeps one identity
+whether `ci-validation` (main) or `tofu-plan` (PRs) calls it; job ids reused across
+workflow files pass an explicit scope (`test_ci_optimization` rejects collisions).
+Python keys hash `uv.lock`, `pyproject.toml` and `config/ci-python-pins.txt` (every
+`--with pkg==ver` pin in workflows and actions) rather than all workflow text.
+A branch miss falls back to main's entry for the same identity, read-only: saves
+only ever write the current branch's key, so PR writers never populate main. Any
+restore hit records `HOMELAB_DEPENDENCY_CACHE_HIT_<KIND>` and the job-end save then
+reports `unchanged` without packing or uploading. No state, backend initialization,
 plans, checkout trees or credentials are included. Provider lockfiles remain
 checked. Cold/missing/unavailable entries rebuild; denied exports are nonfatal;
 invalid checksums, unsafe archive members and escaping symlinks fail validation.
 Exports stream to disk with 512-MiB compressed/2-GiB expanded limits. Oversized
-exports are skipped. Receipts report result, bytes and elapsed time.
+exports are skipped. Receipts report result, bytes, elapsed time and `fallback`.
 
-PostgreSQL and inference builds use the existing branch/platform BuildKit cache,
-including PostgreSQL integration builds. Provenance, SBOMs and immutable published
+PostgreSQL and inference builds use the existing branch/platform BuildKit cache
+(imports the branch ref then main's, exports the branch ref only), including
+PostgreSQL integration builds. Provenance, SBOMs and immutable published
 references are preserved. The runner Dockerfile adds Bats, verified actionlint
 1.7.7 and verified gitleaks 8.21.2. The runner image was built, verified and privately published by the existing
 workflow; its receipt is in `docs/benchmarks/2026-09-25-ci/runner-image.json`.

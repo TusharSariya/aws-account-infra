@@ -44,11 +44,6 @@ jobs:
     if: contains(fromJSON(needs.select.outputs.checks), 'trivy') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     uses: ./.github/workflows/trivy.yml
     secrets: inherit
-  shell:
-    needs: select
-    if: contains(fromJSON(needs.select.outputs.checks), 'shell') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    uses: ./.github/workflows/shell.yml
-    secrets: inherit
   homelab-config-tests:
     needs: select
     if: contains(fromJSON(needs.select.outputs.checks), 'homelab-config-tests') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
@@ -68,34 +63,23 @@ jobs:
     if: contains(fromJSON(needs.select.outputs.checks), 'homelab-recovery-tests') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     uses: ./.github/workflows/homelab-recovery-tests.yml
     secrets: inherit
-  runner-catalog:
+  offline-validation:
     needs: select
-    if: contains(fromJSON(needs.select.outputs.checks), 'runner-catalog') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    uses: ./.github/workflows/runner-catalog.yml
+    if: contains(fromJSON(needs.select.outputs.checks), 'offline-validation') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    uses: ./.github/workflows/offline-validation.yml
     secrets: inherit
-  kubernetes-validation:
-    needs: select
-    if: contains(fromJSON(needs.select.outputs.checks), 'kubernetes-validation') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    uses: ./.github/workflows/kubernetes-validation.yml
-    secrets: inherit
-  main-platform-validation:
-    needs: select
-    if: contains(fromJSON(needs.select.outputs.checks), 'main-platform-validation') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    uses: ./.github/workflows/main-platform-validation.yml
-    secrets: inherit
+    with:
+      checks: ${{ needs.select.outputs.checks }}
   validation-gate:
     needs:
       - select
       - checkov
       - tflint
       - trivy
-      - shell
       - homelab-config-tests
       - homelab-apps-tests
       - homelab-recovery-tests
-      - runner-catalog
-      - kubernetes-validation
-      - main-platform-validation
+      - offline-validation
     if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
     runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-light"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
     steps:

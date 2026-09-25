@@ -1,5 +1,5 @@
 name: Nexus dependency archives
-description: Branch and architecture isolated public dependency archives with bounded integrity checks
+description: Branch and architecture isolated public dependency archives with a read-only main fallback and bounded integrity checks
 inputs:
   mode:
     description: restore or save
@@ -22,7 +22,8 @@ inputs:
 runs:
   using: composite
   steps:
-    - if: runner.environment == 'self-hosted'
+    # Nexus is only reachable in-cluster; the macOS operator runner skips it.
+    - if: runner.environment == 'self-hosted' && runner.os == 'Linux'
       shell: bash
       env:
         CACHE_MODE: ${{ inputs.mode }}
@@ -30,6 +31,10 @@ runs:
         CACHE_TOOLCHAIN: ${{ inputs.toolchain }}
         CACHE_DEPENDENCIES: ${{ inputs.dependencies }}
         CACHE_PASSWORD: ${{ inputs.password }}
-        CACHE_SCOPE: ${{ github.workflow }}/${{ github.job }}/${{ inputs.scope }}
+        # Scope by job id, not caller workflow name: reusable workflows run under
+        # different callers (ci-validation on main, tofu-plan on PRs) and must
+        # share main's read-only fallback. Job ids reused across workflow files
+        # pass an explicit scope (guarded by test_ci_optimization).
+        CACHE_SCOPE: ${{ github.job }}/${{ inputs.scope }}
         CACHE_BRANCH: ${{ github.head_ref || github.ref_name }}
       run: python3 "$GITHUB_ACTION_PATH/../../../scripts/dependency_cache.py" "$CACHE_MODE" "$CACHE_KIND" --toolchain "$CACHE_TOOLCHAIN" --dependencies "$CACHE_DEPENDENCIES"

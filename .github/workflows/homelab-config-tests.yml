@@ -8,13 +8,47 @@ on:
 permissions:
   contents: read
 jobs:
-  workflow:
-    if: contains(fromJSON(inputs.checks), 'config-workflow') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-light"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
+  # One checks pod runs every selected config-* child as a guarded step. Each
+  # step appends its child name to a marker file as its last command, and the
+  # final step fails when a selected child did not run, so a silently skipped
+  # step cannot pass the gate (the per-job results used to carry that property).
+  offline:
+    if: (contains(fromJSON(inputs.checks), 'config-workflow') || contains(fromJSON(inputs.checks), 'config-shell') || contains(fromJSON(inputs.checks), 'config-runner-catalog') || contains(fromJSON(inputs.checks), 'config-proxmox') || contains(fromJSON(inputs.checks), 'config-talos')) && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-checks"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
+    timeout-minutes: 30
+    env:
+      SELECTED_CHECKS: ${{ inputs.checks }}
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/talos-runner-setup
-      - name: Validate workflow syntax
+        with:
+          packages: shellcheck bats
+      - uses: ./.github/actions/nexus-dependency-cache
+        if: contains(fromJSON(inputs.checks), 'config-proxmox') || contains(fromJSON(inputs.checks), 'config-talos')
+        with:
+          kind: providers
+          toolchain: tofu-1.11.5
+          dependencies: ${{ hashFiles('**/.terraform.lock.hcl') }}
+          scope: homelab-config
+      - uses: ./.github/actions/nexus-dependency-cache
+        if: contains(fromJSON(inputs.checks), 'config-talos') || contains(fromJSON(inputs.checks), 'config-runner-catalog')
+        with:
+          kind: python
+          toolchain: uv-python-3.14
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', 'config/ci-python-pins.txt') }}
+          scope: homelab-config
+      - uses: ./.github/actions/setup-opentofu
+        if: contains(fromJSON(inputs.checks), 'config-proxmox') || contains(fromJSON(inputs.checks), 'config-talos') || contains(fromJSON(inputs.checks), 'config-runner-catalog')
+        with:
+          tofu_version: 1.11.5
+          tofu_wrapper: false
+      - uses: astral-sh/setup-uv@v6
+        if: contains(fromJSON(inputs.checks), 'config-talos') || contains(fromJSON(inputs.checks), 'config-runner-catalog')
+        with:
+          enable-cache: false
+          cache-local-path: ${{ env.UV_CACHE_DIR || format('{0}/uv-cache', runner.temp) }}
+      - name: Validate workflow syntax and selection contracts
+        if: contains(fromJSON(inputs.checks), 'config-workflow')
         run: |
           if ! command -v actionlint >/dev/null; then
             python3 scripts/cache_download.py https://github.com/rhysd/actionlint/releases/download/v1.7.7/actionlint_1.7.7_linux_amd64.tar.gz 023070a287cd8cccd71515fedc843f1985bf96c436b7effaecce67290e7e0757 "$RUNNER_TEMP/actionlint.tgz" ${HOMELAB_DEPENDENCY_CACHE:+--cache}
@@ -23,86 +57,74 @@ jobs:
           fi
           actionlint -version
           actionlint
-      - name: Check shell and Python syntax
-        run: |
           for script in scripts/homelab-*.sh scripts/proxmox-*.sh; do bash -n "$script"; done
           python3 -m py_compile scripts/homelab-*.py scripts/proxmox-*.py
           python3 -m unittest discover -s scripts/tests -p "test_proxmox_access.py"
           python3 -m unittest discover -s scripts/tests -p "test_deploy_units.py"
-      - name: Selection and archive contracts
-        run: "PYTHONPATH=scripts python3 -m unittest discover -s scripts/tests -p test_ci_relevant_changes.py\nPYTHONPATH=scripts python3 -m unittest discover -s scripts/tests -p test_dependency_cache.py\nPYTHONPATH=scripts python3 -m unittest discover -s scripts/tests -p test_ci_optimization.py"
-  proxmox:
-    if: contains(fromJSON(inputs.checks), 'config-proxmox') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-checks"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/talos-runner-setup
-      - uses: ./.github/actions/nexus-dependency-cache
-        with:
-          kind: providers
-          toolchain: tofu-1.11.5
-          dependencies: ${{ hashFiles('**/.terraform.lock.hcl') }}
-      - uses: ./.github/actions/setup-opentofu
-        with:
-          tofu_version: 1.11.5
-          tofu_wrapper: false
+          PYTHONPATH=scripts python3 -m unittest discover -s scripts/tests -p test_ci_relevant_changes.py
+          PYTHONPATH=scripts python3 -m unittest discover -s scripts/tests -p test_dependency_cache.py
+          PYTHONPATH=scripts python3 -m unittest discover -s scripts/tests -p test_ci_optimization.py
+          echo config-workflow >> "$RUNNER_TEMP/config-ran"
+      # display-mode.sh is the first root-privileged shell script in this repo that
+      # stops system units, on a host whose only remote access is tailnet SSH. The
+      # bats suite covers the greeter-UID guards, which are what stand between a
+      # normal run and stopping the invoking user's own session manager. Every
+      # existing script already passes ShellCheck, so this holds the line.
+      - name: ShellCheck and Bats
+        if: contains(fromJSON(inputs.checks), 'config-shell')
+        run: |
+          if ! command -v bats >/dev/null || ! command -v shellcheck >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y shellcheck bats
+          fi
+          bats --version
+          shellcheck --version
+          shellcheck scripts/*.sh scripts/git-hooks/* mocks/localstack/smoke.sh
+          bats tests/
+          echo config-shell >> "$RUNNER_TEMP/config-ran"
+      - name: Runner catalog and executor routing
+        if: contains(fromJSON(inputs.checks), 'config-runner-catalog')
+        run: |
+          uv run --with PyYAML==6.0.3 python scripts/runner_catalog.py
+          uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p test_ci_executor_routing.py
+          uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p test_operator_containers.py
+          echo config-runner-catalog >> "$RUNNER_TEMP/config-ran"
       - name: Validate Proxmox definitions without a backend or credentials
+        if: contains(fromJSON(inputs.checks), 'config-proxmox')
         run: |
           tofu fmt -check -recursive live/proxmox/homelab
           tofu -chdir=live/proxmox/homelab init -backend=false -lockfile=readonly
           tofu -chdir=live/proxmox/homelab validate
           tofu -chdir=live/proxmox/homelab test -var-file=../../../config/environments/proxmox/homelab/vms.tfvars
-      - uses: ./.github/actions/nexus-dependency-cache
-        with:
-          kind: providers
-          toolchain: tofu-1.11.5
-          dependencies: ${{ hashFiles('**/.terraform.lock.hcl') }}
-          mode: save
-          password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
-        if: ${{ success() }}
-  talos:
-    if: contains(fromJSON(inputs.checks), 'config-talos') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-checks"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/talos-runner-setup
-      - uses: ./.github/actions/nexus-dependency-cache
-        with:
-          kind: providers
-          toolchain: tofu-1.11.5
-          dependencies: ${{ hashFiles('**/.terraform.lock.hcl') }}
-      - uses: ./.github/actions/nexus-dependency-cache
-        with:
-          kind: python
-          toolchain: uv-python-3.14
-          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
-      - uses: ./.github/actions/setup-opentofu
-        with:
-          tofu_version: 1.11.5
-          tofu_wrapper: false
-      - uses: astral-sh/setup-uv@v6
-        with:
-          enable-cache: false
-          cache-local-path: ${{ env.UV_CACHE_DIR || format('{0}/uv-cache', runner.temp) }}
+          echo config-proxmox >> "$RUNNER_TEMP/config-ran"
       - name: Validate Talos definitions and migration guards
+        if: contains(fromJSON(inputs.checks), 'config-talos')
         run: |
           tofu fmt -check -recursive live/talos/homelab
           tofu -chdir=live/talos/homelab init -backend=false -lockfile=readonly
           tofu -chdir=live/talos/homelab validate
           uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p "test_talos*.py"
+          echo config-talos >> "$RUNNER_TEMP/config-ran"
+      - name: Every selected child ran
+        env:
+          MARKER_PREFIX: config-
+          MARKER_FILE: config-ran
+        run: python3 scripts/ci-child-markers.py
       - uses: ./.github/actions/nexus-dependency-cache
+        if: success() && (contains(fromJSON(inputs.checks), 'config-proxmox') || contains(fromJSON(inputs.checks), 'config-talos'))
         with:
           kind: providers
           toolchain: tofu-1.11.5
           dependencies: ${{ hashFiles('**/.terraform.lock.hcl') }}
+          scope: homelab-config
           mode: save
           password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
-        if: ${{ success() }}
       - uses: ./.github/actions/nexus-dependency-cache
+        if: success() && (contains(fromJSON(inputs.checks), 'config-talos') || contains(fromJSON(inputs.checks), 'config-runner-catalog'))
         with:
           kind: python
           toolchain: uv-python-3.14
-          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', 'config/ci-python-pins.txt') }}
+          scope: homelab-config
           mode: save
           password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
-        if: ${{ success() }}

@@ -1,0 +1,89 @@
+name: offline-validation
+on:
+  workflow_call:
+    inputs:
+      checks:
+        type: string
+        required: true
+permissions:
+  contents: read
+jobs:
+  # One checks pod runs the selected validation-* children as guarded steps.
+  # Each step records a marker as its last command; the final step fails when a
+  # selected child did not run, so a skipped step cannot pass the gate.
+  offline:
+    if: (contains(fromJSON(inputs.checks), 'validation-kubernetes') || contains(fromJSON(inputs.checks), 'validation-main-platform')) && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-checks"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
+    timeout-minutes: 30
+    env:
+      SELECTED_CHECKS: ${{ inputs.checks }}
+    steps:
+      - uses: actions/checkout@v4
+      # Installs shellcheck only when the runner image lacks it (hosted images ship it).
+      - uses: ./.github/actions/talos-runner-setup
+        with:
+          packages: shellcheck
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: python
+          toolchain: uv-python-3.14
+          scope: offline-validation
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', 'config/ci-python-pins.txt') }}
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: false
+          cache-local-path: ${{ env.UV_CACHE_DIR || format('{0}/uv-cache', runner.temp) }}
+      - uses: azure/setup-kubectl@v4
+        if: contains(fromJSON(inputs.checks), 'validation-main-platform')
+        with:
+          version: v1.36.3
+      - uses: azure/setup-helm@v4.3.1
+        if: contains(fromJSON(inputs.checks), 'validation-main-platform')
+        with:
+          version: v3.19.0
+      - name: Install kubeconform v0.7.0
+        if: contains(fromJSON(inputs.checks), 'validation-kubernetes')
+        working-directory: ${{ runner.temp }}
+        run: |
+          set -euo pipefail
+          curl -fsSLO https://github.com/yannh/kubeconform/releases/download/v0.7.0/kubeconform-linux-amd64.tar.gz
+          echo 'c31518ddd122663b3f3aa874cfe8178cb0988de944f29c74a0b9260920d115d3  kubeconform-linux-amd64.tar.gz' | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/bin"
+          tar -xzf kubeconform-linux-amd64.tar.gz -C "$RUNNER_TEMP/bin" kubeconform
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - name: Validate the Kubernetes validation suite without cluster credentials
+        if: contains(fromJSON(inputs.checks), 'validation-kubernetes')
+        run: |
+          uv run --with ruff==0.12.12 ruff check validation/kubernetes
+          uv run --with ruff==0.12.12 ruff format --check validation/kubernetes
+          python3 -m unittest discover -s validation/kubernetes/tests -v
+          python3 validation/kubernetes/render-fixtures.py "$RUNNER_TEMP/kubernetes-validation-rendered"
+          kubeconform -strict -summary "$RUNNER_TEMP"/kubernetes-validation-rendered/*-job.json
+          python3 validation/kubernetes/suite.py list
+          echo validation-kubernetes >> "$RUNNER_TEMP/validation-ran"
+      # The Helm post-renderer runs through `env python3`; uv run puts its
+      # PyYAML environment first on PATH for that child process.
+      - name: Validate the main platform without cluster credentials
+        if: contains(fromJSON(inputs.checks), 'validation-main-platform')
+        run: |
+          uv run --with ruff==0.12.12 ruff check platform/main-control-plane kubernetes/platform/main --exclude vendor
+          uv run --with ruff==0.12.12 ruff format --check platform/main-control-plane kubernetes/platform/main --exclude vendor
+          uv run --python 3.13 --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p test_main_cluster_iac.py -v
+          python3 -m unittest discover -s platform/main-control-plane/tests -v
+          uv run --python 3.13 --with PyYAML==6.0.3 python kubernetes/platform/main/validate.py
+          shellcheck platform/main-control-plane/ops.sh platform/main-control-plane/launch.sh platform/main-control-plane/prepare-host.sh platform/main-control-plane/90-main-control-plane platform/main-control-plane/recovery-test.sh
+          echo validation-main-platform >> "$RUNNER_TEMP/validation-ran"
+      - name: Every selected child ran
+        env:
+          MARKER_PREFIX: validation-
+          MARKER_FILE: validation-ran
+        run: python3 scripts/ci-child-markers.py
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: python
+          toolchain: uv-python-3.14
+          scope: offline-validation
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', 'config/ci-python-pins.txt') }}
+          mode: save
+          password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
+        if: ${{ success() }}

@@ -13,6 +13,7 @@ from pathlib import Path
 import shutil
 import tempfile
 import threading
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -79,8 +80,15 @@ class Transport:
                         http.client.HTTPException) as error:
                     body.close()
                     last = error
+                    permanent = False
                     if isinstance(error, urllib.error.HTTPError):
                         error.close()
+                        permanent = 400 <= error.code < 500 and error.code not in (408, 429)
+                    # Back off before re-trying the same source after a transient
+                    # failure (1s, 2s, capped at 4s). Switching from the cache to
+                    # upstream is immediate, and a permanent 4xx never waits.
+                    if attempt + 1 < count and not permanent:
+                        time.sleep(min(2 ** attempt, 4))
                 except Exception:
                     body.close()
                     raise
