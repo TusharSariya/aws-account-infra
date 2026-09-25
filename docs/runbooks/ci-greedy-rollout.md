@@ -75,6 +75,11 @@ upgrades; a new installation starts at zero. The coordinator rechecks reserved
 work against fresh capacity before marking its AdmissionCheck ready. Its RBAC is
 restricted to the named ClusterQueue for quota updates.
 
+Application preflight accepts the dynamic queue or the exact reviewed rollback
+quotas on every flavor, while still requiring idle work and retained storage. This
+allows the PR application apply before the main-only queue upgrade and also makes
+the documented rollback usable. It does not cap dynamic quotas at rollback values.
+
 Roll out using the existing hosted `homelab-ci-admission` management plan and saved
 plan apply, retaining the `prod` environment and existing idle-runner guards. Deploy
 observation/patch RBAC before starting the new coordinator. Install the coordinator
