@@ -66,7 +66,8 @@ jobs:
     # it runs on the off-cluster operator runners, or hosted when they are unset.
     runs-on: ${{ github.event_name == 'pull_request' && 'homelab-talos-checks' || (vars.CI_OPERATOR == 'mac' && fromJSON('["self-hosted","homelab-operator"]') || 'ubuntu-latest') }}
     environment: prod
-    timeout-minutes: 15
+    # The Go CEL contract tests compile under Rosetta on the operator containers.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/talos-runner-setup
