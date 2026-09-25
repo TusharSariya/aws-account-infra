@@ -1,0 +1,163 @@
+{
+  "physical_power_off_observed": false,
+  "transitions": [
+    {
+      "at": 1790317055.2059543,
+      "host": "primary",
+      "phase": "ready",
+      "pending": null,
+      "paused": false,
+      "power": "on"
+    },
+    {
+      "at": 1790317055.2059543,
+      "host": "secondary",
+      "phase": "ready",
+      "pending": null,
+      "paused": false,
+      "power": "on"
+    },
+    {
+      "at": 1790317435.3275936,
+      "host": "primary",
+      "phase": "idle",
+      "pending": null,
+      "paused": false,
+      "power": "on"
+    },
+    {
+      "at": 1790317440.329031,
+      "host": "secondary",
+      "phase": "idle",
+      "pending": null,
+      "paused": false,
+      "power": "on"
+    },
+    {
+      "at": 1790317750.4419615,
+      "host": "primary",
+      "phase": "draining",
+      "pending": "quiesce",
+      "paused": false,
+      "power": "on"
+    },
+    {
+      "at": 1790317780.4536257,
+      "host": "primary",
+      "phase": "draining",
+      "pending": null,
+      "paused": false,
+      "power": "on"
+    },
+    {
+      "at": 1790317820.465453,
+      "host": "primary",
+      "phase": "restoring",
+      "pending": "cancel",
+      "paused": false,
+      "power": "on"
+    },
+    {
+      "at": 1790317835.471951,
+      "host": "primary",
+      "phase": "restoring",
+      "pending": null,
+      "paused": false,
+      "power": "on"
+    },
+    {
+      "at": 1790317845.47553,
+      "host": "secondary",
+      "phase": "ready",
+      "pending": null,
+      "paused": false,
+      "power": "on"
+    },
+    {
+      "at": 1790317870.482165,
+      "host": "primary",
+      "phase": "restoring",
+      "pending": "restore",
+      "paused": false,
+      "power": "on"
+    },
+    {
+      "at": 1790317880.4844968,
+      "host": "primary",
+      "phase": "restoring",
+      "pending": null,
+      "paused": false,
+      "power": "on"
+    },
+    {
+      "at": 1790317885.4858606,
+      "host": "secondary",
+      "phase": "idle",
+      "pending": null,
+      "paused": false,
+      "power": "on"
+    },
+    {
+      "at": 1790317910.4927301,
+      "host": "primary",
+      "phase": "restoring",
+      "pending": "restore",
+      "paused": false,
+      "power": "on"
+    },
+    {
+      "at": 1790317920.4958565,
+      "host": "primary",
+      "phase": "restoring",
+      "pending": null,
+      "paused": false,
+      "power": "on"
+    },
+    {
+      "at": 1790317950.503843,
+      "host": "primary",
+      "phase": "restoring",
+      "pending": "restore",
+      "paused": false,
+      "power": "on"
+    },
+    {
+      "at": 1790317965.510317,
+      "host": "primary",
+      "phase": "restoring",
+      "pending": null,
+      "paused": false,
+      "power": "on"
+    },
+    {
+      "at": 1790317995.5188844,
+      "host": "primary",
+      "phase": "idle",
+      "pending": null,
+      "paused": false,
+      "power": "on"
+    },
+    {
+      "at": 1790318035.5310607,
+      "host": "primary",
+      "phase": "ready",
+      "pending": null,
+      "paused": false,
+      "power": "on"
+    },
+    {
+      "at": 1790318035.5310607,
+      "host": "secondary",
+      "phase": "ready",
+      "pending": null,
+      "paused": false,
+      "power": "on"
+    }
+  ],
+  "backup_retry": {
+    "job": "apps-db-backup-greedy-retry-20260925",
+    "started_at": "2026-09-25T06:33:42Z",
+    "completed_at": "2026-09-25T06:33:49Z",
+    "succeeded": 1
+  }
+}

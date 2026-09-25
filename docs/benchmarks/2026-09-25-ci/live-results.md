@@ -54,3 +54,5 @@ The benchmark source still used the Tailscale action’s default GitHub binary c
 ## Physical shutdown/wake observation
 
 After the benchmark maintenance hold was released, both workers entered the normal five-minute idle countdown. Primary began graceful draining. A scheduled `apps-db-backup` Pod then arrived, causing primary restoration and preventing physical power-off. This demonstrates cancellation of shutdown on new demand, but is **not a completed cold-start measurement**. The backup was not cancelled to manufacture an idle result.
+
+The scheduled backup exhausted its retries with `OperationalError` during database restoration. After the database reported healthy, a retry from the unchanged CronJob succeeded at 06:33:49 UTC in seven seconds. No backup schedule or identity was changed. See [shutdown/restoration transitions and retry receipt](shutdown-interruption-live.json). Both hosts returned ready; all benchmark holds were released. The full physical cold-start comparison remains incomplete.
