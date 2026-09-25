@@ -137,6 +137,23 @@ jobs:
           mode: save
           password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
         if: ${{ success() }}
+  admission-gate:
+    needs: [contracts, admission]
+    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    # Same routing as contracts: PRs on the light ARC runner, dispatched
+    # bootstrap stays hosted (admission workflows never use CI_EXECUTOR).
+    runs-on: ${{ github.event_name == 'pull_request' && 'homelab-talos-light' || 'ubuntu-latest' }}
+    timeout-minutes: 5
+    steps:
+      - name: Require contracts and admission
+        env:
+          CONTRACTS: ${{ needs.contracts.result }}
+          ADMISSION: ${{ needs.admission.result }}
+        run: |
+          echo "contracts=$CONTRACTS admission=$ADMISSION"
+          test "$CONTRACTS" = success
+          # admission is skipped (not selected) for dispatches off main.
+          [[ "$ADMISSION" == success || "$ADMISSION" == skipped ]]
   admission:
     strategy:
       max-parallel: 1
@@ -144,7 +161,8 @@ jobs:
         include:
           - {scope: management, root: homelab-management}
           - {scope: cache, root: homelab-ci}
-    needs: contracts
+    # Runs alongside contracts (no `needs`) to shorten the critical path;
+    # admission-gate requires both to pass.
     if: (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
     # Bootstrap, upgrade and recovery cannot depend on ARC or CI_EXECUTOR: the
     # macOS operator runner when vars.CI_OPERATOR == 'mac', else hosted.

@@ -50,6 +50,8 @@ HARD_WIRED_ARC = {
     ('postgres-backup-image', 'build'),
     # PRs use homelab-talos-checks; dispatched bootstrap falls back to hosted.
     ('homelab-ci-admission', 'contracts'),
+    # Hard-wired ARC: result gate for contracts + admission, routed like contracts.
+    ('homelab-ci-admission', 'admission-gate'),
 }
 ALLOWLIST = CIRCULAR | OFF_CLUSTER | HARD_WIRED_ARC
 
