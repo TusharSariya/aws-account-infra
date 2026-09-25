@@ -1,19 +1,7 @@
 name: homelab-recovery-tests
 
 on:
-  pull_request:
-    paths:
-      - '.github/workflows/homelab-recovery-tests.yml'
-      - 'live/aws/staging/workloads/homelab-recovery/**'
-      - 'modules/aws/encrypted_s3_bucket/**'
-      - 'config/environments/aws/staging/homelab-recovery/**'
-      - 'scripts/tests/homelab-backup-certificates.sh'
-      - 'scripts/*backup*'
-      - 'scripts/homelab-etcd-snapshot.py'
-      - 'scripts/talos_tools.py'
-      - 'scripts/tests/test_homelab_backup.py'
-      - '.github/workflows/homelab-etcd-backup.yml'
-
+  workflow_call:
 permissions:
   contents: read
 

@@ -16,25 +16,19 @@ permissions:
 jobs:
   detect:
     if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-light"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
+    runs-on: ubuntu-latest
     outputs:
       units: ${{ steps.units.outputs.units }}
       aws_units: ${{ steps.units.outputs.aws_units }}
+      checks: ${{ steps.units.outputs.checks }}
+      terraform_dirs: ${{ steps.units.outputs.terraform_dirs }}
+      applications: ${{ steps.units.outputs.applications }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/talos-runner-setup
       - id: units
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.sha }}
-        run: |
-          units=$(python3 scripts/deploy-units.py changed "$BASE_SHA" "$HEAD_SHA")
-          jq -e 'all(.[]; .cloud == "aws" or (.cloud == "proxmox" and .id == "proxmox-homelab") or (.cloud == "talos" and .id == "talos-homelab") or (.cloud == "kubernetes" and .id == "kubernetes-homelab"))' <<< "$units" > /dev/null
-          echo "units=$units" >> "$GITHUB_OUTPUT"
-          echo "aws_units=$(jq -c '[.[] | select(.cloud == "aws")]' <<< "$units")" >> "$GITHUB_OUTPUT"
-
+        run: python3 scripts/ci-relevant-changes.py
   plan:
     needs: detect
     if: needs.detect.outputs.aws_units != '[]' && github.event.pull_request.head.repo.full_name == github.repository
@@ -51,6 +45,16 @@ jobs:
       - uses: ./.github/actions/talos-runner-setup
         with:
           packages: dnsutils openssh-client rsync
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: python
+          toolchain: uv-python-3.14
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: providers
+          toolchain: tofu-1.11.5
+          dependencies: ${{ hashFiles('**/.terraform.lock.hcl') }}
       - uses: aws-actions/configure-aws-credentials@v4
         if: matrix.unit.cloud == 'aws'
         with:
@@ -67,7 +71,7 @@ jobs:
       - name: format
         run: tofu fmt -check -recursive
       - name: initialize
-        run: tofu init -input=false
+        run: tofu init -input=false -lockfile=readonly
       - name: validate
         run: tofu validate
       - name: plan
@@ -93,6 +97,22 @@ jobs:
               body,
             });
 
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: python
+          toolchain: uv-python-3.14
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+          mode: save
+          password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
+        if: ${{ success() }}
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: providers
+          toolchain: tofu-1.11.5
+          dependencies: ${{ hashFiles('**/.terraform.lock.hcl') }}
+          mode: save
+          password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
+        if: ${{ success() }}
   proxmox-plan:
     needs: detect
     if: contains(fromJSON(needs.detect.outputs.units).*.id, 'proxmox-homelab') && github.event.pull_request.head.repo.full_name == github.repository
@@ -228,6 +248,16 @@ jobs:
         with:
           tailscale: 'true'
           packages: dnsutils openssh-client rsync
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: providers
+          toolchain: tofu-1.11.5
+          dependencies: ${{ hashFiles('**/.terraform.lock.hcl') }}
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: python
+          toolchain: uv-python-3.14
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.TOFU_PLAN_ROLE_ARN }}
@@ -266,11 +296,38 @@ jobs:
               body: `### Application plan\nCommit: ${{ github.event.pull_request.head.sha }}\n\n\`\`\`json\n${plan.slice(-20000)}\n\`\`\``
             });
 
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: providers
+          toolchain: tofu-1.11.5
+          dependencies: ${{ hashFiles('**/.terraform.lock.hcl') }}
+          mode: save
+          password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
+        if: ${{ success() }}
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: python
+          toolchain: uv-python-3.14
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+          mode: save
+          password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
+        if: ${{ success() }}
   plan-gate:
-    needs: [detect, plan, proxmox-plan, talos-plan, applications-plan]
-    if: ${{ !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
-    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-light"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
+    needs: [detect, plan, proxmox-plan, talos-plan, applications-plan, checkov, tflint, trivy, shell, homelab-config-tests, homelab-apps-tests, homelab-recovery-tests, runner-catalog, kubernetes-validation, main-platform-validation]
+    if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+    runs-on: ubuntu-latest
     steps:
+      - env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PYTHON'
+          import json, os
+          needs = json.loads(os.environ['NEEDS_JSON'])
+          assert needs['detect']['result'] == 'success', 'Selection failed'
+          for name in json.loads(needs['detect']['outputs']['checks']):
+              if name in needs:
+                  assert needs[name]['result'] == 'success', name + ' did not succeed'
+          PYTHON
       - name: gate
         run: |
           [[ "${{ needs.detect.result }}" == "success" ]] || exit 1
@@ -290,3 +347,61 @@ jobs:
               echo '::error::Application plan must succeed from a trusted branch.'; exit 1;
             }
           fi
+  checkov:
+    needs: detect
+    if: contains(fromJSON(needs.detect.outputs.checks), 'checkov') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    uses: ./.github/workflows/checkov.yml
+    secrets: inherit
+    with:
+      directories: ${{ needs.detect.outputs.terraform_dirs }}
+  tflint:
+    needs: detect
+    if: contains(fromJSON(needs.detect.outputs.checks), 'tflint') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    uses: ./.github/workflows/tflint.yml
+    secrets: inherit
+    with:
+      directories: ${{ needs.detect.outputs.terraform_dirs }}
+  trivy:
+    needs: detect
+    if: contains(fromJSON(needs.detect.outputs.checks), 'trivy') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    uses: ./.github/workflows/trivy.yml
+    secrets: inherit
+  shell:
+    needs: detect
+    if: contains(fromJSON(needs.detect.outputs.checks), 'shell') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    uses: ./.github/workflows/shell.yml
+    secrets: inherit
+  homelab-config-tests:
+    needs: detect
+    if: contains(fromJSON(needs.detect.outputs.checks), 'homelab-config-tests') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    uses: ./.github/workflows/homelab-config-tests.yml
+    secrets: inherit
+    with:
+      checks: ${{ needs.detect.outputs.checks }}
+  homelab-apps-tests:
+    needs: detect
+    if: contains(fromJSON(needs.detect.outputs.checks), 'homelab-apps-tests') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    uses: ./.github/workflows/homelab-apps-tests.yml
+    secrets: inherit
+    with:
+      checks: ${{ needs.detect.outputs.checks }}
+  homelab-recovery-tests:
+    needs: detect
+    if: contains(fromJSON(needs.detect.outputs.checks), 'homelab-recovery-tests') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    uses: ./.github/workflows/homelab-recovery-tests.yml
+    secrets: inherit
+  runner-catalog:
+    needs: detect
+    if: contains(fromJSON(needs.detect.outputs.checks), 'runner-catalog') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    uses: ./.github/workflows/runner-catalog.yml
+    secrets: inherit
+  kubernetes-validation:
+    needs: detect
+    if: contains(fromJSON(needs.detect.outputs.checks), 'kubernetes-validation') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    uses: ./.github/workflows/kubernetes-validation.yml
+    secrets: inherit
+  main-platform-validation:
+    needs: detect
+    if: contains(fromJSON(needs.detect.outputs.checks), 'main-platform-validation') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    uses: ./.github/workflows/main-platform-validation.yml
+    secrets: inherit

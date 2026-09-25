@@ -42,12 +42,18 @@ jobs:
           aws: 'true'
           tailscale: 'true'
           packages: dnsutils openssh-client rsync
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: python
+          toolchain: uv-python-3.14
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: false
       - uses: docker/setup-qemu-action@v3
         with:
           platforms: arm64
+          cache-image: false
       - name: Verify ARM execution before building
         run: |
           docker run --rm --platform linux/arm64 python:3.14-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6 \
@@ -94,6 +100,14 @@ jobs:
         with:
           operation: network
           secrets-b64: ${{ secrets.TALOS_SECRETS_B64 }}
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: python
+          toolchain: uv-python-3.14
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+          mode: save
+          password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
+        if: ${{ success() }}
   sized-runners:
     if: >-
       (github.event_name == 'workflow_dispatch' && inputs.scenario != 'expiry' && github.ref == 'refs/heads/main') ||

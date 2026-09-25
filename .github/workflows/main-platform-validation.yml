@@ -1,9 +1,6 @@
 name: main-platform-validation
 on:
-  pull_request:
-    paths: ['platform/main-control-plane/**', 'kubernetes/platform/main/**', 'scripts/main_cluster_guard.py', 'scripts/tests/test_main_cluster_iac.py', '.github/workflows/main-platform-validation.yml']
-  push:
-    paths: ['platform/main-control-plane/**', 'kubernetes/platform/main/**', 'scripts/main_cluster_guard.py', 'scripts/tests/test_main_cluster_iac.py', '.github/workflows/main-platform-validation.yml']
+  workflow_call:
 permissions:
   contents: read
 jobs:

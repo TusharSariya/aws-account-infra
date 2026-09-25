@@ -56,6 +56,9 @@ jobs:
             docker compose version
             python3 --version
             shellcheck --version
+            bats --version
+            actionlint -version
+            gitleaks version
             test ! -e /tmp/aws.zip'
           docker run --rm "$image" cat /opt/ci-packages.tsv > "$RUNNER_TEMP/ci-packages.tsv"
           docker push "$image"

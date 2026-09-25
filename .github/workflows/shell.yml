@@ -1,7 +1,7 @@
 name: shell
 
 on:
-  pull_request:
+  workflow_call:
 
 permissions:
   contents: read
@@ -18,20 +18,18 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/relevant-changes
-        id: changes
-        with:
-          scope: shell
+      - run: 'true'
+        name: Selection performed by ci-validation
       - uses: ./.github/actions/talos-runner-setup
-        if: steps.changes.outputs.run == 'true'
       - name: Install shellcheck and bats
-        if: steps.changes.outputs.run == 'true'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y shellcheck bats
+          if ! command -v bats >/dev/null || ! command -v shellcheck >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y shellcheck bats
+          fi
+          bats --version
+          shellcheck --version
       # Every existing script already passes, so this is a gate that holds the
       # line rather than one that needs a cleanup first.
       - run: shellcheck scripts/*.sh scripts/git-hooks/* mocks/localstack/smoke.sh
-        if: steps.changes.outputs.run == 'true'
       - run: bats tests/
-        if: steps.changes.outputs.run == 'true'

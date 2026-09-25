@@ -5,12 +5,11 @@ name: tflint
 # so no AWS creds. Reports on every PR; expensive steps run only for affected inputs — the single `tflint` job is a stable
 # required-check context. Config + plugin pins live in /.tflint.hcl.
 on:
-  pull_request:
-
-concurrency:
-  group: tflint-${{ github.ref }}
-  cancel-in-progress: true
-
+  workflow_call:
+    inputs:
+      directories:
+        type: string
+        required: true
 permissions:
   contents: read
 
@@ -27,25 +26,32 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/relevant-changes
-        id: changes
-        with:
-          scope: tflint
-
       - uses: ./.github/actions/talos-runner-setup
-        if: steps.changes.outputs.run == 'true'
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: tflint
+          toolchain: tflint-0.54.0
+          dependencies: ${{ hashFiles('.tflint.hcl') }}
       - uses: terraform-linters/setup-tflint@v4
-        if: steps.changes.outputs.run == 'true'
         with:
           tflint_version: v0.54.0
 
       - name: init plugins
-        if: steps.changes.outputs.run == 'true'
-        # GITHUB_TOKEN lifts the anonymous rate limit on plugin downloads.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: tflint --init
 
       - name: lint
-        if: steps.changes.outputs.run == 'true'
-        run: tflint --recursive --format compact
+        run: tflint --chdir="${{ matrix.directory }}" --format compact
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: tflint
+          toolchain: tflint-0.54.0
+          dependencies: ${{ hashFiles('.tflint.hcl') }}
+          mode: save
+          password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
+        if: ${{ success() }}
+    strategy:
+      fail-fast: false
+      matrix:
+        directory: ${{ fromJSON(inputs.directories) }}

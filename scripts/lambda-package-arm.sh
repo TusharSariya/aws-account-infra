@@ -6,7 +6,20 @@ operation=${1:?Usage: lambda-package-arm.sh test|package [tag]}
 [[ $operation == test || $operation == package ]]
 # shellcheck source=scripts/build-cache-flags.sh
 source "$root/scripts/build-cache-flags.sh"
-docker buildx build ${build_cache_args[@]+"${build_cache_args[@]}"} --platform linux/arm64 --load -t homelab-lambda-arm -f "$root/apps/platform/ci_runner/arm-package/Dockerfile" "$root/apps/platform/ci_runner/arm-package"
+helper_digest=$(python3 - "$root/apps/platform/ci_runner/arm-package" <<'PYTHON'
+import hashlib, pathlib, sys
+root = pathlib.Path(sys.argv[1])
+digest = hashlib.sha256()
+for path in sorted(root.rglob('*')):
+    if path.is_file():
+        digest.update(path.relative_to(root).as_posix().encode() + b'\0' + path.read_bytes())
+print(digest.hexdigest())
+PYTHON
+)
+helper_image="homelab-lambda-arm:$helper_digest"
+if ! docker image inspect "$helper_image" >/dev/null 2>&1; then
+  docker buildx build ${build_cache_args[@]+"${build_cache_args[@]}"} --platform linux/arm64 --load -t "$helper_image" -f "$root/apps/platform/ci_runner/arm-package/Dockerfile" "$root/apps/platform/ci_runner/arm-package"
+fi
 arguments=(--rm --user "$(id -u):$(id -g)" -e HOME=/tmp --platform linux/arm64 -v "$root:/workspace" -w /workspace)
 if [[ "${HOMELAB_DEPENDENCY_CACHE:-}" == 1 ]]; then
   arguments+=(--network host -e UV_INDEX_URL -e UV_HTTP_RETRIES -e UV_HTTP_TIMEOUT
@@ -16,7 +29,7 @@ for name in GITHUB_ACTIONS AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_T
   [[ -z ${!name+x} ]] || arguments+=(-e "$name")
 done
 if [[ $operation == test ]]; then
-  docker run "${arguments[@]}" homelab-lambda-arm bash -ec 'test "$(uname -m)" = aarch64; uv run --directory apps/lambda/python/3.14/court-booker pytest'
+  docker run "${arguments[@]}" "$helper_image" bash -ec 'test "$(uname -m)" = aarch64; uv run --directory apps/lambda/python/3.14/court-booker pytest'
 else
-  docker run "${arguments[@]}" homelab-lambda-arm bash scripts/lambda-package.sh python/3.14/court-booker "${2:?Explicit artifact tag required}"
+  docker run "${arguments[@]}" "$helper_image" bash scripts/lambda-package.sh python/3.14/court-booker "${2:?Explicit artifact tag required}"
 fi

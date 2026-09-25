@@ -6,27 +6,14 @@ name: lambda-package
 
 on:
   pull_request:
-    paths:
-      - "apps/lambda/**"
-      - "apps/ecr/court-booker/bookings.yaml"
-      - "scripts/lambda-package.sh"
-      - "scripts/lambda-package-arm.sh"
-      - "apps/platform/ci_runner/arm-package/**"
-      - ".github/workflows/lambda-package.yml"
   push:
-    branches: [main]
-    paths:
-      - "apps/lambda/**"
-      - "apps/ecr/court-booker/bookings.yaml"
-      - "scripts/lambda-package.sh"
-      - "scripts/lambda-package-arm.sh"
-      - "apps/platform/ci_runner/arm-package/**"
-      - ".github/workflows/lambda-package.yml"
+    branches:
+      - main
   workflow_dispatch:
 
 concurrency:
   group: lambda-package-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   id-token: write
@@ -42,7 +29,7 @@ env:
 
 jobs:
   package:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: contains(fromJSON(needs.select.outputs.applications), 'court-booker') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-24.04-arm","talos":"homelab-talos-docker-small"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
     timeout-minutes: 20
     steps:
@@ -52,6 +39,11 @@ jobs:
           docker: 'true'
           aws: 'true'
           packages: python3-venv python3-pip zip
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: python
+          toolchain: uv-python-3.14
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: false
@@ -60,6 +52,7 @@ jobs:
         if: runner.arch == 'X64'
         with:
           platforms: arm64
+          cache-image: false
       - uses: ./.github/actions/talos-build-cache
         id: cache
         with:
@@ -77,13 +70,6 @@ jobs:
           else
             uv run --directory apps/lambda/python/3.14/court-booker pytest
           fi
-      - name: iRacing calendar tests
-        run: |
-          uv run --frozen --directory apps/lambda/python/3.14/iracing-calendar pytest
-          uv run --frozen --directory apps/lambda/python/3.14/iracing-calendar ruff check .
-          uv run --frozen --directory apps/lambda/python/3.14/iracing-calendar ruff format --check .
-      - name: Swimming calendar tests
-        run: uv run --frozen --directory apps/lambda/python/3.14/swim-calendar pytest
       - id: aws
         continue-on-error: true
         uses: aws-actions/configure-aws-credentials@v4
@@ -119,3 +105,79 @@ jobs:
               issue_number: context.issue.number,
               body,
             });
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: python
+          toolchain: uv-python-3.14
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+          mode: save
+          password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
+        if: ${{ success() }}
+    needs: select
+  select:
+    runs-on: ubuntu-latest
+    outputs:
+      checks: ${{ steps.select.outputs.checks }}
+      applications: ${{ steps.select.outputs.applications }}
+      units: ${{ steps.select.outputs.units }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: select
+        run: python3 scripts/ci-relevant-changes.py
+  iracing-calendar:
+    needs: select
+    if: contains(fromJSON(needs.select.outputs.applications), 'iracing-calendar') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-24.04-arm","talos":"homelab-talos-checks"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/talos-runner-setup
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: python
+          toolchain: uv-python-3.14
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: false
+          python-version: '3.14'
+      - name: iRacing calendar tests
+        run: |
+          uv run --frozen --directory apps/lambda/python/3.14/iracing-calendar pytest
+          uv run --frozen --directory apps/lambda/python/3.14/iracing-calendar ruff check .
+          uv run --frozen --directory apps/lambda/python/3.14/iracing-calendar ruff format --check .
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: python
+          toolchain: uv-python-3.14
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+          mode: save
+          password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
+        if: ${{ success() }}
+  swim-calendar:
+    needs: select
+    if: contains(fromJSON(needs.select.outputs.applications), 'swim-calendar') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-24.04-arm","talos":"homelab-talos-checks"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/talos-runner-setup
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: python
+          toolchain: uv-python-3.14
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: false
+          python-version: '3.14'
+      - name: Swimming calendar tests
+        run: uv run --frozen --directory apps/lambda/python/3.14/swim-calendar pytest
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: python
+          toolchain: uv-python-3.14
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+          mode: save
+          password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
+        if: ${{ success() }}

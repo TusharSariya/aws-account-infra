@@ -5,12 +5,11 @@ name: checkov
 # `checkov` job is itself a stable required-check context. Suppressions live in
 # /.checkov.yaml (skip-check) or inline `# checkov:skip=<id>:<reason>` comments.
 on:
-  pull_request:
-
-concurrency:
-  group: checkov-${{ github.ref }}
-  cancel-in-progress: true
-
+  workflow_call:
+    inputs:
+      directories:
+        type: string
+        required: true
 permissions:
   contents: read
 
@@ -22,19 +21,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/relevant-changes
-        id: changes
-        with:
-          scope: checkov
-
       - uses: ./.github/actions/talos-runner-setup
-        if: steps.changes.outputs.run == 'true'
         with:
           docker: 'true'
       - uses: bridgecrewio/checkov-action@v12
-        if: steps.changes.outputs.run == 'true'
         with:
-          directory: .
+          directory: ${{ matrix.directory }}
           framework: terraform
           config_file: .checkov.yaml
           soft_fail: false
+    strategy:
+      fail-fast: false
+      matrix:
+        directory: ${{ fromJSON(inputs.directories) }}

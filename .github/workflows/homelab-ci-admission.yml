@@ -68,6 +68,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/talos-runner-setup
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: python
+          toolchain: uv-python-3.14
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: go
+          toolchain: 1.26.1
+          dependencies: ${{ hashFiles('**/go.sum', '**/go.mod') }}
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: providers
+          toolchain: tofu-1.11.5
+          dependencies: ${{ hashFiles('**/.terraform.lock.hcl') }}
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: false
@@ -97,6 +112,30 @@ jobs:
           (cd scripts/tests/kueue_cel && CGO_ENABLED=0 go run . "$RUNNER_TEMP/cel-cases.json")
           tofu -chdir=live/kubernetes/homelab-management init -backend=false -input=false -lockfile=readonly
           tofu -chdir=live/kubernetes/homelab-management validate
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: python
+          toolchain: uv-python-3.14
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+          mode: save
+          password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
+        if: ${{ success() }}
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: go
+          toolchain: 1.26.1
+          dependencies: ${{ hashFiles('**/go.sum', '**/go.mod') }}
+          mode: save
+          password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
+        if: ${{ success() }}
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: providers
+          toolchain: tofu-1.11.5
+          dependencies: ${{ hashFiles('**/.terraform.lock.hcl') }}
+          mode: save
+          password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
+        if: ${{ success() }}
   admission:
     strategy:
       max-parallel: 1

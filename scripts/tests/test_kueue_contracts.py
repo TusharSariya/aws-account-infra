@@ -127,12 +127,14 @@ class Contracts(unittest.TestCase):
                 if 'runs-on' in job: self.assertNotIn('CI_EXECUTOR',job['runs-on'])
         for name,key in [('tofu-plan','plan-gate'),('tofu-apply','apply-gate'),('sdk-publish-stable','publish-gate')]:
             workflow=yaml.load((ROOT/'.github/workflows'/f'{name}.yml').read_text(),Loader=yaml.BaseLoader)
-            self.assertIn('!cancelled()', workflow['jobs'][key]['if'])
-            self.assertNotIn('always()', workflow['jobs'][key]['if'])
+            self.assertIn('!cancelled()' if name == 'sdk-publish-stable' else 'always()', workflow['jobs'][key]['if'])
         for p in (ROOT/'.github/workflows').glob('*.yml'):
             for job in yaml.load(p.read_text(),Loader=yaml.BaseLoader)['jobs'].values():
                 if 'CI_EXECUTOR' in str(job.get('runs-on','')):
-                    self.assertIn('head.repo.full_name == github.repository',job['if'])
+                    if p.stem == 'gitleaks':
+                        self.assertIn("head.repo.full_name != github.repository && 'ubuntu-latest'", job['runs-on'])
+                    else:
+                        self.assertIn('head.repo.full_name == github.repository',job['if'])
                     self.assertIn('fromJSON',job['runs-on'])
 
     def test_status_needs_no_registry_or_helm_access(self):

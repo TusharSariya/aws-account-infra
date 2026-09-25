@@ -19,8 +19,7 @@ env:
 
 jobs:
   gitleaks:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-light"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
+    runs-on: ${{ github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-light"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -29,9 +28,12 @@ jobs:
       - uses: ./.github/actions/talos-runner-setup
       - name: install gitleaks
         run: |
-          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
-            | tar -xz gitleaks
-          sudo mv gitleaks /usr/local/bin/gitleaks
+          if ! command -v gitleaks >/dev/null || [[ "$(gitleaks version)" != "$GITLEAKS_VERSION" ]]; then
+            python3 scripts/cache_download.py "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" 5bc41815076e6ed6ef8fbecc9d9b75bcae31f39029ceb55da08086315316e3ba "$RUNNER_TEMP/gitleaks.tgz" ${HOMELAB_DEPENDENCY_CACHE:+--cache}
+            tar -xzf "$RUNNER_TEMP/gitleaks.tgz" -C "$RUNNER_TEMP" gitleaks
+            sudo install "$RUNNER_TEMP/gitleaks" /usr/local/bin/gitleaks
+          fi
+          gitleaks version
 
       - name: scan
         run: gitleaks detect --redact --no-banner --exit-code 1
