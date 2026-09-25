@@ -83,6 +83,7 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: false
+          cache-local-path: ${{ env.UV_CACHE_DIR || format('{0}/uv-cache', runner.temp) }}
       - name: Validate Talos definitions and migration guards
         run: |
           tofu fmt -check -recursive live/talos/homelab

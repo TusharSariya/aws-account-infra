@@ -22,9 +22,12 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: false
+          cache-local-path: ${{ env.UV_CACHE_DIR || format('{0}/uv-cache', runner.temp) }}
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.19.0
+      - name: Restore pinned chart dependencies
+        run: uv run --with PyYAML==6.0.3 python scripts/homelab-apps.py setup
       - name: Validate lifecycle
         run: |
           uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p "test_ai_*.py"
@@ -54,6 +57,7 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: false
+          cache-local-path: ${{ env.UV_CACHE_DIR || format('{0}/uv-cache', runner.temp) }}
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.19.0
@@ -91,6 +95,7 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: false
+          cache-local-path: ${{ env.UV_CACHE_DIR || format('{0}/uv-cache', runner.temp) }}
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.19.0
@@ -136,6 +141,7 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: false
+          cache-local-path: ${{ env.UV_CACHE_DIR || format('{0}/uv-cache', runner.temp) }}
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.19.0

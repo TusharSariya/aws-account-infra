@@ -24,13 +24,18 @@ jobs:
       - uses: ./.github/actions/talos-runner-setup
         with:
           docker: 'true'
-      - uses: bridgecrewio/checkov-action@v12
-        with:
-          directory: ${{ matrix.directory }}
-          framework: terraform
-          config_file: .checkov.yaml
-          soft_fail: false
-    strategy:
-      fail-fast: false
-      matrix:
-        directory: ${{ fromJSON(inputs.directories) }}
+      - name: Scan selected Terraform directories
+        env:
+          SELECTED_DIRECTORIES: ${{ inputs.directories }}
+        run: |
+          python3 - <<'PYTHON'
+          import json, os, subprocess
+          directories = json.loads(os.environ['SELECTED_DIRECTORIES'])
+          if not directories:
+              raise SystemExit('No selected Terraform directories')
+          subprocess.run(['docker', 'run', '--rm', '-v', os.getcwd() + ':/src:ro', '-w', '/src',
+                          'ghcr.io/bridgecrewio/checkov:3.3.19',
+                          *[arg for directory in directories for arg in ('-d', directory)],
+                          '--framework', 'terraform', '--config-file', '/src/.checkov.yaml',
+                          '--compact'], check=True)
+          PYTHON

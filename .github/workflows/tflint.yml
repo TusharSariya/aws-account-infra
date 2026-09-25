@@ -42,7 +42,19 @@ jobs:
         run: tflint --init
 
       - name: lint
-        run: tflint --chdir="${{ matrix.directory }}" --format compact
+        env:
+          SELECTED_DIRECTORIES: ${{ inputs.directories }}
+        run: |
+          python3 - <<'PYTHON'
+          import json, os, subprocess
+          failures = []
+          for directory in json.loads(os.environ['SELECTED_DIRECTORIES']):
+              result = subprocess.run(['tflint', '--chdir=' + directory, '--format', 'compact'])
+              if result.returncode:
+                  failures.append(directory)
+          if failures:
+              raise SystemExit('TFLint failed: ' + ', '.join(failures))
+          PYTHON
       - uses: ./.github/actions/nexus-dependency-cache
         with:
           kind: tflint
@@ -51,7 +63,3 @@ jobs:
           mode: save
           password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
         if: ${{ success() }}
-    strategy:
-      fail-fast: false
-      matrix:
-        directory: ${{ fromJSON(inputs.directories) }}

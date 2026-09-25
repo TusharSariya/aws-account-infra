@@ -72,6 +72,7 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: false
+          cache-local-path: ${{ env.UV_CACHE_DIR || format('{0}/uv-cache', runner.temp) }}
           python-version: "3.14"
       - uses: ./.github/actions/setup-opentofu
         with:
@@ -98,6 +99,7 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: false
+          cache-local-path: ${{ env.UV_CACHE_DIR || format('{0}/uv-cache', runner.temp) }}
         if: contains(fromJSON(needs.detect.outputs.units).*.id, 'talos-homelab') || contains(fromJSON(needs.detect.outputs.units).*.id, 'kubernetes-homelab')
       - name: Wake and hold retained hosts before Proxmox changes
         if: contains(fromJSON(needs.detect.outputs.units).*.id, 'proxmox-homelab')

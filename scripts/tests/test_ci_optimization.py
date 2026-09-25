@@ -33,9 +33,12 @@ esac
         spec=importlib.util.spec_from_file_location('timings',ROOT/'scripts/ci-run-report.py')
         module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
         run={'id':1,'html_url':'https://example.invalid/run/1','head_sha':'a'*40,'conclusion':'success','status':'completed','created_at':'2026-09-24T00:00:00Z'}
-        jobs=[{'name':'test','conclusion':'success','started_at':'2026-09-24T00:01:00Z','completed_at':'2026-09-24T00:02:00Z'}]
+        jobs=[{'name':'test','runner_name':'fixture-runner','conclusion':'success','started_at':'2026-09-24T00:01:00Z','completed_at':'2026-09-24T00:02:00Z'}]
         result=module.report(run,jobs,'cold',{})
         self.assertEqual(result['runner_seconds'],60)
         self.assertEqual(result['elapsed_seconds'],120)
         self.assertIsNone(result['jobs'][0]['queue_seconds'])
         self.assertEqual(result['cache_state'],'cold')
+        self.assertIsNone(module.elapsed('2026-09-24T00:02:00Z', '2026-09-24T00:01:00Z'))
+        jobs[0].pop('runner_name')
+        self.assertEqual(module.report(run,jobs,'cold',{})['runner_seconds'], 0)

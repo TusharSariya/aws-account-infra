@@ -11,10 +11,11 @@ from pathlib import Path
 def elapsed(start, end):
     if not start or not end:
         return None
-    return (
+    value = (
         datetime.fromisoformat(end.replace("Z", "+00:00"))
         - datetime.fromisoformat(start.replace("Z", "+00:00"))
     ).total_seconds()
+    return value if value >= 0 else None
 
 
 def report(run, jobs, cache_state, startup):
@@ -27,10 +28,10 @@ def report(run, jobs, cache_state, startup):
                 "name": job["name"],
                 "conclusion": job["conclusion"],
                 "runner": job.get("runner_name"),
-                "queue_seconds": elapsed(job.get("created_at"), job.get("started_at")),
+                "queue_seconds": elapsed(job.get("created_at"), job.get("started_at")) if job.get("runner_name") else None,
                 "execution_seconds": elapsed(
                     job.get("started_at"), job.get("completed_at")
-                ),
+                ) if job.get("runner_name") else None,
             }
         )
     return {
@@ -48,7 +49,7 @@ def report(run, jobs, cache_state, startup):
         "runner_seconds": sum(j["execution_seconds"] or 0 for j in rows),
         "jobs": rows,
         "startup_first_observations": startup,
-        "limitations": "Queue time is GitHub created_at to started_at, including scheduling. Startup timestamps are first observations, bounded by reconciliation cadence. Compare identical jobs/revisions and cold/warm cohorts separately.",
+        "limitations": "Queue time is GitHub created_at to started_at, including scheduling. Jobs without an allocated runner and inconsistent timestamps are excluded from timing totals. Startup timestamps are first observations, bounded by reconciliation cadence. Compare identical jobs/revisions and cold/warm cohorts separately.",
     }
 
 

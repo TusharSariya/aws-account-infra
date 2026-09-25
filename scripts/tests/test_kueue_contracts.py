@@ -131,7 +131,7 @@ class Contracts(unittest.TestCase):
         for p in (ROOT/'.github/workflows').glob('*.yml'):
             for job in yaml.load(p.read_text(),Loader=yaml.BaseLoader)['jobs'].values():
                 if 'CI_EXECUTOR' in str(job.get('runs-on','')):
-                    if p.stem == 'gitleaks':
+                    if p.stem in ('gitleaks', 'ubuntu-gpu-inference'):
                         self.assertIn("head.repo.full_name != github.repository && 'ubuntu-latest'", job['runs-on'])
                     else:
                         self.assertIn('head.repo.full_name == github.repository',job['if'])

@@ -11,8 +11,8 @@ identities remain in place.
 PR routine validation shares the hosted `tofu-plan/detect` job. The same selector
 runs main-push/manual validation through `ci-validation`. Reusable suites retain
 separate jobs for Proxmox, Talos, workflow contracts, lifecycle, documents,
-PostgreSQL and charts. Checkov/TFLint matrices cover affected Terraform directories
-and local-module consumers. PRs compare merge bases; pushes compare before/after;
+PostgreSQL and charts. Checkov/TFLint scan affected Terraform directories and local-module consumers
+in one runner per tool, amortizing installation across shared changes. PRs compare merge bases; pushes compare before/after;
 renames include both paths. Selection errors fail the required `plan-gate`.
 The `apply-gate` retains the deployment/acceptance requirements. Selected failures,
 cancellations and unexpected skips cannot pass `plan-gate`. Pure validation cancels
@@ -39,7 +39,8 @@ including PostgreSQL integration builds. Provenance, SBOMs and immutable publish
 references are preserved. The runner Dockerfile adds Bats, verified actionlint
 1.7.7 and verified gitleaks 8.21.2. Existing runner image digests are deliberately
 not replaced with an unbuilt image. Run the existing hosted `ci-runner-image`
-workflow, review its receipt, then pin the verified digest through the management
+workflow (routine builds on Proxmox; manual dispatch remains hosted for bootstrap),
+review its receipt, then pin the verified digest through the management
 workflow. Verified installation fallback supports the image transition and recovery.
 
 ## Stage 2: dynamic admission
