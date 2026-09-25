@@ -128,7 +128,7 @@ def main():
                 runtime.status = None
                 runtime.observer.idle_since = None
                 print('Lifecycle observation unavailable; admission closed; category=' + type(error).__name__, flush=True)
-            time.sleep(2)
+            time.sleep(runtime.tick_seconds)
     threading.Thread(target=loop, daemon=True).start()
     server.serve_forever()
 

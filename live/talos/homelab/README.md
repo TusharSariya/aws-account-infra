@@ -163,6 +163,34 @@ Sources: [Talos Cilium guide](https://docs.siderolabs.com/kubernetes-guides/cni/
 [Cilium Kubernetes compatibility](https://docs.cilium.io/en/v1.20/network/kubernetes/requirements/),
 [Helm provider release schema](https://github.com/hashicorp/terraform-provider-helm/blob/v3.3.0/docs/resources/release.md).
 
+## Control-plane load budget
+
+The control plane is a 2 vCPU / 5 GiB QEMU guest on the laptop with a SATA SSD
+shared by etcd, the audit log and container images. On 2026-09-25 the guest ran
+out of memory: kube-apiserver grew to 2.6 GiB, the Talos OOM controller killed
+BestEffort kube-proxy and Cilium pods 200+ times, every restart re-read image
+layers, the SSD saturated (99% I/O pressure), etcd `fdatasync` exceeded 1 s, and
+Talos withdrew the 10.0.0.231 shared address. `scripts/tests/test_talos_control_plane_budget.py`
+pins the budget that prevents a repeat:
+
+- `talos-cp-01.yaml` gives the kubelet `systemReserved`/`kubeReserved` memory and
+  soft/hard eviction thresholds so the kubelet evicts before the host OOM controller.
+- The API server runs with `GOMEMLIMIT` (a soft Go heap ceiling) and a memory
+  request, never a hard limit that would restart it in a loop.
+- The audit policy stays at `Metadata` for user-facing requests but drops Leases,
+  Events, health/discovery URLs and control-plane component reads, which alone
+  produced ~100 MB of log every 45 minutes.
+- `cilium-values.yaml` sets requests on the agent, Envoy and operator so they leave
+  the BestEffort class. kube-proxy keeps Talos defaults; replacing it is a separate
+  reviewed change guarded by the Cilium postcondition.
+- The AI lifecycle controller reconciles every 10 s and writes only on change
+  (`tickSeconds`, `charts/homelab-lifecycle`); it was the largest API client at 2 s.
+
+Machine-config changes apply through the Talos plan/apply with `no_reboot`; the
+API server static pod and kubelet restart in place. Verify afterwards with
+`talosctl -n 10.0.0.221 memory`, `talosctl -n 10.0.0.221 dmesg | grep OOM` and
+`talosctl -n 10.0.0.221 ls -l /var/log/audit/kube`.
+
 ## Task 8.2 migration boundary
 
 The native OpenTofu command and flags are visible in the shared action. The
