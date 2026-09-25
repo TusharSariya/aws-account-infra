@@ -5,22 +5,42 @@ permissions:
   contents: read
 jobs:
   offline:
-    runs-on: ubuntu-latest
+    if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-checks"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      # Installs shellcheck only when the runner image lacks it (hosted images ship it).
+      - uses: ./.github/actions/talos-runner-setup
         with:
-          python-version: '3.13'
-      - run: pip install ruff==0.12.12 PyYAML==6.0.2
+          packages: shellcheck
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: python
+          toolchain: uv-python-3.14
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: false
+          cache-local-path: ${{ env.UV_CACHE_DIR || format('{0}/uv-cache', runner.temp) }}
       - uses: azure/setup-kubectl@v4
         with:
           version: v1.36.3
-      - run: ruff check platform/main-control-plane kubernetes/platform/main --exclude vendor
-      - run: ruff format --check platform/main-control-plane kubernetes/platform/main --exclude vendor
+      - run: uv run --with ruff==0.12.12 ruff check platform/main-control-plane kubernetes/platform/main --exclude vendor
+      - run: uv run --with ruff==0.12.12 ruff format --check platform/main-control-plane kubernetes/platform/main --exclude vendor
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.19.0
-      - run: python3 -m unittest discover -s scripts/tests -p test_main_cluster_iac.py -v
+      # The Helm post-renderer runs through `env python3`; uv run puts its
+      # PyYAML environment first on PATH for that child process.
+      - run: uv run --python 3.13 --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p test_main_cluster_iac.py -v
       - run: python3 -m unittest discover -s platform/main-control-plane/tests -v
-      - run: python3 kubernetes/platform/main/validate.py
+      - run: uv run --python 3.13 --with PyYAML==6.0.3 python kubernetes/platform/main/validate.py
       - run: shellcheck platform/main-control-plane/ops.sh platform/main-control-plane/launch.sh platform/main-control-plane/prepare-host.sh platform/main-control-plane/90-main-control-plane platform/main-control-plane/recovery-test.sh
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: python
+          toolchain: uv-python-3.14
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+          mode: save
+          password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
+        if: ${{ success() }}

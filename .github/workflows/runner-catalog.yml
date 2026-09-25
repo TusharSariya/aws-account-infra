@@ -18,3 +18,4 @@ jobs:
           tofu_version: 1.11.5
           tofu_wrapper: false
       - run: uv run --with PyYAML==6.0.3 python scripts/runner_catalog.py
+      - run: uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p test_ci_executor_routing.py

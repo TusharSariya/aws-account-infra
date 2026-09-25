@@ -16,7 +16,7 @@ permissions:
 jobs:
   detect:
     if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-light"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
     outputs:
       units: ${{ steps.units.outputs.units }}
       aws_units: ${{ steps.units.outputs.aws_units }}
@@ -27,6 +27,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - uses: ./.github/actions/talos-runner-setup
       - id: units
         run: python3 scripts/ci-relevant-changes.py
   plan:
@@ -325,7 +326,7 @@ jobs:
   plan-gate:
     needs: [detect, plan, proxmox-plan, talos-plan, applications-plan, checkov, tflint, trivy, shell, homelab-config-tests, homelab-apps-tests, homelab-recovery-tests, runner-catalog, kubernetes-validation, main-platform-validation]
     if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-light"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
     steps:
       - env:
           NEEDS_JSON: ${{ toJSON(needs) }}

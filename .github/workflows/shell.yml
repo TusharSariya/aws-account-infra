@@ -16,10 +16,6 @@ jobs:
     runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-light"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - run: 'true'
-        name: Selection performed by ci-validation
       - uses: ./.github/actions/talos-runner-setup
       - name: Install shellcheck and bats
         run: |
