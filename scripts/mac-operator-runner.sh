@@ -18,8 +18,10 @@ readonly RUNNER_VERSION=2.337.0
 readonly RUNNER_ASSET="actions-runner-osx-arm64-${RUNNER_VERSION}.tar.gz"
 readonly RUNNER_SHA256=5a2cd92908a93d7276a194e1de6008099f3e7946f3f8e14aa7a1a7b4a31fdec2
 readonly RUNNER_DOWNLOAD="https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/${RUNNER_ASSET}"
-readonly REPO=TusharSariyaOrg/aws-account-infra
+readonly ORG=TusharSariyaOrg
+readonly REPO="${ORG}/aws-account-infra"
 readonly REPO_URL="https://github.com/${REPO}"
+readonly ORG_URL="https://github.com/${ORG}"
 readonly RUNNER_LABELS=homelab-operator
 readonly LABEL=dev.tfdraw.homelab.operator-runner
 readonly PLIST="/Library/LaunchDaemons/${LABEL}.plist"
@@ -146,12 +148,16 @@ unpack_runner() {
 configure_runner() {
   local name
   name="$(runner_name)"
-  info "registering ${name} with ${REPO_URL} (labels: ${RUNNER_LABELS})"
+  # Runner groups exist only at the organization level: a runner that should
+  # join RUNNER_GROUP must register with the org URL and an org registration
+  # token; the group then limits it to the selected repositories.
   if [[ -n "${RUNNER_GROUP:-}" ]]; then
-    as_runner ./config.sh --unattended --url "$REPO_URL" --token "$RUNNER_TOKEN" \
+    info "registering ${name} with ${ORG_URL} in group ${RUNNER_GROUP} (labels: ${RUNNER_LABELS})"
+    as_runner ./config.sh --unattended --url "$ORG_URL" --token "$RUNNER_TOKEN" \
       --name "$name" --labels "$RUNNER_LABELS" --work _work --replace \
       --runnergroup "$RUNNER_GROUP"
   else
+    info "registering ${name} with ${REPO_URL} (labels: ${RUNNER_LABELS})"
     as_runner ./config.sh --unattended --url "$REPO_URL" --token "$RUNNER_TOKEN" \
       --name "$name" --labels "$RUNNER_LABELS" --work _work --replace
   fi
@@ -229,12 +235,15 @@ cmd_status() {
   fi
   info "GitHub: ${name}"
   if command -v gh >/dev/null 2>&1; then
-    if github="$(gh api "repos/${REPO}/actions/runners" --paginate \
-      --jq ".runners[] | select(.name == \"${name}\") | \"    status=\\(.status) busy=\\(.busy) labels=\\([.labels[].name] | join(\",\"))\"")"; then
-      printf '%s\n' "${github:-    not registered}"
-    else
-      printf '    could not query runners (needs repository admin access)\n'
+    # Org-registered runners (runner group) are listed under the org; the
+    # repository endpoint lists repository-level registrations only.
+    github="$(gh api "orgs/${ORG}/actions/runners" --paginate \
+      --jq ".runners[] | select(.name == \"${name}\") | \"    org: status=\\(.status) busy=\\(.busy) labels=\\([.labels[].name] | join(\",\"))\"" 2>/dev/null || true)"
+    if [[ -z "$github" ]]; then
+      github="$(gh api "repos/${REPO}/actions/runners" --paginate \
+        --jq ".runners[] | select(.name == \"${name}\") | \"    repo: status=\\(.status) busy=\\(.busy) labels=\\([.labels[].name] | join(\",\"))\"" 2>/dev/null || true)"
     fi
+    printf '%s\n' "${github:-    not registered (or no admin access to query runners)}"
   else
     printf '    gh not installed\n'
   fi
@@ -260,18 +269,21 @@ cmd_uninstall() {
 cmd_token_help() {
   cat <<EOF
 RUNNER_TOKEN is read from the environment and never printed. Tokens expire 60 minutes
-after they are issued and need repository admin access.
+after they are issued.
 
-Registration token (install):
+Recommended: register at the organization level into the runner group
+(create the group first; see docs/runbooks/mac-operator-runner.md). Needs the
+admin:org scope (gh auth refresh -h github.com -s admin:org).
+  RUNNER_GROUP=homelab-operator RUNNER_TOKEN="\$(gh api -X POST orgs/${ORG}/actions/runners/registration-token --jq .token)" $0 install
+  RUNNER_GROUP=homelab-operator RUNNER_TOKEN="\$(gh api -X POST orgs/${ORG}/actions/runners/remove-token --jq .token)" $0 uninstall
+
+Repository-level registration (no group; needs repository admin):
   RUNNER_TOKEN="\$(gh api -X POST repos/${REPO}/actions/runners/registration-token --jq .token)" $0 install
+  RUNNER_TOKEN="\$(gh api -X POST repos/${REPO}/actions/runners/remove-token --jq .token)" $0 uninstall
   or: ${REPO_URL}/settings/actions/runners > New self-hosted runner (macOS, ARM64),
       and copy the value after --token.
 
-Removal token (uninstall):
-  RUNNER_TOKEN="\$(gh api -X POST repos/${REPO}/actions/runners/remove-token --jq .token)" $0 uninstall
-
-Optional: RUNNER_GROUP=homelab-operator registers into the org runner group (create it first;
-see docs/runbooks/mac-operator-runner.md).
+The uninstall token must match how the runner was registered (org or repository).
 EOF
 }
 

@@ -62,8 +62,11 @@ Controls on the runner itself:
    ```
 
    Then register (or re-register) with `RUNNER_GROUP=homelab-operator` set (see
-   Install). A repository-level registration, the default, is already scoped to
-   this repository.
+   Install). Runner groups exist only at the organization level, so a grouped
+   runner registers with the organization URL and an organization registration
+   token; the group limits it to this repository. A repository-level
+   registration, the fallback, is already scoped to this repository but cannot
+   join a group.
 2. **The runner is offline outside maintenance windows.** The LaunchDaemon has
    `RunAtLoad` and `KeepAlive` set to false. Install leaves it stopped. Start it for
    a window and stop it afterwards.
@@ -178,10 +181,11 @@ From an administrator account in a checkout of this repository:
 
 ```bash
 ./scripts/mac-operator-runner.sh token-help
-RUNNER_TOKEN="$(gh api -X POST repos/TusharSariyaOrg/aws-account-infra/actions/runners/registration-token --jq .token)" \
+# recommended: org-level registration into the runner group (needs admin:org)
+RUNNER_GROUP=homelab-operator RUNNER_TOKEN="$(gh api -X POST orgs/TusharSariyaOrg/actions/runners/registration-token --jq .token)" \
   ./scripts/mac-operator-runner.sh install
-# with the org group created (security control 3):
-RUNNER_GROUP=homelab-operator RUNNER_TOKEN="$(gh api -X POST repos/TusharSariyaOrg/aws-account-infra/actions/runners/registration-token --jq .token)" \
+# fallback: repository-level registration, no group (needs repository admin)
+RUNNER_TOKEN="$(gh api -X POST repos/TusharSariyaOrg/aws-account-infra/actions/runners/registration-token --jq .token)" \
   ./scripts/mac-operator-runner.sh install
 ```
 
@@ -258,6 +262,10 @@ starts or the run is cancelled.
 ## Uninstall
 
 ```bash
+# org-registered runner (the default install above)
+RUNNER_GROUP=homelab-operator RUNNER_TOKEN="$(gh api -X POST orgs/TusharSariyaOrg/actions/runners/remove-token --jq .token)" \
+  ./scripts/mac-operator-runner.sh uninstall
+# repository-registered runner
 RUNNER_TOKEN="$(gh api -X POST repos/TusharSariyaOrg/aws-account-infra/actions/runners/remove-token --jq .token)" \
   ./scripts/mac-operator-runner.sh uninstall
 sudo sysadminctl -deleteUser ghrunner   # optional: removes the user and install dir
