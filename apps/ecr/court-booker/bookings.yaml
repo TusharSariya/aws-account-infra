@@ -33,7 +33,7 @@ weekly:
     people: 1
     visibility: private
     title: Coaching
-    enabled: false
+    enabled: true
   - activity: court1
     weekday: Fri
     time: "09:00"
@@ -41,7 +41,7 @@ weekly:
     people: 1
     visibility: private
     title: Coaching
-    enabled: false
+    enabled: true
 # booking_date/time = court slot. invoke_at = EventBridge. Omit one and the
 # other is filled with a horizon_hours (72) offset. Set both to decouple.
 # Disable after a oneshot fires — a later apply with a past `at()` will error.
