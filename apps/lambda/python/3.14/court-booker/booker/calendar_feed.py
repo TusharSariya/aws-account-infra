@@ -1,11 +1,16 @@
-"""Read-only subscription endpoint; never logs capability URLs or tokens."""
+"""Read-only calendar endpoints: one public feed and one key-protected private feed.
+
+Never logs request paths, keys or SDK error text.
+"""
 
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import logging
 import os
+import time
 from datetime import UTC, datetime
 from functools import lru_cache
 
@@ -19,6 +24,12 @@ from booker.secrets import _client_kwargs
 logger = logging.getLogger(__name__)
 
 CALENDAR_NAMES = {"public": "Court bookings", "private": "Court bookings (private)"}
+PUBLIC_ROUTE = "GET /calendars/public/bookings.ics"
+PRIVATE_ROUTE = "GET /calendars/private/{key}/bookings.ics"
+MIN_KEY_LENGTH = 32
+UNSET = "UNSET"
+# Rotation reaches warm containers within this window.
+KEY_CACHE_SECONDS = 300
 
 
 @lru_cache(maxsize=1)
@@ -32,6 +43,58 @@ def _lambda_client():
             retries={"total_max_attempts": 2, "mode": "standard"},
         ),
     )
+
+
+@lru_cache(maxsize=1)
+def _ssm_client():
+    return boto3.client(
+        "ssm",
+        **_client_kwargs(),
+        config=Config(
+            connect_timeout=2,
+            read_timeout=3,
+            retries={"total_max_attempts": 2, "mode": "standard"},
+        ),
+    )
+
+
+_key_cache: dict[str, object] = {}
+
+
+def _load_private_key_digest(ssm, clock=time.monotonic) -> bytes | None:
+    """SHA-256 of the configured private key, or None when unusable (fail closed).
+
+    A usable key is cached per container for KEY_CACHE_SECONDS; failures are not
+    cached, so a newly set key takes effect without a redeploy.
+    """
+    cached = _key_cache.get("digest")
+    if cached is not None and clock() < _key_cache["expires"]:
+        return cached
+    _key_cache.clear()
+    name = os.environ.get("CALENDAR_PRIVATE_KEY_PARAMETER", "").strip()
+    if not name:
+        logger.error("Calendar private key is not configured")
+        return None
+    try:
+        value = ssm.get_parameter(Name=name, WithDecryption=True)["Parameter"]["Value"]
+    except Exception:  # noqa: BLE001 - fail closed; SDK errors may carry request details
+        logger.error("Calendar private key could not be loaded")
+        return None
+    if not isinstance(value, str) or value == UNSET or len(value) < MIN_KEY_LENGTH:
+        logger.error("Calendar private key is not configured")
+        return None
+    digest = hashlib.sha256(value.encode()).digest()
+    _key_cache.update(digest=digest, expires=clock() + KEY_CACHE_SECONDS)
+    return digest
+
+
+def _private_key_matches(key, ssm) -> bool:
+    if not isinstance(key, str) or not key or len(key) > 256:
+        return False
+    expected = _load_private_key_digest(ssm)
+    if expected is None:
+        return False
+    return hmac.compare_digest(hashlib.sha256(key.encode()).digest(), expected)
 
 
 def _response(status: int, body: str = "", **headers: str) -> dict:
@@ -64,16 +127,20 @@ def _request_refresh(repository, client, now):
         repository.release_refresh(lease_id)
 
 
-def serve(event: dict, repository, client, now: datetime | None = None) -> dict:
+def serve(
+    event: dict, repository, client, now: datetime | None = None, ssm=None
+) -> dict:
     now = now or datetime.now(UTC)
-    token = (event.get("pathParameters") or {}).get("token", "")
-    scope = (
-        repository.validate_token(token) if isinstance(token, str) and token else None
-    )
-    if not scope:
+    route = event.get("routeKey")
+    if route == PUBLIC_ROUTE:
+        private = False
+    elif route == PRIVATE_ROUTE:
+        key = (event.get("pathParameters") or {}).get("key")
+        if not _private_key_matches(key, ssm if ssm is not None else _ssm_client()):
+            return _response(404, "Not found")
+        private = True
+    else:
         return _response(404, "Not found")
-    # Anything other than an explicit private scope gets the public view.
-    private = scope == "private"
     metadata = repository.get_metadata()
     reservations = [
         item

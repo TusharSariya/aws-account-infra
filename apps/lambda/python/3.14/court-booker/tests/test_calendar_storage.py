@@ -55,14 +55,6 @@ def repo():
 
 
 def check_repository(repo):
-    sub = repo.create_subscription("friend", now=NOW)
-    assert repo.validate_token(sub["token"])
-    assert not repo.validate_token(sub["token"] + "wrong")
-    assert "token" not in repo.list_subscriptions()[0]
-    assert "token_hash" not in repo.list_subscriptions()[0]
-    assert repo.revoke_subscription(sub["id"])
-    assert not repo.validate_token(sub["token"])
-    assert not repo.revoke_subscription("unknown")
     repo.put_reservation(event(), now=NOW)
     original = repo.snapshot()["1"]
     repo.put_reservation(event(), now=NOW + timedelta(seconds=1))
