@@ -1,3 +1,14 @@
+{{- /* Helm owns policy; the coordinator owns only runtime quota numbers.
+       lookup keeps the current quotas through upgrades. New installs start closed. */ -}}
+{{- $existing := lookup "kueue.x-k8s.io/v1beta2" "ClusterQueue" "" "homelab-compute" -}}
+{{- $quotas := dict -}}
+{{- if and .Values.dynamic $existing -}}
+{{- range $group := $existing.spec.resourceGroups -}}
+{{- range $flavor := $group.flavors -}}
+{{- range $resource := $flavor.resources -}}
+{{- $_ := set $quotas (printf "%s/%s" $flavor.name $resource.name) $resource.nominalQuota -}}
+{{- end -}}{{- end -}}{{- end -}}
+{{- end -}}
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -46,25 +57,29 @@ spec:
     withinClusterQueue: Never
     reclaimWithinCohort: Never
   resourceGroups:
-    - coveredResources: [cpu, memory, ephemeral-storage]
+    - coveredResources: [cpu, memory, ephemeral-storage, pods]
       flavors:
         - name: homelab-worker
           resources:
             - name: cpu
-              nominalQuota: {{ .Values.cpu | quote }}
+              nominalQuota: {{ if .Values.dynamic }}{{ get $quotas "homelab-worker/cpu" | default "0" | quote }}{{ else }}{{ .Values.cpu | quote }}{{ end }}
             - name: memory
-              nominalQuota: {{ .Values.memory }}
+              nominalQuota: {{ if .Values.dynamic }}{{ get $quotas "homelab-worker/memory" | default "0" | quote }}{{ else }}{{ .Values.memory }}{{ end }}
             - name: ephemeral-storage
-              nominalQuota: {{ .Values.scratch }}
+              nominalQuota: {{ if .Values.dynamic }}{{ get $quotas "homelab-worker/ephemeral-storage" | default "0" | quote }}{{ else }}{{ .Values.scratch }}{{ end }}
+            - name: pods
+              nominalQuota: {{ if .Values.dynamic }}{{ get $quotas "homelab-worker/pods" | default "0" | quote }}{{ else }}"100"{{ end }}
 {{- if .Values.power.enabled }}
         - name: homelab-secondary
           resources:
             - name: cpu
-              nominalQuota: {{ .Values.cpu | quote }}
+              nominalQuota: {{ if .Values.dynamic }}{{ get $quotas "homelab-secondary/cpu" | default "0" | quote }}{{ else }}{{ .Values.cpu | quote }}{{ end }}
             - name: memory
-              nominalQuota: {{ .Values.memory }}
+              nominalQuota: {{ if .Values.dynamic }}{{ get $quotas "homelab-secondary/memory" | default "0" | quote }}{{ else }}{{ .Values.memory }}{{ end }}
             - name: ephemeral-storage
-              nominalQuota: {{ .Values.scratch }}
+              nominalQuota: {{ if .Values.dynamic }}{{ get $quotas "homelab-secondary/ephemeral-storage" | default "0" | quote }}{{ else }}{{ .Values.scratch }}{{ end }}
+            - name: pods
+              nominalQuota: {{ if .Values.dynamic }}{{ get $quotas "homelab-secondary/pods" | default "0" | quote }}{{ else }}"100"{{ end }}
 {{- end }}
 ---
 apiVersion: kueue.x-k8s.io/v1beta2

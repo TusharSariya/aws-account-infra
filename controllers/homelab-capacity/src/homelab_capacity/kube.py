@@ -18,6 +18,7 @@ RESOURCES = {
     "nodes": "nodes",
     "deployments": "deployments",
     "statefulsets": "statefulsets",
+    "daemonsets": "daemonsets",
     "cronjobs": "cronjobs",
     "clusters": "clusters.postgresql.cnpg.io",
     "pv": "pv",

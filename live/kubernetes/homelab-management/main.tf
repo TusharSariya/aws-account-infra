@@ -63,12 +63,12 @@ resource "helm_release" "runners" {
     precondition {
       condition = (
         can(regex("^homelab-talos(-[a-z0-9]+)*$", each.key)) && length(each.key) <= 45 &&
-        each.value.cpu > 0 && each.value.cpu <= tonumber(local.pool.cpu) && floor(each.value.cpu * 1000) == each.value.cpu * 1000 &&
-        each.value.memory > 0 && each.value.memory <= tonumber(trimsuffix(local.pool.memory, "Gi")) * 1024 && floor(each.value.memory) == each.value.memory &&
-        each.value.scratch > 0 && each.value.scratch <= tonumber(trimsuffix(local.pool.scratch, "Gi")) * 1024 && floor(each.value.scratch) == each.value.scratch &&
+        each.value.cpu > 0 && floor(each.value.cpu * 1000) == each.value.cpu * 1000 &&
+        each.value.memory > 0 && floor(each.value.memory) == each.value.memory &&
+        each.value.scratch > 0 && floor(each.value.scratch) == each.value.scratch &&
         (!each.value.docker || (each.value.cpu >= 0.1 && each.value.memory >= 128 && each.value.scratch >= 1024))
       )
-      error_message = "Runner catalog requires a valid scale-set name and positive whole-Pod budgets within the configured shared pool; Docker must also cover its initialization peak."
+      error_message = "Runner catalog requires a valid scale-set name and positive whole-Pod budgets with admission limited by observed worker capacity; Docker must also cover its initialization peak."
     }
   }
 

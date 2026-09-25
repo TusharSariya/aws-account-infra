@@ -85,7 +85,7 @@ def start(kube, directory):
     config = yaml.safe_load((ROOT / 'config/environments/kubernetes/homelab-ci/pool-values.yaml').read_text())
     node = json.loads(run(kube, ['get', 'node', config['worker'], '-o', 'json']))
     pods = json.loads(run(kube, ['get', 'pods', '-A', '-o', 'json']))['items'] + [pod]
-    report = verify(node, pods, config['platformReserve'], config)
+    report = verify(node, pods, config.get('platformReserve', {}), config)
     summary = json.loads(run(kube, ['get', '--raw=/api/v1/nodes/' + config['worker'] + '/proxy/stats/summary']))
     catalog = json.loads((ROOT / 'config/environments/kubernetes/homelab-ci/runner-catalog.json').read_text())
     report['storage'] = verify_storage(node, pods, summary, config, catalog)

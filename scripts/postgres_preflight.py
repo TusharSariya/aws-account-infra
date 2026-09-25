@@ -33,8 +33,8 @@ def verify(kubectl, run):
     queue = get('get', 'clusterqueue', 'homelab-compute')
     resources = queue['spec']['resourceGroups'][0]['flavors'][0]['resources']
     quotas = {r['name']: str(r['nominalQuota']) for r in resources}
-    if quotas.get('cpu') not in ('31250m', '31.25') or quotas.get('memory') != '84Gi':
-        raise ValueError('Apply the reviewed 31.25 CPU / 84 GiB queue reduction first')
+    if queue['spec'].get('queueingStrategy') != 'BestEffortFIFO' or not {'cpu', 'memory', 'ephemeral-storage', 'pods'} <= quotas.keys():
+        raise ValueError('Apply the dynamic capacity queue and its readiness gate first')
     storage = get('get', 'storageclass', 'worker-local-retain')
     if storage['reclaimPolicy'] != 'Retain' or storage.get('allowVolumeExpansion', False):
         raise ValueError('Expected retained non-expandable worker local-path storage')

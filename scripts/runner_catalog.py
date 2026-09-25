@@ -20,12 +20,9 @@ def catalog(config_path=CONFIG):
             raise ValueError('Invalid runner name: ' + name)
         if set(config) != {'cpu', 'memory', 'scratch', 'docker'} or type(config['docker']) is not bool:
             raise ValueError('Catalog requires cpu cores, memory/scratch MiB and docker boolean')
-        pool = yaml.safe_load((CONFIG / 'pool-values.yaml').read_text())
-        for key, ceiling in [('cpu', quantity(pool['cpu'])),
-                             ('memory', quantity(pool['memory']) / 1024**2),
-                             ('scratch', quantity(pool['scratch']) / 1024**2)]:
-            if type(config[key]) not in (int, float) or not 0 < config[key] <= ceiling:
-                raise ValueError('Oversized or invalid runner ' + name + ': ' + key)
+        for key in ('cpu', 'memory', 'scratch'):
+            if type(config[key]) not in (int, float) or not 0 < config[key] or not __import__('math').isfinite(config[key]):
+                raise ValueError('Invalid runner ' + name + ': ' + key)
             amount = quantity(config[key]) * (1000 if key == 'cpu' else 1)
             if amount != int(amount):
                 raise ValueError('Use whole millicores and MiB')

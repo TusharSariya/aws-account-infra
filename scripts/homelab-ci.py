@@ -146,7 +146,7 @@ def preflight(kube):
         digest = image.split('@')[1]
         if not any(name.endswith('@' + digest) for name in images):
             raise ValueError('Preload pinned Nexus/PostgreSQL images before fresh scratch measurement')
-    report = verify(node, projected, config['platformReserve'], config)
+    report = verify(node, projected, config.get('platformReserve', {}), config)
     report['cache_storage'] = cache_report
     report['storage_and_slots'] = verify_storage(node, projected, summary, config, catalog)
     run(kube + ['-n', 'homelab-services', 'rollout', 'status', 'deployment/pihole', '--timeout=60s'])
@@ -244,13 +244,17 @@ def management_preflight(kube):
     from kueue_capacity import quantity
     nodes = json.loads(run(kube + ['get', 'nodes', '-o', 'json']))['items']
     pool = yaml.safe_load((CONFIG / 'pool-values.yaml').read_text())
+    queue = json.loads(run(kube + ['get', 'clusterqueue', 'homelab-compute', '--ignore-not-found', '-o', 'json']) or b'{}')
+    effective = {f['name']: {r['name']: r['nominalQuota'] for r in f['resources']}
+                 for g in queue.get('spec', {}).get('resourceGroups', []) for f in g['flavors']}
     report = {}
     for name in ['talos-worker-01', 'talos-worker-02']:
         node = next(n for n in nodes if n['metadata']['name'] == name)
-        for resource in ['cpu', 'memory']:
+        for resource in ([] if pool.get('dynamic') else ['cpu', 'memory']):
             if quantity(pool[resource]) + quantity(pool['platformReserve'][resource]) > quantity(node['status']['allocatable'][resource]):
                 raise ValueError('Potential pool exceeds retained worker capacity')
-        report[name] = {'potential': {k: pool[k] for k in ['cpu', 'memory', 'scratch']},
+        report[name] = {'allocatable': dict(node['status']['allocatable']),
+                        'effective_quota': effective.get('homelab-worker' if name.endswith('01') else 'homelab-secondary', {}),
                         'ready': any(c['type'] == 'Ready' and c['status'] == 'True' for c in node['status']['conditions'])}
     cp = next(n for n in nodes if n['metadata']['name'] == 'talos-cp-01')
     if not any(c['type'] == 'Ready' and c['status'] == 'True' for c in cp['status']['conditions']):
@@ -312,7 +316,8 @@ def main():
             info['waiting_position'] = positions.get((info['namespace'], info['name']))
             info['requested'] = {r: str(sum(requests(p['template'], r) * p['count'] for p in obj['spec']['podSets'])) for r in ['cpu','memory','ephemeral-storage']}
             (reserved if info['reserved'] else waiting).append(info)
-        print(json.dumps({'waiting_fifo': sorted(waiting, key=lambda w: (w['waiting_position'] is None, w['waiting_position'] or 0)), 'reserved': reserved}, indent=2))
+        queue = json.loads(run(kube + ['get', 'clusterqueue', 'homelab-compute', '-o', 'json']))
+        print(json.dumps({'queueing_strategy': queue['spec']['queueingStrategy'], 'effective_quotas': queue['spec']['resourceGroups'], 'waiting_by_age': sorted(waiting, key=lambda w: (w['waiting_position'] is None, w['waiting_position'] or 0)), 'reserved': reserved}, indent=2))
         return
     with execution_lock():
         if args.operation == 'enroll-registry':

@@ -17,8 +17,7 @@ class CapacityTests(unittest.TestCase):
             'conditions': [{'type': 'Ready', 'status': 'True'}], 'capacity': {'memory': '115288768Ki'},
             'allocatable': {'cpu': '37950m', 'memory': '114793152Ki'}}}
         verify(node, [], {'cpu': '6', 'memory': '24Gi'})
-        with self.assertRaisesRegex(ValueError, 'allocatable'):
-            verify(node, [], {'cpu': '6', 'memory': '26Gi'})
+        self.assertEqual(verify(node, [], {'cpu': '6', 'memory': '26Gi'})['cpu']['pool'], '37.950')
         with self.assertRaisesRegex(ValueError, 'allocatable'):
             verify(node, [], {'cpu': '6', 'memory': '24Gi'}, {'cpu': '31.5', 'memory': '144Gi'})
 
@@ -27,8 +26,9 @@ class CapacityTests(unittest.TestCase):
             'conditions': [{'type': 'Ready', 'status': 'True'}], 'capacity': {'memory': '112Gi'},
             'allocatable': {'cpu': '37950m', 'memory': '109Gi'}}}
         verify(node, [], {'cpu': '6.5', 'memory': '25Gi'})
+        service = {'metadata': {}, 'spec': {'nodeName': 'talos-worker-01', 'containers': [{'resources': {'requests': {'cpu':'38'}}}]}}
         with self.assertRaisesRegex(ValueError, 'allocatable'):
-            verify(node, [], {'cpu': '6.8', 'memory': '25Gi'})
+            verify(node, [service], {'cpu': '6.8', 'memory': '25Gi'})
         node['status']['capacity']['memory'] = '100Gi'
         with self.assertRaisesRegex(ValueError, 'capacity'):
             verify(node, [], {'cpu': '1', 'memory': '1Gi'})
