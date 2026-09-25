@@ -40,7 +40,11 @@ if [[ ${#key} -lt 32 ]]; then
   exit 1
 fi
 
-# Pass the value on stdin so it never appears in process arguments.
+# Pass the value through a private temp file so it never appears in process
+# arguments. (file:///dev/stdin reads as empty with the AWS CLI on macOS.)
+umask 077
+input="$(mktemp)"
+trap 'rm -f "$input"' EXIT
 KEY="$key" PARAMETER="$PARAMETER" python3 -c '
 import json, os
 print(json.dumps({
@@ -51,7 +55,8 @@ print(json.dumps({
     "Overwrite": True,
     "Tier": "Standard",
 }))
-' | aws ssm put-parameter --cli-input-json file:///dev/stdin \
+' >"$input"
+aws ssm put-parameter --cli-input-json "file://${input}" \
   --query 'Version' --output text >/dev/null
 
 echo "Private calendar URL (shown once; store it like a password):" >&2
