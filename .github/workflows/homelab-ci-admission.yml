@@ -149,10 +149,7 @@ jobs:
     # Bootstrap, upgrade and recovery cannot depend on ARC or CI_EXECUTOR: the
     # macOS operator runner when vars.CI_OPERATOR == 'mac', else hosted.
     runs-on: ${{ vars.CI_OPERATOR == 'mac' && fromJSON('["self-hosted","macOS","homelab-operator"]') || 'ubuntu-latest' }}
-    # Dispatch plan/apply: main-only operator environment. PR plans run from
-    # refs/pull/N/merge and keep the unrestricted prod environment.
-    environment:
-      name: ${{ github.event_name == 'workflow_dispatch' && 'operator' || 'prod' }}
+    environment: prod
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4

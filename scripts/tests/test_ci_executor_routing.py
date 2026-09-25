@@ -13,10 +13,6 @@ WORKFLOWS = ROOT / '.github/workflows'
 OPERATOR = ("vars.CI_OPERATOR == 'mac' && "
             """fromJSON('["self-hosted","macOS","homelab-operator"]') || 'ubuntu-latest'""")
 
-# Main-only `operator` for dispatches; unrestricted `prod` for PR and workflow_call runs.
-DISPATCH_ENVIRONMENT = "${{ github.event_name == 'workflow_dispatch' && 'operator' || 'prod' }}"
-OPERATOR_ENVIRONMENTS = {'prod', 'operator', DISPATCH_ENVIRONMENT}
-
 # Jobs that deliberately bypass the CI_EXECUTOR switch. '*' covers every job in
 # the workflow. Anything not listed here must route through vars.CI_EXECUTOR so
 # that routine CI runs on ARC and ubuntu-latest remains only the unset fallback.
@@ -64,12 +60,6 @@ def job_specs():
         for name, job in workflow.get('jobs', {}).items():
             if 'runs-on' in job:
                 yield path.stem, name, str(job['runs-on']), job
-
-
-def triggers(workflow):
-    document = yaml.load((WORKFLOWS / f'{workflow}.yml').read_text(), Loader=yaml.BaseLoader)
-    on = document['on']
-    return {on} if isinstance(on, str) else set(on)
 
 
 def jobs():
@@ -129,9 +119,8 @@ class ExecutorRouting(unittest.TestCase):
                         self.assertNotIn('homelab-operator', runs_on)
         self.assertEqual(seen, HOSTED_ONLY, 'stale HOSTED_ONLY entry')
 
-    def test_operator_jobs_declare_a_deployment_environment(self):
-        # `operator` deploys from main only. `prod` is unrestricted because PR plans
-        # and apply-before-merge deploy from refs/pull/N/merge.
+    def test_operator_jobs_require_the_prod_environment(self):
+        # prod only deploys from main, so non-main refs never reach the Mac.
         operator_jobs = [(workflow, name, job) for workflow, name, runs_on, job in job_specs()
                          if 'CI_OPERATOR' in runs_on or 'homelab-operator' in runs_on]
         self.assertTrue(operator_jobs)
@@ -140,12 +129,7 @@ class ExecutorRouting(unittest.TestCase):
                 environment = job.get('environment')
                 if isinstance(environment, dict):
                     environment = environment.get('name')
-                self.assertIn(environment, OPERATOR_ENVIRONMENTS)
-                if triggers(workflow) <= {'workflow_dispatch'}:
-                    # Dispatch-only maintenance never runs from a PR ref.
-                    self.assertEqual(environment, 'operator')
-                elif 'workflow_dispatch' in triggers(workflow):
-                    self.assertEqual(environment, DISPATCH_ENVIRONMENT)
+                self.assertEqual(environment, 'prod')
 
 
 if __name__ == '__main__':
