@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Require networking on awake nodes; exclude only explicitly sleeping workers."""
+"""Require networking on awake nodes and preserve optional desktop quarantine."""
 
 import json
 import os
@@ -17,6 +17,22 @@ def ready(obj):
 def verify(nodes, pods):
     for node in nodes:
         name = node["metadata"]["name"]
+        # This manually powered, explicitly enrolled desktop is outside retained
+        # server availability. Quarantine still disables its normal admission.
+        # Check its networking whenever awake; never exempt an unknown node or
+        # an admission-enabled desktop merely because it is unavailable.
+        taints = {
+            (t.get("key"), t.get("value"), t.get("effect"))
+            for t in node["spec"].get("taints", [])
+        }
+        quarantined_desktop = (
+            name == "ubuntu-gpu-01"
+            and not ready(node)
+            and {
+                ("homelab.tfdraw.dev/quarantine", "true", "NoSchedule"),
+                ("homelab.tfdraw.dev/compute", "true", "NoSchedule"),
+            } <= taints
+        )
         sleeping = (
             name == "talos-worker-02"
             and node["metadata"]
@@ -26,7 +42,7 @@ def verify(nodes, pods):
             and node["spec"].get("unschedulable")
             and not ready(node)
         )
-        if sleeping:
+        if sleeping or quarantined_desktop:
             continue
         if not ready(node):
             raise ValueError("Unexpected unavailable node: " + name)
