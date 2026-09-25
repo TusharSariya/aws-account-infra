@@ -17,7 +17,7 @@ runs:
   using: composite
   steps:
     - name: Prepare disposable runner tools
-      if: runner.environment == 'self-hosted'
+      if: runner.environment == 'self-hosted' && runner.os == 'Linux'
       shell: bash
       env:
         EXTRA_PACKAGES: ${{ inputs.packages }}
@@ -68,4 +68,39 @@ runs:
           printf 'TMPDIR=%s\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
           docker compose version
           docker info > /dev/null
+        fi
+    # The macOS operator runner (docs/runbooks/mac-operator-runner.md) is a
+    # persistent host: verify its Homebrew tools only. No sudo, apt, TUN device
+    # or Nexus transport (Nexus is reachable only from inside the cluster).
+    - name: Verify macOS operator runner tools
+      if: runner.environment == 'self-hosted' && runner.os == 'macOS'
+      shell: bash
+      env:
+        EXTRA_PACKAGES: ${{ inputs.packages }}
+        NEED_DOCKER: ${{ inputs.docker }}
+        NEED_AWS: ${{ inputs.aws }}
+        NEED_TAILSCALE: ${{ inputs.tailscale }}
+      run: |
+        set -euo pipefail
+        if [[ "$NEED_DOCKER" == true ]]; then
+          echo '::error::Docker jobs are not supported on the macOS operator runner; route this job to ARC or hosted.'
+          exit 1
+        fi
+        # /bin/bash on macOS is 3.2: avoid expanding possibly empty arrays under set -u.
+        required='python3 jq curl git unzip tofu uv helm kubectl tailscale'
+        if [[ "$NEED_AWS" == true ]]; then required="$required aws"; fi
+        for package in $EXTRA_PACKAGES; do
+          if [[ "$package" == gh ]]; then required="$required gh"; fi
+        done
+        missing=''
+        for tool in $required; do
+          command -v "$tool" > /dev/null || missing="$missing $tool"
+        done
+        if [[ -n "$missing" ]]; then
+          echo "::error::Operator runner is missing:$missing (install with Homebrew; see docs/runbooks/mac-operator-runner.md)"
+          exit 1
+        fi
+        python3 -c 'import sys; assert sys.version_info >= (3, 11), "Homebrew python3 must precede /usr/bin on PATH"'
+        if [[ "$NEED_TAILSCALE" == true ]]; then
+          tailscale status --json | python3 -c 'import json,sys; state = json.load(sys.stdin)["BackendState"]; assert state == "Running", "tailscale BackendState is " + state'
         fi

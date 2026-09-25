@@ -22,7 +22,8 @@ inputs:
 runs:
   using: composite
   steps:
-    - if: runner.environment == 'self-hosted'
+    # Nexus is only reachable in-cluster; the macOS operator runner skips it.
+    - if: runner.environment == 'self-hosted' && runner.os == 'Linux'
       shell: bash
       env:
         CACHE_MODE: ${{ inputs.mode }}
