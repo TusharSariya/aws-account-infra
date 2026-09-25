@@ -42,3 +42,16 @@ esac
         self.assertIsNone(module.elapsed('2026-09-24T00:02:00Z', '2026-09-24T00:01:00Z'))
         jobs[0].pop('runner_name')
         self.assertEqual(module.report(run,jobs,'cold',{})['runner_seconds'], 0)
+
+    def test_rerun_metrics_exclude_previous_attempt_wait_and_reused_jobs(self):
+        spec=importlib.util.spec_from_file_location('timings',ROOT/'scripts/ci-run-report.py')
+        module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+        run={'id':1,'html_url':'https://example.invalid/run/1','head_sha':'a'*40,'conclusion':'success','status':'completed','created_at':'2026-09-24T00:00:00Z','run_attempt':2,'run_started_at':'2026-09-24T01:00:00Z'}
+        jobs=[{'name':'reused','runner_name':'old-runner','conclusion':'success','started_at':'2026-09-24T00:01:00Z','completed_at':'2026-09-24T00:02:00Z'},
+              {'name':'retried','runner_name':'new-runner','conclusion':'success','created_at':'2026-09-24T01:00:00Z','started_at':'2026-09-24T01:01:00Z','completed_at':'2026-09-24T01:02:00Z'}]
+        result=module.report(run,jobs,'warm',{})
+        self.assertEqual(result['elapsed_seconds'],120)
+        self.assertEqual(result['runner_seconds'],60)
+        self.assertEqual(result['run_attempt'],2)
+        self.assertTrue(result['jobs'][0]['reused_from_previous_attempt'])
+        self.assertEqual(result['jobs'][1]['queue_seconds'],60)
