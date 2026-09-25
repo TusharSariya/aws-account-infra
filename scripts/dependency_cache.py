@@ -34,8 +34,9 @@ def key(kind, toolchain, dependency_hash, branch, system=None, machine=None, sco
 
     if kind not in KINDS or not toolchain or not dependency_hash:
         raise ValueError("Explicit cache kind, toolchain and dependency hash required")
-    # Every entry is branch isolated. Main can be imported deliberately later;
-    # PR writers must never populate a stable branch's executable caches.
+    # Every entry is branch isolated. Other branches may read main's entry for the
+    # same identity (see run()), but PR writers must never populate a stable
+    # branch's executable caches: saves always target the current branch.
     identity = [
         FORMAT,
         kind,
@@ -180,7 +181,9 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def transfer(mode, identity, directory, password="", opener=None, *, kind=None):
+def transfer(
+    mode, identity, directory, password="", opener=None, *, kind=None, extra=None
+):
     start = time.monotonic()
     result, size = "miss", 0
     opener = opener or urllib.request.build_opener(NoRedirect())
@@ -237,8 +240,70 @@ def transfer(mode, identity, directory, password="", opener=None, *, kind=None):
         "result": result,
         "seconds": round(time.monotonic() - start, 3),
         "bytes": size,
+        **(extra or {}),
     }
     print(json.dumps(receipt))
+    return receipt
+
+
+VARIABLES = {
+    "providers": ["TF_PLUGIN_CACHE_DIR"],
+    "tflint": ["TFLINT_PLUGIN_DIR"],
+    "go": ["GOCACHE"],
+    "python": ["UV_CACHE_DIR", "PIP_CACHE_DIR"],
+}
+
+
+def hit_marker(kind):
+    return "HOMELAB_DEPENDENCY_CACHE_HIT_" + kind.upper()
+
+
+def run(
+    mode,
+    kind,
+    toolchain,
+    dependencies,
+    branch,
+    directory,
+    *,
+    scope="",
+    password="",
+    environ=None,
+    env_file=None,
+    opener=None,
+):
+    """Restore (branch first, then read-only main) or save the branch entry.
+
+    A restore hit records the branch identity in ``env_file`` so the matching
+    save can skip re-packing and re-uploading an archive whose content is keyed
+    by the same dependency hash and therefore already stored.
+    """
+    environ = os.environ if environ is None else environ
+    identity = key(kind, toolchain, dependencies, branch, scope=scope)
+    if mode == "save" and environ.get(hit_marker(kind)) == identity:
+        receipt = {
+            "cache": identity,
+            "operation": mode,
+            "result": "unchanged",
+            "seconds": 0,
+            "bytes": 0,
+        }
+        print(json.dumps(receipt))
+        return receipt
+    receipt = transfer(mode, identity, directory, password, opener, kind=kind)
+    if mode == "restore" and receipt["result"] == "miss" and branch != "main":
+        # Read-only fallback: never written from here because save only ever
+        # targets `identity`, the current branch's key.
+        fallback = key(kind, toolchain, dependencies, "main", scope=scope)
+        receipt = transfer(
+            mode, fallback, directory, "", opener, kind=kind, extra={"fallback": "main"}
+        )
+    if mode == "restore" and env_file is not None:
+        lines = [variable + "=" + str(directory) + "\n" for variable in VARIABLES[kind]]
+        if receipt["result"] == "hit":
+            lines.append(hit_marker(kind) + "=" + identity + "\n")
+        with open(env_file, "a") as output:
+            output.writelines(lines)
     return receipt
 
 
@@ -251,31 +316,17 @@ def main():
     args = parser.parse_args()
     directory = Path(os.environ["RUNNER_TEMP"]) / "homelab-dependencies" / args.kind
     directory.mkdir(parents=True, exist_ok=True)
-    identity = key(
+    run(
+        args.mode,
         args.kind,
         args.toolchain,
         args.dependencies,
         os.environ["CACHE_BRANCH"],
-        scope=os.environ.get("CACHE_SCOPE", ""),
-    )
-    transfer(
-        args.mode,
-        identity,
         directory,
-        os.environ.get("CACHE_PASSWORD", ""),
-        kind=args.kind,
+        scope=os.environ.get("CACHE_SCOPE", ""),
+        password=os.environ.get("CACHE_PASSWORD", ""),
+        env_file=os.environ["GITHUB_ENV"] if args.mode == "restore" else None,
     )
-    if args.mode == "restore":
-        variables = {
-            "providers": ["TF_PLUGIN_CACHE_DIR"],
-            "tflint": ["TFLINT_PLUGIN_DIR"],
-            "go": ["GOCACHE"],
-            "python": ["UV_CACHE_DIR", "PIP_CACHE_DIR"],
-        }[args.kind]
-        with open(os.environ["GITHUB_ENV"], "a") as output:
-            output.writelines(
-                variable + "=" + str(directory) + "\n" for variable in variables
-            )
 
 
 if __name__ == "__main__":
