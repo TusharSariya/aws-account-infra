@@ -1,9 +1,11 @@
 name: checkov
 
 # Policy-as-code scan of the Terraform/OpenTofu with Checkov's AWS ruleset.
-# Pure file scan — no AWS creds, no OIDC. Reports on every PR; expensive steps run only for affected inputs, so the single
-# `checkov` job is itself a stable required-check context. Suppressions live in
-# /.checkov.yaml (skip-check) or inline `# checkov:skip=<id>:<reason>` comments.
+# Pure file scan — no AWS creds, no OIDC, no Docker: pinned checkov runs through uvx
+# on the system Python 3.12. Reports on every PR; expensive steps run only for affected
+# inputs, so the single `checkov` job is itself a stable required-check context.
+# Suppressions live in /.checkov.yaml (skip-check) or inline
+# `# checkov:skip=<id>:<reason>` comments.
 on:
   workflow_call:
     inputs:
@@ -16,14 +18,19 @@ permissions:
 jobs:
   checkov:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-docker-small"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-checks"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: ./.github/actions/talos-runner-setup
+      - uses: ./.github/actions/nexus-dependency-cache
         with:
-          docker: 'true'
+          kind: python
+          toolchain: uv-python-3.14
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: false
+          cache-local-path: ${{ env.UV_CACHE_DIR || format('{0}/uv-cache', runner.temp) }}
       - name: Scan selected Terraform directories
         env:
           SELECTED_DIRECTORIES: ${{ inputs.directories }}
@@ -33,9 +40,16 @@ jobs:
           directories = json.loads(os.environ['SELECTED_DIRECTORIES'])
           if not directories:
               raise SystemExit('No selected Terraform directories')
-          subprocess.run(['docker', 'run', '--rm', '-v', os.getcwd() + ':/src:ro', '-w', '/src',
-                          'ghcr.io/bridgecrewio/checkov:3.3.19',
-                          *[arg for directory in directories for arg in ('-d', directory)],
-                          '--framework', 'terraform', '--config-file', '/src/.checkov.yaml',
-                          '--compact'], check=True)
+          dirs = [arg for directory in directories for arg in ('-d', directory)]
+          subprocess.run(['uvx', '--python', '3.12', '--from', 'checkov==3.3.19', 'checkov',
+                          *dirs, '--framework', 'terraform', '--config-file', '.checkov.yaml',
+                          '--compact', '--quiet'], check=True)
           PYTHON
+      - uses: ./.github/actions/nexus-dependency-cache
+        with:
+          kind: python
+          toolchain: uv-python-3.14
+          dependencies: ${{ hashFiles('**/uv.lock', '**/pyproject.toml', '.github/workflows/*.yml') }}
+          mode: save
+          password: ${{ secrets.NEXUS_BUILD_CACHE_PASSWORD }}
+        if: ${{ success() }}
