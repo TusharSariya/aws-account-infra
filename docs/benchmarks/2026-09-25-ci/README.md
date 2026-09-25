@@ -118,3 +118,25 @@ coordinator deployment, real BestEffortFIFO bypass/cancellation proof, matched
 Nexus cold/warm cohorts, secondary overflow and resource exhaustion checks, and
 complete physical shutdown/wake phase timing. These results must be appended after
 observation; no estimated savings should be presented as measured outcomes.
+
+## Recovery discovered during live validation
+
+The installed Kueue 0.19.4 manager entered CrashLoopBackOff while the queue was
+under load. Logs ended with `leader election lost`; admission dry-runs failed
+because the Kueue validation webhook refused connections. The failed request's
+resourceVersion was unchanged, ruling out the suspected compare-and-swap race for
+that sample. No retry weakening was implemented.
+
+The [0.19.5 upstream release](https://github.com/kubernetes-sigs/kueue/releases/tag/v0.19.5)
+fixes lease renewal sharing a client-side rate limiter with controller requests
+and redundant status writes. The current stable 0.19.6 image includes those fixes.
+A scoped Helm recovery reused the existing 0.19.4 chart, live values and repository
+post-renderers. A structural render comparison proved that **only the manager
+container image changed**. Helm `--atomic --wait` succeeded from revision 8 to 9
+at 03:28:46 UTC; see `kueue-recovery.json`. The matching image digest is pinned in
+`kueue-values.yaml`. ClusterQueue quotas/policy and running compute were unchanged.
+
+Private release backups are retained on the operator laptop under
+`~/.local/share/homelab-ci-recovery/20260925-kueue/`. Broader management rollout still
+uses the existing hosted saved-plan workflow. This recovery affects comparisons of
+full pipeline behavior: report it separately from selective CI and greedy quotas.
