@@ -32,7 +32,8 @@ class TransportTests(unittest.TestCase):
         self.addCleanup(sleeper.stop)
 
     def test_bounded_cache_then_upstream(self):
-        opener = Opener([urllib.error.URLError('offline')] * 4 + [Response(b'complete')])
+        busy = [urllib.error.HTTPError('http://cache', 503, 'busy', {}, None) for _ in range(2)]
+        opener = Opener(busy + [urllib.error.URLError('offline')] * 2 + [Response(b'complete')])
         body, _, source, attempts = Transport(opener=opener).read('/go/example.org/module/@v/v1.0.0.mod')
         with body:
             self.assertEqual(body.read(), b'complete')
@@ -42,6 +43,31 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(len(opener.urls), 5)
         self.assertIn('/repository/go/', opener.urls[1])
         self.assertTrue(opener.urls[2].startswith('https://proxy.golang.org/'))
+
+    def test_unreachable_cache_is_sidelined_after_one_connection_failure(self):
+        opener = Opener([urllib.error.URLError('no route'), Response(b'first'), Response(b'second'),
+                         Response(b'third-from-cache')])
+        transport = Transport(opener=opener)
+        with patch.object(cache_transport.time, 'monotonic', side_effect=[100.0, 100.0, 200.0, 500.0]):
+            body, _, source, attempts = transport.read('/npm/example')
+            with body:
+                self.assertEqual(body.read(), b'first')
+            self.assertEqual((source, attempts), ('upstream', 1))
+            # One cache URL, then upstream; the second cache attempt and its backoff are skipped.
+            self.assertEqual(len(opener.urls), 2)
+            self.sleep.assert_not_called()
+            body, _, source, _ = transport.read('/npm/example')
+            with body:
+                self.assertEqual(body.read(), b'second')
+            self.assertEqual(source, 'upstream')
+            self.assertEqual(len(opener.urls), 3)
+            self.assertTrue(opener.urls[2].startswith('https://registry.npmjs.org/'))
+            # After CACHE_DOWN_SECONDS the cache is tried again.
+            body, _, source, _ = transport.read('/npm/example')
+            with body:
+                self.assertEqual(body.read(), b'third-from-cache')
+            self.assertEqual(source, 'cache')
+            self.assertIn('/repository/npm/', opener.urls[3])
 
     def test_interrupted_body_is_discarded(self):
         opener = Opener([Response(b'partial', 100), Response(b'complete')])
@@ -91,7 +117,7 @@ class TransportTests(unittest.TestCase):
 
     def test_exact_python_fallback_artifact(self):
         metadata = b'{"urls":[{"filename":"x-1.whl","url":"https://files.pythonhosted.org/packages/ab/x-1.whl"}]}'
-        opener = Opener([urllib.error.URLError('offline')] * 2 + [Response(metadata), Response(b'wheel')])
+        opener = Opener([urllib.error.URLError('offline'), Response(metadata), Response(b'wheel')])
         body, _, source, _ = Transport(opener=opener).read('/pypi/packages/x/1/x-1.whl')
         with body:
             self.assertEqual(body.read(), b'wheel')

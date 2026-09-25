@@ -1,5 +1,8 @@
 """Read-only dependency transport: two Nexus attempts, then three upstream attempts.
 
+A connection-level Nexus failure (unreachable host, timeout) sidelines the cache
+for CACHE_DOWN_SECONDS so off-cluster runners go straight upstream.
+
 Package managers still verify signatures and hashes. A complete response is never
 retried here for an integrity failure: only transport failures trigger fallback.
 No caller headers, credentials, or write requests are forwarded.
@@ -19,6 +22,8 @@ import urllib.parse
 import urllib.request
 
 CACHE = 'http://nexus.homelab-cache.svc.cluster.local:8081/repository/'
+# How long one connection-level cache failure sidelines Nexus (seconds).
+CACHE_DOWN_SECONDS = 300
 ORIGINS = {
     'npm': 'https://registry.npmjs.org/',
     'apt-git-core': 'https://ppa.launchpadcontent.net/git-core/ppa/ubuntu/',
@@ -52,11 +57,17 @@ class Transport:
             urllib.request.ProxyHandler({}), SafeRedirect())
         self.cache_opener = opener or urllib.request.build_opener(
             urllib.request.ProxyHandler({}), NoRedirect())
+        # Off-cluster runners (the operator containers) cannot reach Nexus at
+        # all. One connection-level failure sidelines the cache for a while so a
+        # job does not pay two timeouts per artifact; HTTP misses never trip it.
+        self.cache_down_until = 0.0
 
     def download(self, cache_url, upstream_url):
         """Return a seekable complete body; upstream_url may resolve lazily."""
         last = None
         for source, count in [('cache', 2), ('upstream', 3)]:
+            if source == 'cache' and time.monotonic() < self.cache_down_until:
+                continue
             url = cache_url if source == 'cache' else None
             for attempt in range(count):
                 body = tempfile.TemporaryFile()
@@ -84,6 +95,12 @@ class Transport:
                     if isinstance(error, urllib.error.HTTPError):
                         error.close()
                         permanent = 400 <= error.code < 500 and error.code not in (408, 429)
+                    elif source == 'cache' and isinstance(error, (urllib.error.URLError, TimeoutError, ConnectionError)):
+                        # Unreachable cache host: switch upstream now and skip the
+                        # cache for subsequent artifacts of this job. Interrupted
+                        # transfers (HTTPException) still retry the cache.
+                        self.cache_down_until = time.monotonic() + CACHE_DOWN_SECONDS
+                        break
                     # Back off before re-trying the same source after a transient
                     # failure (1s, 2s, capped at 4s). Switching from the cache to
                     # upstream is immediate, and a permanent 4xx never waits.
