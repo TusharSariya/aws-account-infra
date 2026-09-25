@@ -90,6 +90,16 @@ def format_email(
             payload,
         )
 
+    ack_summary = "The ACK / auto-cancel workflow failed. Check Upace: the court may still be booked; cancel manually if nobody confirmed."
+    ack_alerts = {
+        "court-booker-api-ack-failed": ("ACK / auto-cancel workflow failed", ack_summary),
+        "court-booker-api-ack-timed-out": ("ACK / auto-cancel workflow timed out", ack_summary),
+        "court-booker-api-ack-api-errors": ("ACK link handler failed", "A friend's ACK link returned an error, so their accept or decline may not have been recorded. The booking itself is unchanged."),
+    }
+    if alarm in ack_alerts:
+        headline, summary = ack_alerts[alarm]
+        return f"Court booker: {headline}", _simple_body(summary, payload)
+
     calendar_alerts = {
         "court-booker-api-calendar-writer-errors": ("calendar publication failed", "A calendar publication attempt failed. Step Functions retries persistence independently; reconciliation can recover confirmed bookings."),
         "court-booker-api-calendar-feed-errors": ("calendar feed failed", "Calendar downloads encountered an error. Upace reservations are unchanged."),

@@ -124,6 +124,11 @@ def _run_adhoc(
         calendar_url=config.calendar_url,
         equipment_id=config.equipment_id(activity),
         timezone=config.timezone,
+        expected_reservation_id=(
+            str(event["expected_reservation_id"])
+            if event.get("expected_reservation_id") is not None
+            else None
+        ),
     )
     if event.get("cancel"):
         return browser.cancel(request, creds)

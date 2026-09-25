@@ -17,6 +17,7 @@ from booker.results import (
     DRY_RUN,
     FULL,
     MEMBERSHIP,
+    NOT_FOUND,
     UNEXPECTED_UI,
     BookingResult,
 )
@@ -347,7 +348,12 @@ class UpaceHttpBooker:
         clock.mark("list_reservations", held=held is not None)
         if cancel:
             if held is None:
-                return BookingResult(status=UNEXPECTED_UI, message="matching reservation not found", **meta)
+                return BookingResult(status=NOT_FOUND, message="matching reservation not found", **meta)
+            expected = request.expected_reservation_id
+            if expected is not None and str(held.id) != str(expected):
+                return BookingResult(
+                    status=NOT_FOUND, message="different reservation held; not cancelled", **meta
+                )
             if request.dry_run:
                 return BookingResult(status=DRY_RUN, message="cancel skipped", **meta)
             try:

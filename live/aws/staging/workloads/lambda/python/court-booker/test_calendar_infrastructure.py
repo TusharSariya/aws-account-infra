@@ -22,9 +22,10 @@ def test_publication_failure_cannot_reenter_booking():
     publish = state_body(source, "PublishCalendar")
     assert '"PublishCalendarIfSuccessful"' in book
     assert re.search(r"Retry\s*=", publish)
-    assert set(re.findall(r'Next\s*=\s*"([^"]+)"', publish)) == {
-        "Complete", "CalendarPublicationFailed"
-    }
+    next_lines = re.findall(r"Next\s*=\s*([^\n]+)", publish)
+    targets = {t for line in next_lines for t in re.findall(r'"([^"]+)"', line)}
+    # AckWindowStarted is only wired in when local.ack_enabled; it never reaches Book.
+    assert targets == {"Complete", "CalendarPublicationFailed", "AckWindowStarted"}
     failure = state_body(source, "CalendarPublicationFailed")
     assert '"booking confirmed, calendar publication failed"' in failure
     assert 'Type  = "Fail"' in failure

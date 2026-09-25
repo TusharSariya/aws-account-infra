@@ -4,6 +4,11 @@ locals {
   zip_ready     = startswith(var.booker_api_zip_key, "stable/")
   horizon_hours = tonumber(try(local.bookings.horizon_hours, 72))
 
+  # Friend ACK window. Every ack resource is gated on this, so ack_mode = "off"
+  # leaves the deployed stack unchanged.
+  ack_enabled      = var.ack_mode != "off" && local.zip_ready
+  ack_sender_email = coalesce(var.ack_sender_email, var.alert_email)
+
   weekday_unlock = {
     Mon = "FRI"
     Tue = "SAT"

@@ -141,3 +141,25 @@ def test_iracing_alarm_identifies_service():
     subject, body = format_email({"AlarmName": "iracing-calendar-feed-errors", "NewStateValue": "ALARM"}, None, [], "us-east-1")
     assert subject.startswith("iRacing calendar")
     assert "eight days" in body
+
+
+def test_ack_alarms_tell_owner_to_check_upace():
+    for suffix, expected in [("ack-failed", "workflow failed"), ("ack-timed-out", "workflow timed out")]:
+        name = f"court-booker-api-{suffix}"
+        subject, body = format_email({"AlarmName": name, "NewStateValue": "ALARM"}, None, [], "us-east-1")
+        assert subject == f"Court booker: ACK / auto-cancel {expected}"
+        assert "The ACK / auto-cancel workflow failed. Check Upace: the court may still be booked; cancel manually if nobody confirmed." in body
+        assert "Court booker failed" not in body
+        assert name in body
+
+
+def test_ack_api_errors_do_not_claim_booking_changed():
+    subject, body = format_email({"AlarmName": "court-booker-api-ack-api-errors", "NewStateValue": "ALARM"}, None, [], "us-east-1")
+    assert "ACK link handler failed" in subject
+    assert "booking itself is unchanged" in body
+
+
+def test_ack_alarm_recovery_uses_ok_body():
+    subject, body = format_email({"AlarmName": "court-booker-api-ack-failed", "NewStateValue": "OK"}, None, [], "us-east-1")
+    assert subject == "Court booker ok: court-booker-api-ack-failed"
+    assert "Check Upace" not in body

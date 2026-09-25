@@ -31,3 +31,18 @@ output "alert_email" {
   value       = var.alert_email
   description = "Confirm the SES verification email before alarms can deliver."
 }
+
+output "ack_table_name" {
+  value       = try(aws_dynamodb_table.acks[0].name, null)
+  description = "null while ack_mode is off."
+}
+
+output "ack_state_machine_arn" {
+  value       = try(aws_sfn_state_machine.ack[0].arn, null)
+  description = "null while ack_mode is off."
+}
+
+output "ack_roster_parameter" {
+  value       = try(aws_ssm_parameter.ack_roster[0].name, null)
+  description = "Friend roster SecureString. Put JSON with scripts/court-booker-put-roster.sh; never commit it. null while ack_mode is off."
+}

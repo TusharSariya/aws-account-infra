@@ -70,6 +70,58 @@ sync can require another calendar poll before changes become visible. Use Outloo
 **Subscribe from web** or Google Calendar's **From URL**, rather than importing a
 one-time copy. There is no scheduled reconciliation in v1.
 
+## Friend ACK window
+
+When the bot books a court (`status == "booked"`), the booking state machine starts
+`court-booker-api-ack` (execution name `ack-<reservation_id>`, so it starts at most once
+per reservation). `booker.ack_workflow` emails each friend on that court's roster, plus
+the owner, a personal link `…/acks/<token>` on the calendar HTTP API. Friends accept or
+decline on a page served by `booker.ack_api`. Opening the link (GET) never changes
+anything; only the form POST records an answer. When `ack_required` friends (default 2)
+accept, the court is confirmed. The owner's link has a "keep it anyway" override. A
+decline does not cancel early. A late accept after quorum sees "court is full".
+
+The deadline is the earlier of `booked_at + ack_window_hours` (default 24) and 6 hours
+before the slot. If quorum is missed by then:
+
+- `ack_mode = "notify_only"`: everyone is told the court *would have been* cancelled.
+  Nothing is cancelled.
+- `ack_mode = "enforce"`: the booker Lambda cancels the reservation, but only when the
+  reservation Upace currently holds for that slot has the same id as the one that was
+  acknowledged. If nothing is held, or a different reservation is held, it reports
+  `not_found` and cancels nothing. If cancellation fails, the owner is emailed to cancel
+  manually and the `court-booker-api-ack-failed` alarm fires.
+
+Only the SHA-256 of each token is stored (DynamoDB `court-booker-api-acks`, TTL-expired).
+Tokens are never logged, and API access logs omit paths.
+
+**Rollout.** Keep `ack_mode = "off"` in `config/environments/aws/staging/court-booker-api.tfvars`
+until the steps below are done. `off` creates no ACK resources and leaves the booking
+workflow unchanged.
+
+1. SES prerequisite. While the account is in the SES sandbox, SES delivers only to
+   verified addresses. Either verify every friend's address as an SES identity, or verify
+   a sending domain and request SES production access. The sender is `ack_sender_email`
+   (default `alert_email`) and must be a verified identity.
+2. Set `ack_mode = "notify_only"`, review the plan, and apply. This creates the table,
+   the two Lambdas, the ACK state machine, the `/acks/{token}` routes, and alarms.
+3. Put the roster straight away. The parameter is created with the value `UNSET`, and
+   invites fail until it holds valid JSON:
+
+   ```bash
+   # {"court1": [{"name": "Alex", "email": "alex@example.com"}], "court2": [...]}
+   scripts/court-booker-put-roster.sh roster.json   # or: ... < roster.json
+   ```
+
+   The script validates the shape (activity to list of `{name, email}`), overwrites
+   `/staging/court-booker-api/ack-roster`, and never prints names or addresses. Keep
+   the roster file out of the repository.
+4. Watch a few real bookings in `notify_only`. Then switch to `ack_mode = "enforce"`
+   and apply.
+
+Set `ack_mode` back to `"off"` to remove the feature. The table has deletion protection,
+so disable that first if you really want to destroy it.
+
 ## Verification and rollout
 
 ```bash

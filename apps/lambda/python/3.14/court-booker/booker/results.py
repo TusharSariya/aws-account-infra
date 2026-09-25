@@ -23,6 +23,8 @@ UNEXPECTED_UI = "unexpected_ui"
 LATE = "late"
 DRY_RUN = "dry_run"
 CANCELLED = "cancelled"
+# Cancel found nothing to release (or a different reservation holds the slot).
+NOT_FOUND = "not_found"
 
 
 @dataclass(frozen=True)
@@ -41,4 +43,4 @@ class BookingResult:
 
     @property
     def ok(self) -> bool:
-        return self.status in {BOOKED, ALREADY_HELD, DRY_RUN, CANCELLED}
+        return self.status in {BOOKED, ALREADY_HELD, DRY_RUN, CANCELLED, NOT_FOUND}

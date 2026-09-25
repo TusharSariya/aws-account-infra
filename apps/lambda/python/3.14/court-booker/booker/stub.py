@@ -10,6 +10,7 @@ from booker.results import (
     CLOSED,
     FULL,
     MEMBERSHIP,
+    NOT_FOUND,
     UNEXPECTED_UI,
     BookingResult,
 )
@@ -29,6 +30,8 @@ class BookingRequest:
     calendar_url: str = ""
     equipment_id: int | None = None
     timezone: str = "America/St_Johns"
+    # Cancel only this reservation; anything else in the slot is left alone.
+    expected_reservation_id: str | None = None
 
 
 class StubUpace:
@@ -78,6 +81,14 @@ class StubUpace:
 
     def cancel(self, request: BookingRequest, creds: Credentials) -> BookingResult:
         self.cancel_calls += 1
+        if self.scenario == "not_found":
+            return BookingResult(
+                status=NOT_FOUND,
+                message="matching reservation not found",
+                target_date=request.target_date.isoformat(),
+                activity=request.activity_key,
+                time=request.hhmm,
+            )
         return BookingResult(
             status="dry_run" if request.dry_run else "cancelled",
             message="cancelled matching reservation",
