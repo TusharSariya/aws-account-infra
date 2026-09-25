@@ -25,6 +25,8 @@ Review three PRs in order: foundation; admission/runners; routing/acceptance. Ke
 
 Changing `CI_EXECUTOR` is explicit; unknown values fail workflow runner selection. There is no automatic paid fallback. CI/admission bootstrap, Proxmox/Talos changes and worker/recovery operations always use hosted runners. Routine application-only/AWS deployments can use Talos; a combined Proxmox/Talos apply stays hosted. Required plan/apply/publish gates retain their conditions.
 
+Routine selection, gating and validation jobs (`detect`/`select`, `plan-gate`, `apply-gate`, `validation-gate`, `enable-auto-merge`, and the offline Kubernetes, main-platform and pilot validations) run on ARC through the same `CI_EXECUTOR` switch. Only cluster-mutating bootstrap/maintenance jobs, the off-cluster Proxmox/Talos plans and a combined Proxmox/Talos apply remain hosted; the Pages deployment already follows the switch. Leaving `vars.CI_EXECUTOR` unset restores hosted execution as the fallback. `scripts/tests/test_ci_executor_routing.py` enforces this with an explicit, reasoned allowlist of hosted-by-design and hard-wired ARC jobs.
+
 ## Historical retirement of the old CI VM
 
 Do not repeat this migration: VM 103 now identifies worker 02 on secondary Proxmox. The following records the earlier primary-host CI VM retirement, before the two-worker layout.

@@ -41,8 +41,9 @@ references are preserved. The runner Dockerfile adds Bats, verified actionlint
 workflow; its receipt is in `docs/benchmarks/2026-09-25-ci/runner-image.json`.
 The ARC values now pin that verified digest. Management rollout remains required.
 Routine image builds use Proxmox; manual dispatch remains hosted for bootstrap.
-The final auto-merge API call uses a minimal hosted job, avoiding a cold runner
-allocation while the shared deployment lock is still held.
+The final auto-merge API call now runs on the light ARC runner, by the owner's
+decision to remove routine hosted-runner dependence; the shared deployment lock is
+held until that allocation completes.
 Verified installation fallback supports the image transition and recovery.
 
 ## Stage 2: dynamic admission

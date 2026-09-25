@@ -139,7 +139,8 @@ jobs:
         if: ${{ success() }}
     needs: [select, test]
   select:
-    runs-on: ubuntu-latest
+    if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ${{ fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-light"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
     outputs:
       checks: ${{ steps.select.outputs.checks }}
       applications: ${{ steps.select.outputs.applications }}
@@ -148,6 +149,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - uses: ./.github/actions/talos-runner-setup
       - id: select
         run: python3 scripts/ci-relevant-changes.py
   iracing-calendar:
