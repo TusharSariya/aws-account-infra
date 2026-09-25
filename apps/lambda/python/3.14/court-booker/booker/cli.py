@@ -29,7 +29,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
-    if argv and argv[0] in {"subscription", "calendar"}:
+    if argv and argv[0] == "calendar":
         from booker.calendar_cli import main as calendar_main
 
         return calendar_main(argv)

@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import hashlib
-import hmac
 import os
-import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
 
@@ -25,7 +22,6 @@ FIELDS = (
     "status",
     "visibility",
 )
-SCOPES = ("public", "private")
 META = {"PK": "CALENDAR", "SK": "META"}
 LEASE_SECONDS = 240
 
@@ -44,11 +40,6 @@ def _merge_visibility(old, new):
     if title:
         merged["title"] = title
     return merged
-
-
-def _scope_of(subscription):
-    """Subscriptions created before scopes existed (and unknown values) are public."""
-    return "private" if subscription.get("scope") == "private" else "public"
 
 
 def utcnow(now=None):
@@ -245,66 +236,3 @@ class CalendarRepository:
             except self.table.meta.client.exceptions.ConditionalCheckFailedException:
                 continue
         raise RuntimeError("calendar reservation write contention")
-
-    def create_subscription(self, label, scope="public", now=None):
-        if not isinstance(label, str) or not label.strip() or len(label) > 200:
-            raise ValueError("subscription label must contain 1 to 200 characters")
-        if scope not in SCOPES:
-            raise ValueError("subscription scope must be public or private")
-        subscription_id = uuid.uuid4().hex
-        token = subscription_id + "." + secrets.token_urlsafe(32)
-        item = {
-            "PK": "SUBSCRIPTIONS",
-            "SK": subscription_id,
-            "id": subscription_id,
-            "label": label.strip(),
-            "created_at": utcnow(now).isoformat(),
-            "revoked": False,
-            "scope": scope,
-            "token_hash": hashlib.sha256(token.encode()).hexdigest(),
-        }
-        self.table.put_item(Item=item, ConditionExpression=Attr("PK").not_exists())
-        return {k: item[k] for k in ("id", "label", "created_at", "scope")} | {
-            "token": token
-        }
-
-    def validate_token(self, token):
-        """Return the subscription scope for a valid token, otherwise None."""
-        if not isinstance(token, str) or len(token) > 256:
-            return None
-        parts = token.split(".")
-        if (
-            len(parts) != 2
-            or len(parts[0]) != 32
-            or not all(c in "0123456789abcdef" for c in parts[0])
-        ):
-            return None
-        item = self._get({"PK": "SUBSCRIPTIONS", "SK": parts[0]})
-        if (
-            not item
-            or item.get("revoked")
-            or not hmac.compare_digest(
-                item["token_hash"], hashlib.sha256(token.encode()).hexdigest()
-            )
-        ):
-            return None
-        return _scope_of(item)
-
-    def list_subscriptions(self):
-        return [
-            {k: r[k] for k in ("id", "label", "created_at", "revoked")}
-            | {"scope": _scope_of(r)}
-            for r in self._query("SUBSCRIPTIONS")
-        ]
-
-    def revoke_subscription(self, subscription_id):
-        try:
-            self.table.update_item(
-                Key={"PK": "SUBSCRIPTIONS", "SK": subscription_id},
-                UpdateExpression="SET revoked = :yes",
-                ExpressionAttributeValues={":yes": True},
-                ConditionExpression=Attr("PK").exists(),
-            )
-        except self.table.meta.client.exceptions.ConditionalCheckFailedException:
-            return False
-        return True

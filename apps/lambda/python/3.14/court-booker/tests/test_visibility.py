@@ -7,9 +7,9 @@ from unittest.mock import Mock
 from zoneinfo import ZoneInfo
 
 import pytest
-from booker import calendar_cli, calendar_writer
+from booker import calendar_feed, calendar_writer
 from booker.calendar_contract import normalize_reservation
-from booker.calendar_feed import serve
+from booker.calendar_feed import PRIVATE_ROUTE, PUBLIC_ROUTE, serve
 from booker.calendar_ics import render_calendar
 from booker.calendar_reconcile import reconcile
 from booker.config import load_bookings
@@ -256,29 +256,7 @@ def test_reconcile_never_downgrades_private_and_cancellation_keeps_it(repo):
     assert (cancelled["visibility"], cancelled["title"]) == ("private", "Coaching")
 
 
-# --- subscriptions and feed ------------------------------------------------
-
-
-def test_subscription_scope_create_list_and_legacy(repo):
-    public = repo.create_subscription("friend", now=NOW)
-    private = repo.create_subscription("me", scope="private", now=NOW)
-    assert public["scope"] == "public" and private["scope"] == "private"
-    assert repo.validate_token(public["token"]) == "public"
-    assert repo.validate_token(private["token"]) == "private"
-    assert repo.validate_token(private["token"] + "x") is None
-    with pytest.raises(ValueError, match="scope"):
-        repo.create_subscription("x", scope="admin")
-    # Created before scopes existed: no scope attribute at all.
-    legacy = repo.create_subscription("owner", now=NOW)
-    repo.table.update_item(
-        Key={"PK": "SUBSCRIPTIONS", "SK": legacy["id"]}, UpdateExpression="REMOVE #s",
-        ExpressionAttributeNames={"#s": "scope"},
-    )
-    assert repo.validate_token(legacy["token"]) == "public"
-    scopes = {item["label"]: item["scope"] for item in repo.list_subscriptions()}
-    assert scopes == {"friend": "public", "me": "private", "owner": "public"}
-    repo.revoke_subscription(private["id"])
-    assert repo.validate_token(private["token"]) is None
+# --- public and private feeds ------------------------------------------------
 
 
 def _events(response):
@@ -288,7 +266,7 @@ def _events(response):
     )
 
 
-def test_feed_scopes_private_events(repo):
+def test_feed_endpoints_scope_private_events(repo, monkeypatch):
     _sync(
         repo,
         [
@@ -296,15 +274,19 @@ def test_feed_scopes_private_events(repo):
             _row(2, "2026-09-30 10:00:00", "2026-09-30 11:00:00"),
         ],
     )
-    friend = repo.create_subscription("friend")
-    me = repo.create_subscription("me", scope="private")
+    key = "k" * 43
+    monkeypatch.setenv("CALENDAR_PRIVATE_KEY_PARAMETER", "/test/calendar-private-key")
+    calendar_feed._key_cache.clear()
+    ssm = Mock()
+    ssm.get_parameter.return_value = {"Parameter": {"Value": key}}
     client = Mock()
 
-    def feed(token):
-        return serve({"pathParameters": {"token": token}}, repo, client, NOW)
+    def feed(event):
+        return serve(event, repo, client, NOW, ssm=ssm)
 
-    public = feed(friend["token"])
-    private = feed(me["token"])
+    public = feed({"routeKey": PUBLIC_ROUTE})
+    private = feed({"routeKey": PRIVATE_ROUTE, "pathParameters": {"key": key}})
+    calendar_feed._key_cache.clear()
     assert _events(public) == ("Court bookings", [COURT1])
     assert _events(private) == (
         "Court bookings (private)",
@@ -323,26 +305,3 @@ def test_public_only_ics_is_unchanged():
     legacy = {k: v for k, v in reservation.items() if k != "visibility"}
     assert render_calendar([reservation]) == render_calendar([legacy])
     assert b"X-WR-CALNAME:Court bookings\r\n" in render_calendar([reservation])
-
-
-# --- operator CLI ----------------------------------------------------------
-
-
-def test_cli_scope_flag(monkeypatch, capsys):
-    repository = Mock()
-    repository.create_subscription.return_value = {"id": "id", "label": "me", "token": "t"}
-    repository.list_subscriptions.return_value = [
-        {"id": "id", "label": "me", "scope": "private", "token_hash": "secret-hash"}
-    ]
-    monkeypatch.setattr(calendar_cli, "CalendarRepository", lambda: repository)
-    base = ["--base-url", "https://example.com"]
-    assert calendar_cli.main(["subscription", "create", "friend", *base]) == 0
-    repository.create_subscription.assert_called_with("friend", scope="public")
-    assert calendar_cli.main(["subscription", "create", "me", "--scope", "private", *base]) == 0
-    repository.create_subscription.assert_called_with("me", scope="private")
-    capsys.readouterr()
-    assert calendar_cli.main(["subscription", "list"]) == 0
-    out = capsys.readouterr().out
-    assert '"scope": "private"' in out and "secret" not in out
-    with pytest.raises(SystemExit):
-        calendar_cli.main(["subscription", "create", "x", "--scope", "admin", *base])

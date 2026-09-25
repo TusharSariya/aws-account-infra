@@ -22,8 +22,8 @@ weekly:
     duration_min: 60
     people: 1
     enabled: false
-  # Coaching. visibility: private keeps these off public (friends') calendar
-  # links; only private-scope subscriptions see them, titled "Coaching - <court>".
+  # Coaching. visibility: private keeps these off the public calendar URL;
+  # only the private (keyed) calendar URL shows them, titled "Coaching - <court>".
   # Private rules classify bookings even while disabled. Enable only after the
   # API zip that understands visibility is pinned, or bookings publish as public.
   - activity: court1
