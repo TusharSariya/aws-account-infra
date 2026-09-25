@@ -1,5 +1,5 @@
 name: Talos runner prerequisites
-description: Install job tools inside the disposable trusted runner only
+description: Install job tools inside the disposable trusted runner only (CI timing baseline)
 inputs:
   packages:
     description: Additional apt packages required by this job
