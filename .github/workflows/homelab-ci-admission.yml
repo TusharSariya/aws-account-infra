@@ -148,7 +148,7 @@ jobs:
     if: (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
     # Bootstrap, upgrade and recovery cannot depend on ARC or CI_EXECUTOR: the
     # macOS operator runner when vars.CI_OPERATOR == 'mac', else hosted.
-    runs-on: ${{ vars.CI_OPERATOR == 'mac' && fromJSON('["self-hosted","macOS","homelab-operator"]') || 'ubuntu-latest' }}
+    runs-on: ${{ vars.CI_OPERATOR == 'mac' && fromJSON('["self-hosted","homelab-operator"]') || 'ubuntu-latest' }}
     environment: prod
     timeout-minutes: 45
     steps:

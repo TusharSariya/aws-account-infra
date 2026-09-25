@@ -51,9 +51,12 @@ variables live under `config/environments`, and secrets must not be committed.
 
 - Routine CI runs on ARC through `vars.CI_EXECUTOR`.
 - Cluster-mutating maintenance (admission, Proxmox/Talos plan and apply, worker,
-  lifecycle, migration, capacity-host and quota jobs) runs on the macOS operator runner
-  through `vars.CI_OPERATOR=mac`, using the exact expression pinned in
-  `scripts/tests/test_ci_executor_routing.py`. See `docs/runbooks/mac-operator-runner.md`.
+  lifecycle, migration, capacity-host and quota jobs) runs on the `homelab-operator`
+  runners on the owner's Mac through `vars.CI_OPERATOR=mac`, using the exact expression
+  pinned in `scripts/tests/test_ci_executor_routing.py`. The default form is three
+  Linux containers running the ARC runner image (`platform/operator-runner/`,
+  `scripts/mac-operator-containers.sh`); the native macOS runner is the fallback. See
+  `docs/runbooks/mac-operator-runner.md`.
 - Hosted runners are the fallback only (either variable unset). `homelab-etcd-backup` and
   `ci-runner-image/build` stay hosted by design.
 - Every operator job declares `environment: prod`, and the routing test enforces it. `prod`

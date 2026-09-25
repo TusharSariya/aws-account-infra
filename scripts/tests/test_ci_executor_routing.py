@@ -8,10 +8,12 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOWS = ROOT / '.github/workflows'
 
-# The macOS operator runner (docs/runbooks/mac-operator-runner.md), with hosted
-# ubuntu-latest as the fallback while vars.CI_OPERATOR is unset.
+# The operator runners on the owner's Mac (docs/runbooks/mac-operator-runner.md):
+# Linux containers by default or the native macOS runner, both labelled
+# homelab-operator, with hosted ubuntu-latest as the fallback while
+# vars.CI_OPERATOR is unset. No OS label, so either form can take the job.
 OPERATOR = ("vars.CI_OPERATOR == 'mac' && "
-            """fromJSON('["self-hosted","macOS","homelab-operator"]') || 'ubuntu-latest'""")
+            """fromJSON('["self-hosted","homelab-operator"]') || 'ubuntu-latest'""")
 
 # Jobs that deliberately bypass the CI_EXECUTOR switch. '*' covers every job in
 # the workflow. Anything not listed here must route through vars.CI_EXECUTOR so

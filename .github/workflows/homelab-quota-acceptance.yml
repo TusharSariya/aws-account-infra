@@ -20,7 +20,7 @@ jobs:
   proof:
     if: github.ref == 'refs/heads/main'
     # Circular maintenance: the macOS operator runner when vars.CI_OPERATOR == 'mac', else hosted.
-    runs-on: ${{ vars.CI_OPERATOR == 'mac' && fromJSON('["self-hosted","macOS","homelab-operator"]') || 'ubuntu-latest' }}
+    runs-on: ${{ vars.CI_OPERATOR == 'mac' && fromJSON('["self-hosted","homelab-operator"]') || 'ubuntu-latest' }}
     timeout-minutes: 35
     environment: prod
     steps:

@@ -1,9 +1,20 @@
 # macOS operator runner
 
-The operator runner is a GitHub Actions self-hosted runner on the owner's MacBook
-(Apple silicon). It runs the class 2 "circular" jobs: maintenance that mutates the
+The operator runners are GitHub Actions self-hosted runners on the owner's MacBook
+(Apple silicon). They run the class 2 "circular" jobs: maintenance that mutates the
 Proxmox hosts, Talos nodes or admission path that the ARC runners themselves run on.
 These jobs cannot run on ARC, and hosted runners become only the fallback.
+
+Two forms exist, both labelled `homelab-operator` and both in the same org runner
+group:
+
+- **Container runners (default).** Three persistent Linux containers under OrbStack
+  from `platform/operator-runner/compose.yaml`, running the exact ARC runner image
+  digest, so jobs take the ARC (Linux) code path and up to three operator jobs run in
+  parallel. See "Container runners" below.
+- **Native macOS runner (fallback).** One `actions/runner` process under a LaunchDaemon
+  as the `ghrunner` user, using Homebrew tools and the Mac's own tailnet session. See
+  "Install (native macOS runner)" below.
 
 Routing has three classes:
 
@@ -17,7 +28,7 @@ Class 2 jobs use exactly this expression, which
 `scripts/tests/test_ci_executor_routing.py` enforces:
 
 ```yaml
-runs-on: ${{ vars.CI_OPERATOR == 'mac' && fromJSON('["self-hosted","macOS","homelab-operator"]') || 'ubuntu-latest' }}
+runs-on: ${{ vars.CI_OPERATOR == 'mac' && fromJSON('["self-hosted","homelab-operator"]') || 'ubuntu-latest' }}
 ```
 
 Every class 2 job also declares `environment: prod`.
@@ -86,9 +97,11 @@ environment. While `CI_OPERATOR=mac` and the runner is online, a workflow from a
 same-repository branch that targets `homelab-operator` with `environment: prod` can
 run on the Mac. Only three controls protect it:
 
-- the runner is offline outside maintenance windows;
+- the runners are offline outside maintenance windows;
 - the org runner group is restricted to this repository;
-- the runner uses a dedicated non-admin user.
+- the native runner uses a dedicated non-admin user, and the container runners run
+  as the unprivileged `runner` user inside OrbStack's Linux VM with no host mounts,
+  no Docker socket and only `NET_ADMIN` for the job's own Tailscale node.
 
 Usability consequence: while `CI_OPERATOR=mac`, a PR touching `live/proxmox` or
 `live/talos` cannot pass `plan-gate` until the owner brings the Mac runner online. The
@@ -175,7 +188,54 @@ brew install opentofu uv helm kubernetes-cli jq gh tailscale python@3.13 awscli
   and age (`scripts/ai-data-backup.py`).
   The Homebrew `kubectl` only satisfies the tool check.
 
-## Install
+## Container runners
+
+`scripts/mac-operator-containers.sh` manages three persistent runner containers
+(`runner-1..3`, GitHub names `mac-operator-<localhostname>-1..3`). Each is the ARC
+runner image at the digest pinned in
+`config/environments/kubernetes/homelab-ci/arc-runner-values.yaml`, run as
+`linux/amd64` under OrbStack's Rosetta, so `uname -m` is `x86_64` and every pinned
+Linux tool, checksum and composite-action branch is the one ARC already uses.
+`scripts/tests/test_operator_containers.py` pins the footprint.
+
+What a job sees inside a container:
+
+- `runner.os == 'Linux'`, `runner.environment == 'self-hosted'`, name
+  `mac-operator-*` (never `homelab-talos-*`, so `setup-opentofu` stays upstream).
+- `tailscale/github-action` runs inside the container as an ephemeral
+  `tag:github-ci` node (the container has `NET_ADMIN` and `/dev/net/tun`, nothing
+  more), then `sudo tailscale set --accept-routes=true` as on ARC. The Mac's own
+  tailnet session is not used.
+- `talos-runner-setup` runs its Linux branch: `talos-cache-setup.sh` starts the
+  local dependency transport, which tries Nexus (unreachable off-cluster) and falls
+  back upstream with pinned checksums; `nexus-dependency-cache` records
+  `unavailable` and the job rebuilds its caches. Expect operator jobs to be a
+  little slower than on ARC, never to fail for that reason.
+- Nothing from macOS is mounted except the read-only entrypoint. No Docker socket:
+  `docker: 'true'` jobs still cannot run here.
+- `_work` and the runner credentials persist per runner in named volumes;
+  containers themselves are disposable (`docker compose down` keeps the volumes).
+- Each container is capped at 4 CPUs and 4 GiB; OrbStack's VM has 12 GiB.
+
+Install and operate (admin account, checkout of this repository, OrbStack running):
+
+```bash
+./scripts/mac-operator-containers.sh image      # pull the pinned digest (needs read:packages) or: image --build
+./scripts/mac-operator-containers.sh token-help
+RUNNER_TOKEN="$(gh api -X POST orgs/TusharSariyaOrg/actions/runners/registration-token --jq .token)" \
+  ./scripts/mac-operator-containers.sh register # once; RUNNERS=1..3 to register fewer
+./scripts/mac-operator-containers.sh start      # window opens
+./scripts/mac-operator-containers.sh status     # compose ps + GitHub online/busy per runner
+./scripts/mac-operator-containers.sh stop       # window closes
+```
+
+`register` passes the token only to a one-off container that stores the runner
+credentials in its state volume and exits; the token is never written into the
+persistent container configuration. `remove` needs a removal token and deletes the
+containers and volumes. The native runner may stay installed; both forms match the
+routing label, and GitHub picks whichever is idle.
+
+## Install (native macOS runner)
 
 From an administrator account in a checkout of this repository:
 
@@ -207,11 +267,12 @@ The runner name never starts with `homelab-talos-`. That keeps it on the upstrea
 
 ## Maintenance window, end to end
 
-1. Open the window and confirm the runner is online:
+1. Open the window and confirm the runners are online:
 
    ```bash
-   ./scripts/mac-operator-runner.sh start
-   ./scripts/mac-operator-runner.sh status   # status=online busy=false
+   ./scripts/mac-operator-containers.sh start
+   ./scripts/mac-operator-containers.sh status   # three runners, status=online busy=false
+   # native fallback: ./scripts/mac-operator-runner.sh start && ./scripts/mac-operator-runner.sh status
    ```
 
 2. Route class 2 jobs to the Mac:
@@ -234,7 +295,8 @@ The runner name never starts with `homelab-talos-`. That keeps it on the upstrea
 
    ```bash
    gh variable delete CI_OPERATOR           # back to the hosted fallback
-   ./scripts/mac-operator-runner.sh stop
+   ./scripts/mac-operator-containers.sh stop
+   ./scripts/mac-operator-runner.sh stop    # if the native runner was started
    ```
 
 To fall back to hosted at any time, delete the variable (or set it to anything other
@@ -243,16 +305,19 @@ starts or the run is cancelled.
 
 ## Limitations
 
-- **No Docker.** `talos-runner-setup` fails with `docker: 'true'` on macOS. Docker and
-  image-build jobs stay on ARC or hosted.
+- **No Docker jobs.** `talos-runner-setup` fails with `docker: 'true'` on macOS, and
+  the container runners mount no Docker socket. Docker and image-build jobs stay on
+  ARC or hosted.
 - **Hosted by design:**
   - `homelab-etcd-backup` is a daily cron at 06:17 UTC, and the Mac may be asleep.
     Its daily age encryption is also Linux amd64 only.
   - `ci-runner-image/build` builds a `linux/amd64` image with Docker.
 - **No Nexus.** Nexus is reachable only inside the cluster. On macOS,
   `talos-runner-setup` does not enable `HOMELAB_DEPENDENCY_CACHE` or call
-  `talos-cache-setup.sh`, and `nexus-dependency-cache` is skipped. Downloads go
-  upstream with pinned checksums.
+  `talos-cache-setup.sh`, and `nexus-dependency-cache` is skipped. In the container
+  runners the Linux branch runs, the transport falls back upstream and the cache
+  action records `unavailable`. Either way downloads are upstream with pinned
+  checksums.
 - **PR hardware plans wait for the Mac.** See "Residual risk" above: while
   `CI_OPERATOR=mac`, PR-triggered operator jobs queue until the runner is online.
 - **Persistent host.** The workspace (`_work`) and the talos tool cache survive

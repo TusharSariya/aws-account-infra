@@ -87,6 +87,7 @@ jobs:
         run: |
           uv run --with PyYAML==6.0.3 python scripts/runner_catalog.py
           uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p test_ci_executor_routing.py
+          uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p test_operator_containers.py
           echo config-runner-catalog >> "$RUNNER_TEMP/config-ran"
       - name: Validate Proxmox definitions without a backend or credentials
         if: contains(fromJSON(inputs.checks), 'config-proxmox')

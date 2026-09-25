@@ -123,7 +123,7 @@ jobs:
     needs: detect
     if: contains(fromJSON(needs.detect.outputs.units).*.id, 'proxmox-homelab') && github.event.pull_request.head.repo.full_name == github.repository
     # Off-cluster: the macOS operator runner when vars.CI_OPERATOR == 'mac', else hosted.
-    runs-on: ${{ vars.CI_OPERATOR == 'mac' && fromJSON('["self-hosted","macOS","homelab-operator"]') || 'ubuntu-latest' }}
+    runs-on: ${{ vars.CI_OPERATOR == 'mac' && fromJSON('["self-hosted","homelab-operator"]') || 'ubuntu-latest' }}
     timeout-minutes: 30
     environment: prod
     env:
@@ -207,7 +207,7 @@ jobs:
     needs: detect
     if: contains(fromJSON(needs.detect.outputs.units).*.id, 'talos-homelab') && github.event.pull_request.head.repo.full_name == github.repository
     # Off-cluster: the macOS operator runner when vars.CI_OPERATOR == 'mac', else hosted.
-    runs-on: ${{ vars.CI_OPERATOR == 'mac' && fromJSON('["self-hosted","macOS","homelab-operator"]') || 'ubuntu-latest' }}
+    runs-on: ${{ vars.CI_OPERATOR == 'mac' && fromJSON('["self-hosted","homelab-operator"]') || 'ubuntu-latest' }}
     timeout-minutes: 20
     environment: prod
     steps:

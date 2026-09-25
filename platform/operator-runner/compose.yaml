@@ -1,0 +1,67 @@
+# Parallel operator runners on the owner's Mac (docs/runbooks/mac-operator-runner.md).
+#
+# Each service is one persistent GitHub Actions runner in a Linux container that
+# uses the same image digest as the ARC runner pods, so operator jobs take the
+# ARC (Linux) code path: tailscale/github-action inside the container, apt via
+# the dependency transport, pinned linux/amd64 tools under Rosetta. Nothing from
+# the macOS host is mounted except the read-only entrypoint. Credentials live in
+# a per-runner state volume, so containers are disposable.
+#
+# Managed by scripts/mac-operator-containers.sh; `register` must run before the
+# first `start`.
+name: homelab-operator
+
+x-environment: &environment
+  RUNNER_URL: https://github.com/TusharSariyaOrg
+  RUNNER_GROUP: ${OPERATOR_RUNNER_GROUP:-homelab-operator}
+  RUNNER_LABELS: homelab-operator
+  RUNNER_NAME_PREFIX: mac-operator-${OPERATOR_HOST:?set by scripts/mac-operator-containers.sh}
+
+x-runner: &runner
+  image: ${OPERATOR_RUNNER_IMAGE:?set by scripts/mac-operator-containers.sh}
+  platform: linux/amd64
+  entrypoint: [/opt/operator-runner/entrypoint.sh]
+  restart: unless-stopped
+  init: true
+  # tailscale/github-action needs a TUN device and NET_ADMIN; nothing else.
+  cap_add: [NET_ADMIN]
+  devices: [/dev/net/tun:/dev/net/tun]
+  cpus: 4
+  mem_limit: 4g
+
+services:
+  runner-1:
+    <<: *runner
+    environment:
+      <<: *environment
+      RUNNER_INDEX: "1"
+    volumes:
+      - ./container-entrypoint.sh:/opt/operator-runner/entrypoint.sh:ro
+      - state-1:/home/runner/state
+      - work-1:/home/runner/_work
+  runner-2:
+    <<: *runner
+    environment:
+      <<: *environment
+      RUNNER_INDEX: "2"
+    volumes:
+      - ./container-entrypoint.sh:/opt/operator-runner/entrypoint.sh:ro
+      - state-2:/home/runner/state
+      - work-2:/home/runner/_work
+  runner-3:
+    <<: *runner
+    environment:
+      <<: *environment
+      RUNNER_INDEX: "3"
+    volumes:
+      - ./container-entrypoint.sh:/opt/operator-runner/entrypoint.sh:ro
+      - state-3:/home/runner/state
+      - work-3:/home/runner/_work
+
+volumes:
+  state-1: {}
+  state-2: {}
+  state-3: {}
+  work-1: {}
+  work-2: {}
+  work-3: {}

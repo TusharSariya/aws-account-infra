@@ -49,7 +49,7 @@ jobs:
       cancel-in-progress: false
     # Proxmox/Talos units mutate the hosts ARC runs on: operator Mac when
     # vars.CI_OPERATOR == 'mac', else hosted. Everything else follows CI_EXECUTOR.
-    runs-on: ${{ (contains(fromJSON(needs.detect.outputs.units).*.id, 'proxmox-homelab') || contains(fromJSON(needs.detect.outputs.units).*.id, 'talos-homelab')) && (vars.CI_OPERATOR == 'mac' && fromJSON('["self-hosted","macOS","homelab-operator"]') || 'ubuntu-latest') || fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-checks"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
+    runs-on: ${{ (contains(fromJSON(needs.detect.outputs.units).*.id, 'proxmox-homelab') || contains(fromJSON(needs.detect.outputs.units).*.id, 'talos-homelab')) && (vars.CI_OPERATOR == 'mac' && fromJSON('["self-hosted","homelab-operator"]') || 'ubuntu-latest') || fromJSON('{"github-hosted":"ubuntu-latest","talos":"homelab-talos-checks"}')[contains(github.event.pull_request.labels.*.name, 'arc-acceptance') && 'talos' || vars.CI_EXECUTOR || 'github-hosted'] }}
     environment: prod
     outputs:
       needs_worker_reboot: ${{ steps.talos.outputs.needs-worker-reboot }}
