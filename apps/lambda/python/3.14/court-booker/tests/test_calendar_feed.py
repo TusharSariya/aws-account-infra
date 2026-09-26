@@ -114,8 +114,8 @@ def test_private_route_with_correct_key_includes_private_events(repository):
     response = serve(private_request(), repository, Mock(), ssm=ssm)
     assert response["statusCode"] == 200
     assert summaries(response) == (
-        "Court bookings (private)",
-        ["Coaching - Court 1", "Court 1"],
+        "Coaching (private)",
+        ["Coaching - Court 1"],
     )
     ssm.get_parameter.assert_called_once_with(Name=PARAMETER, WithDecryption=True)
     public = serve(public_request(), repository, Mock(), ssm=ssm)
