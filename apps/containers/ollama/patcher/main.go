@@ -94,6 +94,8 @@ func main() {
 	replace("llm/llama_server.go", "DisableKeepAlives: true,", "DisableKeepAlives: true,\n DialContext: lifecycle.NativeDial,", 1)
 	replace("llm/llama_server.go", "\t// Build CLI flags", "\thost, err := lifecycle.ReserveNative(port)\n if err != nil { return nil, 0, err }\n\t// Build CLI flags", 1)
 	replace("llm/llama_server.go", "\"--host\", \"127.0.0.1\",", "\"--host\", host,", 1)
+	// The lifecycle quiescence probe reads /slots; llama-server only serves it with --slots.
+	replace("llm/llama_server.go", "\"--no-webui\",", "\"--no-webui\",\n\t\t\"--slots\",", 1)
 	replace("llm/llama_server.go", "if err = cmd.Start(); err != nil {", "if err = cmd.Start(); err != nil {\n lifecycle.ReleaseNative(port)", 1)
 	replace("llm/llama_server.go", "go func(cmd *exec.Cmd, done chan struct{}) {", "go func(cmd *exec.Cmd, done chan struct{}, port int) {", 1)
 	replace("llm/llama_server.go", "\t\terr := cmd.Wait()\n\t\ts.doneErr = err", "\t\terr := cmd.Wait()\n lifecycle.ReleaseNative(port)\n\t\ts.doneErr = err", 1)
