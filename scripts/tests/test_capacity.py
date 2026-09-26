@@ -36,12 +36,49 @@ class CapacityTests(unittest.TestCase):
 
     def test_each_required_measurement_fails_closed(self):
         for name in self.expected:
+            self.gate = CapacityGate(self.expected)
+            self.recover()
             samples = self.sample()
             del samples[name]
-            result = self.tick(samples=samples)
+            result = self.tick(330, samples=samples)
             self.assertFalse(result.admission)
+            self.assertFalse(result.drain)
+            self.assertTrue(result.warning)
+            self.assertIn(name, result.reasons[0])
+            for second in range(360, 510, 30):
+                self.assertFalse(self.tick(second, samples=samples).drain)
+            result = self.tick(510, samples=samples)
             self.assertTrue(result.drain)
             self.assertIn(name, result.reasons[0])
+
+    def test_one_stale_sample_holds_admission_without_draining(self):
+        self.recover()
+        stale = self.sample(measured_at=800)
+        result = self.tick(330, samples=stale)
+        self.assertFalse(result.admission)
+        self.assertFalse(result.drain)
+        self.assertEqual(result.reasons, ('pool.metadata: stale or invalid timestamp',))
+        # Fresh evidence returns admission only after a full healthy interval.
+        self.assertFalse(self.tick(360, self.sample()).admission)
+        for second in range(390, 660, 30):
+            self.tick(second, self.sample())
+        self.assertTrue(self.tick(660, self.sample()).admission)
+        # A later gap starts its own grace period rather than inheriting the first.
+        for second in range(690, 870, 30):
+            self.assertFalse(self.tick(second, samples=stale).drain)
+        self.assertTrue(self.tick(870, samples=stale).drain)
+
+    def test_real_pressure_and_bad_identity_still_drain_at_once(self):
+        self.recover()
+        for update in [{'identity': 'other'}, {'healthy': False}, {'healthy': 1},
+                       {'used_percent': None}, {'used_percent': -1}, {'used_percent': 101},
+                       {'used_percent': float('inf')}, {'used_percent': True}, {'used_percent': 90}]:
+            with self.subTest(update=update):
+                self.gate = CapacityGate(self.expected)
+                self.recover()
+                result = self.tick(330, samples=self.sample(**update))
+                self.assertFalse(result.admission)
+                self.assertTrue(result.drain)
 
     def test_all_invalid_sample_forms(self):
         invalid = [{'identity': 'other'}, {'healthy': False}, {'healthy': 1},
@@ -52,11 +89,13 @@ class CapacityTests(unittest.TestCase):
             with self.subTest(update=update):
                 result = self.tick(samples=self.sample(**update))
                 self.assertFalse(result.admission)
-                self.assertTrue(result.drain)
+                self.assertTrue(result.drain or 'timestamp' in result.reasons[0])
 
     def test_exact_freshness_boundary(self):
         self.assertFalse(self.tick(samples=self.sample(measured_at=910)).drain)
-        self.assertTrue(self.tick(samples=self.sample(measured_at=909.99)).drain)
+        self.assertEqual(self.tick(samples=self.sample(measured_at=909.99)).reasons,
+                         ('pool.metadata: stale or invalid timestamp',))
+        self.assertEqual(self.tick(samples=self.sample(measured_at=910)).reasons, ('awaiting five continuous healthy minutes below 80 percent',))
 
     def test_warning_does_not_drain_open_gate(self):
         self.recover()
