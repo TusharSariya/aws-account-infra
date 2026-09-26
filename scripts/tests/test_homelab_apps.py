@@ -305,6 +305,36 @@ class GuardTests(unittest.TestCase):
             apps.reconcile_credential_object('kubectl', {'apiVersion': 'v1', 'kind': 'Secret', 'metadata': {'name': 'unrelated', 'namespace': 'default'}})
         run.assert_not_called()
 
+    def test_lifecycle_credential_update_preserves_enrolled_gateway_key(self):
+        current = {'apiVersion': 'v1', 'kind': 'Secret', 'type': 'Opaque',
+                   'data': {'operator': 'old', 'odysseus': 'old', 'ollama': 'old', 'gateway': 'enrolled'},
+                   'metadata': {'name': 'ai-lifecycle-credentials', 'namespace': 'homelab-platform', 'resourceVersion': '3'}}
+        desired = {**current, 'metadata': {'name': 'ai-lifecycle-credentials', 'namespace': 'homelab-platform'},
+                   'data': {'operator': 'new', 'odysseus': 'new', 'ollama': 'new'}}
+        with patch.object(apps, 'run', side_effect=[json.dumps(current).encode(), b'']) as run:
+            apps.reconcile_credential_object('kubectl', desired, preserve=('gateway',))
+        self.assertEqual(json.loads(run.call_args.args[1])['data'],
+                         {'operator': 'new', 'odysseus': 'new', 'ollama': 'new', 'gateway': 'enrolled'})
+        # Without the preserve list the replace is exact, and other stray keys are never carried over.
+        current['data']['stale'] = 'x'
+        with patch.object(apps, 'run', side_effect=[json.dumps(current).encode(), b'']) as run:
+            apps.reconcile_credential_object('kubectl', desired, preserve=('gateway',))
+        self.assertEqual(sorted(json.loads(run.call_args.args[1])['data']), ['gateway', 'odysseus', 'ollama', 'operator'])
+        with patch.object(apps, 'run', side_effect=[json.dumps(current).encode(), b'']) as run:
+            apps.reconcile_credential_object('kubectl', desired)
+        self.assertEqual(sorted(json.loads(run.call_args.args[1])['data']), ['odysseus', 'ollama', 'operator'])
+
+    def test_bootstrap_preserves_gateway_key_only_for_lifecycle_credentials(self):
+        values = dict.fromkeys(apps.SECRET_NAMES, 'a-fixture-only-value-that-is-long-enough')
+        values['AI_LIFECYCLE_CREDENTIALS_B64'] = base64.b64encode(json.dumps({name: character * 43 for name, character in zip(('operator', 'odysseus', 'ollama', 'model-user', 'model-workspace'), 'abcde')}).encode()).decode()
+        values['POSTGRES_BACKUP_CREDENTIALS_B64'] = base64.b64encode(json.dumps({'password': 'p'*43, 'client.crt': 'BEGIN CERTIFICATE fixture', 'client.key': 'PRIVATE KEY fixture'}).encode()).decode()
+        with patch.dict(apps.os.environ, {**values, 'GITHUB_ACTIONS': 'true'}), patch.object(apps, 'run', return_value=b''), \
+             patch.object(apps, 'reconcile_credential_object') as reconcile:
+            apps.bootstrap('kubectl')
+        preserved = {call.args[1]['metadata']['name']: call.kwargs.get('preserve', ()) for call in reconcile.call_args_list}
+        self.assertEqual(preserved['ai-lifecycle-credentials'], ('gateway',))
+        self.assertTrue(all(value == () for name, value in preserved.items() if name != 'ai-lifecycle-credentials'))
+
     def test_new_credentials_are_external_and_registry_secret_has_correct_type(self):
         values = dict.fromkeys(apps.SECRET_NAMES, 'a-fixture-only-value-that-is-long-enough')
         values['AI_LIFECYCLE_CREDENTIALS_B64'] = base64.b64encode(json.dumps({name: character * 43 for name, character in zip(('operator', 'odysseus', 'ollama', 'model-user', 'model-workspace'), 'abcde')}).encode()).decode()
