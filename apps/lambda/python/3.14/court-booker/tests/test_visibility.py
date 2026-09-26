@@ -289,8 +289,8 @@ def test_feed_endpoints_scope_private_events(repo, monkeypatch):
     calendar_feed._key_cache.clear()
     assert _events(public) == ("Court bookings", [COURT1])
     assert _events(private) == (
-        "Court bookings (private)",
-        sorted([COURT1, f"Coaching - {COURT1}"]),
+        "Coaching (private)",
+        [f"Coaching - {COURT1}"],
     )
     assert "Coaching" not in public["body"]
     assert public["headers"]["ETag"] != private["headers"]["ETag"]

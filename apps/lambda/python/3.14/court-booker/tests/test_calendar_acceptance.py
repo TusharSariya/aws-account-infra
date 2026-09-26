@@ -49,6 +49,11 @@ def test_manual_reservations_background_polls_and_key_rotation(monkeypatch):
     assert serve(public, repo, client, now, ssm=ssm)["statusCode"] == 503
     assert len(requests) == 1
     reconcile(repo, upstream, config, credentials, requests.pop()["lease_id"], now=now)
+    # A manual booking matches no private rule: public feed only.
+    assert Calendar.from_ical(
+        serve(request, repo, client, now, ssm=ssm)["body"]
+    ).walk("VEVENT") == []
+    request = public
     response = serve(request, repo, client, now, ssm=ssm)
     assert response["statusCode"] == 200
     event = Calendar.from_ical(response["body"]).walk("VEVENT")[0]
@@ -67,6 +72,7 @@ def test_manual_reservations_background_polls_and_key_rotation(monkeypatch):
     assert Calendar.from_ical(response["body"]).walk("VEVENT") == []
     assert repo.snapshot()["501"]["status"] == "cancelled"
     # Rotation: once the cached key expires, the old key stops working.
+    request = {"routeKey": PRIVATE_ROUTE, "pathParameters": {"key": key}}
     ssm.get_parameter.return_value = {"Parameter": {"Value": "n" * 43}}
     calendar_feed._key_cache.clear()
     assert (
