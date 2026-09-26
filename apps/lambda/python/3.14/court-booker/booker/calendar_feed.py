@@ -23,7 +23,7 @@ from booker.secrets import _client_kwargs
 
 logger = logging.getLogger(__name__)
 
-CALENDAR_NAMES = {"public": "Court bookings", "private": "Court bookings (private)"}
+CALENDAR_NAMES = {"public": "Court bookings", "private": "Coaching (private)"}
 PUBLIC_ROUTE = "GET /calendars/public/bookings.ics"
 PRIVATE_ROUTE = "GET /calendars/private/{key}/bookings.ics"
 MIN_KEY_LENGTH = 32
@@ -147,7 +147,7 @@ def serve(
         for item in (
             repository.list_events(now=now) if metadata.get("initialized") else []
         )
-        if private or visibility_of(item) == "public"
+        if visibility_of(item) == ("private" if private else "public")
     ]
     # Snapshot first. A completed async refresh becomes visible on the next poll.
     body = (

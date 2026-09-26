@@ -25,7 +25,7 @@ cancel Upace reservations.
 | Route | Auth | Sees | Calendar name | Private event summary |
 | --- | --- | --- | --- | --- |
 | `GET /calendars/public/bookings.ics` | none | public bookings only | `Court bookings` | omitted |
-| `GET /calendars/private/{key}/bookings.ics` | single secret key | everything | `Court bookings (private)` | `<title> - <court>`, e.g. `Coaching - 3-1 - Squash & Racquetball Court 1` |
+| `GET /calendars/private/{key}/bookings.ics` | single secret key | private events only (coaching) | `Coaching (private)` | `<title> - <court>`, e.g. `Coaching - 3-1 - Squash & Racquetball Court 1` |
 
 The feed dispatches on the API Gateway `routeKey`; any other route returns `404`.
 
