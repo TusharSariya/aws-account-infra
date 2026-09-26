@@ -5,6 +5,9 @@ import math
 SAMPLE_SECONDS = 30
 MAX_AGE_SECONDS = 90
 RECOVERY_SECONDS = 300
+# A missing or stale sample closes admission at once but only drains running work
+# once it has persisted this long: one sampler gap is not storage pressure.
+UNPROVEN_DRAIN_SECONDS = 180
 WARN_PERCENT = 80
 STOP_PERCENT = 90
 
@@ -35,6 +38,7 @@ class CapacityGate:
         self.latched = True
         self.healthy_since = None
         self.last_tick = None
+        self.unproven_since = None
 
     def evaluate(self, samples, *, wall_time, monotonic_time):
         reasons, percents = [], []
@@ -46,10 +50,11 @@ class CapacityGate:
             self.healthy_since = None
         if not isinstance(samples, dict):
             samples = {}
+        unproven = []
         for name, identity in self.expected.items():
             sample = samples.get(name)
             if not isinstance(sample, dict):
-                reasons.append(name + ': missing measurement')
+                unproven.append(name + ': missing measurement')
                 continue
             measured = sample.get('measured_at')
             percent = sample.get('used_percent')
@@ -58,14 +63,28 @@ class CapacityGate:
             elif sample.get('healthy') is not True:
                 reasons.append(name + ': unhealthy')
             elif not finite_number(measured) or not 0 <= wall_time - measured <= MAX_AGE_SECONDS:
-                reasons.append(name + ': stale or invalid timestamp')
+                unproven.append(name + ': stale or invalid timestamp')
             elif not finite_number(percent) or not 0 <= percent <= 100:
                 reasons.append(name + ': invalid usage')
             else:
                 percents.append(percent)
                 if percent >= STOP_PERCENT:
                     reasons.append(name + ': critical capacity')
+        # Absent evidence is fail-closed for admission immediately, and becomes a
+        # drain only after UNPROVEN_DRAIN_SECONDS of continuous absence.
+        if unproven:
+            if self.unproven_since is None or gap:
+                self.unproven_since = monotonic_time
+            if monotonic_time - self.unproven_since >= UNPROVEN_DRAIN_SECONDS:
+                reasons.extend(unproven)
+        else:
+            self.unproven_since = None
         critical = bool(reasons)
+        if unproven and not critical:
+            # Continuity is unproven: close admission and require a fresh healthy interval.
+            self.latched = True
+            self.healthy_since = None
+            return Decision(False, False, True, tuple(unproven))
         warning = any(percent >= WARN_PERCENT for percent in percents)
         if critical:
             self.latched = True
