@@ -1,7 +1,9 @@
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import http.client
 import socket
+import pytest
 import threading
+import time
 from homelab_capacity.gateway import Server, Handler
 
 
@@ -155,3 +157,44 @@ def test_websocket_upgrade_and_early_frame_are_preserved():
         listener.close()
         server.shutdown()
         server.server_close()
+
+
+def test_bridge_idle_guard_outlives_a_silent_model_load(monkeypatch):
+    """A cold Ollama load sends nothing for over a minute; the bridge must wait it out."""
+    from homelab_capacity import gateway as module
+
+    assert module.BRIDGE_IDLE_SECONDS >= 600
+
+    class Backend(BaseHTTPRequestHandler):
+        def do_POST(self):
+            self.rfile.read(int(self.headers["Content-Length"]))
+            time.sleep(0.6)  # silence longer than the shrunken guard below
+            self.send_response(200)
+            self.send_header("Content-Length", "5")
+            self.end_headers()
+            self.wfile.write(b"token")
+
+        def log_message(self, *_args):
+            pass
+
+    backend = ThreadingHTTPServer(("127.0.0.1", 0), Backend)
+    threading.Thread(target=backend.serve_forever, daemon=True).start()
+    server = gateway(backend.server_address)
+    try:
+        monkeypatch.setattr(module, "BRIDGE_IDLE_SECONDS", 0.2)
+        client = http.client.HTTPConnection(*server.server_address, timeout=8)
+        client.request("POST", "/api/generate", b"{}")
+        with pytest.raises((http.client.RemoteDisconnected, ConnectionError)):
+            client.getresponse()
+        client.close()
+        monkeypatch.setattr(module, "BRIDGE_IDLE_SECONDS", 5)
+        client = http.client.HTTPConnection(*server.server_address, timeout=8)
+        client.request("POST", "/api/generate", b"{}")
+        result = client.getresponse()
+        assert result.status == 200 and result.read() == b"token"
+        client.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        backend.shutdown()
+        backend.server_close()
