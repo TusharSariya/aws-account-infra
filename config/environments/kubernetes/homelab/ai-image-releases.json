@@ -1,10 +1,10 @@
 {
   "ollama": {
-    "commit": "0f491f2ec936b33a482dc118aab22946d2d06c66",
-    "image": "ghcr.io/tusharsariyaorg/homelab-ollama@sha256:204975e2f385f1062dd6c6c8b4bba3c3a417a67db3585dded550ef44690b6fde",
-    "input_sha256": "13810ca126c7fedfb48a868cf518d3ca143de347b909b70b0f3d9dcfd41ef3f7",
-    "run_id": 36182560617,
-    "artifact_id": 10885397999
+    "commit": "3b5471c152d7894a2d735008d5f81530c5b3762a",
+    "image": "ghcr.io/tusharsariyaorg/homelab-ollama@sha256:da9d7330935d33f05bbd354d5e70f347e5de126a9eddb83819581dc087327906",
+    "input_sha256": "9b72df64474cc37d7e18a4e484c3665b84fc4eae20014cf9e840aab918ed981c",
+    "run_id": 36275667087,
+    "artifact_id": 10916489297
   },
   "odysseus": {
     "commit": "0f491f2ec936b33a482dc118aab22946d2d06c66",
