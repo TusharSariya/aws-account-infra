@@ -103,6 +103,13 @@ class Activity:
             time.sleep(5)
 
 
+# Longest silence a bridged connection may sit through before it is cut. Ollama
+# streams nothing while it loads a model (60 to 70 s for a 27B GGUF on the CPU
+# worker) or evaluates a long prompt (minutes at 7 tokens/s), so this is a dead-
+# peer guard, not a request budget; TCP keepalive catches a vanished peer sooner.
+BRIDGE_IDLE_SECONDS = 1800
+
+
 def bridge(client, upstream):
     """Fixed 64 KiB per-direction queues, preserving upgrade frames and streaming."""
     sockets = [client, upstream]
@@ -110,6 +117,10 @@ def bridge(client, upstream):
     eof = set()
     for sock in sockets:
         sock.setblocking(False)
+        try:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+        except OSError:
+            pass
     try:
         with selectors.DefaultSelector() as selector:
             for sock in sockets:
@@ -131,7 +142,7 @@ def bridge(client, upstream):
                         selector.register(sock, flags)
                 if not selector.get_map():
                     break
-                events = selector.select(timeout=60)
+                events = selector.select(timeout=BRIDGE_IDLE_SECONDS)
                 if not events:
                     break
                 for key, flags in events:
