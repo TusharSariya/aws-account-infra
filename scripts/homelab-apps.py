@@ -147,11 +147,13 @@ def tailnet_https(hostname, path, options, data=None, *, address=None, timeout=N
                 '--resolve', hostname + ':443:' + address, *options, 'https://' + hostname + path], data, **({} if timeout is None else {'timeout': timeout}))
 
 
-def reconcile_credential_object(kubectl, manifest):
+def reconcile_credential_object(kubectl, manifest, preserve=()):
     """Strict core API writes preserve metadata and use the observed version.
 
     Avoid OpenAPI discovery without disabling validation. No last-applied
     annotation is written, and credential content travels only through stdin.
+    Secret keys named in ``preserve`` are enrolled out of band (the start-only
+    gateway credential) and survive a replace when the manifest omits them.
     """
     metadata = manifest['metadata']
     kind, name, namespace = manifest['kind'], metadata['name'], metadata.get('namespace')
@@ -176,7 +178,8 @@ def reconcile_credential_object(kubectl, manifest):
         if not current['metadata'].get('resourceVersion'):
             raise AppError('Missing resource version for credential update')
         if kind == 'Secret':
-            current['data'], current['type'] = manifest['data'], manifest['type']
+            kept = {key: value for key, value in (current.get('data') or {}).items() if key in preserve and key not in manifest['data']}
+            current['data'], current['type'] = {**manifest['data'], **kept}, manifest['type']
             current['metadata'].setdefault('labels', {}).update(metadata.get('labels', {}))
         else:
             current['metadata'].setdefault('labels', {}).update(metadata.get('labels', {}))
@@ -209,7 +212,8 @@ def bootstrap(kubectl):
         ('homelab-models', 'ghcr-read', {'.dockerconfigjson': json.dumps({'auths': {'ghcr.io': {'auth': base64.b64encode((values['GHCR_READ_USER'] + ':' + values['GHCR_READ_TOKEN']).encode()).decode()}}})})]:
         manifest = {'apiVersion': 'v1', 'kind': 'Secret', 'metadata': {'name': name, 'namespace': namespace},
                     'type': 'kubernetes.io/dockerconfigjson' if name == 'ghcr-read' else 'Opaque', 'data': {k: base64.b64encode(v.encode()).decode() for k, v in data.items()}}
-        reconcile_credential_object(kubectl, manifest)
+        # The gateway key is added by platform/automatic-power/issue-wake-credentials.py; dropping it breaks wake-on-tap.
+        reconcile_credential_object(kubectl, manifest, preserve=('gateway',) if name == 'ai-lifecycle-credentials' else ())
         if name == 'ghcr-read':
             manifest['metadata']['namespace'] = 'homelab-data'
             reconcile_credential_object(kubectl, manifest)
