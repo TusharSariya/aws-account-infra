@@ -94,13 +94,114 @@ class Activity:
         except Exception:
             pass  # Stale heartbeat blocks retirement at the coordinator.
 
-    def heartbeat(self):
+    def heartbeat(self, hold=None):
         while True:
             try:
                 self.publish()
             except Exception:
                 pass
+            if hold is not None:
+                try:
+                    hold.expire()
+                except Exception:
+                    pass  # The label stays on; the next beat retries.
             time.sleep(5)
+
+
+class Hold:
+    """Owner hold on the durable power-hold Lease the chart renders; expires here, not in the coordinator."""
+
+    def __init__(self, namespace, name, max_seconds):
+        self.name = name
+        self.max_seconds = max_seconds
+        self.context = ssl.create_default_context(
+            cafile="/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+        )
+        self.url = (
+            "https://kubernetes.default.svc/apis/coordination.k8s.io/v1/namespaces/"
+            + namespace
+            + "/leases/"
+            + name
+        )
+
+    def _request(self, method, body=None):
+        token = (
+            Path("/var/run/secrets/kubernetes.io/serviceaccount/token")
+            .read_text()
+            .strip()
+        )
+        headers = {"Authorization": "Bearer " + token}
+        if body is not None:
+            headers["Content-Type"] = "application/merge-patch+json"
+        request = urllib.request.Request(
+            self.url,
+            data=None if body is None else json.dumps(body).encode(),
+            method=method,
+            headers=headers,
+        )
+        with urllib.request.urlopen(request, context=self.context, timeout=3) as r:
+            return json.load(r)
+
+    def status(self):
+        """{'held': bool, 'until': iso or None}; the label is the truth the coordinator reads."""
+        meta = self._request("GET")["metadata"]
+        held = meta.get("labels", {}).get("homelab.tfdraw.dev/power-hold") == "true"
+        until = meta.get("annotations", {}).get("homelab.tfdraw.dev/hold-until")
+        return {"held": held, "until": until if held else None}
+
+    def set(self, seconds=None):
+        seconds = self.max_seconds if seconds is None else min(int(seconds), self.max_seconds)
+        until = datetime.fromtimestamp(time.time() + seconds, timezone.utc)
+        self._request(
+            "PATCH",
+            {
+                "metadata": {
+                    "labels": {"homelab.tfdraw.dev/power-hold": "true"},
+                    "annotations": {
+                        "homelab.tfdraw.dev/hold-until": until.isoformat(timespec="seconds"),
+                        "homelab.tfdraw.dev/hold-set-by": "playground-owner",
+                    },
+                }
+            },
+        )
+        return self.status()
+
+    def release(self):
+        self._request(
+            "PATCH",
+            {
+                "metadata": {
+                    "labels": {"homelab.tfdraw.dev/power-hold": "false"},
+                    "annotations": {"homelab.tfdraw.dev/hold-until": None},
+                }
+            },
+        )
+        return self.status()
+
+    def expire(self):
+        """Turn the label off once the cap has passed. Called from the heartbeat; errors are the caller's."""
+        current = self.status()
+        if not current["held"]:
+            return current
+        until = current["until"]
+        if until is None or datetime.fromisoformat(until).timestamp() <= time.time():
+            return self.release()
+        return current
+
+
+HOLD_PAGE = """<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Playground power</title>
+<style>body{font:18px system-ui,sans-serif;margin:2rem auto;max-width:28rem;padding:0 1rem;color:#eee;background:#111}
+button{font:inherit;padding:.8rem 1.4rem;border-radius:.6rem;border:0;margin:.5rem .5rem .5rem 0}
+.hold{background:#2d6;color:#031} .release{background:#666;color:#fff} p{line-height:1.5}</style></head>
+<body><h1>Playground power</h1>
+<p>{status}</p>
+<form method="post" action="/_power/hold"><button class="hold">Hold awake ({hours} h max)</button></form>
+<form method="post" action="/_power/release"><button class="release">Release</button></form>
+<p><a href="/" style="color:#9cf">Back to the playground</a></p>
+</body></html>
+"""
 
 
 # Longest silence a bridged connection may sit through before it is cut. Ollama
@@ -179,10 +280,10 @@ class Handler(BaseHTTPRequestHandler):
         super().setup()
         self.connection.settimeout(10)
 
-    def reply(self, status, text):
+    def reply(self, status, text, content_type="text/plain; charset=utf-8"):
         payload = text.encode()
         self.send_response(status)
-        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(payload)))
         self.send_header("Cache-Control", "no-store")
         self.send_header("Connection", "close")
@@ -223,10 +324,45 @@ class Handler(BaseHTTPRequestHandler):
             with urllib.request.urlopen(request, timeout=3) as response:
                 response.read(65536)
 
+    def power(self):
+        """Owner hold page. Never reaches the application and never counts as activity."""
+        hold = getattr(self.server, "hold", None)
+        path = self.path.split("?", 1)[0]
+        if hold is None:
+            return self.reply(404, "No hold is configured for this gateway.\n")
+        if self.command == "GET" and path == "/_power/status":
+            return self.reply(200, json.dumps(hold.status()) + "\n", "application/json")
+        if self.command == "POST" and path in ("/_power/hold", "/_power/release"):
+            if self.headers.get("Sec-Fetch-Site", "same-origin") not in ("same-origin", "none"):
+                return self.reply(403, "Cross-site power requests are refused.\n")
+            length = int(self.headers.get("Content-Length", "0") or 0)
+            if length > 4096:
+                return self.reply(413, "Body too large.\n")
+            self.rfile.read(length)
+            hold.set() if path == "/_power/hold" else hold.release()
+            self.send_response(303)
+            self.send_header("Location", "/_power/")
+            self.send_header("Content-Length", "0")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Connection", "close")
+            self.end_headers()
+            return
+        if self.command in ("GET", "HEAD") and path == "/_power/":
+            state = hold.status()
+            if state["held"]:
+                status = "Held awake until " + state["until"].replace("T", " ").replace("+00:00", " UTC") + ". The server and the model stay up until then, or until you release."
+            else:
+                status = "Not held. The model stops after 5 minutes without a chat and the server powers off 5 minutes after that. The next tap wakes it, about 10 minutes."
+            page = HOLD_PAGE.replace("{status}", status).replace("{hours}", str(hold.max_seconds // 3600))
+            return self.reply(200, page, "text/html; charset=utf-8")
+        return self.reply(404, "Unknown power operation.\n")
+
     def proxy(self):
         self.close_connection = True
         if self.path == "/_power/healthz":
             return self.reply(200 if self.server.activity.healthy else 503, "gateway\n")
+        if self.path.split("?", 1)[0].startswith("/_power/"):
+            return self.power()
         if not self.path.startswith("/") or self.path.startswith("//"):
             return self.reply(400, "Origin-form request target required.\n")
         lengths = self.headers.get_all("Content-Length", [])
@@ -311,7 +447,14 @@ def main():
     server.start_ai = os.environ.get("START_AI") == "true"
     server.wake_paths = set(filter(None, os.environ.get("WAKE_PATHS", "").split(",")))
     server.wake_message = os.environ.get("WAKE_MESSAGE") or DEFAULT_WAKE_MESSAGE
-    threading.Thread(target=activity.heartbeat, daemon=True).start()
+    server.hold = None
+    if os.environ.get("HOLD_LEASE"):
+        server.hold = Hold(
+            os.environ["HOLD_NAMESPACE"],
+            os.environ["HOLD_LEASE"],
+            int(os.environ.get("HOLD_MAX_SECONDS", "43200")),
+        )
+    threading.Thread(target=activity.heartbeat, args=(server.hold,), daemon=True).start()
     server.serve_forever()
 
 

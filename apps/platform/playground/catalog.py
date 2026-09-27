@@ -15,6 +15,9 @@ CREATE TABLE IF NOT EXISTS copies (
 CREATE TABLE IF NOT EXISTS pulls (
   model TEXT NOT NULL, backend TEXT NOT NULL, started_at REAL NOT NULL, finished_at REAL, status TEXT NOT NULL,
   PRIMARY KEY (model, backend, started_at));
+CREATE TABLE IF NOT EXISTS timings (
+  model TEXT NOT NULL, backend TEXT NOT NULL, load_seconds REAL, prompt_tps REAL, eval_tps REAL, measured_at REAL NOT NULL,
+  PRIMARY KEY (model, backend));
 """
 
 
@@ -96,3 +99,18 @@ class Catalog:
             db.execute('UPDATE pulls SET finished_at = ?, status = ? WHERE model = ? AND backend = ? AND started_at = ?',
                        (time.time(), status, name, backend, started))
             db.execute('COMMIT')
+
+    def record_timing(self, name, backend, load_seconds=None, prompt_tps=None, eval_tps=None):
+        """Keep the last measurement of each figure; None leaves the stored figure alone."""
+        with self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            db.execute('INSERT INTO timings (model, backend, load_seconds, prompt_tps, eval_tps, measured_at) VALUES (?, ?, ?, ?, ?, ?)'
+                       ' ON CONFLICT(model, backend) DO UPDATE SET load_seconds=COALESCE(excluded.load_seconds, load_seconds),'
+                       ' prompt_tps=COALESCE(excluded.prompt_tps, prompt_tps), eval_tps=COALESCE(excluded.eval_tps, eval_tps),'
+                       ' measured_at=excluded.measured_at', (name, backend, load_seconds, prompt_tps, eval_tps, time.time()))
+            db.execute('COMMIT')
+
+    def timing(self, name, backend):
+        with self.connect() as db:
+            row = db.execute('SELECT * FROM timings WHERE model = ? AND backend = ?', (name, backend)).fetchone()
+        return dict(row) if row else {}

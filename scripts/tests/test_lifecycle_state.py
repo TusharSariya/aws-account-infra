@@ -50,7 +50,18 @@ class StateTests(unittest.TestCase):
             state = heartbeat(state, source, source, tickets, known, now)
         return observer.reconcile(state, now=now, capacity=kwargs.get('capacity', GOOD),
             pods_present=kwargs.get('pods_present', True), ready=kwargs.get('ready', True),
-            instances={'odysseus': 'odysseus', 'ollama': 'ollama'})
+            instances={'odysseus': 'odysseus', 'ollama': 'ollama'}, hold_until=kwargs.get('hold_until'))
+
+    def test_owner_hold_suspends_idle_time_and_releases_into_a_fresh_window(self):
+        observer, state = Observation(300), self.start()
+        for now in range(0, 1200, 5):
+            state, replicas, status = self.observe(observer, state, now, hold_until='2026-09-28T04:00:00+00:00')
+            self.assertEqual((replicas, status['idle_seconds'], status['hold_until']), (1, 0, '2026-09-28T04:00:00+00:00'))
+        for now in range(1200, 1500, 5):
+            state, replicas, status = self.observe(observer, state, now)
+            self.assertEqual((replicas, status['hold_until']), (1, None))
+        state, replicas, status = self.observe(observer, state, 1500)
+        self.assertEqual((state['reason'], replicas), ('verified idle', 0))
 
     def test_exact_idle_interval_excludes_heartbeat_and_resets_on_unknown_or_recovery(self):
         observer, state = Observation(), self.start()

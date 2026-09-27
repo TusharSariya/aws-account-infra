@@ -41,6 +41,34 @@ kind: RoleBinding
 metadata: {name: {{ .name }}, namespace: {{ .namespace }}}
 subjects: [{kind: ServiceAccount, name: {{ .name }}, namespace: {{ .namespace }}}]
 roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: {{ .name }}}
+{{- if .hold }}
+---
+# Owner hold: one fixed durable power-hold Lease the coordinator already honours.
+# The gateway flips its label and stamps hold-until; a chart upgrade resets it to off.
+apiVersion: coordination.k8s.io/v1
+kind: Lease
+metadata:
+  name: {{ .hold.lease }}
+  namespace: {{ .hold.namespace | default "homelab-platform" }}
+  labels: {homelab.tfdraw.dev/power-hold: 'false'}
+  annotations: {homelab.tfdraw.dev/hosts: {{ .hold.hosts | default .host | quote }}}
+spec: {holderIdentity: {{ .name }}}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: {name: {{ .name }}-hold, namespace: {{ .hold.namespace | default "homelab-platform" }}}
+rules:
+  - apiGroups: [coordination.k8s.io]
+    resources: [leases]
+    resourceNames: [{{ .hold.lease }}]
+    verbs: [get, patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: {name: {{ .name }}-hold, namespace: {{ .hold.namespace | default "homelab-platform" }}}
+subjects: [{kind: ServiceAccount, name: {{ .name }}, namespace: {{ .namespace }}}]
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: {{ .name }}-hold}
+{{- end }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -98,6 +126,11 @@ spec:
             - {name: START_AI, value: {{ .startAI | default false | quote }}}
             - {name: WAKE_PATHS, value: {{ .wakePaths | default "" | quote }}}
             - {name: WAKE_MESSAGE, value: {{ .message | default "" | quote }}}
+{{- if .hold }}
+            - {name: HOLD_NAMESPACE, value: {{ .hold.namespace | default "homelab-platform" | quote }}}
+            - {name: HOLD_LEASE, value: {{ .hold.lease | quote }}}
+            - {name: HOLD_MAX_SECONDS, value: {{ .hold.maxSeconds | default 43200 | quote }}}
+{{- end }}
             - name: POD_NAMESPACE
               valueFrom: {fieldRef: {fieldPath: metadata.namespace}}
             - name: POD_UID

@@ -34,6 +34,12 @@ rules:
     resources: [leases]
     resourceNames: [ai-lifecycle]
     verbs: [get, update]
+{{- if .Values.config.holdLease }}
+  - apiGroups: [coordination.k8s.io]
+    resources: [leases]
+    resourceNames: [{{ .Values.config.holdLease }}]
+    verbs: [get]
+{{- end }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding

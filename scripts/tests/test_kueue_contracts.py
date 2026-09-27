@@ -1,6 +1,7 @@
 """Exercise rendered admission/runner boundaries and queue failure behavior."""
 import importlib.util
 import json
+import tempfile
 import io
 import os
 from contextlib import redirect_stdout
@@ -45,6 +46,26 @@ class Contracts(unittest.TestCase):
         for name in chart['gateways'] + chart['services']:
             self.assertIn('"%s"' % name, operational)
         self.assertIn("object.spec.nodeSelector['kubernetes.io/hostname'] == \"talos-worker-01\"", operational)
+
+    def test_playground_gateway_owns_one_durable_hold_lease(self):
+        gateways = json.loads((ROOT/'platform/automatic-power/gateways.json').read_text())
+        playground = next(g for g in gateways if g['name'] == 'wake-playground')
+        self.assertEqual(playground['hold'], {'lease': 'host-hold-playground', 'hosts': 'primary', 'maxSeconds': 43200})
+        with tempfile.NamedTemporaryFile('w', suffix='.yaml', delete=False) as f:
+            yaml.safe_dump({'gatewayCode': 'pass', 'gateways': gateways}, f)
+        docs = self.render('charts/homelab-always-on', values=f.name, namespace='homelab-platform')
+        lease = next(d for d in docs if d['kind'] == 'Lease' and d['metadata']['name'] == 'host-hold-playground')
+        self.assertEqual(lease['metadata']['namespace'], 'homelab-platform')
+        self.assertEqual(lease['metadata']['labels'], {'homelab.tfdraw.dev/power-hold': 'false'})
+        self.assertEqual(lease['metadata']['annotations'], {'homelab.tfdraw.dev/hosts': 'primary'})
+        role = next(d for d in docs if d['kind'] == 'Role' and d['metadata']['name'] == 'wake-playground-hold')
+        self.assertEqual(role['rules'], [{'apiGroups': ['coordination.k8s.io'], 'resources': ['leases'],
+                                          'resourceNames': ['host-hold-playground'], 'verbs': ['get', 'patch']}])
+        self.assertFalse(any(d['kind'] == 'Role' and d['metadata']['name'] == 'wake-ollama-hold' for d in docs))
+        deploy = next(d for d in docs if d['kind'] == 'Deployment' and d['metadata']['name'] == 'wake-playground')
+        env = {e['name']: e.get('value') for e in deploy['spec']['template']['spec']['containers'][0]['env']}
+        self.assertEqual((env['HOLD_LEASE'], env['HOLD_NAMESPACE'], env['HOLD_MAX_SECONDS']),
+                         ('host-hold-playground', 'homelab-platform', '43200'))
 
     def render(self, chart, name='test', values=None, namespace='default'):
         args = ['helm','template',name,str(ROOT/chart),'--namespace',namespace,'--kube-version','1.36.3']

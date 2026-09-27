@@ -1,5 +1,6 @@
 """Serialize desired state, tracking and replicas in one resource-version write."""
 from copy import deepcopy
+from datetime import datetime
 import json
 import threading
 import time
@@ -18,6 +19,7 @@ MODELS = '/api/v1/namespaces/homelab-models'
 DEPLOYMENTS = '/apis/apps/v1/namespaces/homelab-models/deployments'
 RUNTIME = DEPLOYMENTS + '/ai-runtime'
 STATE = 'homelab/lifecycle-state'
+HOLD_LEASES = '/apis/coordination.k8s.io/v1/namespaces/homelab-platform/leases/'
 # Reconciliation cadence. The lower bound keeps API load bounded on the 2-vCPU
 # control plane; the upper bound leaves slack under the heartbeat gap check so a
 # slow tick still counts as continuous observation.
@@ -193,10 +195,29 @@ class Runtime:
             and pod.get('status', {}).get('phase') == 'Pending' for pod in pods)
         return bool(ready), instances, unstarted
 
+    def hold_until(self):
+        """Release time of the owner hold Lease, or None: absent, unlabelled, expired or unconfigured."""
+        name = self.config.get('holdLease')
+        if not name:
+            return None
+        lease = self.api.call('GET', HOLD_LEASES + name, optional=True)
+        if not lease:
+            return None
+        meta = lease.get('metadata', {})
+        if meta.get('labels', {}).get('homelab.tfdraw.dev/power-hold') != 'true':
+            return None
+        until = meta.get('annotations', {}).get('homelab.tfdraw.dev/hold-until')
+        try:
+            if until is None or datetime.fromisoformat(until).timestamp() <= time.time():
+                return None
+        except ValueError:
+            return None
+        return until
+
     def evaluate(self, obj, state, pods, approved, revision, capacity, observed=None):
         ready, instances, unstarted = observed if observed is not None else self.observations(pods, state)
         state, replicas, status = self.observer.reconcile(state, now=time.monotonic(), wall_time=time.time(), capacity=capacity,
-            pods_present=bool(pods), ready=ready, instances=instances, unstarted=unstarted)
+            pods_present=bool(pods), ready=ready, instances=instances, unstarted=unstarted, hold_until=self.hold_until())
         if not pods and state['desired'] == 'off':
             obj['metadata'].setdefault('labels', {}).update(approved['metadata'].get('labels', {}))
             obj['spec'] = deepcopy(approved['spec'])

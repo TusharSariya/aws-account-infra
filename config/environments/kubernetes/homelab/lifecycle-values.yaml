@@ -2,6 +2,7 @@ config:
   queueStatus: true
   idleTimeoutSeconds: 300
   tickSeconds: 10
+  holdLease: host-hold-playground   # owner hold from the playground gateway (change 4)
   filesystemUUID: '86f3ada1-17e4-4f74-9d73-a18c1774cc31'
   physicalPool: 'pve/data'
 wakeGateway: wake-lifecycle
