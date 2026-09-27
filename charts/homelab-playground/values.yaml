@@ -1,0 +1,32 @@
+node: talos-worker-01
+# Router code files are injected by the OpenTofu root from apps/platform/playground.
+routerCode: {}
+routerImage: python:3.14-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6
+router:
+  storage: 1Gi
+  resources:
+    requests: {cpu: 100m, memory: 128Mi, ephemeral-storage: 16Mi}
+    limits: {cpu: 500m, memory: 256Mi, ephemeral-storage: 64Mi}
+  config:
+    default_backend: server
+    poll_seconds: 10
+    wake_cap_seconds: 1500
+    backends:
+      - name: server
+        url: http://wake-ollama.homelab-models.svc.cluster.local:8080
+        budget_bytes: 60129542144    # 56 GiB, fit rule (#244)
+        overhead_bytes: 6442450944   # 6 GiB measured runner overhead
+        kv_type: q8_0
+        token_file: /backend-credentials/model-user-token
+        node: talos-worker-01
+        namespace: homelab-models
+        runtime_selector: app=ai-runtime
+        manual_power: false
+ui:
+  enabled: false
+  image: ghcr.io/open-webui/open-webui:main
+  hostname: playground
+  storage: 5Gi
+  resources:
+    requests: {cpu: 250m, memory: 512Mi, ephemeral-storage: 64Mi}
+    limits: {cpu: '1', memory: 1536Mi, ephemeral-storage: 512Mi}

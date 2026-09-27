@@ -141,6 +141,10 @@ spec:
     - from:
         - namespaceSelector:
             matchLabels: {kubernetes.io/metadata.name: tailscale}
+{{- range .clients }}
+        - podSelector:
+            matchLabels: {app: {{ . }}}
+{{- end }}
       ports: [{port: 8080, protocol: TCP}]
   egress:
 {{- if .startAI }}

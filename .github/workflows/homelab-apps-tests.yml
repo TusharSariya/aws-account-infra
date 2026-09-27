@@ -140,6 +140,7 @@ jobs:
           uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p "test_ai_*.py"
           uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p "test_lifecycle_*.py"
           uv run --with PyYAML==6.0.3 python -m unittest discover -s scripts/tests -p test_local_lifecycle.py
+          python3 -m unittest discover -s apps/platform/playground/tests -p "test_*.py"
           echo apps-lifecycle >> "$RUNNER_TEMP/apps-ran"
       - name: Validate postgres units
         if: contains(fromJSON(inputs.checks), 'apps-postgres')
