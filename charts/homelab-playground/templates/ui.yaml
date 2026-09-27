@@ -12,6 +12,12 @@ spec:
     requests:
       storage: {{ .Values.ui.storage }}
 ---
+# Named account: the compute admission policy admits the UI outside Kueue only under it.
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: playground-ui, namespace: homelab-models}
+automountServiceAccountToken: false
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata: {name: playground-ui, namespace: homelab-models}
@@ -26,6 +32,7 @@ spec:
       annotations:
         homelab/revision: {{ toJson .Values.ui | sha256sum | quote }}
     spec:
+      serviceAccountName: playground-ui
       automountServiceAccountToken: false
       nodeSelector: {kubernetes.io/hostname: {{ .Values.node }}}
       securityContext:
