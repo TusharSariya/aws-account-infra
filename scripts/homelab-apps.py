@@ -22,7 +22,7 @@ sys.path.insert(0, str(ROOT / 'apps/platform/storage'))
 from workload_state import is_terminated
 TF = ROOT / 'live/kubernetes/homelab'
 CONFIG = ROOT / 'config/environments/kubernetes/homelab'
-SECRET_NAMES = ('TS_OPERATOR_CLIENT_ID', 'TS_OPERATOR_CLIENT_SECRET', 'PIHOLE_ADMIN_PASSWORD', 'GHCR_READ_USER', 'GHCR_READ_TOKEN', 'ODYSSEUS_ADMIN_PASSWORD', 'SEARXNG_SECRET', 'AI_LIFECYCLE_CREDENTIALS_B64', 'POSTGRES_BACKUP_CREDENTIALS_B64', 'TALOS_SECRETS_B64')
+SECRET_NAMES = ('TS_OPERATOR_CLIENT_ID', 'TS_OPERATOR_CLIENT_SECRET', 'PIHOLE_ADMIN_PASSWORD', 'GHCR_READ_USER', 'GHCR_READ_TOKEN', 'ODYSSEUS_ADMIN_PASSWORD', 'SEARXNG_SECRET', 'AI_LIFECYCLE_CREDENTIALS_B64', 'POSTGRES_BACKUP_CREDENTIALS_B64', 'PLAYGROUND_CREDENTIALS_B64', 'TALOS_SECRETS_B64')
 class AppError(ValueError):
     """Only deliberately authored, secret-free diagnostics."""
 
@@ -30,7 +30,7 @@ class AppError(ValueError):
 # Always-on releases are owned and guarded by homelab-management after migration.
 ADDRESSES = {'helm_release.postgres_operator', 'helm_release.postgres',
              'helm_release.ollama', 'helm_release.odysseus',
-             'helm_release.capacity', 'helm_release.ai'}
+             'helm_release.capacity', 'helm_release.ai', 'helm_release.playground'}
 
 
 def run(command, data=None, *, timeout=2400):
@@ -101,6 +101,7 @@ def credentials():
     if len(values['SEARXNG_SECRET']) < 32:
         raise AppError('SearxNG secret must contain at least 32 characters')
     lifecycle_credentials()
+    playground_credentials()
     from postgres_credentials import credentials as postgres_credentials
     postgres_credentials()
     return values
@@ -116,6 +117,19 @@ def lifecycle_credentials():
         return values
     except (ValueError, TypeError):
         raise AppError("Five independent 256-bit lifecycle credentials are required") from None
+
+
+def playground_credentials():
+    """Router bearer and Open WebUI secret key, issued by scripts/playground-setup-wizard.sh."""
+    try:
+        values = json.loads(base64.b64decode(os.environ.get("PLAYGROUND_CREDENTIALS_B64", ""), validate=True))
+        if (set(values) != {"router-token", "webui-secret"}
+                or any(not isinstance(value, str) or not re.fullmatch(r"[A-Za-z0-9_-]{43,}", value) for value in values.values())
+                or len(set(values.values())) != 2):
+            raise ValueError()
+        return values
+    except (ValueError, TypeError):
+        raise AppError("Two independent 256-bit playground credentials are required") from None
 
 
 def tailnet_ip(hostname, *, deadline=None):
@@ -166,7 +180,9 @@ def reconcile_credential_object(kubectl, manifest, preserve=()):
                ('Secret', 'ghcr-read', 'homelab-models'), ('Namespace', 'tailscale', None),
                ('Secret', 'ai-lifecycle-credentials', 'homelab-platform'),
                ('Secret', 'ai-runtime-credentials', 'homelab-models'),
-               ('Secret', 'ai-lifecycle-operator', 'homelab-jobs')}
+               ('Secret', 'ai-lifecycle-operator', 'homelab-jobs'),
+               ('Secret', 'playground-router-auth', 'homelab-models'),
+               ('Secret', 'playground-ui', 'homelab-models')}
     if manifest.get('apiVersion') != 'v1' or (kind, name, namespace) not in allowed:
         raise AppError('Unexpected credential object')
     path = '/api/v1/' + ('namespaces/' + namespace + '/secrets' if kind == 'Secret' else 'namespaces')
@@ -203,8 +219,12 @@ def bootstrap(kubectl):
     for manifest in yaml.safe_load_all((CONFIG / 'namespaces.yaml').read_text()):
         reconcile_credential_object(kubectl, manifest)
     lifecycle = lifecycle_credentials()
+    playground = playground_credentials()
     for namespace, name, data in [
         ('homelab-platform', 'ai-lifecycle-credentials', {key: lifecycle[key] for key in ('operator', 'odysseus', 'ollama')}),
+        ('homelab-models', 'playground-router-auth', {'token': playground['router-token']}),
+        ('homelab-models', 'playground-ui', {'secret-key': playground['webui-secret'],
+                                              'ollama-api-configs': json.dumps({'0': {'key': playground['router-token']}})}),
         ('homelab-models', 'ai-runtime-credentials', {key: lifecycle[key] for key in ('odysseus', 'ollama', 'model-user', 'model-workspace')}),
         ('tailscale', 'operator-oauth', {'client_id': values['TS_OPERATOR_CLIENT_ID'], 'client_secret': values['TS_OPERATOR_CLIENT_SECRET']}),
         ('homelab-services', 'pihole-admin', {'password': values['PIHOLE_ADMIN_PASSWORD']}),

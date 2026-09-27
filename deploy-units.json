@@ -196,7 +196,10 @@
         "scripts/postgres_",
         ".github/workflows/postgres-backup-image.yml",
         "kubernetes/platform/main/placement/",
-        "scripts/main_cluster_guard.py"
+        "scripts/main_cluster_guard.py",
+        "charts/homelab-playground/",
+        "apps/platform/playground/",
+        "scripts/playground-setup-wizard.sh"
       ]
     },
     {

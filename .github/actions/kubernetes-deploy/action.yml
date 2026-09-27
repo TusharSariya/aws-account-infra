@@ -34,6 +34,9 @@ inputs:
   postgres-credentials-b64:
     description: Dedicated PostgreSQL backup leaf and database credential
     default: ''
+  playground-credentials-b64:
+    description: Playground router bearer and Open WebUI secret key
+    default: ''
 runs:
   using: composite
   steps:
@@ -94,6 +97,7 @@ runs:
         SEARXNG_SECRET: ${{ inputs.searxng-secret }}
         POSTGRES_BACKUP_CREDENTIALS_B64: ${{ inputs.postgres-credentials-b64 }}
         AI_LIFECYCLE_CREDENTIALS_B64: ${{ inputs.lifecycle-credentials-b64 }}
+        PLAYGROUND_CREDENTIALS_B64: ${{ inputs.playground-credentials-b64 }}
       run: |
         set -o pipefail
         uv run --with PyYAML==6.0.3 python scripts/homelab-apps.py plan --private "$PRIVATE" | tee applications-plan.txt
@@ -112,6 +116,7 @@ runs:
         SEARXNG_SECRET: ${{ inputs.searxng-secret }}
         POSTGRES_BACKUP_CREDENTIALS_B64: ${{ inputs.postgres-credentials-b64 }}
         AI_LIFECYCLE_CREDENTIALS_B64: ${{ inputs.lifecycle-credentials-b64 }}
+        PLAYGROUND_CREDENTIALS_B64: ${{ inputs.playground-credentials-b64 }}
       run: uv run --with PyYAML==6.0.3 python scripts/homelab-apps.py bootstrap --private "$PRIVATE"
     - name: Apply exact saved plan and inspect state for credentials
       if: inputs.mode == 'apply'
@@ -128,6 +133,7 @@ runs:
         SEARXNG_SECRET: ${{ inputs.searxng-secret }}
         POSTGRES_BACKUP_CREDENTIALS_B64: ${{ inputs.postgres-credentials-b64 }}
         AI_LIFECYCLE_CREDENTIALS_B64: ${{ inputs.lifecycle-credentials-b64 }}
+        PLAYGROUND_CREDENTIALS_B64: ${{ inputs.playground-credentials-b64 }}
       run: uv run --with PyYAML==6.0.3 python scripts/homelab-apps.py apply --private "$PRIVATE"
     - name: Verify private DNS and HTTPS endpoints
       if: inputs.mode == 'apply'
@@ -136,6 +142,7 @@ runs:
         PRIVATE: ${{ steps.private.outputs.path }}
         POSTGRES_BACKUP_CREDENTIALS_B64: ${{ inputs.postgres-credentials-b64 }}
         AI_LIFECYCLE_CREDENTIALS_B64: ${{ inputs.lifecycle-credentials-b64 }}
+        PLAYGROUND_CREDENTIALS_B64: ${{ inputs.playground-credentials-b64 }}
       run: uv run --with PyYAML==6.0.3 python scripts/homelab-apps.py endpoints --private "$PRIVATE"
     - name: Release only this operation's maintenance hold
       if: always() && steps.private.outputs.path != ''

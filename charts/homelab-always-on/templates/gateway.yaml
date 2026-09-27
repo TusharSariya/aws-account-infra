@@ -79,7 +79,7 @@ spec:
           command: [python, /code/gateway.py]
           ports: [{name: http, containerPort: 8080}]
           resources:
-            requests: {cpu: 20m, memory: 32Mi}
+            requests: {cpu: 10m, memory: 32Mi}
             limits: {cpu: 250m, memory: 128Mi}
           securityContext:
             allowPrivilegeEscalation: false
@@ -141,6 +141,10 @@ spec:
     - from:
         - namespaceSelector:
             matchLabels: {kubernetes.io/metadata.name: tailscale}
+{{- range .clients }}
+        - podSelector:
+            matchLabels: {app: {{ . }}}
+{{- end }}
       ports: [{port: 8080, protocol: TCP}]
   egress:
 {{- if .startAI }}

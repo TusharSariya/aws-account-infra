@@ -1,0 +1,165 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: playground-router, namespace: homelab-models}
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: {name: playground-router, namespace: homelab-models}
+rules:
+  - apiGroups: ['']
+    resources: [pods]
+    verbs: [get, list]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: {name: playground-router, namespace: homelab-models}
+subjects: [{kind: ServiceAccount, name: playground-router, namespace: homelab-models}]
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: playground-router}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata: {name: playground-router-node-ready}
+rules:
+  - apiGroups: ['']
+    resources: [nodes]
+    resourceNames: [{{ .Values.node }}]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata: {name: playground-router-node-ready}
+subjects: [{kind: ServiceAccount, name: playground-router, namespace: homelab-models}]
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: playground-router-node-ready}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: playground-router-code, namespace: homelab-models}
+data:
+{{- range $name, $content := .Values.routerCode }}
+  {{ $name }}: |
+{{ $content | indent 4 }}
+{{- end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: playground-router-config, namespace: homelab-models}
+data:
+  config.json: {{ toJson .Values.router.config | quote }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: playground-router-state
+  namespace: homelab-models
+  annotations: {helm.sh/resource-policy: keep}
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: worker-local-retain
+  resources:
+    requests:
+      storage: {{ .Values.router.storage }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: playground-router, namespace: homelab-models}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app: playground-router}
+  template:
+    metadata:
+      labels: {app: playground-router}
+      annotations:
+        homelab/revision: {{ toJson .Values | sha256sum | quote }}
+    spec:
+      serviceAccountName: playground-router
+      automountServiceAccountToken: false
+      nodeSelector: {kubernetes.io/hostname: {{ .Values.node }}}
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        fsGroup: 1000
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: router
+          image: {{ .Values.routerImage | quote }}
+          command: [python, -B, /code/router.py]
+          ports: [{name: http, containerPort: 8080}]
+          readinessProbe: {httpGet: {path: /healthz, port: http}, periodSeconds: 5}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            {{- toYaml .Values.router.resources | nindent 12 }}
+          volumeMounts:
+            - {name: code, mountPath: /code, readOnly: true}
+            - {name: config, mountPath: /config, readOnly: true}
+            - {name: auth, mountPath: /auth, readOnly: true}
+            - {name: backend-credentials, mountPath: /backend-credentials, readOnly: true}
+            - {name: api, mountPath: /var/run/secrets/kubernetes.io/serviceaccount, readOnly: true}
+            - {name: data, mountPath: /data}
+      volumes:
+        - {name: code, configMap: {name: playground-router-code}}
+        - {name: config, configMap: {name: playground-router-config}}
+        - {name: auth, secret: {secretName: playground-router-auth, defaultMode: 288}}
+        - name: backend-credentials
+          secret:
+            secretName: ai-runtime-credentials
+            defaultMode: 288
+            items:
+              - {key: model-user, path: model-user-token}
+        - name: api
+          projected:
+            defaultMode: 288
+            sources:
+              - serviceAccountToken: {path: token, expirationSeconds: 3600}
+              - configMap:
+                  name: kube-root-ca.crt
+                  items: [{key: ca.crt, path: ca.crt}]
+        - {name: data, persistentVolumeClaim: {claimName: playground-router-state}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: playground-router, namespace: homelab-models}
+spec:
+  selector: {app: playground-router}
+  ports: [{name: http, port: 8080, targetPort: http}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: playground-router, namespace: homelab-models}
+spec:
+  podSelector:
+    matchLabels: {app: playground-router}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: {app: playground-ui}
+      ports: [{protocol: TCP, port: 8080}]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels: {app: wake-ollama}
+      ports: [{protocol: TCP, port: 8080}]
+    - to:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: kube-system}
+          podSelector:
+            matchLabels: {k8s-app: kube-dns}
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata: {name: playground-router-apiserver, namespace: homelab-models}
+spec:
+  endpointSelector:
+    matchLabels: {app: playground-router}
+  egress:
+    - toEntities: [kube-apiserver]
+      toPorts:
+        - ports: [{port: '6443', protocol: TCP}]

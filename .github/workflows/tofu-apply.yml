@@ -82,6 +82,7 @@ jobs:
           SEARXNG_SECRET: ${{ secrets.SEARXNG_SECRET }}
           POSTGRES_BACKUP_CREDENTIALS_B64: ${{ secrets.POSTGRES_BACKUP_CREDENTIALS_B64 }}
           AI_LIFECYCLE_CREDENTIALS_B64: ${{ secrets.AI_LIFECYCLE_CREDENTIALS_B64 }}
+          PLAYGROUND_CREDENTIALS_B64: ${{ secrets.PLAYGROUND_CREDENTIALS_B64 }}
         run: python3 scripts/homelab-apps.py credentials
       - uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -225,6 +226,7 @@ jobs:
           searxng-secret: ${{ secrets.SEARXNG_SECRET }}
           postgres-credentials-b64: ${{ secrets.POSTGRES_BACKUP_CREDENTIALS_B64 }}
           lifecycle-credentials-b64: ${{ secrets.AI_LIFECYCLE_CREDENTIALS_B64 }}
+          playground-credentials-b64: ${{ secrets.PLAYGROUND_CREDENTIALS_B64 }}
 
       - name: Release Proxmox apply hold
         if: always() && steps.power_hold.outputs.private-path != ''

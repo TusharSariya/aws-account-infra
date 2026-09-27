@@ -327,6 +327,7 @@ class GuardTests(unittest.TestCase):
     def test_bootstrap_preserves_gateway_key_only_for_lifecycle_credentials(self):
         values = dict.fromkeys(apps.SECRET_NAMES, 'a-fixture-only-value-that-is-long-enough')
         values['AI_LIFECYCLE_CREDENTIALS_B64'] = base64.b64encode(json.dumps({name: character * 43 for name, character in zip(('operator', 'odysseus', 'ollama', 'model-user', 'model-workspace'), 'abcde')}).encode()).decode()
+        values['PLAYGROUND_CREDENTIALS_B64'] = base64.b64encode(json.dumps({'router-token': 'r' * 43, 'webui-secret': 'w' * 43}).encode()).decode()
         values['POSTGRES_BACKUP_CREDENTIALS_B64'] = base64.b64encode(json.dumps({'password': 'p'*43, 'client.crt': 'BEGIN CERTIFICATE fixture', 'client.key': 'PRIVATE KEY fixture'}).encode()).decode()
         with patch.dict(apps.os.environ, {**values, 'GITHUB_ACTIONS': 'true'}), patch.object(apps, 'run', return_value=b''), \
              patch.object(apps, 'reconcile_credential_object') as reconcile:
@@ -338,6 +339,7 @@ class GuardTests(unittest.TestCase):
     def test_new_credentials_are_external_and_registry_secret_has_correct_type(self):
         values = dict.fromkeys(apps.SECRET_NAMES, 'a-fixture-only-value-that-is-long-enough')
         values['AI_LIFECYCLE_CREDENTIALS_B64'] = base64.b64encode(json.dumps({name: character * 43 for name, character in zip(('operator', 'odysseus', 'ollama', 'model-user', 'model-workspace'), 'abcde')}).encode()).decode()
+        values['PLAYGROUND_CREDENTIALS_B64'] = base64.b64encode(json.dumps({'router-token': 'r' * 43, 'webui-secret': 'w' * 43}).encode()).decode()
         values['POSTGRES_BACKUP_CREDENTIALS_B64'] = base64.b64encode(json.dumps({'password': 'p'*43, 'client.crt': 'BEGIN CERTIFICATE fixture', 'client.key': 'PRIVATE KEY fixture'}).encode()).decode()
         with patch.dict(apps.os.environ, {**values, 'GITHUB_ACTIONS': 'true'}), patch.object(apps, 'run', return_value=b'') as run:
             apps.bootstrap('kubectl')

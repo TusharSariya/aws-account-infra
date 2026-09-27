@@ -1,0 +1,120 @@
+{{- if .Values.ui.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: playground-ui-data
+  namespace: homelab-models
+  annotations: {helm.sh/resource-policy: keep}
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: worker-local-retain
+  resources:
+    requests:
+      storage: {{ .Values.ui.storage }}
+---
+# Named account: the compute admission policy admits the UI outside Kueue only under it.
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: playground-ui, namespace: homelab-models}
+automountServiceAccountToken: false
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: playground-ui, namespace: homelab-models}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app: playground-ui}
+  template:
+    metadata:
+      labels: {app: playground-ui}
+      annotations:
+        homelab/revision: {{ toJson .Values.ui | sha256sum | quote }}
+    spec:
+      serviceAccountName: playground-ui
+      automountServiceAccountToken: false
+      nodeSelector: {kubernetes.io/hostname: {{ .Values.node }}}
+      securityContext:
+        fsGroup: 0
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: open-webui
+          image: {{ .Values.ui.image | quote }}
+          ports: [{name: http, containerPort: 8080}]
+          env:
+            - {name: OLLAMA_BASE_URL, value: 'http://playground-router.homelab-models.svc.cluster.local:8080'}
+            - name: OLLAMA_API_CONFIGS   # {"0": {"key": <router bearer>}}, composed by the apps bootstrap
+              valueFrom: {secretKeyRef: {name: playground-ui, key: ollama-api-configs}}
+            - name: WEBUI_SECRET_KEY
+              valueFrom: {secretKeyRef: {name: playground-ui, key: secret-key}}
+            - {name: WEBUI_NAME, value: Playground}
+            - {name: WEBUI_URL, value: 'https://{{ .Values.ui.hostname }}.tail2f646b.ts.net'}
+            - {name: ENABLE_OPENAI_API, value: 'false'}
+            - {name: ENABLE_SIGNUP, value: 'true'}   # first account becomes admin; disable afterwards from the admin panel
+            - {name: DEFAULT_MODELS, value: ''}
+            - {name: ENABLE_WEB_SEARCH, value: 'false'}
+            - {name: RAG_EMBEDDING_ENGINE, value: ''}
+            - {name: OLLAMA_KEEP_ALIVE, value: '5m'}
+            - {name: AIOHTTP_CLIENT_TIMEOUT, value: '1800'}   # cold loads and switches are silent for over a minute
+            - {name: AIOHTTP_CLIENT_TIMEOUT_MODEL_LIST, value: '30'}
+          readinessProbe: {httpGet: {path: /health, port: http}, periodSeconds: 10, initialDelaySeconds: 20}
+          startupProbe: {httpGet: {path: /health, port: http}, periodSeconds: 5, failureThreshold: 60}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+          resources:
+            {{- toYaml .Values.ui.resources | nindent 12 }}
+          volumeMounts:
+            - {name: data, mountPath: /app/backend/data}
+      volumes:
+        - {name: data, persistentVolumeClaim: {claimName: playground-ui-data}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: playground-ui, namespace: homelab-models}
+spec:
+  selector: {app: playground-ui}
+  ports: [{name: http, port: 8080, targetPort: http}]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata: {name: playground, namespace: homelab-models}
+spec:
+  ingressClassName: tailscale
+  tls:
+    - hosts: [{{ .Values.ui.hostname | quote }}]
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: wake-playground
+                port: {name: http}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: playground-ui, namespace: homelab-models}
+spec:
+  podSelector:
+    matchLabels: {app: playground-ui}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: {app: wake-playground}
+      ports: [{protocol: TCP, port: 8080}]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels: {app: playground-router}
+      ports: [{protocol: TCP, port: 8080}]
+    - to:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: kube-system}
+          podSelector:
+            matchLabels: {k8s-app: kube-dns}
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+{{- end }}

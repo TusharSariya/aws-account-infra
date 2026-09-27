@@ -5,7 +5,10 @@
     "host": "primary",
     "upstream": "ollama.homelab-models.svc.cluster.local",
     "port": 11434,
-    "startAI": true
+    "startAI": true,
+    "clients": [
+      "playground-router"
+    ]
   },
   {
     "name": "wake-odysseus",

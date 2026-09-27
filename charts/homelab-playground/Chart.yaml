@@ -1,0 +1,6 @@
+apiVersion: v2
+name: homelab-playground
+description: Model playground router and Open WebUI on the primary worker behind the wake-playground gateway
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
