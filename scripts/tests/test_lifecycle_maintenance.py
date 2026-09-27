@@ -12,6 +12,24 @@ spec.loader.exec_module(maintenance)
 
 
 class MaintenanceTests(unittest.TestCase):
+    def test_cpu_constrained_accepts_scheduler_or_admission_budget_signal(self):
+        pod = {'metadata': {'uid': 'p1'}, 'spec': {'schedulingGates': [{'name': 'kueue.x-k8s.io/admission'}]},
+               'status': {'phase': 'Pending', 'conditions': []}}
+        waiting = [{'metadata': {'ownerReferences': [{'uid': 'p1'}]}, 'status': {'admissionChecks': [
+            {'name': 'homelab-host-ready', 'state': 'Pending', 'message': 'Waiting for: primary'}]}}]
+        self.assertTrue(maintenance.cpu_constrained(pod, waiting))
+        other = [{'metadata': {'ownerReferences': [{'uid': 'p2'}]}, 'status': waiting[0]['status']}]
+        self.assertFalse(maintenance.cpu_constrained(pod, other))
+        ready = [{'metadata': {'ownerReferences': [{'uid': 'p1'}]}, 'status': {'admissionChecks': [
+            {'name': 'homelab-host-ready', 'state': 'Ready', 'message': ''}]}}]
+        self.assertFalse(maintenance.cpu_constrained(pod, ready))
+        ungated = {'metadata': {'uid': 'p1'}, 'spec': {}, 'status': {'phase': 'Pending', 'conditions': []}}
+        self.assertFalse(maintenance.cpu_constrained(ungated, waiting))
+        scheduler = {'metadata': {'uid': 'p1'}, 'spec': {}, 'status': {'phase': 'Pending', 'conditions': [
+            {'type': 'PodScheduled', 'status': 'False', 'reason': 'Unschedulable', 'message': '0/4 nodes are available: 1 Insufficient cpu.'}]}}
+        self.assertTrue(maintenance.cpu_constrained(scheduler, []))
+
+
     def test_short_idle_acceptance_detects_late_timer_reset(self):
         session = Mock()
         session.status.side_effect = [

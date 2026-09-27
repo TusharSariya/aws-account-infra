@@ -66,6 +66,32 @@ def dns():
     print('PASS: Pi-hole answers UDP and TCP DNS', flush=True)
 
 
+def cpu_constrained(pod, workloads):
+    """The aggregate Pod is held back by the filler's CPU, at either of the two places that can happen.
+
+    Before the coordinator's admission budget (#224) the scheduler reported Unschedulable with
+    'Insufficient cpu'. Now the coordinator subtracts non-Kueue commitments from the host budget
+    first, so the reservation no longer fits and the host-ready admission check keeps the Pod
+    behind Kueue's scheduling gate with 'Waiting for: primary'. Either is the constrained state.
+    """
+    conditions = pod.get('status', {}).get('conditions', [])
+    if any(c['type'] == 'PodScheduled' and c['status'] == 'False' and c.get('reason') == 'Unschedulable'
+           and 'Insufficient cpu' in c.get('message', '') for c in conditions):
+        return True
+    gated = any(g.get('name') == 'kueue.x-k8s.io/admission' for g in pod.get('spec', {}).get('schedulingGates', []) or [])
+    if not gated:
+        return False
+    uid = pod['metadata'].get('uid')
+    for workload in workloads:
+        if not any(o.get('uid') == uid for o in workload['metadata'].get('ownerReferences', [])):
+            continue
+        for check in workload.get('status', {}).get('admissionChecks', []):
+            if check.get('name') == 'homelab-host-ready' and check.get('state') == 'Pending' \
+                    and check.get('message', '').startswith('Waiting for: primary'):
+                return True
+    return False
+
+
 def pending(session):
     session.off()
     value = json.loads(session.get('homelab-models', 'configmap', 'ai-scheduling-proof')['data']['pod.json'])
@@ -79,10 +105,8 @@ def pending(session):
             pods = json.loads(session.kube('-n', 'homelab-models', 'get', 'pods', '-l', 'app=ai-runtime', '-o', 'json'))['items']
             if len(pods) == 1:
                 pod = pods[0]
-                conditions = pod.get('status', {}).get('conditions', [])
-                constrained = any(c['type'] == 'PodScheduled' and c['status'] == 'False'
-                    and c.get('reason') == 'Unschedulable' and 'Insufficient cpu' in c.get('message', '') for c in conditions)
-                if constrained:
+                workloads = json.loads(session.kube('-n', 'homelab-models', 'get', 'workloads.kueue.x-k8s.io', '-o', 'json'))['items']
+                if cpu_constrained(pod, workloads):
                     if pod['status']['phase'] != 'Pending' or any(c.get('state', {}).get('running') for c in pod['status'].get('containerStatuses', [])):
                         raise apps.AppError('Aggregate Pod partially started despite insufficient resources')
                     break
