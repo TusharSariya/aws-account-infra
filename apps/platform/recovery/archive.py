@@ -9,7 +9,7 @@ import stat
 import sys
 import tarfile
 
-VOLUMES = ('models', 'workspace', 'vector')
+VOLUMES = ('models', 'workspace', 'vector', 'playground-ui', 'playground-router')
 MAX_BYTES = 2 * 1024 ** 3
 MAX_FILES = 100000
 

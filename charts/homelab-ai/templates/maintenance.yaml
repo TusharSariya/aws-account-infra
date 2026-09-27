@@ -19,11 +19,15 @@ data:
           "volumeMounts": [{"name": "code", "mountPath": "/code", "readOnly": true},
             {"name": "models", "mountPath": "/snapshot/models", "readOnly": true},
             {"name": "workspace", "mountPath": "/snapshot/workspace", "readOnly": true},
-            {"name": "vector", "mountPath": "/snapshot/vector", "readOnly": true}]}],
+            {"name": "vector", "mountPath": "/snapshot/vector", "readOnly": true},
+            {"name": "playground-ui", "mountPath": "/snapshot/playground-ui", "readOnly": true},
+            {"name": "playground-router", "mountPath": "/snapshot/playground-router", "readOnly": true}]}],
         "volumes": [{"name": "code", "configMap": {"name": "ai-maintenance", "defaultMode": 292}},
           {"name": "models", "persistentVolumeClaim": {"claimName": "ai-models", "readOnly": true}},
           {"name": "workspace", "persistentVolumeClaim": {"claimName": "ai-workspace", "readOnly": true}},
-          {"name": "vector", "persistentVolumeClaim": {"claimName": "ai-vector", "readOnly": true}}]
+          {"name": "vector", "persistentVolumeClaim": {"claimName": "ai-vector", "readOnly": true}},
+          {"name": "playground-ui", "persistentVolumeClaim": {"claimName": "playground-ui-data", "readOnly": true}},
+          {"name": "playground-router", "persistentVolumeClaim": {"claimName": "playground-router-state", "readOnly": true}}]
       }
     }
   restore.json: |

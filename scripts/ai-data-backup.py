@@ -94,10 +94,10 @@ def backup_restore(session, output):
         evidence = {'execution': 'local' if os.environ.get('HOMELAB_LOCAL_RECEIPT') else 'github-actions',
                     'run_id': os.environ.get('GITHUB_RUN_ID', Path(os.environ.get('HOMELAB_LOCAL_RECEIPT', '')).parent.name), 'source_commit': apps.run(['git', 'rev-parse', 'HEAD']).decode().strip(),
                     'lifecycle_revision': revision, 'archive_sha256': checksum, 'source_inventory': inventory,
-                    'isolated_restore': proof, 'scope': ['models', 'workspace', 'vector'],
+                    'isolated_restore': proof, 'scope': ['models', 'workspace', 'vector', 'playground-ui', 'playground-router'],
                     'artifact_retention_days': None if os.environ.get('HOMELAB_LOCAL_RECEIPT') else 90, 'durable_copy_verified': False}
         (output / 'restore-proof.json').write_text(json.dumps(evidence, indent=2) + '\n')
-        print('PASS: encrypted full three-volume capture and isolated restore hashes/SQLite integrity', flush=True)
+        print('PASS: encrypted full five-volume capture and isolated restore hashes/SQLite integrity', flush=True)
     except BaseException:
         # A failed capture or revision change must never leave an apparently valid artifact.
         for name in ('ai-data.tar.gz.age', 'restore-proof.json'):
