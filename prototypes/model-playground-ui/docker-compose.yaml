@@ -1,0 +1,30 @@
+# PROTOTYPE for wayfinder ticket #243: throwaway, wipe me. Not deployed anywhere.
+# Runs Open WebUI and SillyTavern on the Mac against the Mac's local Ollama
+# (OLLAMA_HOST=0.0.0.0:11434) so a phone on the tailnet can compare them as PWAs.
+# Start:  docker compose -f prototypes/model-playground-ui/docker-compose.yaml up -d
+# Expose: tailscale serve --bg --https=8443 http://127.0.0.1:3100   (Open WebUI)
+#         tailscale serve --bg --https=10000 http://127.0.0.1:8100  (SillyTavern)
+# Stop:   docker compose -f prototypes/model-playground-ui/docker-compose.yaml down -v
+services:
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: proto-open-webui
+    ports: ["127.0.0.1:3100:8080"]
+    environment:
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      WEBUI_AUTH: "false"          # tailnet-only throwaway; the real spec keeps app login
+      ENABLE_OPENAI_API: "false"
+      WEBUI_NAME: "Playground proto (Open WebUI)"
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    volumes: ["proto-open-webui:/app/backend/data"]
+  sillytavern:
+    image: ghcr.io/sillytavern/sillytavern:latest
+    container_name: proto-sillytavern
+    ports: ["127.0.0.1:8100:8000"]
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    volumes:
+      - ./sillytavern-config:/home/node/app/config
+      - proto-sillytavern-data:/home/node/app/data
+volumes:
+  proto-open-webui: {}
+  proto-sillytavern-data: {}
