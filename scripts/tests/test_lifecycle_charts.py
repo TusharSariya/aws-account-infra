@@ -33,6 +33,15 @@ class ChartTests(unittest.TestCase):
         self.assertFalse(any('persistentVolumeClaim' in v for v in restore['volumes']))
         self.assertEqual(next(v['emptyDir'] for v in restore['volumes'] if 'emptyDir' in v)['sizeLimit'], '4Gi')
 
+    def test_ui_seeds_a_power_banner_linking_to_the_hold_page(self):
+        docs = render('playground')
+        ui = next(doc for doc in docs if doc['kind'] == 'Deployment' and doc['metadata']['name'] == 'playground-ui')
+        env = {e['name']: e.get('value') for e in ui['spec']['template']['spec']['containers'][0]['env']}
+        banners = json.loads(env['WEBUI_BANNERS'])
+        self.assertEqual(len(banners), 1)
+        self.assertIn('](/_power/)', banners[0]['content'])
+        self.assertFalse(banners[0]['dismissible'])
+
     def test_router_reads_only_its_worker_node_and_kubelet_stats(self):
         docs = render('playground')
         role = next(doc for doc in docs if doc['kind'] == 'ClusterRole' and doc['metadata']['name'] == 'playground-router-node-ready')

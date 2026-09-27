@@ -130,6 +130,7 @@ spec:
             - {name: HOLD_NAMESPACE, value: {{ .hold.namespace | default "homelab-platform" | quote }}}
             - {name: HOLD_LEASE, value: {{ .hold.lease | quote }}}
             - {name: HOLD_MAX_SECONDS, value: {{ .hold.maxSeconds | default 43200 | quote }}}
+            - {name: HOLD_STARTS_AI, value: {{ .hold.startsAI | default false | quote }}}
 {{- end }}
             - name: POD_NAMESPACE
               valueFrom: {fieldRef: {fieldPath: metadata.namespace}}
@@ -138,7 +139,7 @@ spec:
           volumeMounts:
             - {name: code, mountPath: /code, readOnly: true}
             - {name: lease-auth, mountPath: /var/run/secrets/kubernetes.io/serviceaccount, readOnly: true}
-{{- if .startAI }}
+{{- if or .startAI (and .hold .hold.startsAI) }}
             - {name: wake-credentials, mountPath: /wake-credentials, readOnly: true}
 {{- end }}
       volumes:
@@ -149,7 +150,7 @@ spec:
               - configMap:
                   name: kube-root-ca.crt
                   items: [{key: ca.crt, path: ca.crt}]
-{{- if .startAI }}
+{{- if or .startAI (and .hold .hold.startsAI) }}
         - name: wake-credentials
           secret: {secretName: wake-lifecycle-auth}
 {{- end }}
@@ -180,7 +181,7 @@ spec:
 {{- end }}
       ports: [{port: 8080, protocol: TCP}]
   egress:
-{{- if .startAI }}
+{{- if or .startAI (and .hold .hold.startsAI) }}
     - to:
         - namespaceSelector:
             matchLabels: {kubernetes.io/metadata.name: homelab-platform}
