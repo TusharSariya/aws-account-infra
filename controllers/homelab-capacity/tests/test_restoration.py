@@ -161,3 +161,28 @@ def test_recovery_checks_host_storage_without_capturing_other_hosts_tests(
         with pytest.raises(RuntimeError, match="Protected storage"):
             Platform(kube, management, journal).restore("secondary", objects)
         assert not kube.patches
+
+
+def test_recovery_ignores_unbound_claims_but_keeps_bound_ones(tmp_path):
+    kube, management, journal, objects = setup(tmp_path)
+    record = journal.read("secondary-platform.json")
+    record["storage"] = {
+        "pvc/storage-check-abc/delete": {
+            "uid": "gone-fixture",
+            "volumeName": None,
+            "storageClassName": "worker-local-delete",
+        }
+    }
+    journal.write("secondary-platform.json", record)
+    Platform(kube, management, journal).restore("secondary", objects)
+    assert journal.read("secondary-platform.json")["phase"] == "complete"
+    record["phase"] = "quiesced"
+    record["storage"]["pvc/data/claim"] = {
+        "uid": "bound",
+        "volumeName": "missing-volume",
+        "storageClassName": "local",
+    }
+    journal.write("secondary-platform.json", record)
+    with pytest.raises(RuntimeError, match="Protected storage"):
+        Platform(kube, management, journal).restore("secondary", objects)
+

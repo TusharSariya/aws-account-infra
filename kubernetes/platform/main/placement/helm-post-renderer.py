@@ -48,6 +48,7 @@ for obj in objects:
         ("Ingress", "homelab-platform", "ai-lifecycle"),
         ("Ingress", "homelab-models", "ollama"),
         ("Ingress", "homelab-models", "odysseus"),
+        ("Ingress", "homelab-models", "playground"),
     }:
         meta.setdefault("annotations", {})["tailscale.com/proxy-class"] = (
             "primary-applications"

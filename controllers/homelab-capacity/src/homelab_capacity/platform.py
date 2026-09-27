@@ -51,8 +51,9 @@ def storage_identity(objects):
 def storage_for_host(identity, host):
     """Exclude only local volumes proven to belong exclusively to another node.
 
-    Shared, unbound and ambiguous storage stays protected. Apply the same scope
-    to old journals without rewriting the captured evidence.
+    Shared and ambiguous storage stays protected; unbound claims are not, since
+    nothing is stored behind them. Apply the same scope to old journals without
+    rewriting the captured evidence.
     """
     excluded = set()
     for key, volume in identity.items():
@@ -80,6 +81,9 @@ def storage_for_host(identity, host):
         for key, value in identity.items()
         if not (key.startswith("pv//") and key.removeprefix("pv//") in excluded)
         and not (key.startswith("pvc/") and value.get("volumeName") in excluded)
+        # An unbound claim holds no data; acceptance fixtures leave and remove such
+        # claims while a host sleeps, which must not refuse its restore.
+        and not (key.startswith("pvc/") and not value.get("volumeName"))
     }
 
 

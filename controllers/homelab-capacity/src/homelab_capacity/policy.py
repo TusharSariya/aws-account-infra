@@ -19,6 +19,10 @@ PLATFORM = {
     ("local-path-storage", "local-path-provisioner"),
     ("homelab-platform", "guest-capacity"),
     ("homelab-platform", "physical-capacity"),
+    # Playground services live on the worker but hold no state the host needs awake for;
+    # the wake-playground gateway on the control plane fronts them while the host is off.
+    ("homelab-models", "playground-router"),
+    ("homelab-models", "playground-ui"),
     *(
         (
             ("monitoring", n)
