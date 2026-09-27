@@ -67,7 +67,9 @@ kind: ClusterRoleBinding
 metadata: {name: retained-host-observation}
 subjects: [{kind: ServiceAccount, name: retained-host-coordinator, namespace: homelab-platform}]
 roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: retained-host-observation}
-{{- range $namespace, $names := dict "homelab-cache" (list "nexus" "nexus-postgres") "cnpg-system" (list "cnpg") "local-path-storage" (list "local-path-provisioner") "homelab-platform" (list "guest-capacity" "physical-capacity") "monitoring" (list "alloy" "grafana" "prometheus" "loki" "alertmanager") "argocd" (list "argocd-applicationset-controller" "argocd-application-controller" "argocd-server" "argocd-repo-server" "argocd-redis" "argocd-dex-server" "argocd-notifications-controller") }}
+{{- /* Every Deployment in controllers/homelab-capacity policy.PLATFORM needs a scale permission here;
+       the quiesce fails at its first patch otherwise (test_kueue_contracts checks the pairing). */}}
+{{- range $namespace, $names := dict "homelab-cache" (list "nexus" "nexus-postgres") "cnpg-system" (list "cnpg") "homelab-models" (list "playground-ui" "playground-router") "local-path-storage" (list "local-path-provisioner") "homelab-platform" (list "guest-capacity" "physical-capacity") "monitoring" (list "alloy" "grafana" "prometheus" "loki" "alertmanager") "argocd" (list "argocd-applicationset-controller" "argocd-application-controller" "argocd-server" "argocd-repo-server" "argocd-redis" "argocd-dex-server" "argocd-notifications-controller") }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
