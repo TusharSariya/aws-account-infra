@@ -15,8 +15,15 @@ spec:
         operations: [CREATE, UPDATE]
         resources: [pods]
   variables:
+    # The lifecycle maintenance proof (scripts/homelab-lifecycle-maintenance.py) places a bare
+    # CPU-reserving Pod on the worker with the cluster-admin credential to prove the AI runtime
+    # stays Pending on insufficient CPU. It is operational: outside Kueue, admin-created only.
     - name: operational
       expression: >-
+        request.namespace == 'homelab-models' &&
+        object.metadata.name == 'ai-resource-filler' &&
+        has(object.metadata.labels) && object.metadata.labels['app'] == 'ai-maintenance' &&
+        has(request.userInfo.groups) && 'system:masters' in request.userInfo.groups ||
         request.namespace == 'homelab-models' &&
         object.spec.serviceAccountName in {{ toJson .Values.gateways }} &&
         has(object.metadata.labels) && object.metadata.labels['app'] == object.spec.serviceAccountName &&
