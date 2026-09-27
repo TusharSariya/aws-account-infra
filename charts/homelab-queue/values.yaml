@@ -5,6 +5,11 @@ storageHeadroom: 0
 # StrictFIFO: the AI runtime needs the whole worker pool; at the head of the queue it blocks new
 # runner admission until admitted instead of being passed indefinitely (playground spec, #255).
 strategy: StrictFIFO
+# Operational homelab-models Pods that stay outside Kueue. Gateways are the homelab-models entries of
+# platform/automatic-power/gateways.json (control-plane Deployments); services are the playground
+# Deployments pinned to the worker. Each runs under an account named after its app label.
+gateways: [wake-ollama, wake-odysseus, wake-playground]
+services: [playground-router, playground-ui]
 queues:
   - {namespace: homelab-models, name: ai}
   - {namespace: arc-runners, name: ci}

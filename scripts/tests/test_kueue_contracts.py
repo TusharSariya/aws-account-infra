@@ -32,6 +32,20 @@ class Contracts(unittest.TestCase):
         self.assertEqual(queue['spec']['admissionChecksStrategy'], {'admissionChecks': [{'name': 'homelab-host-ready'}]})
         self.assertEqual([f['name'] for f in queue['spec']['resourceGroups'][0]['flavors']], ['homelab-worker', 'homelab-secondary'])
 
+    def test_pool_values_select_strict_fifo_and_register_the_operational_gateways(self):
+        pool = yaml.safe_load((ROOT/'config/environments/kubernetes/homelab-ci/pool-values.yaml').read_text())
+        self.assertEqual(pool['strategy'], 'StrictFIFO')
+        gateways = json.loads((ROOT/'platform/automatic-power/gateways.json').read_text())
+        chart = yaml.safe_load((ROOT/'charts/homelab-queue/values.yaml').read_text())
+        self.assertEqual(sorted(chart['gateways']), sorted(g['name'] for g in gateways if g['namespace'] == 'homelab-models'))
+        self.assertEqual(sorted(chart['services']), ['playground-router', 'playground-ui'])
+        policy = next(d for d in self.render('charts/homelab-queue', values='config/environments/kubernetes/homelab-ci/pool-values.yaml')
+                      if d['kind'] == 'ValidatingAdmissionPolicy')
+        operational = next(v['expression'] for v in policy['spec']['variables'] if v['name'] == 'operational')
+        for name in chart['gateways'] + chart['services']:
+            self.assertIn('"%s"' % name, operational)
+        self.assertIn("object.spec.nodeSelector['kubernetes.io/hostname'] == \"talos-worker-01\"", operational)
+
     def render(self, chart, name='test', values=None, namespace='default'):
         args = ['helm','template',name,str(ROOT/chart),'--namespace',namespace,'--kube-version','1.36.3']
         if values: args += ['-f',str(ROOT/values)]
