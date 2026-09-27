@@ -110,3 +110,38 @@ def test_housekeeping_pods_are_matched_by_job_identity_and_gate_retirement():
     assert housekeeping_jobs(data)
     pod["metadata"]["ownerReferences"][0]["uid"] = "different-job"
     assert classify("primary", data)[1]
+
+
+def test_playground_services_on_the_worker_do_not_hold_the_primary():
+    data = inventory()
+    for name in ["playground-router", "playground-ui"]:
+        data["pods"].append(
+            {
+                "metadata": {
+                    "namespace": "homelab-models",
+                    "name": name + "-abc-xyz",
+                    "ownerReferences": [
+                        {"kind": "ReplicaSet", "name": name + "-abc", "uid": name, "controller": True}
+                    ],
+                },
+                "spec": {"nodeName": "talos-worker-01"},
+            }
+        )
+        data["replicasets"].append(
+            {
+                "metadata": {
+                    "namespace": "homelab-models",
+                    "name": name + "-abc",
+                    "uid": name,
+                    "ownerReferences": [
+                        {"kind": "Deployment", "name": name, "uid": name + "-deploy", "controller": True}
+                    ],
+                }
+            }
+        )
+    assert classify("primary", data) == (False, [])
+    data["pods"][0]["metadata"]["ownerReferences"][0]["name"] = "other-abc"
+    assert classify("primary", data)[1] == [
+        "Active or unregistered pod: homelab-models/playground-router-abc-xyz"
+    ]
+
