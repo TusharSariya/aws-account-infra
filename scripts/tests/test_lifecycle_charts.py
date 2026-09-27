@@ -33,6 +33,12 @@ class ChartTests(unittest.TestCase):
         self.assertFalse(any('persistentVolumeClaim' in v for v in restore['volumes']))
         self.assertEqual(next(v['emptyDir'] for v in restore['volumes'] if 'emptyDir' in v)['sizeLimit'], '4Gi')
 
+    def test_router_reads_only_its_worker_node_and_kubelet_stats(self):
+        docs = render('playground')
+        role = next(doc for doc in docs if doc['kind'] == 'ClusterRole' and doc['metadata']['name'] == 'playground-router-node-ready')
+        self.assertEqual([(r['resources'], r['resourceNames'], r['verbs']) for r in role['rules']],
+                         [(['nodes'], ['talos-worker-01'], ['get']), (['nodes/proxy'], ['talos-worker-01'], ['get'])])
+
     def test_owner_hold_lease_is_configured_and_readable(self):
         docs = render('lifecycle')
         config = json.loads(next(doc for doc in docs if doc['kind'] == 'ConfigMap'

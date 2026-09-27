@@ -25,6 +25,12 @@ rules:
     resources: [nodes]
     resourceNames: [{{ .Values.node }}]
     verbs: [get]
+  # Kubelet stats summary for the wait stage lines (working set of the runtime pod);
+  # read-only and bound to the one worker.
+  - apiGroups: ['']
+    resources: [nodes/proxy]
+    resourceNames: [{{ .Values.node }}]
+    verbs: [get]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

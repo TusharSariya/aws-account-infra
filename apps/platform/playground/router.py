@@ -76,6 +76,43 @@ class Backend:
         except (urllib.error.URLError, socket.timeout, OSError):
             return False
 
+    def runtime_pods(self):
+        if self.kube is None or not self.runtime_selector:
+            return None
+        pods = self.kube.get(f'/api/v1/namespaces/{self.namespace}/pods?labelSelector={self.runtime_selector}')
+        return None if pods is None else pods.get('items', [])
+
+    def runtime_ready(self):
+        """True/False from the runtime pod's Ready condition; None when the cluster cannot be asked."""
+        items = self.runtime_pods()
+        if items is None:
+            return None
+        return any(c.get('type') == 'Ready' and c.get('status') == 'True'
+                   for pod in items for c in pod.get('status', {}).get('conditions', []))
+
+    def loaded(self, model):
+        """True once Ollama lists the model as running (weights in memory), False before, None if unreachable."""
+        try:
+            running = self.json('GET', '/api/ps', timeout=5).get('models', [])
+        except Exception:  # noqa: BLE001 - observation only
+            return None
+        return any(m.get('name') == model or m.get('model') == model for m in running)
+
+    def runtime_memory(self):
+        """Working set of the runtime pod in bytes from the kubelet stats summary, or None."""
+        items = self.runtime_pods()
+        if not items or not self.node:
+            return None
+        names = {pod['metadata']['name'] for pod in items}
+        summary = self.kube.get(f'/api/v1/nodes/{self.node}/proxy/stats/summary')
+        if summary is None:
+            return None
+        for pod in summary.get('pods', []):
+            ref = pod.get('podRef', {})
+            if ref.get('namespace') == self.namespace and ref.get('name') in names:
+                return pod.get('memory', {}).get('workingSetBytes')
+        return None
+
     def stage(self, elapsed):
         """Name the wake stage from what the cluster shows; honest fallbacks when it cannot tell."""
         if self.kube is None or not self.node:
@@ -296,7 +333,52 @@ class Handler(BaseHTTPRequestHandler):
                 self.progress(kind, model, f'{WAKING_PREFIX}ready\n')
                 return True
 
-    def stream_upstream(self, backend, path, raw, kind, model, loading_note=True):
+    def wait_line(self, backend, model, waited, raw_len):
+        """One honest line for the silent wait, from the cheapest signal that answers."""
+        clock = f'{waited // 60}:{waited % 60:02d} elapsed'
+        timing = self.router.catalog.timing(model, backend.name)
+        ready = backend.runtime_ready()
+        if ready is False:
+            return f'{WAKING_PREFIX}runtime starting, {clock} of ~0:30 typical\n'
+        loaded = backend.loaded(model)
+        if loaded:
+            tokens = max(1, raw_len // 4)
+            rate = timing.get('prompt_tps')
+            if rate:
+                return (f'{WAKING_PREFIX}processing prompt, ~{tokens} tokens at {rate:.1f} tok/s, '
+                        f'~{tokens / rate:.0f} s expected, {clock}\n')
+            return f'{WAKING_PREFIX}processing prompt, ~{tokens} tokens, rate not measured yet for this model, {clock}\n'
+        weight = (self.router.catalog.model(model) or {}).get('weight_bytes') or 0
+        memory = backend.runtime_memory() if loaded is False else None
+        stage = 'loading weights' if loaded is False else 'model loading'
+        progress = ''
+        if memory is not None and weight:
+            progress = f', {memory / fit.GIB:.1f} of {weight / fit.GIB:.1f} GiB in memory'
+        elif weight:
+            progress = f', {weight / fit.GIB:.1f} GiB'
+        load = timing.get('load_seconds')
+        typical = (f' of ~{int(load) // 60}:{int(load) % 60:02d} typical for this model' if load
+                   else ', no load measured yet for this model')
+        return f'{WAKING_PREFIX}{stage}{progress}, {clock}{typical}\n'
+
+    def record_timing(self, backend, model, last_line):
+        """Store the timing record Ollama appends to every answer; a warm answer keeps the last real load."""
+        try:
+            final = json.loads(last_line)
+        except (ValueError, TypeError):
+            return
+        if not isinstance(final, dict) or not final.get('done'):
+            return
+        load = final.get('load_duration') or 0
+        prompt_n, prompt_d = final.get('prompt_eval_count') or 0, final.get('prompt_eval_duration') or 0
+        eval_n, eval_d = final.get('eval_count') or 0, final.get('eval_duration') or 0
+        self.router.catalog.record_timing(
+            model, backend.name,
+            load_seconds=load / 1e9 if load > 1e9 else None,
+            prompt_tps=prompt_n / (prompt_d / 1e9) if prompt_d > 0 and prompt_n >= 8 else None,
+            eval_tps=eval_n / (eval_d / 1e9) if eval_d > 0 and eval_n >= 8 else None)
+
+    def stream_upstream(self, backend, path, raw, kind, model, loading_note=True, retried=False):
         """Forward a streaming request; while the backend is silent (model load) keep emitting a line."""
         req = urllib.request.Request(backend.url + path, data=raw, headers=backend.headers(), method='POST')
         first = queue.Queue()
@@ -307,10 +389,10 @@ class Handler(BaseHTTPRequestHandler):
                 holder['response'] = urllib.request.urlopen(req, timeout=3600)
                 first.put('ok')
             except urllib.error.HTTPError as e:
-                holder['error'] = (e.code, e.read()[:500])
+                holder['error'] = (e.code, e.read()[:500], e.headers.get('Retry-After'))
                 first.put('http')
             except Exception as e:  # noqa: BLE001
-                holder['error'] = (502, repr(e).encode())
+                holder['error'] = (502, repr(e).encode(), None)
                 first.put('err')
 
         threading.Thread(target=open_upstream, daemon=True).start()
@@ -322,16 +404,26 @@ class Handler(BaseHTTPRequestHandler):
             except queue.Empty:
                 waited += int(self.router.poll_seconds)
                 if loading_note:
-                    self.progress(kind, model, f'{WAKING_PREFIX}model loading, {waited // 60}:{waited % 60:02d} elapsed of ~0:40 typical\n')
+                    self.progress(kind, model, self.wait_line(backend, model, waited, len(raw)))
         if 'error' in holder:
-            code, detail = holder['error']
+            code, detail, retry_after = holder['error']
+            if code in (502, 503, 504) and retry_after and not retried:
+                # The wake gateway answered before any byte reached the model: the runtime
+                # went away under us (idle stop). Wait for it like a cold start, then send once more.
+                if self.wait_awake(backend, kind, model):
+                    yield from self.stream_upstream(backend, path, raw, kind, model, loading_note, retried=True)
+                return
             self.progress(kind, model, f'{backend.name} answered {code}: {detail.decode(errors="replace")}')
             return
+        last = b''
         with holder['response'] as upstream:
             for line in upstream:
                 self.wfile.write(f'{len(line):x}\r\n'.encode() + line + b'\r\n')
                 self.wfile.flush()
+                last = line
                 yield line
+        if loading_note:
+            self.record_timing(backend, model, last)
 
     # ----- routes -----
     def do_GET(self):

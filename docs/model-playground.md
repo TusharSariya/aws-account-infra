@@ -99,10 +99,13 @@ model manager; its richer presets are noted for a later enhancement inside works
 
 Trigger through the wake gateways, observe through the AI lifecycle `wake-status` and the
 coordinator host phase. Stage vocabulary, each with elapsed and typical time: `host powering
-on` (60 s), `worker joining` (5 min), `runtime queued`, `runtime starting` (30 s), `model
-loading` (20 to 40 s), `model switching`, `ready`. The router holds the stream open and
-emits `[waking] <stage>, <elapsed> of ~<typical>` chunks; the same words are the synthetic
-pull-status lines. Cap 25 minutes, then one line naming the stage reached while the wake
+on` (60 s), `worker joining` (5 min), `runtime queued`, `runtime starting` (30 s), then while
+the answer is silent (change 4): `loading weights, N of M GiB in memory` and `processing
+prompt, ~T tokens at R tok/s`, whose typical figures are the last measured load and prompt
+rate for that model (the line says when none exists yet), then `ready`. The router holds the
+stream open and emits `[waking] <stage>, <elapsed> of ~<typical>` chunks; the same words are
+the synthetic pull-status lines. A gateway 503 during the silent wait means the runtime
+stopped between the probe and the request; the router waits for it and sends once more. Cap 25 minutes, then one line naming the stage reached while the wake
 continues in the background. Navigating away costs nothing. Desktop off is refused with
 "desktop is off, power it on and retry". Opening the app while the host sleeps shows the
 `wake-playground` gateway's 503 page, reworded to "waking, about 10 minutes", with
