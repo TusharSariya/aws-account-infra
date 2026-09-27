@@ -36,7 +36,8 @@
     "hold": {
       "lease": "host-hold-playground",
       "hosts": "primary",
-      "maxSeconds": 43200
+      "maxSeconds": 43200,
+      "startsAI": true
     }
   }
 ]

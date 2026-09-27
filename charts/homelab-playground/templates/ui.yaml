@@ -65,6 +65,8 @@ spec:
             # instead of text. Seeds models.default_metadata on first boot only: the persisted
             # config wins afterwards (set live on 2026-09-27 for the existing claim).
             - {name: DEFAULT_MODEL_METADATA, value: '{"capabilities": {"builtin_tools": false}}'}
+            # Persistent banner pointing at the gateway's hold page (seed for fresh installs; persisted config wins after first start).
+            - {name: WEBUI_BANNERS, value: {{ .Values.ui.banners | toJson | quote }}}
             - {name: OLLAMA_KEEP_ALIVE, value: '5m'}
             - {name: AIOHTTP_CLIENT_TIMEOUT, value: '1800'}   # cold loads and switches are silent for over a minute
             - {name: AIOHTTP_CLIENT_TIMEOUT_MODEL_LIST, value: '30'}

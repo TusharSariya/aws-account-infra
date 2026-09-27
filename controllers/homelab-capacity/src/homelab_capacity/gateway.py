@@ -301,8 +301,8 @@ class Handler(BaseHTTPRequestHandler):
         # demand and connects; a cold backend returns 503 without accepting a body.
         return True
 
-    def start_ai(self):
-        if not getattr(self.server, "start_ai", False):
+    def start_ai(self, force=False):
+        if not (force or getattr(self.server, "start_ai", False)):
             return
         token = Path("/wake-credentials/token").read_text().strip()
         base = "http://ai-lifecycle.homelab-platform.svc.cluster.local:8080"
@@ -339,7 +339,15 @@ class Handler(BaseHTTPRequestHandler):
             if length > 4096:
                 return self.reply(413, "Body too large.\n")
             self.rfile.read(length)
-            hold.set() if path == "/_power/hold" else hold.release()
+            if path == "/_power/hold":
+                hold.set()
+                if getattr(self.server, "hold_starts_ai", False):
+                    try:
+                        self.start_ai(force=True)  # "held" means the AI job is up, not just kept up
+                    except Exception:
+                        pass  # The lease is set; the next chat starts the runtime through the gateway path.
+            else:
+                hold.release()
             self.send_response(303)
             self.send_header("Location", "/_power/")
             self.send_header("Content-Length", "0")
@@ -350,7 +358,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.command in ("GET", "HEAD") and path == "/_power/":
             state = hold.status()
             if state["held"]:
-                status = "Held awake until " + state["until"].replace("T", " ").replace("+00:00", " UTC") + ". The server and the model stay up until then, or until you release."
+                status = "Held awake until " + state["until"].replace("T", " ").replace("+00:00", " UTC") + ". The server and the AI runtime stay up until then, or until you release."
             else:
                 status = "Not held. The model stops after 5 minutes without a chat and the server powers off 5 minutes after that. The next tap wakes it, about 10 minutes."
             page = HOLD_PAGE.replace("{status}", status).replace("{hours}", str(hold.max_seconds // 3600))
@@ -454,6 +462,7 @@ def main():
             os.environ["HOLD_LEASE"],
             int(os.environ.get("HOLD_MAX_SECONDS", "43200")),
         )
+        server.hold_starts_ai = os.environ.get("HOLD_STARTS_AI") == "true"
     threading.Thread(target=activity.heartbeat, args=(server.hold,), daemon=True).start()
     server.serve_forever()
 

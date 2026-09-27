@@ -309,3 +309,25 @@ def test_hold_expires_only_after_its_cap(monkeypatch):
     monkeypatch.setattr(time, "time", lambda: 1790510400 + 1)
     assert not hold.expire()["held"]
     assert any(m == "PATCH" and b["metadata"]["labels"]["homelab.tfdraw.dev/power-hold"] == "false" for m, b in calls)
+
+
+def test_hold_also_starts_the_ai_runtime_when_configured(monkeypatch):
+    server = gateway(("127.0.0.1", 1))
+    server.hold = FakeHold()
+    server.hold_starts_ai = True
+    calls = []
+    monkeypatch.setattr(Handler, "start_ai", lambda self, force=False: calls.append(force))
+    try:
+        client = http.client.HTTPConnection(*server.server_address, timeout=8)
+        client.request("POST", "/_power/hold", b"")
+        assert client.getresponse().status == 303
+        client.close()
+        assert server.hold.held and calls == [True]
+        client = http.client.HTTPConnection(*server.server_address, timeout=8)
+        client.request("POST", "/_power/release", b"")
+        client.getresponse().read()
+        client.close()
+        assert not server.hold.held and calls == [True]  # release never touches the lifecycle
+    finally:
+        server.shutdown()
+        server.server_close()
