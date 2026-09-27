@@ -2,7 +2,9 @@ dynamic: true
 worker: talos-worker-01
 # Allocatable already excludes Kubernetes reservations and eviction thresholds.
 storageHeadroom: 0
-strategy: BestEffortFIFO
+# StrictFIFO: the AI runtime needs the whole worker pool; at the head of the queue it blocks new runner
+# admission until admitted instead of being passed indefinitely (playground spec, #255).
+strategy: StrictFIFO
 power:
   enabled: true
 queues:

@@ -80,8 +80,8 @@ def start(private, ref):
     from kueue_capacity import quantity
     queue = json.loads(kubectl(private, 'get', 'clusterqueue', 'homelab-compute', '-o', 'json'))
     flavors = [f for g in queue['spec']['resourceGroups'] for f in g['flavors']]
-    if queue['spec']['queueingStrategy'] != 'BestEffortFIFO':
-        raise ValueError('Deploy the dynamic BestEffortFIFO queue first')
+    if queue['spec']['queueingStrategy'] not in ('BestEffortFIFO', 'StrictFIFO'):
+        raise ValueError('Deploy the dynamic queue first')
     resources = {'cpu': '1', 'memory': '64Mi', 'ephemeral-storage': '16Mi'}
     pod = {'apiVersion': 'v1', 'kind': 'Pod', 'metadata': {'name': record['blocker'], 'namespace': 'homelab-jobs',
            'labels': {'homelab/acceptance-run': fixture, 'kueue.x-k8s.io/queue-name': 'argo',

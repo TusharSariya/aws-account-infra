@@ -18,9 +18,16 @@ spec:
     - name: operational
       expression: >-
         request.namespace == 'homelab-models' &&
-        object.spec.serviceAccountName in ['wake-ollama', 'wake-odysseus'] &&
+        object.spec.serviceAccountName in {{ toJson .Values.gateways }} &&
         has(object.metadata.labels) && object.metadata.labels['app'] == object.spec.serviceAccountName &&
         has(object.spec.nodeSelector) && 'node-role.kubernetes.io/control-plane' in object.spec.nodeSelector &&
+        has(object.metadata.ownerReferences) && object.metadata.ownerReferences.exists(o,
+          o.apiVersion == 'apps/v1' && o.kind == 'ReplicaSet' && o.name.startsWith(object.spec.serviceAccountName + '-')) ||
+        request.namespace == 'homelab-models' &&
+        object.spec.serviceAccountName in {{ toJson .Values.services }} &&
+        has(object.metadata.labels) && object.metadata.labels['app'] == object.spec.serviceAccountName &&
+        has(object.spec.nodeSelector) && 'kubernetes.io/hostname' in object.spec.nodeSelector &&
+        object.spec.nodeSelector['kubernetes.io/hostname'] == {{ .Values.worker | quote }} &&
         has(object.metadata.ownerReferences) && object.metadata.ownerReferences.exists(o,
           o.apiVersion == 'apps/v1' && o.kind == 'ReplicaSet' && o.name.startsWith(object.spec.serviceAccountName + '-')) ||
         request.namespace == 'homelab-jobs' && object.spec.serviceAccountName in
