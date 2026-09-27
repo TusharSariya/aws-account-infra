@@ -48,9 +48,11 @@ class Contracts(unittest.TestCase):
         self.assertIn("object.spec.nodeSelector['kubernetes.io/hostname'] == \"talos-worker-01\"", operational)
 
     def test_coordinator_may_scale_every_registered_platform_deployment(self):
-        spec = importlib.util.spec_from_file_location('policy', ROOT / 'controllers/homelab-capacity/src/homelab_capacity/policy.py')
-        policy = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(policy)
+        sys.path.insert(0, str(ROOT / 'controllers/homelab-capacity/src'))
+        try:
+            from homelab_capacity.policy import PLATFORM
+        finally:
+            sys.path.pop(0)
         gateways = json.loads((ROOT/'platform/automatic-power/gateways.json').read_text())
         with tempfile.NamedTemporaryFile('w', suffix='.yaml', delete=False) as f:
             yaml.safe_dump({'gatewayCode': 'pass', 'gateways': gateways}, f)
@@ -60,7 +62,7 @@ class Contracts(unittest.TestCase):
             if d['kind'] == 'Role' and d['metadata']['name'] == 'retained-host-platform':
                 for rule in d['rules']:
                     allowed.update((d['metadata']['namespace'], n) for n in rule['resourceNames'])
-        self.assertEqual(sorted(set(policy.PLATFORM) - allowed), [])
+        self.assertEqual(sorted(set(PLATFORM) - allowed), [])
 
     def test_playground_gateway_owns_one_durable_hold_lease(self):
         gateways = json.loads((ROOT/'platform/automatic-power/gateways.json').read_text())
