@@ -215,3 +215,97 @@ def test_cold_page_uses_the_configured_wake_message_and_refreshes_browsers():
     finally:
         server.shutdown()
         server.server_close()
+
+
+class FakeHold:
+    """In-memory stand-in for the Lease-backed Hold: same status/set/release/expire surface."""
+
+    max_seconds = 43200
+
+    def __init__(self):
+        self.held, self.until = False, None
+
+    def status(self):
+        return {"held": self.held, "until": self.until if self.held else None}
+
+    def set(self, seconds=None):
+        self.held, self.until = True, "2026-09-28T04:00:00+00:00"
+        return self.status()
+
+    def release(self):
+        self.held, self.until = False, None
+        return self.status()
+
+
+def test_power_page_holds_and_releases_without_touching_the_application_or_activity():
+    server = gateway(("127.0.0.1", 1))  # cold backend: any proxied request would 503
+    server.hold = FakeHold()
+    try:
+        client = http.client.HTTPConnection(*server.server_address, timeout=8)
+        client.request("GET", "/_power/", headers={"Accept": "text/html"})
+        page = client.getresponse()
+        body = page.read().decode()
+        assert page.status == 200 and "Not held" in body and "12 h max" in body
+        client.close()
+        client = http.client.HTTPConnection(*server.server_address, timeout=8)
+        client.request("POST", "/_power/hold", b"", headers={"Sec-Fetch-Site": "same-origin"})
+        redirect = client.getresponse()
+        redirect.read()
+        assert redirect.status == 303 and redirect.getheader("Location") == "/_power/"
+        assert server.hold.held
+        client.close()
+        client = http.client.HTTPConnection(*server.server_address, timeout=8)
+        client.request("GET", "/_power/status")
+        status = client.getresponse()
+        assert status.status == 200 and status.read() == b'{"held": true, "until": "2026-09-28T04:00:00+00:00"}\n'
+        client.close()
+        client = http.client.HTTPConnection(*server.server_address, timeout=8)
+        client.request("POST", "/_power/release", b"")
+        client.getresponse().read()
+        assert not server.hold.held
+        client.close()
+        assert server.activity.begins == 0
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_cross_site_power_posts_are_refused_and_unconfigured_hold_is_404():
+    server = gateway(("127.0.0.1", 1))
+    server.hold = FakeHold()
+    try:
+        client = http.client.HTTPConnection(*server.server_address, timeout=8)
+        client.request("POST", "/_power/hold", b"", headers={"Sec-Fetch-Site": "cross-site"})
+        assert client.getresponse().status == 403 and not server.hold.held
+        client.close()
+        server.hold = None
+        client = http.client.HTTPConnection(*server.server_address, timeout=8)
+        client.request("GET", "/_power/")
+        assert client.getresponse().status == 404
+        client.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_hold_expires_only_after_its_cap(monkeypatch):
+    from homelab_capacity.gateway import Hold
+
+    hold = Hold.__new__(Hold)
+    hold.max_seconds = 60
+    calls = []
+    state = {"labels": {"homelab.tfdraw.dev/power-hold": "true"},
+             "annotations": {"homelab.tfdraw.dev/hold-until": "2026-09-27T12:00:00+00:00"}}
+
+    def request(method, body=None):
+        calls.append((method, body))
+        if method == "PATCH":
+            state["labels"].update(body["metadata"].get("labels", {}))
+        return {"metadata": state}
+
+    hold._request = request
+    monkeypatch.setattr(time, "time", lambda: 1790510400 - 30)  # 2026-09-27T11:59:30Z
+    assert hold.expire()["held"]
+    monkeypatch.setattr(time, "time", lambda: 1790510400 + 1)
+    assert not hold.expire()["held"]
+    assert any(m == "PATCH" and b["metadata"]["labels"]["homelab.tfdraw.dev/power-hold"] == "false" for m, b in calls)
