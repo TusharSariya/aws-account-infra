@@ -5,7 +5,11 @@ import uuid
 from .config import INVENTORY
 from .policy import AWAKE_ONLY, NODES, PLATFORM
 
+# Quiesce order. Every Deployment in policy.PLATFORM must appear here or its pods
+# survive the quiesce and the host never reaches "quiesced" (blocked at the deadline).
 ORDER = [
+    "playground-ui",
+    "playground-router",
     "nexus",
     "nexus-postgres",
     "cnpg",
