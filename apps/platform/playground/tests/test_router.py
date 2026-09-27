@@ -93,12 +93,15 @@ class FakeKube:
     def __init__(self):
         self.ready, self.working_set = True, 6 * fit.GIB
 
+    def kubelet_stats(self, address):
+        assert address == '10.0.0.222'
+        return {'pods': [{'podRef': {'namespace': 'homelab-models', 'name': 'ai-runtime-1'},
+                          'memory': {'workingSetBytes': self.working_set}}]}
+
     def get(self, path):
-        if path.startswith('/api/v1/nodes/worker/proxy/stats/summary'):
-            return {'pods': [{'podRef': {'namespace': 'homelab-models', 'name': 'ai-runtime-1'},
-                              'memory': {'workingSetBytes': self.working_set}}]}
         if path.startswith('/api/v1/nodes/worker'):
-            return {'status': {'conditions': [{'type': 'Ready', 'status': 'True'}]}}
+            return {'status': {'conditions': [{'type': 'Ready', 'status': 'True'}],
+                               'addresses': [{'type': 'InternalIP', 'address': '10.0.0.222'}]}}
         if '/pods?labelSelector=app%3Dai-runtime' in path or '/pods?labelSelector=app=ai-runtime' in path:
             return {'items': [{'metadata': {'name': 'ai-runtime-1'}, 'status': {'phase': 'Running',
                      'conditions': [{'type': 'Ready', 'status': 'True' if self.ready else 'False'}]}}]}

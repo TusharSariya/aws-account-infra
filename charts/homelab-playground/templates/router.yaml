@@ -25,10 +25,10 @@ rules:
     resources: [nodes]
     resourceNames: [{{ .Values.node }}]
     verbs: [get]
-  # Kubelet stats summary for the wait stage lines (working set of the runtime pod);
-  # read-only and bound to the one worker.
+  # The worker kubelet's /stats/summary for the wait stage lines (working set of the
+  # runtime pod). The kubelet authorizes it as nodes/stats; no API server proxy.
   - apiGroups: ['']
-    resources: [nodes/proxy]
+    resources: [nodes/stats]
     resourceNames: [{{ .Values.node }}]
     verbs: [get]
 ---
@@ -169,3 +169,7 @@ spec:
     - toEntities: [kube-apiserver]
       toPorts:
         - ports: [{port: '6443', protocol: TCP}]
+    # The router is pinned to the worker, so its kubelet is the local host entity.
+    - toEntities: [host]
+      toPorts:
+        - ports: [{port: '10250', protocol: TCP}]

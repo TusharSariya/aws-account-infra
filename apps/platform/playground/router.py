@@ -99,12 +99,14 @@ class Backend:
         return any(m.get('name') == model or m.get('model') == model for m in running)
 
     def runtime_memory(self):
-        """Working set of the runtime pod in bytes from the kubelet stats summary, or None."""
+        """Working set of the runtime pod in bytes, read from the worker's kubelet stats summary, or None."""
         items = self.runtime_pods()
         if not items or not self.node:
             return None
         names = {pod['metadata']['name'] for pod in items}
-        summary = self.kube.get(f'/api/v1/nodes/{self.node}/proxy/stats/summary')
+        node = self.kube.get(f'/api/v1/nodes/{self.node}') or {}
+        address = next((a['address'] for a in node.get('status', {}).get('addresses', []) if a.get('type') == 'InternalIP'), None)
+        summary = self.kube.kubelet_stats(address) if address else None
         if summary is None:
             return None
         for pod in summary.get('pods', []):
@@ -145,7 +147,14 @@ class Kubernetes:
         self.base = 'https://' + os.environ['KUBERNETES_SERVICE_HOST'] + ':' + os.environ.get('KUBERNETES_SERVICE_PORT', '443')
 
     def get(self, path):
-        req = urllib.request.Request(self.base + path, headers={'Authorization': 'Bearer ' + self.token})
+        return self.fetch(self.base + path)
+
+    def kubelet_stats(self, address):
+        """The node's own /stats/summary: the serving certificate is cluster-CA signed and the SA token authorizes nodes/stats."""
+        return self.fetch(f'https://{address}:10250/stats/summary')
+
+    def fetch(self, url):
+        req = urllib.request.Request(url, headers={'Authorization': 'Bearer ' + self.token})
         try:
             with urllib.request.urlopen(req, context=self.context, timeout=5) as r:
                 return json.load(r)

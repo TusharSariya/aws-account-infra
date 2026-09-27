@@ -37,7 +37,9 @@ class ChartTests(unittest.TestCase):
         docs = render('playground')
         role = next(doc for doc in docs if doc['kind'] == 'ClusterRole' and doc['metadata']['name'] == 'playground-router-node-ready')
         self.assertEqual([(r['resources'], r['resourceNames'], r['verbs']) for r in role['rules']],
-                         [(['nodes'], ['talos-worker-01'], ['get']), (['nodes/proxy'], ['talos-worker-01'], ['get'])])
+                         [(['nodes'], ['talos-worker-01'], ['get']), (['nodes/stats'], ['talos-worker-01'], ['get'])])
+        cilium = next(doc for doc in docs if doc['kind'] == 'CiliumNetworkPolicy' and doc['metadata']['name'] == 'playground-router-apiserver')
+        self.assertIn({'toEntities': ['host'], 'toPorts': [{'ports': [{'port': '10250', 'protocol': 'TCP'}]}]}, cilium['spec']['egress'])
 
     def test_owner_hold_lease_is_configured_and_readable(self):
         docs = render('lifecycle')
