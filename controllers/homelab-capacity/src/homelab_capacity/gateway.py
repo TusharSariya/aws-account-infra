@@ -108,6 +108,7 @@ class Activity:
 # worker) or evaluates a long prompt (minutes at 7 tokens/s), so this is a dead-
 # peer guard, not a request budget; TCP keepalive catches a vanished peer sooner.
 BRIDGE_IDLE_SECONDS = 1800
+DEFAULT_WAKE_MESSAGE = "Starting the application server. Retry in 10 seconds. Your request has not been replayed."
 
 
 def bridge(client, upstream):
@@ -249,10 +250,7 @@ class Handler(BaseHTTPRequestHandler):
                     self.start_ai()
                 except Exception:
                     pass  # Never bypass lifecycle/storage checks.
-                return self.reply(
-                    503,
-                    "Starting the application server. Retry in 10 seconds. Your request has not been replayed.\n",
-                )
+                return self.reply(503, getattr(self.server, "wake_message", DEFAULT_WAKE_MESSAGE) + "\n")
             with upstream:
                 # Fixed destination. Preserve end-to-end authentication and upgrades,
                 # but don't allow a client-supplied alternate proxy destination.
@@ -312,6 +310,7 @@ def main():
     server.backend = (os.environ["UPSTREAM_HOST"], int(os.environ["UPSTREAM_PORT"]))
     server.start_ai = os.environ.get("START_AI") == "true"
     server.wake_paths = set(filter(None, os.environ.get("WAKE_PATHS", "").split(",")))
+    server.wake_message = os.environ.get("WAKE_MESSAGE") or DEFAULT_WAKE_MESSAGE
     threading.Thread(target=activity.heartbeat, daemon=True).start()
     server.serve_forever()
 

@@ -97,6 +97,7 @@ spec:
             - {name: UPSTREAM_PORT, value: {{ .port | quote }}}
             - {name: START_AI, value: {{ .startAI | default false | quote }}}
             - {name: WAKE_PATHS, value: {{ .wakePaths | default "" | quote }}}
+            - {name: WAKE_MESSAGE, value: {{ .message | default "" | quote }}}
             - name: POD_NAMESPACE
               valueFrom: {fieldRef: {fieldPath: metadata.namespace}}
             - name: POD_UID
