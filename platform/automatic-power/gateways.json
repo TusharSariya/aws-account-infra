@@ -22,5 +22,13 @@
     "upstream": "ai-lifecycle.homelab-platform.svc.cluster.local",
     "port": 8080,
     "wakePaths": "/start"
+  },
+  {
+    "name": "wake-playground",
+    "namespace": "homelab-models",
+    "host": "primary",
+    "upstream": "playground-ui.homelab-models.svc.cluster.local",
+    "port": 8080,
+    "message": "Waking the playground server, about 10 minutes. This page refreshes on its own; nothing you sent was replayed."
   }
 ]

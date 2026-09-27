@@ -49,6 +49,9 @@ spec:
             - {name: OLLAMA_HOST, value: '0.0.0.0:11434'}
             - {name: OLLAMA_MODELS, value: /models/models}
             - {name: OLLAMA_MAX_LOADED_MODELS, value: '1'}
+            # Playground fit rule computes with q8_0 KV; llama.cpp errors if flash attention resolves to off with a quantised V cache.
+            - {name: OLLAMA_KV_CACHE_TYPE, value: q8_0}
+            - {name: OLLAMA_FLASH_ATTENTION, value: '1'}
             - {name: OLLAMA_NUM_PARALLEL, value: '1'}
             - {name: OLLAMA_CONTEXT_LENGTH, value: '4096'}
             - {name: OLLAMA_KEEP_ALIVE, value: '5m'}

@@ -198,3 +198,20 @@ def test_bridge_idle_guard_outlives_a_silent_model_load(monkeypatch):
         server.server_close()
         backend.shutdown()
         backend.server_close()
+
+
+def test_cold_page_uses_the_configured_wake_message_and_refreshes_browsers():
+    server = gateway(("127.0.0.1", 1))  # nothing listens: always cold
+    server.wake_message = "Waking the playground server, about 10 minutes."
+    try:
+        client = http.client.HTTPConnection(*server.server_address, timeout=8)
+        client.request("GET", "/", headers={"Accept": "text/html"})
+        result = client.getresponse()
+        body = result.read().decode()
+        assert result.status == 503
+        assert result.getheader("Retry-After") == "10" and result.getheader("Refresh") == "10"
+        assert body.startswith("Waking the playground server")
+        client.close()
+    finally:
+        server.shutdown()
+        server.server_close()

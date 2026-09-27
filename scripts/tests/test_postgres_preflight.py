@@ -36,8 +36,9 @@ class DeploymentPreflightTests(unittest.TestCase):
     def test_dynamic_queue_policy_required_before_deployment(self):
         self.run_preflight([])
         self.run_preflight([], quotas={'cpu': '38', 'memory': '109Gi', 'ephemeral-storage': '280Gi', 'pods': '105'})
+        self.run_preflight([], strategy='StrictFIFO')  # Reviewed policy since the playground spec.
         with self.assertRaisesRegex(ValueError, 'dynamic capacity'):
-            self.run_preflight([], strategy='StrictFIFO')
+            self.run_preflight([], strategy='WeightedFIFO')
 
     def test_reviewed_rollback_queue_supports_transition_without_raising_limits(self):
         quotas = {'cpu': '31250m', 'memory': '84Gi', 'ephemeral-storage': '240Gi'}

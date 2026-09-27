@@ -46,7 +46,9 @@ def verify(kubectl, run):
         raise ValueError('Apply the dynamic capacity queue or reviewed rollback queue first')
     for flavor in flavors:
         quotas = {r['name']: str(r['nominalQuota']) for r in flavor['resources']}
-        dynamic = queue['spec'].get('queueingStrategy') == 'BestEffortFIFO' and {'cpu', 'memory', 'ephemeral-storage', 'pods'} <= quotas.keys()
+        # The dynamic queue is recognised by its four covered resources; its strategy is a reviewed
+        # policy choice (StrictFIFO since the playground, so a pending AI runtime is never passed).
+        dynamic = queue['spec'].get('queueingStrategy') in ('BestEffortFIFO', 'StrictFIFO') and {'cpu', 'memory', 'ephemeral-storage', 'pods'} <= quotas.keys()
         reviewed_rollback = (queue['spec'].get('queueingStrategy') == rollback['strategy'] and
             quotas.keys() == legacy.keys() and all(quantity(quotas[key]) == quantity(value) for key, value in legacy.items()))
         if not (dynamic or reviewed_rollback):
