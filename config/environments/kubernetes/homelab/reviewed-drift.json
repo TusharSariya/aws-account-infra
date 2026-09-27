@@ -41,6 +41,14 @@
       "source_commit": "8650ac60690d37d1830833b3ae99671f355cf1e2",
       "reason": "Verified primary PVE address repair from .92 to .224; release remains deployed and refresh changes only metadata. mTLS and both capacity reports passed.",
       "verified_manifest_sha256": "f9fc3ccb6b33b184bf5308e4a5578286ceb468a32b57fea375ec6b330c5e42bf"
+    },
+    {
+      "address": "helm_release.playground",
+      "fingerprint": "cbc63381e7fe1ee8f427051b88e5a1465b07bfa8cc7678d48a99c1e8e7366be5",
+      "observed_run": "https://github.com/TusharSariyaOrg/aws-account-infra/actions/runs/36318373065",
+      "failed_revision": 2,
+      "source_commit": "e1bd583",
+      "reason": "First Open WebUI rollout (#263) failed its Helm wait: startup stalled fetching the embedding model through blocked egress. Only release metadata/status changed; the chart now starts offline and the live Pod was verified ready with that configuration."
     }
   ]
 }

@@ -1,5 +1,4 @@
 node: talos-worker-01
 ui:
-  # Change 3 (add-playground-ui) turns this on; the router ships first.
-  enabled: false
+  enabled: true
   hostname: playground

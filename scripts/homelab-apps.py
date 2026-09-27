@@ -248,7 +248,7 @@ def reviewed_capacity_drift(drift, reviews):
                        and after.get('status') == 'failed' and changed <= {'metadata', 'status'})
     repaired_metadata = (before.get('status') == after.get('status') == 'deployed'
                          and changed == {'metadata'})
-    return (drift.get('address') == 'helm_release.capacity' and change.get('actions') == ['update']
+    return (drift.get('address') in ADDRESSES and change.get('actions') == ['update']
             and (failed_revision or repaired_metadata)
             and any(review.get('address') == drift['address'] and review.get('fingerprint') == fingerprint
                     for review in reviews))

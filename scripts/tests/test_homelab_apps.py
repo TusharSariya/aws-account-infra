@@ -73,6 +73,14 @@ class GuardTests(unittest.TestCase):
         for address in ('helm_release.ollama', 'helm_release.ai'):
             changed = {**drift, 'address': address}
             self.assertFalse(apps.reviewed_capacity_drift(changed, reviews))
+        # Any application release accepts its own exact review; an unknown address never does.
+        playground = {**drift, 'address': 'helm_release.playground'}
+        own = [{'address': 'helm_release.playground', 'fingerprint': hashlib.sha256(
+                json.dumps(playground, sort_keys=True, separators=(',', ':')).encode()).hexdigest()}]
+        self.assertTrue(apps.reviewed_capacity_drift(playground, own))
+        self.assertFalse(apps.reviewed_capacity_drift(playground, reviews))
+        self.assertFalse(apps.reviewed_capacity_drift({**drift, 'address': 'helm_release.unknown'}, [
+            {'address': 'helm_release.unknown', 'fingerprint': own[0]['fingerprint']}]))
         for actions in (['delete'], ['delete', 'create']):
             changed = deepcopy(drift)
             changed['change']['actions'] = actions

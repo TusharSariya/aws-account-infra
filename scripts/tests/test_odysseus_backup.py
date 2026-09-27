@@ -28,7 +28,7 @@ class BackupTests(unittest.TestCase):
             archive.capture(source, stream)
             stream.seek(0)
             result = archive.restore(root / 'restored', stream)
-            self.assertEqual(result['files'], 4)
+            self.assertEqual(result['files'], len(archive.VOLUMES) + 1)
             self.assertEqual(result['sqlite_databases'], 1)
             self.assertEqual(archive.inventory(source), archive.inventory(root / 'restored'))
 

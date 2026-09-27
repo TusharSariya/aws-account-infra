@@ -28,7 +28,7 @@ class ChartTests(unittest.TestCase):
             self.assertEqual(pod['activeDeadlineSeconds'], 1800)
             self.assertFalse(any('secret' in v or 'hostPath' in v for v in pod['volumes']))
         claims = [v['persistentVolumeClaim'] for v in snapshot['volumes'] if 'persistentVolumeClaim' in v]
-        self.assertEqual({v['claimName'] for v in claims}, {'ai-models', 'ai-workspace', 'ai-vector'})
+        self.assertEqual({v['claimName'] for v in claims}, {'ai-models', 'ai-workspace', 'ai-vector', 'playground-ui-data', 'playground-router-state'})
         self.assertTrue(all(v['readOnly'] for v in claims))
         self.assertFalse(any('persistentVolumeClaim' in v for v in restore['volumes']))
         self.assertEqual(next(v['emptyDir'] for v in restore['volumes'] if 'emptyDir' in v)['sizeLimit'], '4Gi')
