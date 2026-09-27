@@ -33,6 +33,16 @@ class ChartTests(unittest.TestCase):
         self.assertFalse(any('persistentVolumeClaim' in v for v in restore['volumes']))
         self.assertEqual(next(v['emptyDir'] for v in restore['volumes'] if 'emptyDir' in v)['sizeLimit'], '4Gi')
 
+    def test_owner_hold_lease_is_configured_and_readable(self):
+        docs = render('lifecycle')
+        config = json.loads(next(doc for doc in docs if doc['kind'] == 'ConfigMap'
+                                 and doc['metadata']['name'] == 'ai-lifecycle-config')['data']['config.json'])
+        self.assertEqual(config['holdLease'], 'host-hold-playground')
+        role = next(doc for doc in docs if doc['kind'] == 'Role' and doc['metadata']['name'] == 'ai-lifecycle'
+                    and doc['metadata']['namespace'] == 'homelab-platform')
+        self.assertIn({'apiGroups': ['coordination.k8s.io'], 'resources': ['leases'],
+                       'resourceNames': ['host-hold-playground'], 'verbs': ['get']}, role['rules'])
+
     def test_reviewed_idle_timeout_reaches_controller_configuration(self):
         docs = render('lifecycle')
         config = next(doc for doc in docs if doc['kind'] == 'ConfigMap' and doc['metadata']['name'] == 'ai-lifecycle-config')

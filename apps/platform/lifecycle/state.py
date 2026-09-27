@@ -122,7 +122,7 @@ class Observation:
         self.idle_since = None
         self.last_tick = None
 
-    def reconcile(self, state, *, now, capacity, pods_present, ready, instances, unstarted=False, wall_time=None):
+    def reconcile(self, state, *, now, capacity, pods_present, ready, instances, unstarted=False, wall_time=None, hold_until=None):
         result = deepcopy(state)
         measured_now = now if wall_time is None else wall_time
         if capacity.drain and result['desired'] == 'on':
@@ -151,8 +151,10 @@ class Observation:
             result['sources'] = {}
         gap = self.last_tick is None or not 0 <= now - self.last_tick <= HEARTBEAT_SECONDS
         self.last_tick = now
+        # An owner hold (the playground's durable power-hold Lease) is not activity,
+        # but it is a standing instruction: idle time never accrues while it lasts.
         idle = (result['desired'] == 'on' and ready and pods_present and not unknown
-                and not result['tickets'] and capacity.admission)
+                and not result['tickets'] and capacity.admission and hold_until is None)
         if gap or not idle:
             self.idle_since = None
         if idle and self.idle_since is None:
@@ -173,6 +175,6 @@ class Observation:
         return result, replicas, {'desired': result['desired'], 'observed': observed,
             'revision': result['revision'], 'last_interruption': deepcopy(result.get('interruption')), 'storage_warning': capacity.warning, 'active_work': len(result['tickets']),
             'blocking_reasons': [*capacity.reasons, *unknown], 'reason': result['reason'],
-            'activity_verification': verification, 'idle_timeout_seconds': self.idle_timeout_seconds,
+            'activity_verification': verification, 'idle_timeout_seconds': self.idle_timeout_seconds, 'hold_until': hold_until,
             'idle_seconds': 0 if self.idle_since is None else round(max(0, now - self.idle_since), 3),
             'admission': result['desired'] == 'on' and ready and capacity.admission and not result['force'] and not unknown}

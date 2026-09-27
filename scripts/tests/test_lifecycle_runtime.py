@@ -13,7 +13,7 @@ sys.path[:0] = [str(ROOT / 'apps/platform/lifecycle'), str(ROOT / 'apps/platform
 from capacity import Decision
 from kube import Conflict, Unavailable
 from leadership import LEASE_PATH
-from runtime import Runtime, RUNTIME, STATE, MODELS, PLATFORM, TICK_BOUNDS, tick_seconds
+from runtime import Runtime, RUNTIME, STATE, MODELS, PLATFORM, HOLD_LEASES, TICK_BOUNDS, tick_seconds
 from state import Rejected
 
 
@@ -100,6 +100,27 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(stopped['desired'], 'off')
         self.assertEqual(self.api.objects[RUNTIME]['spec']['replicas'], 0)
         self.assertEqual(self.runtime.current_status()['desired'], 'off')
+
+    def test_owner_hold_lease_is_read_each_tick_and_expired_or_missing_holds_are_ignored(self):
+        api, runtime = self.api, self.runtime
+        runtime.config['holdLease'] = 'host-hold-playground'
+        lease_path = HOLD_LEASES + 'host-hold-playground'
+        self.assertIsNone(runtime.hold_until())  # not rendered yet: nothing is held
+        api.objects[lease_path] = {'metadata': {'resourceVersion': '9', 'labels': {'homelab.tfdraw.dev/power-hold': 'true'},
+            'annotations': {'homelab.tfdraw.dev/hold-until': '2099-01-01T00:00:00+00:00'}}, 'spec': {}}
+        self.assertEqual(runtime.hold_until(), '2099-01-01T00:00:00+00:00')
+        api.objects[lease_path]['metadata']['annotations']['homelab.tfdraw.dev/hold-until'] = '2000-01-01T00:00:00+00:00'
+        self.assertIsNone(runtime.hold_until())
+        api.objects[lease_path]['metadata']['labels']['homelab.tfdraw.dev/power-hold'] = 'false'
+        api.objects[lease_path]['metadata']['annotations']['homelab.tfdraw.dev/hold-until'] = '2099-01-01T00:00:00+00:00'
+        self.assertIsNone(runtime.hold_until())
+        runtime.tick()
+        self.assertIsNone(runtime.status['hold_until'])
+        api.objects[lease_path]['metadata']['labels']['homelab.tfdraw.dev/power-hold'] = 'true'
+        runtime.tick()
+        self.assertEqual(runtime.status['hold_until'], '2099-01-01T00:00:00+00:00')
+        del runtime.config['holdLease']
+        self.assertIsNone(runtime.hold_until())
 
     def test_pending_queue_does_not_accrue_idle_time(self):
         self.runtime.config['queueStatus'] = True
