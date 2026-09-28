@@ -418,10 +418,23 @@ def jobs(session):
             session.kube('-n', namespace, 'delete', 'workflow', name, '--cascade=foreground', '--wait=true', '--timeout=120s')
 
 
+def settle_off(session):
+    """Let a Stop already in progress finish before requiring Off.
+
+    In a PR run the lifecycle acceptance job ends by stopping AI and the proof starts about a
+    minute later, while the runtime is still Stopping. Only a Stop already requested is waited
+    for; AI that is wanted on (a user's chat) still fails the precondition at once.
+    """
+    if session.status()['desired'] == 'off':
+        session.wait(lambda s: s['desired'] == 'off' and s['observed'] == 'Off', 'AI observed Off before maintenance',
+                     timeout=600)
+    return session.off()
+
+
 def main():
     session = Maintenance()
     try:
-        session.off()
+        settle_off(session)
         cleanup_cancelled_storage_fixture(session)
         session.wait(lambda s: not s['blocking_reasons'], 'initial capacity hysteresis is healthy', timeout=420)
         jobs(session)
