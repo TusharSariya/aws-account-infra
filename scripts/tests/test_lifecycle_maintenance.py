@@ -148,3 +148,15 @@ class MaintenanceTests(unittest.TestCase):
         future.result.side_effect = TimeoutError()
         with self.assertRaises(TimeoutError):
             maintenance.require_interrupted(future)
+
+    def test_every_bare_maintenance_pod_is_operational_under_compute_admission(self):
+        # The proof creates these Pods directly (fixture/pending) as cluster-admin; a name the
+        # admission policy does not exempt is denied as un-queued compute ("is invalid").
+        import re
+        fixtures = (ROOT / 'charts/homelab-ai/templates/maintenance.yaml').read_text()
+        names = set(re.findall(r'"kind": "Pod",\s*"metadata": \{"name": "([^"]+)"', fixtures))
+        self.assertEqual(names, {'ai-snapshot', 'ai-isolated-restore', 'ai-resource-filler'})
+        policy = (ROOT / 'charts/homelab-queue/templates/admission.yaml').read_text()
+        exempt = re.search(r"object\.metadata\.name in \[([^\]]*)\]", policy)
+        self.assertIsNotNone(exempt)
+        self.assertEqual(set(re.findall(r"'([^']+)'", exempt.group(1))), names)
