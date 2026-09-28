@@ -45,6 +45,26 @@ class MaintenanceTests(unittest.TestCase):
             {'type': 'PodScheduled', 'status': 'False', 'reason': 'Unschedulable', 'message': '0/4 nodes are available: 1 Insufficient cpu.'}]}}
         self.assertTrue(maintenance.cpu_constrained(scheduler, []))
 
+    def test_cpu_constrained_accepts_kueue_capacity_rejection_but_not_quota_contention(self):
+        pod = {'metadata': {'uid': 'p1'}, 'spec': {'schedulingGates': [{'name': 'kueue.x-k8s.io/admission'}]},
+               'status': {'phase': 'Pending', 'conditions': []}}
+        prefix = "couldn't assign flavors to pod set main: flavor homelab-secondary doesn't match node affinity, "
+
+        def workload(message, uid='p1'):
+            return [{'metadata': {'name': 'w', 'ownerReferences': [{'uid': uid}]}, 'status': {'conditions': [
+                {'type': 'QuotaReserved', 'status': 'False', 'reason': 'Pending', 'message': prefix + message}]}}]
+
+        capacity = ('insufficient quota for cpu in flavor homelab-worker, previously considered podsets requests (0) '
+                    '+ current podset request (31250m) > maximum capacity (29280m)')
+        self.assertTrue(maintenance.cpu_constrained(pod, workload(capacity)))
+        self.assertFalse(maintenance.cpu_constrained(pod, workload(capacity, uid='p2')))
+        contention = 'insufficient unused quota for cpu in flavor homelab-worker, 9970m more needed'
+        self.assertFalse(maintenance.cpu_constrained(pod, workload(contention)))
+        ungated = {'metadata': {'uid': 'p1'}, 'spec': {}, 'status': {'phase': 'Pending', 'conditions': []}}
+        self.assertFalse(maintenance.cpu_constrained(ungated, workload(capacity)))
+        self.assertIn('QuotaReserved=False', maintenance.workload_state([pod], workload(contention))[0])
+        self.assertEqual(maintenance.workload_state([], []), ['no workload owned by 0 ai-runtime Pod(s)'])
+
 
     def test_short_idle_acceptance_detects_late_timer_reset(self):
         session = Mock()

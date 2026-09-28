@@ -66,13 +66,20 @@ def dns():
     print('PASS: Pi-hole answers UDP and TCP DNS', flush=True)
 
 
+QUOTA_REJECTION = 'insufficient quota for cpu in flavor homelab-worker'
+
+
 def cpu_constrained(pod, workloads):
-    """The aggregate Pod is held back by the filler's CPU, at either of the two places that can happen.
+    """The aggregate Pod is held back by the filler's CPU, at any of the three places that can happen.
 
     Before the coordinator's admission budget (#224) the scheduler reported Unschedulable with
-    'Insufficient cpu'. Now the coordinator subtracts non-Kueue commitments from the host budget
-    first, so the reservation no longer fits and the host-ready admission check keeps the Pod
-    behind Kueue's scheduling gate with 'Waiting for: primary'. Either is the constrained state.
+    'Insufficient cpu'. Now the coordinator subtracts non-Kueue commitments such as the filler
+    from the homelab-worker nominalQuota, so the aggregate request exceeds the flavor's maximum
+    capacity and Kueue refuses to reserve quota: QuotaReserved is False with 'insufficient quota
+    for cpu in flavor homelab-worker'. If Kueue reserved quota before the coordinator lowered it,
+    the host-ready admission check instead holds the Pod behind Kueue's scheduling gate with
+    'Waiting for: primary'. 'insufficient unused quota' is not accepted: it only means other
+    workloads (for example CI runners) hold the quota, which says nothing about the filler.
     """
     conditions = pod.get('status', {}).get('conditions', [])
     if any(c['type'] == 'PodScheduled' and c['status'] == 'False' and c.get('reason') == 'Unschedulable'
@@ -85,11 +92,30 @@ def cpu_constrained(pod, workloads):
     for workload in workloads:
         if not any(o.get('uid') == uid for o in workload['metadata'].get('ownerReferences', [])):
             continue
+        for condition in workload.get('status', {}).get('conditions', []):
+            if condition.get('type') == 'QuotaReserved' and condition.get('status') == 'False' \
+                    and QUOTA_REJECTION in condition.get('message', ''):
+                return True
         for check in workload.get('status', {}).get('admissionChecks', []):
             if check.get('name') == 'homelab-host-ready' and check.get('state') == 'Pending' \
                     and check.get('message', '').startswith('Waiting for: primary'):
                 return True
     return False
+
+
+def workload_state(pods, workloads):
+    """Last observed admission state of the aggregate Pod's workload, for the timeout message."""
+    uids = {p['metadata'].get('uid') for p in pods}
+    lines = []
+    for workload in workloads:
+        if not any(o.get('uid') in uids for o in workload['metadata'].get('ownerReferences', [])):
+            continue
+        status = workload.get('status', {})
+        for c in status.get('conditions', []):
+            lines.append(f"{workload['metadata'].get('name')} {c.get('type')}={c.get('status')}: {c.get('message', '')}")
+        for c in status.get('admissionChecks', []):
+            lines.append(f"{workload['metadata'].get('name')} check {c.get('name')}={c.get('state')}: {c.get('message', '')}")
+    return lines or [f'no workload owned by {len(pods)} ai-runtime Pod(s)']
 
 
 def pending(session):
@@ -101,8 +127,10 @@ def pending(session):
         session.kube('-n', 'homelab-models', 'wait', 'pod/ai-resource-filler', '--for=condition=Ready', '--timeout=180s')
         session.command('start')
         deadline = time.monotonic() + 120
+        pods, workloads = [], []
         while time.monotonic() < deadline:
             pods = json.loads(session.kube('-n', 'homelab-models', 'get', 'pods', '-l', 'app=ai-runtime', '-o', 'json'))['items']
+            workloads = []
             if len(pods) == 1:
                 pod = pods[0]
                 workloads = json.loads(session.kube('-n', 'homelab-models', 'get', 'workloads.kueue.x-k8s.io', '-o', 'json'))['items']
@@ -112,6 +140,8 @@ def pending(session):
                     break
             time.sleep(3)
         else:
+            for line in workload_state(pods, workloads):
+                print('Last aggregate workload state: ' + line, flush=True)
             raise apps.AppError('Did not observe aggregate CPU-constrained Pending state')
         dns()
         session.command('stop')
