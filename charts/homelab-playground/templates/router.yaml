@@ -1,3 +1,4 @@
+{{- if not .Values.desktopOnly }}
 apiVersion: v1
 kind: ServiceAccount
 metadata: {name: playground-router, namespace: homelab-models}
@@ -51,7 +52,12 @@ apiVersion: v1
 kind: ConfigMap
 metadata: {name: playground-router-config, namespace: homelab-models}
 data:
-  config.json: {{ toJson .Values.router.config | quote }}
+{{- /* The desktop backend joins the router's backends only while its Ollama is deployed. */}}
+{{- $config := deepCopy .Values.router.config }}
+{{- if .Values.desktop.enabled }}
+{{- $_ := set $config "backends" (append $config.backends .Values.desktop.backend) }}
+{{- end }}
+  config.json: {{ toJson $config | quote }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -152,6 +158,14 @@ spec:
         - podSelector:
             matchLabels: {app: wake-ollama}
       ports: [{protocol: TCP, port: 8080}]
+    {{- if .Values.desktop.enabled }}
+    - to:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: homelab-inference}
+          podSelector:
+            matchLabels: {app: desktop-ollama}
+      ports: [{protocol: TCP, port: 11434}]
+    {{- end }}
     - to:
         - namespaceSelector:
             matchLabels: {kubernetes.io/metadata.name: kube-system}
@@ -173,3 +187,4 @@ spec:
     - toEntities: [host]
       toPorts:
         - ports: [{port: '10250', protocol: TCP}]
+{{- end }}

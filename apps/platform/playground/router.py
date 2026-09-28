@@ -3,6 +3,10 @@
 Intercepts /api/tags (merge), /api/pull (backend choice, wake, progress), /api/chat and
 /api/generate (fit rule, wake, progress). Everything else passes through to the backend
 that holds the model. Bearer auth on both hops. See ADR 0001.
+
+Every route is also served under /b/<backend>/, pinned to that backend: Open WebUI gets
+one connection per backend, so its model list and admin pull name the backend.
+Manual-power backends (the desktop) are never woken; when off they are refused at once.
 """
 import hmac
 import json
@@ -25,6 +29,7 @@ from catalog import Catalog  # noqa: E402
 INTERCEPTED = {'/api/tags', '/api/pull', '/api/chat', '/api/generate', '/api/delete'}
 PASSTHROUGH_PREFIXES = ('/api/', '/v1/')
 WAKING_PREFIX = '[waking] '
+BACKEND_PREFIX = '/b/'
 TYPICAL = {'host powering on': 60, 'worker joining': 300, 'runtime queued': None, 'runtime starting': 30,
            'model loading': 40, 'ready': None}
 
@@ -49,6 +54,10 @@ class Backend:
         token_file = spec.get('token_file')
         self.token = Path(token_file).read_text().strip() if token_file else ''
         self.kube = kube
+        self.version = None  # last /api/version this backend answered, for probes while it sleeps
+
+    def off_line(self):
+        return f'{self.name} is off, power it on and retry.'
 
     def headers(self, extra=None):
         h = {'Content-Type': 'application/json'}
@@ -69,7 +78,12 @@ class Backend:
     def awake(self):
         """True when the gateway proxies Ollama (200), False on 503 or connection failure."""
         try:
-            with self.request('GET', '/api/version', timeout=10) as r:
+            # A manual-power host that is off refuses or times out; answer that quickly.
+            with self.request('GET', '/api/version', timeout=3 if self.manual_power else 10) as r:
+                try:
+                    self.version = json.load(r).get('version') or self.version
+                except (ValueError, AttributeError):
+                    pass
                 return r.status == 200
         except urllib.error.HTTPError as e:
             return e.code not in (502, 503, 504)
@@ -100,8 +114,10 @@ class Backend:
 
     def runtime_memory(self):
         """Working set of the runtime pod in bytes, read from the worker's kubelet stats summary, or None."""
+        if not self.node:
+            return None  # a backend without a node (the desktop) is observed through /api/ps only
         items = self.runtime_pods()
-        if not items or not self.node:
+        if not items:
             return None
         names = {pod['metadata']['name'] for pod in items}
         node = self.kube.get(f'/api/v1/nodes/{self.node}') or {}
@@ -188,17 +204,40 @@ class Router:
         self.catalog.record_model(name, weight, native_max, bytes_per_token, fixed_cache, arch, exact)
         self.catalog.record_copy(name, backend.name, digest or '')
 
-    def merged_tags(self):
+    def apply_pending_deletes(self, backend):
+        """Issue the deletes recorded while the backend slept; return the models still pending."""
+        still = set()
+        for name in self.catalog.pending_deletes(backend.name):
+            try:
+                backend.json('DELETE', '/api/delete', {'model': name})
+            except urllib.error.HTTPError as e:
+                if e.code != 404:  # 404: already gone, which is what the delete wanted
+                    still.add(name)
+                    continue
+            except Exception:  # noqa: BLE001 - retried on the next merge
+                still.add(name)
+                continue
+            self.catalog.drop_pending_delete(name, backend.name)
+            self.catalog.remove_copy(name, backend.name)
+        return still
+
+    def merged_tags(self, only=None):
+        """Merge live listings with catalog copies; `only` limits both to one backend (a /b/<name> connection)."""
         models = {}
         for backend in self.backends.values():
-            if not backend.awake():
+            if only is not None and backend.name != only:
                 continue
+            if not backend.awake():
+                continue  # an asleep or off backend keeps its catalog copies, listed offline below
             try:
+                pending = self.apply_pending_deletes(backend)
                 listed = backend.json('GET', '/api/tags').get('models', [])
             except Exception:  # noqa: BLE001
                 continue
             for entry in listed:
                 name = entry.get('name') or entry.get('model')
+                if name in pending:
+                    continue
                 if self.catalog.model(name) is None:
                     try:
                         self.register_from_backend(backend, name, entry.get('digest'))
@@ -209,6 +248,8 @@ class Router:
                 models.setdefault(name, {**entry, 'backends': [], 'offline': False})['backends'].append(backend.name)
         for copy in self.catalog.copies():
             name = copy['model']
+            if only is not None and copy['backend'] != only and name not in models:
+                continue
             if name in models:
                 if copy['backend'] not in models[name]['backends']:
                     models[name]['backends'].append(copy['backend'])
@@ -220,6 +261,18 @@ class Router:
         return {'models': list(models.values())}
 
     # ----- routing decisions -----
+    def pinned(self, path):
+        """Split /b/<name>/rest into (backend, /rest); (None, path) for root routes; (False, name) if unknown."""
+        if not path.startswith(BACKEND_PREFIX):
+            return None, path
+        name, _, rest = path[len(BACKEND_PREFIX):].partition('/')
+        backend = self.backends.get(name)
+        return (backend, '/' + rest) if backend else (False, name)
+
+    def known_version(self, backend):
+        """The version to report for a backend that is not answering: its own last, else any backend's."""
+        return backend.version or next((b.version for b in self.backends.values() if b.version), None)
+
     def backend_for(self, model_name, requested=None):
         if requested:
             return self.backends.get(requested)
@@ -261,6 +314,15 @@ class Handler(BaseHTTPRequestHandler):
     def router(self):
         return self.server.router
 
+    def pin(self):
+        """Resolve a /b/<name> prefix: rewrite self.path, set self.pin_to. False (after a 404) on an unknown name."""
+        backend, rest = self.router.pinned(self.path)
+        if backend is False:
+            self.send_json(404, {'error': f'unknown backend {rest}'})
+            return False
+        self.pin_to, self.path = backend, rest
+        return True
+
     # ----- plumbing -----
     def send_json(self, code, value):
         data = json.dumps(value).encode()
@@ -276,6 +338,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header('Cache-Control', 'no-store')
         self.send_header('Transfer-Encoding', 'chunked')
         self.end_headers()
+        self.chunks_ended = False
 
     def chunk(self, obj):
         data = (json.dumps(obj) + '\n').encode()
@@ -283,6 +346,11 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.flush()
 
     def end_chunks(self):
+        # Once per stream: a wake that gives up mid-retry has already ended it, and a
+        # second terminator would corrupt the next response on this keep-alive connection.
+        if getattr(self, 'chunks_ended', False):
+            return
+        self.chunks_ended = True
         self.wfile.write(b'0\r\n\r\n')
         self.wfile.flush()
 
@@ -306,7 +374,7 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self.chunk({'status': text})
 
-    def final(self, kind, model, text):
+    def done_line(self, kind, model, text):
         if kind == 'chat':
             self.chunk({'model': model, 'created_at': now_iso(), 'message': {'role': 'assistant', 'content': text},
                         'done': True, 'done_reason': 'stop'})
@@ -314,6 +382,9 @@ class Handler(BaseHTTPRequestHandler):
             self.chunk({'model': model, 'created_at': now_iso(), 'response': text, 'done': True, 'done_reason': 'stop'})
         else:
             self.chunk({'status': text})
+
+    def final(self, kind, model, text):
+        self.done_line(kind, model, text)
         self.end_chunks()
 
     def wait_awake(self, backend, kind, model):
@@ -321,7 +392,7 @@ class Handler(BaseHTTPRequestHandler):
         if backend.awake():
             return True
         if backend.manual_power:
-            self.final(kind, model, f'{backend.name} is off, power it on and retry.')
+            self.final(kind, model, backend.off_line())  # never woken, never swapped for another backend
             return False
         started = time.monotonic()
         last_stage = None
@@ -416,7 +487,12 @@ class Handler(BaseHTTPRequestHandler):
                     self.progress(kind, model, self.wait_line(backend, model, waited, len(raw)))
         if 'error' in holder:
             code, detail, retry_after = holder['error']
-            if code in (502, 503, 504) and retry_after and not retried:
+            if backend.manual_power and code in (502, 503, 504) and not backend.awake():
+                # Powered off between the probe and the request: refuse, no retry, no fallback.
+                # A busy Ollama that still answers the probe gets its own error relayed below.
+                self.done_line(kind, model, backend.off_line())
+                return
+            if code in (502, 503, 504) and retry_after and not retried and not backend.manual_power:
                 # The wake gateway answered before any byte reached the model: the runtime
                 # went away under us (idle stop). Wait for it like a cold start, then send once more.
                 if self.wait_awake(backend, kind, model):
@@ -438,23 +514,25 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == '/healthz':
             return self.send_json(200, {'ready': True})
-        if not self.authorized():
+        if not self.authorized() or not self.pin():
             return
         if self.path == '/api/tags':
-            return self.send_json(200, self.router.merged_tags())
-        if self.path == '/admin/catalog':
+            return self.send_json(200, self.router.merged_tags(self.pin_to.name if self.pin_to else None))
+        if self.pin_to and self.path in ('/api/version', '/api/ps'):
+            return self.pinned_probe(self.pin_to)
+        if self.path == '/admin/catalog' and not self.pin_to:
             return self.send_json(200, {'models': self.router.catalog.models(), 'copies': self.router.catalog.copies()})
         return self.passthrough('GET')
 
     def do_DELETE(self):
-        if not self.authorized():
+        if not self.authorized() or not self.pin():
             return
         if self.path == '/api/delete':
             return self.delete()
         return self.passthrough('DELETE')
 
     def do_POST(self):
-        if not self.authorized():
+        if not self.authorized() or not self.pin():
             return
         if self.path == '/api/chat' or self.path == '/api/generate':
             return self.inference('chat' if self.path == '/api/chat' else 'generate')
@@ -462,7 +540,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.pull()
         if self.path == '/api/delete':
             return self.delete()
-        if self.path == '/admin/override':
+        if self.path == '/admin/override' and not self.pin_to:
             body, _ = self.body_json()
             ok = self.router.catalog.set_override(body.get('model', ''), body.get('enabled', False))
             return self.send_json(200 if ok else 404, {'model': body.get('model'), 'fit_override': bool(body.get('enabled'))} if ok else {'error': 'unknown model'})
@@ -471,8 +549,14 @@ class Handler(BaseHTTPRequestHandler):
     def inference(self, kind):
         body, raw = self.body_json()
         model = body.get('model', '')
-        backend = self.router.backend_for(model, body.get('backend'))
+        backend = self.pin_to or self.router.backend_for(model, body.get('backend'))
         stream = body.get('stream', True)
+        if self.pin_to and not any(c['backend'] == backend.name for c in self.router.catalog.copies(model)):
+            missing = f'{model} is not on {backend.name}; pull it there first.'
+            if not stream:
+                return self.send_json(404, {'error': missing})
+            self.start_ndjson()
+            return self.final(kind, model, missing)
         if backend is None:
             if not stream:
                 return self.send_json(404, {'error': f'{model} is not on any backend; pull it first.'})
@@ -489,6 +573,8 @@ class Handler(BaseHTTPRequestHandler):
         raw = json.dumps(body).encode()
         if not stream:
             if not backend.awake():
+                if backend.manual_power:
+                    return self.send_json(503, {'error': backend.off_line()})
                 return self.send_json(503, {'error': f'{backend.name} is waking; retry, or stream to watch progress'})
             return self.forward(backend, 'POST', self.path, raw)
         self.start_ndjson()
@@ -501,12 +587,13 @@ class Handler(BaseHTTPRequestHandler):
     def pull(self):
         body, _ = self.body_json()
         model = body.get('model') or body.get('name', '')
-        backend = self.router.backends.get(body.get('backend') or self.router.default_backend)
+        backend = self.pin_to or self.router.backends.get(body.get('backend') or self.router.default_backend)
         if backend is None:
             return self.send_json(404, {'error': 'unknown backend'})
         self.start_ndjson()
         if not self.wait_awake(backend, 'pull', model):
             return
+        self.router.catalog.drop_pending_delete(model, backend.name)  # pulling again cancels an unapplied delete
         started = self.router.catalog.pull_started(model, backend.name)
         status = 'failed'
         raw = json.dumps({'model': model, 'stream': True}).encode()
@@ -528,26 +615,53 @@ class Handler(BaseHTTPRequestHandler):
         body, raw = self.body_json()
         model = body.get('model') or body.get('name', '')
         results = {}
-        for copy in self.router.catalog.copies(model):
-            backend = self.router.backends.get(copy['backend'])
-            if backend is None or not backend.awake():
-                results[copy['backend']] = 'skipped: backend asleep'
+        names = [self.pin_to.name] if self.pin_to else [c['backend'] for c in self.router.catalog.copies(model)]
+        for name in names:
+            backend = self.router.backends.get(name)
+            if backend is None:
+                results[name] = 'skipped: backend not configured'
+                continue
+            if not backend.awake():
+                # Recorded, not orphaned: the next merge that finds it awake deletes it there.
+                self.router.catalog.add_pending_delete(model, name)
+                results[name] = 'pending: backend asleep'
                 continue
             try:
                 backend.json('DELETE', '/api/delete', {'model': model})
-                results[copy['backend']] = 'deleted'
+                results[name] = 'deleted'
             except urllib.error.HTTPError as e:
-                results[copy['backend']] = f'error {e.code}'
-        self.router.catalog.remove(model)
+                results[name] = f'error {e.code}'
+        if self.pin_to:
+            self.router.catalog.remove_copy(model, self.pin_to.name)
+        else:
+            self.router.catalog.remove(model)
         self.send_json(200, {'model': model, 'backends': results})
+
+    def pinned_probe(self, backend):
+        """/api/version and /api/ps on a pinned connection: passive, never wakes, never errors on a sleeping backend.
+
+        Open WebUI probes both for every connection; a sleeping or off backend answers with its
+        last known version and no running models, so the connection stays usable and listed.
+        """
+        if backend.awake():
+            return self.forward(backend, 'GET', self.path, None)
+        if self.path == '/api/ps':
+            return self.send_json(200, {'models': []})
+        version = self.router.known_version(backend)
+        if version:
+            return self.send_json(200, {'version': version})
+        reason = backend.off_line() if backend.manual_power else f'{backend.name} is asleep; retry in 10 seconds'
+        return self.send_json(503, {'error': reason})
 
     def passthrough(self, method):
         if not self.path.startswith(PASSTHROUGH_PREFIXES):
             return self.send_json(404, {'error': 'unknown route'})
         body, raw = self.body_json() if method in ('POST', 'DELETE') else ({}, b'')
         backend = self.router.backend_for(body.get('model', ''), body.get('backend')) if isinstance(body, dict) and body.get('model') else None
-        backend = backend or self.router.backends[self.router.default_backend]
+        backend = self.pin_to or backend or self.router.backends[self.router.default_backend]
         if not backend.awake():
+            if backend.manual_power:
+                return self.send_json(503, {'error': backend.off_line()})
             return self.send_json(503, {'error': f'{backend.name} is waking; retry in 10 seconds'})
         return self.forward(backend, method, self.path, raw or None)
 

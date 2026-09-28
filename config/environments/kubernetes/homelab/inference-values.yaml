@@ -2,3 +2,12 @@
 enabled: false
 workerEnabled: true
 devicePluginDigest: sha256:af31e2b7c7f89834c4e5219860def7ac2e49a207b3d4e8610d5a26772b7738e5
+# The playground desktop Ollama (charts/homelab-playground desktop.yaml) is admitted by
+# desktop-compute through the `desktop` LocalQueue; the batch gateway stays off.
+desktopQuota: true
+desktopAcceptedNodeUID: 5f898a67-ea1f-4e63-9abc-eae17ac80497
+node: ubuntu-gpu-01
+# Accepted cap pending the on-hardware budget measurement: node allocatable is
+# 18500m CPU / ~26.8 GiB memory / ~178 GiB free disk / 1 GPU. The ClusterQueue further
+# caps cpu at 12 and memory at 24 GiB.
+measured: {cpu: 16, memoryGi: 24, scratchGi: 20, gpu: 1}

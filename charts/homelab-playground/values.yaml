@@ -1,4 +1,9 @@
 node: talos-worker-01
+# The playground renders as two releases that never share an object: the main release
+# (router, UI; desktopOnly false) and homelab-playground-desktop (desktopOnly true), which holds
+# only the desktop Ollama objects and applies without a Helm wait, because the desktop is
+# manually powered and its pod stays gated while the desktop is off or quarantined.
+desktopOnly: false
 # Router code files are injected by the OpenTofu root from apps/platform/playground.
 routerCode: {}
 routerImage: python:3.14-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6
@@ -37,3 +42,45 @@ ui:
   resources:
     requests: {cpu: 250m, memory: 512Mi, ephemeral-storage: 64Mi}
     limits: {cpu: '1', memory: 1536Mi, ephemeral-storage: 512Mi}
+# Desktop GPU backend (OpenSpec add-playground-desktop-backend): an Ollama on ubuntu-gpu-01 in
+# homelab-inference, admitted by Kueue through the `desktop` LocalQueue (desktop-compute quota is
+# opened by charts/homelab-inference desktopQuota). The desktop is powered manually.
+desktop:
+  enabled: false
+  node: ubuntu-gpu-01
+  # Same upstream Ollama digest as charts/homelab-ollama (config/.../ollama-values.yaml).
+  image: ollama/ollama@sha256:684d8674b4315fa18f4f0e973a118ec2652ed96f67563277839985175858e0ba
+  # Static local PV on the desktop disk; ansible worker_cache creates it owned by 1000:1000.
+  # Models are re-downloadable, so the claim is not in the application backup allowlists.
+  hostPath: /var/lib/homelab-inference/ollama
+  storage: 150Gi
+  # Kueue reserves requests against desktop-compute (12 CPU / 24 GiB / 20 GiB scratch / 1 GPU).
+  resources:
+    requests: {cpu: '8', memory: 20Gi, ephemeral-storage: 256Mi, nvidia.com/gpu: 1}
+    limits: {cpu: '16', memory: 20Gi, ephemeral-storage: 2Gi, nvidia.com/gpu: 1}
+  # Same serving settings as the server Ollama (charts/homelab-ollama, charts/homelab-ai).
+  env:
+    - {name: HOME, value: /models}
+    - {name: OLLAMA_HOST, value: '0.0.0.0:11434'}
+    - {name: OLLAMA_MODELS, value: /models/models}
+    - {name: OLLAMA_MAX_LOADED_MODELS, value: '1'}
+    # Playground fit rule computes with q8_0 KV; llama.cpp errors if flash attention resolves to off with a quantised V cache.
+    - {name: OLLAMA_KV_CACHE_TYPE, value: q8_0}
+    - {name: OLLAMA_FLASH_ATTENTION, value: '1'}
+    - {name: OLLAMA_NUM_PARALLEL, value: '1'}
+    - {name: OLLAMA_CONTEXT_LENGTH, value: '4096'}
+    - {name: OLLAMA_KEEP_ALIVE, value: '5m'}
+    - {name: OLLAMA_MAX_QUEUE, value: '16'}
+    - {name: OLLAMA_NO_CLOUD, value: 'true'}
+  # Appended to router.config.backends only when enabled. No token_file (Ollama has none; the
+  # NetworkPolicy admits only playground-router), no node/namespace/runtime_selector (no kubelet
+  # stage reads on the desktop).
+  backend:
+    name: desktop
+    url: http://desktop-ollama.homelab-inference.svc.cluster.local:11434
+    # Partial-offload fit rule: 20 GiB pod RAM + 8 GiB VRAM - 2 GiB headroom = 26 GiB.
+    # Placeholder until measured on hardware.
+    budget_bytes: 27917287424
+    overhead_bytes: 2147483648   # 2 GiB, placeholder until measured
+    kv_type: q8_0
+    manual_power: true

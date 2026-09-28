@@ -1,6 +1,8 @@
-"""Router tests: fit rule, GGUF derivation, refusal without waking, waking progress, pull registration."""
+"""Router tests: fit rule, GGUF derivation, refusal without waking, waking progress, pull registration,
+per-backend path prefixes and the manual-power desktop backend."""
 import http.client
 import json
+import socket
 import sys
 import tempfile
 import threading
@@ -87,6 +89,15 @@ class FakeOllama(BaseHTTPRequestHandler):
         self.wfile.write(b'0\r\n\r\n')
 
 
+class FakeDesktop(FakeOllama):
+    """Ollama on the desktop, reached directly: no wake gateway, off means connection refused."""
+    state = {}
+
+
+def fresh_state():
+    return {'awake': True, 'models': {}, 'requests': [], 'running': [], 'chat_delay': 0.0, 'final': {}}
+
+
 class FakeKube:
     """Read-only cluster view: node, runtime pods and the kubelet stats summary."""
 
@@ -146,15 +157,19 @@ class FitTests(unittest.TestCase):
 
 
 class RouterTests(unittest.TestCase):
+    def extra_backends(self):
+        return []
+
     def setUp(self):
-        FakeOllama.state = {'awake': True, 'models': {}, 'requests': [], 'running': [], 'chat_delay': 0.0, 'final': {}}
+        FakeOllama.state = fresh_state()
         self.backend = ThreadingHTTPServer(('127.0.0.1', 0), FakeOllama)
         threading.Thread(target=self.backend.serve_forever, daemon=True).start()
         self.tmp = tempfile.TemporaryDirectory()
         self.catalog = Catalog(Path(self.tmp.name) / 'catalog.sqlite')
         config = {'backends': [{'name': 'server', 'url': 'http://127.0.0.1:%d' % self.backend.server_address[1],
                                 'budget_bytes': 56 * fit.GIB, 'overhead_bytes': 6 * fit.GIB, 'kv_type': 'q8_0',
-                                'node': 'worker', 'namespace': 'homelab-models', 'runtime_selector': 'app=ai-runtime'}],
+                                'node': 'worker', 'namespace': 'homelab-models', 'runtime_selector': 'app=ai-runtime'}]
+                  + self.extra_backends(),
                   'default_backend': 'server', 'poll_seconds': 0.2, 'wake_cap_seconds': 5}
         self.kube = FakeKube()
         self.server = Server(('127.0.0.1', 0), Handler)
@@ -284,12 +299,158 @@ class RouterTests(unittest.TestCase):
         chats = [r for r in FakeOllama.state['requests'] if r[0] == 'POST' and r[1] == '/api/chat']
         self.assertEqual(len(chats), 2)
 
+    def test_wake_cap_during_the_cold_restart_retry_ends_the_stream_once(self):
+        self.catalog.record_model('m', 1, 4096, 1, 0, 'x', True)
+        self.catalog.record_copy('m', 'server', 'sha256:x')
+        self.server.router.wake_cap_seconds = 0.3
+        FakeOllama.state['chat_cold_once'] = True  # probe passes, the chat meets a 503, it never wakes again
+        body = json.dumps({'model': 'm', 'messages': []})
+        # Raw bytes: http.client silently skips a stray terminator, the next response parser may not.
+        with socket.create_connection(self.server.server_address, timeout=30) as sock:
+            sock.sendall((f'POST /api/chat HTTP/1.1\r\nHost: router\r\nAuthorization: Bearer {TOKEN}\r\n'
+                          f'Content-Length: {len(body)}\r\nConnection: close\r\n\r\n{body}').encode())
+            data = b''
+            while chunk := sock.recv(65536):
+                data += chunk
+        self.assertIn(b'gave up', data)
+        self.assertTrue(data.endswith(b'}\n\r\n0\r\n\r\n'), data[-40:])  # the last chunk, then one terminator
+
     def test_delete_removes_copies_and_catalog_row(self):
         self.call('POST', '/api/pull', {'model': 'hf.co/x/y:Q4_K_M'})
         status, data = self.call('DELETE', '/api/delete', {'model': 'hf.co/x/y:Q4_K_M'})
         self.assertEqual(json.loads(data)['backends'], {'server': 'deleted'})
         self.assertNotIn('hf.co/x/y:Q4_K_M', FakeOllama.state['models'])
         self.assertIsNone(self.catalog.model('hf.co/x/y:Q4_K_M'))
+
+
+class DesktopRouterTests(RouterTests):
+    """Every root test again with a manual-power desktop configured, plus the /b/<name> connections."""
+
+    def extra_backends(self):
+        FakeDesktop.state = fresh_state()
+        self.desktop = ThreadingHTTPServer(('127.0.0.1', 0), FakeDesktop)
+        threading.Thread(target=self.desktop.serve_forever, daemon=True).start()
+        # The chart's desktop entry: no token_file, node, namespace or runtime_selector.
+        return [{'name': 'desktop', 'url': 'http://127.0.0.1:%d' % self.desktop.server_address[1],
+                 'budget_bytes': 30 * fit.GIB, 'overhead_bytes': 2 * fit.GIB, 'kv_type': 'q8_0', 'manual_power': True}]
+
+    def tearDown(self):
+        super().tearDown()
+        self.power_off()
+
+    def power_off(self):
+        self.desktop.shutdown(); self.desktop.server_close()
+
+    def server_requests(self):
+        return [r for r in FakeOllama.state['requests'] if r[1] != '/api/version']
+
+    def test_desktop_backend_needs_no_token_and_no_cluster_reads(self):
+        desktop = self.server.router.backends['desktop']
+        self.assertNotIn('Authorization', desktop.headers())
+        self.assertIsNone(desktop.runtime_memory())
+        self.assertIsNone(desktop.runtime_ready())
+
+    def test_prefix_pull_lands_on_that_backend_and_tags_filter_per_prefix(self):
+        status, data = self.call('POST', '/b/desktop/api/pull', {'model': 'd:q4', 'backend': 'server'})
+        self.assertEqual(self.ndjson(data)[-1]['status'], 'success')
+        self.assertIn('d:q4', FakeDesktop.state['models'])
+        self.assertEqual(FakeOllama.state['models'], {})  # the body's backend field loses to the prefix
+        self.call('POST', '/b/server/api/pull', {'model': 's:q4'})
+        self.assertEqual([c['backend'] for c in self.catalog.copies('d:q4')], ['desktop'])
+        desktop = [m['name'] for m in json.loads(self.call('GET', '/b/desktop/api/tags')[1])['models']]
+        server = [m['name'] for m in json.loads(self.call('GET', '/b/server/api/tags')[1])['models']]
+        root = sorted(m['name'] for m in json.loads(self.call('GET', '/api/tags')[1])['models'])
+        self.assertEqual((desktop, server, root), (['d:q4'], ['s:q4'], ['d:q4', 's:q4']))
+
+    def test_prefix_chat_goes_to_that_backend_even_when_the_default_has_a_copy(self):
+        self.catalog.record_model('m', 1, 4096, 1, 0, 'x', True)
+        self.catalog.record_copy('m', 'server', 'sha256:x')
+        self.catalog.record_copy('m', 'desktop', 'sha256:x')
+        status, data = self.call('POST', '/b/desktop/api/chat', {'model': 'm', 'messages': [], 'backend': 'server'})
+        self.assertEqual(self.ndjson(data)[-1].get('eval_count'), 1)
+        self.assertTrue(any(r[1] == '/api/chat' for r in FakeDesktop.state['requests']))
+        self.assertFalse(any(r[1] == '/api/chat' for r in FakeOllama.state['requests']))
+        self.call('POST', '/api/chat', {'model': 'm', 'messages': []})  # root still prefers the default
+        self.assertTrue(any(r[1] == '/api/chat' for r in FakeOllama.state['requests']))
+        status, data = self.call('POST', '/b/desktop/api/generate', {'model': 'm', 'prompt': 'x', 'stream': False})
+        self.assertEqual(status, 200)
+
+    def test_unknown_prefix_is_a_404(self):
+        status, data = self.call('GET', '/b/laptop/api/tags')
+        self.assertEqual(status, 404)
+        self.assertIn('unknown backend laptop', json.loads(data)['error'])
+        self.assertEqual(self.call('POST', '/b/laptop/api/chat', {'model': 'm'})[0], 404)
+        self.assertEqual(self.call('GET', '/b/desktop/api/tags', token='')[0], 401)
+
+    def test_desktop_off_is_refused_at_once_without_touching_the_server(self):
+        self.catalog.record_model('m', 1, 4096, 1, 0, 'x', True)
+        self.catalog.record_copy('m', 'server', 'sha256:x')
+        self.catalog.record_copy('m', 'desktop', 'sha256:x')
+        self.call('GET', '/b/desktop/api/version')  # remember the desktop's version while it is up
+        self.power_off()
+        FakeOllama.state['requests'].clear()
+        status, data = self.call('POST', '/b/desktop/api/chat', {'model': 'm', 'messages': []})
+        last = self.ndjson(data)[-1]
+        self.assertTrue(last['done'])
+        self.assertIn('desktop is off, power it on and retry', last['message']['content'])
+        status, data = self.call('POST', '/b/desktop/api/generate', {'model': 'm', 'prompt': 'x', 'stream': False})
+        self.assertEqual(status, 503)
+        self.assertIn('desktop is off, power it on and retry', json.loads(data)['error'])
+        status, data = self.call('POST', '/b/desktop/api/pull', {'model': 'n'})
+        self.assertIn('desktop is off, power it on and retry', self.ndjson(data)[-1]['status'])
+        self.assertEqual(self.call('POST', '/b/desktop/api/show', {'model': 'm'})[0], 503)
+        self.assertEqual(FakeOllama.state['requests'], [])  # no fallback, no wake, not even a probe
+        status, data = self.call('GET', '/b/desktop/api/version')
+        self.assertEqual((status, json.loads(data)), (200, {'version': 'fake'}))
+        self.assertEqual(json.loads(self.call('GET', '/b/desktop/api/ps')[1]), {'models': []})
+        listed = json.loads(self.call('GET', '/b/desktop/api/tags')[1])['models']
+        self.assertEqual([(m['name'], m['offline']) for m in listed], [('m', True)])
+        self.assertEqual(FakeOllama.state['requests'], [])
+        root = json.loads(self.call('GET', '/api/tags')[1])['models']
+        self.assertEqual(sorted(root[0]['backends']), ['desktop', 'server'])  # the off copy stays listed
+
+    def test_desktop_going_off_mid_request_is_refused_not_retried(self):
+        self.catalog.record_model('m', 1, 4096, 1, 0, 'x', True)
+        self.catalog.record_copy('m', 'desktop', 'sha256:x')
+        FakeDesktop.state['chat_cold_once'] = True  # the probe passes, then the host is gone
+        status, data = self.call('POST', '/b/desktop/api/chat', {'model': 'm', 'messages': []})
+        lines = self.ndjson(data)
+        self.assertTrue(lines[-1]['done'])
+        self.assertIn('desktop is off, power it on and retry', lines[-1]['message']['content'])
+        self.assertFalse(any(l['message']['content'].startswith('[waking]') for l in lines))
+        self.assertEqual(len([r for r in FakeDesktop.state['requests'] if r[1] == '/api/chat']), 1)
+
+    def test_desktop_off_version_without_a_known_version_names_the_refusal(self):
+        self.power_off()
+        FakeOllama.state['requests'].clear()
+        # The server answered no probe yet in this process; nothing is known, so say why.
+        self.server.router.backends['server'].version = None
+        status, data = self.call('GET', '/b/desktop/api/version')
+        self.assertEqual(status, 503)
+        self.assertIn('desktop is off, power it on and retry', json.loads(data)['error'])
+        self.assertEqual(FakeOllama.state['requests'], [])
+
+    def test_delete_on_an_off_backend_is_applied_on_the_next_awake_merge(self):
+        self.call('POST', '/b/desktop/api/pull', {'model': 'd:q4'})
+        self.call('POST', '/b/server/api/pull', {'model': 'd:q4'})
+        FakeDesktop.state['awake'] = False  # asleep: 503 on every call
+        status, data = self.call('DELETE', '/api/delete', {'model': 'd:q4'})
+        self.assertEqual(json.loads(data)['backends'], {'server': 'deleted', 'desktop': 'pending: backend asleep'})
+        self.assertIn('d:q4', FakeDesktop.state['models'])
+        self.assertEqual(json.loads(self.call('GET', '/api/tags')[1])['models'], [])
+        FakeDesktop.state['awake'] = True
+        self.assertEqual(json.loads(self.call('GET', '/api/tags')[1])['models'], [])  # did not reappear
+        self.assertNotIn('d:q4', FakeDesktop.state['models'])
+        self.assertEqual(self.catalog.pending_deletes('desktop'), [])
+
+    def test_prefix_delete_removes_only_that_copy(self):
+        self.call('POST', '/b/desktop/api/pull', {'model': 'd:q4'})
+        self.call('POST', '/b/server/api/pull', {'model': 'd:q4'})
+        status, data = self.call('DELETE', '/b/desktop/api/delete', {'model': 'd:q4'})
+        self.assertEqual(json.loads(data)['backends'], {'desktop': 'deleted'})
+        self.assertEqual([c['backend'] for c in self.catalog.copies('d:q4')], ['server'])
+        self.assertIsNotNone(self.catalog.model('d:q4'))
+        self.assertIn('d:q4', FakeOllama.state['models'])
 
 
 if __name__ == '__main__':

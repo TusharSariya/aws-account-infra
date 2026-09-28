@@ -179,3 +179,60 @@ def test_additional_desktop_has_matching_flavor_plugin_and_patch_scope(tmp_path)
     )
     assert failed.returncode != 0
     assert "owned resource flavor" in failed.stderr
+
+
+def _render(tmp_path, values):
+    path = tmp_path / "values.json"
+    path.write_text(json.dumps(values))
+    return subprocess.run(
+        [
+            "helm",
+            "template",
+            "test",
+            str(ROOT / "charts/homelab-inference"),
+            "-f",
+            str(path),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_desktop_quota_opens_the_queue_without_the_gateway(tmp_path):
+    base = {
+        "workerEnabled": True,
+        "devicePluginDigest": "sha256:" + "a" * 64,
+        "desktopQuota": True,
+    }
+    refused = _render(tmp_path, base)
+    assert refused.returncode != 0 and "accepted desktop node UID" in refused.stderr
+    unmeasured = _render(tmp_path, {**base, "desktopAcceptedNodeUID": "uid"})
+    assert (
+        unmeasured.returncode != 0 and "measured accepted capacity" in unmeasured.stderr
+    )
+    result = _render(
+        tmp_path,
+        {
+            **base,
+            "desktopAcceptedNodeUID": "uid",
+            "measured": {"cpu": 18, "memoryGi": 26, "scratchGi": 20, "gpu": 1},
+        },
+    )
+    assert result.returncode == 0, result.stderr
+    docs = [d for d in yaml.safe_load_all(result.stdout) if d]
+    assert not any(d["kind"] == "Deployment" for d in docs)  # no batch gateway
+    queue = next(d for d in docs if d["kind"] == "ClusterQueue")
+    quota = {
+        r["name"]: r["nominalQuota"]
+        for r in queue["spec"]["resourceGroups"][0]["flavors"][0]["resources"]
+    }
+    assert quota == {
+        "cpu": "12",
+        "memory": "24Gi",
+        "ephemeral-storage": "20Gi",
+        "nvidia.com/gpu": "1",
+    }
+    assert (
+        "admissionChecksStrategy" not in queue["spec"]
+        and "admissionChecks" not in queue["spec"]
+    )

@@ -1,0 +1,159 @@
+{{- if and .Values.desktop.enabled .Values.desktopOnly }}
+{{- if not (regexMatch "@sha256:[a-f0-9]{64}$" .Values.desktop.image) }}{{ fail "Pin the desktop Ollama image digest" }}{{- end }}
+{{- /* Desktop GPU backend. Models are re-downloadable: the claim is deliberately absent from the
+       application backup allowlists (apps/platform/recovery/archive.py, homelab-ai maintenance). */}}
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: desktop-local-retain
+  annotations:
+    helm.sh/resource-policy: keep
+provisioner: kubernetes.io/no-provisioner
+reclaimPolicy: Retain
+volumeBindingMode: WaitForFirstConsumer
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: desktop-ollama-models
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  capacity: {storage: {{ .Values.desktop.storage }}}
+  volumeMode: Filesystem
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: desktop-local-retain
+  # Created 1000:1000 0750 by ansible/roles/worker_cache on GPU desktops.
+  local: {path: {{ .Values.desktop.hostPath }}}
+  claimRef: {namespace: homelab-inference, name: desktop-ollama-models}
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values: [{{ .Values.desktop.node }}]
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: desktop-ollama-models
+  namespace: homelab-inference
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: desktop-local-retain
+  volumeName: desktop-ollama-models
+  resources:
+    requests: {storage: {{ .Values.desktop.storage }}}
+---
+# Kueue Deployment integration (managedJobsNamespaceSelector includes homelab-inference): the
+# `desktop` LocalQueue reserves desktop-compute quota once for the runtime, like ai-runtime.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: desktop-ollama
+  namespace: homelab-inference
+  labels: {kueue.x-k8s.io/queue-name: desktop}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app: desktop-ollama}
+  template:
+    metadata:
+      # Required by the pinned Deployment/Pod integration, as on ai-runtime.
+      annotations:
+        kueue.x-k8s.io/pod-suspending-parent: deployment
+        homelab/revision: {{ toJson .Values.desktop | sha256sum | quote }}
+      labels: {kueue.x-k8s.io/managed: 'true', app: desktop-ollama, kueue.x-k8s.io/queue-name: desktop}
+    spec:
+      schedulingGates: [{name: kueue.x-k8s.io/admission}]
+      automountServiceAccountToken: false
+      runtimeClassName: nvidia
+      nodeSelector: {kubernetes.io/hostname: {{ .Values.desktop.node }}}
+      # Only the compute taint: the pod stays off the desktop until quarantine is lifted by the operator.
+      tolerations:
+        - {key: homelab.tfdraw.dev/compute, operator: Equal, value: 'true', effect: NoSchedule}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: ollama
+          image: {{ .Values.desktop.image | quote }}
+          args: [serve]
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+          ports: [{name: http, containerPort: 11434}]
+          env:
+            {{- toYaml .Values.desktop.env | nindent 12 }}
+          resources:
+            {{- toYaml .Values.desktop.resources | nindent 12 }}
+          volumeMounts: [{name: models, mountPath: /models}, {name: tmp, mountPath: /tmp}]
+          startupProbe:
+            httpGet: {path: /api/version, port: http}
+            periodSeconds: 5
+            failureThreshold: 120
+          readinessProbe:
+            httpGet: {path: /api/version, port: http}
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /api/version, port: http}
+            periodSeconds: 30
+            timeoutSeconds: 5
+      volumes:
+        - name: tmp
+          emptyDir: {sizeLimit: 1Gi}
+        - name: models
+          persistentVolumeClaim: {claimName: desktop-ollama-models}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: desktop-ollama, namespace: homelab-inference}
+spec:
+  selector: {app: desktop-ollama}
+  ports: [{name: http, port: 11434, targetPort: http}]
+---
+# Ollama has no auth: only the playground router may reach it (same trust boundary as the
+# router-to-gateway hop on the server backend).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: desktop-ollama, namespace: homelab-inference}
+spec:
+  podSelector:
+    matchLabels: {app: desktop-ollama}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: homelab-models}
+          podSelector:
+            matchLabels: {app: playground-router}
+      ports: [{protocol: TCP, port: 11434}]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: kube-system}
+          podSelector:
+            matchLabels: {k8s-app: kube-dns}
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+---
+# Model pulls from hf.co and its CDN, mirroring ai-runtime-internet.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata: {name: desktop-ollama-internet, namespace: homelab-inference}
+spec:
+  endpointSelector:
+    matchLabels: {app: desktop-ollama}
+  egress:
+    - toEntities: [world]
+      toPorts:
+        - ports: [{port: '443', protocol: TCP}]
+{{- end }}

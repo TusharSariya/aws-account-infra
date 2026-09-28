@@ -15,22 +15,29 @@ login on top. Odysseus is unchanged and coexists for research, search and RAG.
 
 Out of scope: a Mac or MLX backend, safetensors conversion on homelab hardware, multi-user
 accounts, public exposure, voice, RAG over documents, extending the batch inference gateway,
-buying GPUs. Deferred (fog on the map): desktop GPU backend profile and partial offload once
-#212 lands, image input for vision GGUFs, chat memory and context compaction, handoff of
-sizing and readiness to the app-development map.
+buying GPUs, automatic desktop power. Deferred (fog on the map): image input for vision
+GGUFs, chat memory and context compaction, handoff of sizing and readiness to the
+app-development map.
 
 ## Backends
 
 | Backend | Host | Memory budget | Overhead | KV cache | Wake |
 |---|---|---|---|---|---|
 | server CPU | AI Pod Ollama on `talos-worker-01` | 56 GiB | 6 GiB | q8_0 | `wake-ollama` gateway, then the AI lifecycle, then Kueue |
-| desktop GPU | RTX 3060 Ti 8 GiB, pending #212 | to be measured | to be measured | q8_0 | manual power; reported `offline` |
+| desktop GPU | Ollama on `ubuntu-gpu-01`: RTX 3060 Ti 8 GiB VRAM, 31 GiB RAM | 26 GiB (placeholder until measured) | 2 GiB (placeholder until measured) | q8_0 | manual power; reported `offline`, never woken |
 
 Ollama on every backend, one loaded model, one parallel slot, `OLLAMA_MAX_LOADED_MODELS=1`,
 `OLLAMA_KV_CACHE_TYPE=q8_0`, `OLLAMA_FLASH_ATTENTION=1` set explicitly in the chart. Ollama
 0.34.0 supports `hf.co/org/repo:QUANT` pulls, per-request `num_ctx`, `/api/ps`
 `context_length` and streamed `/api/pull` (#241). Private Hugging Face repos need the
 Ollama SSH key on the account and the `huggingface.co` host.
+
+The desktop budget is the pod RAM limit (20 GiB) plus VRAM (8 GiB) minus 2 GiB headroom;
+both desktop figures are replaced by the values measured with a 27B model loaded at 8192
+context (change `add-playground-desktop-backend`, operator step). The desktop Ollama is a
+separate Deployment `desktop-ollama` in `homelab-inference`, pinned to `ubuntu-gpu-01` with
+`runtimeClassName: nvidia` and one `nvidia.com/gpu`, with the same settings as the server.
+The GPU belongs to the playground; the batch gateway's `desktop-gpu` profile stays disabled.
 
 Measured on the server CPU backend (#242): cold tap to a proxying gateway 12 min 37 s, to
 first token 16 min; 27B Q4_K_M generation 1.5 to 1.8 tok/s, prompt 7 to 14 tok/s, load
@@ -58,6 +65,30 @@ config. Borrowed from the batch gateway (#238): profile schema, backend vocabula
 automatic fallback, bearer compare, health-probe shape. Never duplicated: batch retries,
 desktop enrollment, hostPath caching.
 
+## Backend routing
+
+The router serves each backend as its own Ollama API under a path prefix, `/b/server/...`
+and `/b/desktop/...`. Open WebUI has two Ollama connections, one per prefix, each with a
+`prefix_id` (`server`, `desktop`) and the router bearer, so the model dropdown shows
+`desktop.<model>` next to `server.<model>` and works unchanged on the phone.
+
+- A chat or generate sent to a prefix goes to that backend only. The prefix pins the
+  backend; the request's model name is looked up in that backend's copies.
+- A pull asks which connection to use (Open WebUI's per-connection pull) and lands on that
+  backend's prefix, so the copy is recorded for that backend.
+- `/api/tags` under a prefix lists only that backend's copies.
+- The unprefixed root keeps working and means the default backend (server), for curl and
+  the setup wizard.
+- There is no silent fallback. A desktop request while the desktop is off gets one line at
+  once, "desktop is off, power it on and retry", as a passthrough error or a done chunk for
+  streamed chats; the server is not touched.
+- Delete on an asleep backend is recorded as pending in the catalog; the next merge of that
+  backend's `/api/tags` while it is awake deletes the copy instead of re-adding it.
+
+Access: a NetworkPolicy lets only `playground-router` reach `desktop-ollama` on 11434, the
+same trust boundary as the router-to-gateway hop. Ollama has no token, so the desktop
+backend has no `token_file`; a small auth sidecar is the alternative if a bearer is wanted.
+
 ## Fit rule (#244)
 
 `weights + context_reserve + overhead ≤ budget`, with
@@ -68,6 +99,11 @@ desktop enrollment, hostPath caching.
   backend's KV type); unknown architectures fall back to every layer as full attention.
 - `overhead` and `budget`: per backend, above. Re-measure overhead when batch size or the
   Ollama version changes.
+- Partial offload (desktop): Ollama places as many layers as fit in VRAM and keeps the
+  rest in system RAM, so the same inequality applies with
+  `budget = pod RAM limit + VRAM - headroom`. A 27B Q4_K_M runs with about 7 GiB of layers
+  on the GPU and the rest in RAM; a model that fits entirely in VRAM is faster but is not a
+  separate rule.
 - Requested context: missing `num_ctx` means 8192; values above the model's native maximum
   are rejected by the router. Context is offered as fixed presets 8k, 16k, 32k and native
   maximum, because changing `num_ctx` reloads the model; other values round up to their
@@ -84,6 +120,8 @@ context, derived `bytes_per_token` and `fixed_cache`, `fit_override`, and per ba
 record with the Ollama digest and pull time. Presets (system prompt, default parameters)
 live in Open WebUI workspace models. Each backend's `/api/tags` is the truth for copy
 presence, reconciled whenever that backend is awake. Removal deletes every copy and the row;
+a copy on an asleep backend is kept as pending and deleted on that backend's next awake
+merge rather than orphaned;
 chats keep the name and fail on next use with the refusal line. A moved upstream tag shows
 as a different digest on re-pull. No automatic deletion for disk pressure.
 
@@ -102,7 +140,9 @@ coordinator host phase. Stage vocabulary, each with elapsed and typical time: `h
 on` (60 s), `worker joining` (5 min), `runtime queued`, `runtime starting` (30 s), then while
 the answer is silent (change 4): `loading weights, N of M GiB in memory` and `processing
 prompt, ~T tokens at R tok/s`, whose typical figures are the last measured load and prompt
-rate for that model (the line says when none exists yet), then `ready`. The router holds the
+rate for that model (the line says when none exists yet), then `ready`. Desktop stage lines
+use `/api/ps` only (no kubelet memory read, no host or worker stages): the desktop is
+either on and answering or refused as off. The router holds the
 stream open and emits `[waking] <stage>, <elapsed> of ~<typical>` chunks; the same words are
 the synthetic pull-status lines. A gateway 503 during the silent wait means the runtime
 stopped between the probe and the request; the router waits for it and sends once more. Cap 25 minutes, then one line naming the stage reached while the wake
@@ -132,6 +172,17 @@ The control-plane guest is full (98 percent CPU, 88 percent memory requests), so
   never starve it (#255); CI keeps BestEffortFIFO on the remainder, never preempted.
 - The AI runtime keeps its on-invoke policy and 5-minute idle; host idle counts gateway
   activity.
+- The desktop Ollama carries the Kueue labels for the `desktop` LocalQueue, so its quota
+  comes from the `desktop-compute` ClusterQueue (capped at 12 CPU, 24 GiB, 1 GPU), reserved
+  once per runtime. That queue has no host-ready admission check, so desktop waiting never
+  wakes the servers. The quota is enabled by a `desktopQuota` flag in `homelab-inference`,
+  separate from the batch gateway's `enabled`, and still requires measured capacity and
+  `acceptedNodeUID`.
+- The desktop Ollama tolerates only the `compute` taint. Lifting the
+  `homelab.tfdraw.dev/quarantine` taint is an explicit operator step after desktop
+  acceptance (`platform/gpu-worker/README.md`), not something the chart does.
+- The desktop model claim is a local retained volume on the desktop disk (about 150 GiB),
+  outside the application backup because models are re-downloadable.
 
 ## Acceptance criteria
 
@@ -145,7 +196,10 @@ The control-plane guest is full (98 percent CPU, 88 percent memory requests), so
    merged list with its digest; removing it deletes the copy.
 5. A chat with a context that does not fit is refused with the one-line message naming the
    largest fitting preset, without starting the runtime; this is the CI check.
-6. A pull or chat targeting the desktop while it is off is refused explicitly.
+6. From the phone, a model pulled to the `desktop` connection lists as `desktop.<model>` and
+   a chat on it streams with its generation rate recorded against the server's 1.5 tok/s;
+   with the desktop off, a desktop pull or chat is refused at once with "desktop is off,
+   power it on and retry", server models are unaffected and the servers are not woken.
 7. Both claims restore from the AI data backup in the isolated restore proof.
 
 ## OpenSpec changes (execution handoff)
@@ -160,8 +214,10 @@ Run through the existing root and `apply` label, in this order:
    refusal CI check. New capability `model-playground`.
 3. `add-playground-ui`: Open WebUI Deployment, claim, hostname, login, workspace-model
    presets, PWA verification from a phone.
-4. Later, gated on #212: `add-playground-desktop-backend` for the GPU profile, partial
-   offload rule and manual-power reporting.
+4. `add-playground-hold-and-stages`: owner hold from the gateway page and wait stage lines.
+5. `add-playground-desktop-backend`: desktop Ollama on `ubuntu-gpu-01`, `desktopQuota` on
+   `desktop-compute`, path-prefixed backends and two UI connections, manual-power refusal,
+   pending delete, partial-offload budget.
 
 ## App-development map
 

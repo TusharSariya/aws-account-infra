@@ -2,3 +2,7 @@
 worker_cache_path: /var/lib/homelab-inference
 worker_cache_assets: []
 worker_cache_images: []
+# Host path of the playground desktop Ollama's static local PV
+# (charts/homelab-playground desktop.yaml). GPU desktops only;
+# the pod runs as 1000:1000.
+worker_cache_ollama: "{{ worker_runtime_gpu | default(false) }}"
