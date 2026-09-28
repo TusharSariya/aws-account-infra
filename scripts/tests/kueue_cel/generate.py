@@ -56,4 +56,8 @@ case('maintenance filler without the admin group is compute',filler,False,gatewa
 obj=copy.deepcopy(filler);obj['metadata']['name']='other';case('admin cannot bypass with another name',obj,False,admin_req)
 obj=copy.deepcopy(filler);obj['metadata']['labels']['app']='other';case('admin cannot bypass with another label',obj,False,admin_req)
 case('maintenance filler wrong namespace',filler,False,dict(admin_req,namespace='homelab-jobs'))
+for name in ('ai-snapshot','ai-isolated-restore'):
+ obj=copy.deepcopy(filler);obj['metadata']['name']=name;case('backup rehearsal '+name+' placed by cluster-admin is operational',obj,True,admin_req)
+ case('backup rehearsal '+name+' without the admin group is compute',obj,False,gateway_req)
+ labelled=copy.deepcopy(obj);labelled['metadata']['labels'].update(base['metadata']['labels']);case('backup rehearsal '+name+' must stay outside queue',labelled,False,admin_req)
 Path(sys.argv[1]).write_text(json.dumps(dict(variables=policy['spec']['variables'],validations=policy['spec']['validations'],cases=cases)))
