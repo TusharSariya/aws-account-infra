@@ -1,4 +1,16 @@
-{{- if .Values.ui.enabled }}
+{{- if and .Values.ui.enabled (not .Values.desktopOnly) }}
+{{- /* One Open WebUI connection per router backend prefix (/b/<name>), so the model list and
+       the admin pull pick the backend. The router bearer stays in the bootstrap-managed Secret
+       playground-router-auth and reaches the configs through $(PLAYGROUND_ROUTER_TOKEN). */}}
+{{- $router := "http://playground-router.homelab-models.svc.cluster.local:8080" }}
+{{- $connections := list "server" }}
+{{- if .Values.desktop.enabled }}{{- $connections = append $connections "desktop" }}{{- end }}
+{{- $urls := list }}
+{{- $configs := dict }}
+{{- range $index, $name := $connections }}
+{{- $urls = append $urls (printf "%s/b/%s" $router $name) }}
+{{- $_ := set $configs (toString $index) (dict "enable" true "prefix_id" $name "key" "$(PLAYGROUND_ROUTER_TOKEN)") }}
+{{- end }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -43,9 +55,12 @@ spec:
           image: {{ .Values.ui.image | quote }}
           ports: [{name: http, containerPort: 8080}]
           env:
-            - {name: OLLAMA_BASE_URL, value: 'http://playground-router.homelab-models.svc.cluster.local:8080'}
-            - name: OLLAMA_API_CONFIGS   # {"0": {"key": <router bearer>}}, composed by the apps bootstrap
-              valueFrom: {secretKeyRef: {name: playground-ui, key: ollama-api-configs}}
+            - name: PLAYGROUND_ROUTER_TOKEN
+              valueFrom: {secretKeyRef: {name: playground-router-auth, key: token}}
+            # Seeds for a fresh install only: Open WebUI persists its connection config in its
+            # database, so the live instance needs a one-time update of the stored connections.
+            - {name: OLLAMA_BASE_URLS, value: {{ join ";" $urls | quote }}}
+            - {name: OLLAMA_API_CONFIGS, value: {{ toJson $configs | quote }}}
             - name: WEBUI_SECRET_KEY
               valueFrom: {secretKeyRef: {name: playground-ui, key: secret-key}}
             - {name: WEBUI_NAME, value: Playground}

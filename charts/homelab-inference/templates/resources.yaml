@@ -1,6 +1,10 @@
 {{- if .Values.enabled }}
 {{- if not (regexMatch "@sha256:[a-f0-9]{64}$" .Values.image) }}{{ fail "Pin the built gateway image digest" }}{{- end }}
 {{- end }}
+{{- /* desktopQuota opens the desktop ClusterQueue for Kueue-admitted desktop runtimes (the playground's
+       desktop Ollama) without the batch gateway; `enabled` still means the gateway too. */}}
+{{- $quota := or .Values.enabled .Values.desktopQuota }}
+{{- if and .Values.desktopQuota (not .Values.desktopAcceptedNodeUID) }}{{ fail "desktopQuota requires the accepted desktop node UID" }}{{- end }}
 {{- $desktops := prepend .Values.additionalDesktops (dict "name" "desktop-compute" "node" .Values.node "measured" .Values.measured) }}
 {{- $desktopNodes := list }}
 {{- $desktopNames := list }}
@@ -8,12 +12,12 @@
 {{- if or (has .node $desktopNodes) (has .name $desktopNames) }}{{ fail "Desktop nodes and flavor names must be unique" }}{{- end }}
 {{- $desktopNodes = append $desktopNodes .node }}
 {{- $desktopNames = append $desktopNames .name }}
-{{- if $.Values.enabled }}
+{{- if $quota }}
 {{- if or (le (int .measured.cpu) 0) (le (int .measured.memoryGi) 0) (le (int .measured.scratchGi) 0) (ne (int .measured.gpu) 1) }}{{ fail "Each desktop needs measured accepted capacity" }}{{- end }}
 {{- end }}
 {{- end }}
 {{- if or .Values.enabled .Values.workerEnabled }}
-{{- if .Values.enabled }}
+{{- if $quota }}
 
 {{- if or (le (int .Values.measured.cpu) 0) (le (int .Values.measured.memoryGi) 0) (le (int .Values.measured.scratchGi) 0) (ne (int .Values.measured.gpu) 1) }}
 {{- fail "Measured accepted desktop capacity is required" }}
@@ -76,10 +80,10 @@ spec:
         {{- range $desktops }}
         - name: {{ .name }}
           resources:
-            - {name: cpu, nominalQuota: {{ ternary (min 12 (int .measured.cpu)) 0 $.Values.enabled | quote }}}
-            - {name: memory, nominalQuota: '{{ ternary (min 24 (int .measured.memoryGi)) 0 $.Values.enabled }}Gi'}
-            - {name: ephemeral-storage, nominalQuota: '{{ ternary (int .measured.scratchGi) 0 $.Values.enabled }}Gi'}
-            - {name: nvidia.com/gpu, nominalQuota: '{{ ternary 1 0 $.Values.enabled }}'}
+            - {name: cpu, nominalQuota: {{ ternary (min 12 (int .measured.cpu)) 0 $quota | quote }}}
+            - {name: memory, nominalQuota: '{{ ternary (min 24 (int .measured.memoryGi)) 0 $quota }}Gi'}
+            - {name: ephemeral-storage, nominalQuota: '{{ ternary (int .measured.scratchGi) 0 $quota }}Gi'}
+            - {name: nvidia.com/gpu, nominalQuota: '{{ ternary 1 0 $quota }}'}
         {{- end }}
 ---
 apiVersion: kueue.x-k8s.io/v1beta2

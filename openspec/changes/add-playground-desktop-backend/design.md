@@ -1,0 +1,27 @@
+## Context
+
+The desktop `ubuntu-gpu-01` (i5-13600K, 31 GiB RAM, 188 GiB free disk, RTX 3060 Ti 8 GiB) is a Ready node advertising `nvidia.com/gpu: 1`, with `desktop-nvidia-plugin` running and RuntimeClass `nvidia` present. It still carries the `homelab.tfdraw.dev/quarantine` and `homelab.tfdraw.dev/compute` taints. Its existing serving path is the batch inference gateway (`charts/homelab-inference`, llama.cpp with a pinned Qwen3-0.6B), all disabled with zero quota. The `desktop-compute` ClusterQueue deliberately has no host-ready admission check, so desktop waiting never wakes the servers (`controllers/homelab-capacity/tests/test_kueue.py`, `test_foreign_desktop_queue_never_wakes_or_mutates`).
+
+The router's data model is already multi-backend: `Backend.manual_power`, per-backend catalog copies, `backend_for()` reading a `backend` body field and per-backend budgets in `check_fit()`. Open WebUI 0.11 (verified in the running image) supports `OLLAMA_BASE_URLS` with a per-connection `prefix_id` and `POST /api/pull/{url_idx}` for pulling to a chosen connection, but it cannot send a `backend` body field.
+
+## Decisions
+
+1. **Ollama on the desktop, same settings as the server.** One loaded model, one slot, q8_0 KV cache, flash attention, per ADR 0001 ("router speaks Ollama"). Alternative: reuse the batch llama.cpp gateway for chat. Rejected: it speaks a different API, pins one model, and would need its own image digest and profiles before it could serve anything.
+2. **The GPU belongs to the playground.** The batch gateway's `desktop-gpu` profile stays disabled. There is one GPU and that profile would hold it permanently. Alternative: share the GPU between both. Rejected: two long-lived holders of one device cannot both be admitted, and time-slicing adds nothing for single-user chat. The quota comes from `desktop-compute` through a new `desktopQuota` flag so the ClusterQueue is populated without deploying the gateway.
+3. **Backend choice through two connections, one per path prefix.** The router serves `/b/server/...` and `/b/desktop/...`, each a full Ollama API pinned to one backend; Open WebUI gets two connections with `prefix_id` `server` and `desktop`. The dropdown shows `desktop.<model>` beside `server.<model>`, the admin pull asks which connection, and the phone needs nothing new. The unprefixed root stays the default backend for curl and the wizard. Alternatives: a `backend` body field (Open WebUI cannot send it); a name suffix such as `model@desktop` (breaks Ollama model names and the catalog key); fit-based automatic placement (the spec forbids silent fallback and the owner wants to choose).
+4. **Access control by NetworkPolicy, no token.** Only `playground-router` may reach `desktop-ollama` on 11434, the same trust boundary as the router-to-gateway hop. Ollama has no auth, so the desktop backend has no `token_file`. Alternative: a small bearer-checking sidecar in front of Ollama. Deferred: it adds an image and a secret for no gain while the policy already limits callers to one pod.
+5. **Both 27B Q4_K_M models with partial offload.** About 7 GiB of layers on the GPU, the rest in RAM; the fit budget is pod RAM limit (20 GiB) + VRAM (8 GiB) - headroom (2 GiB) = 26 GiB, overhead 2 GiB, both placeholders until measured with a 27B loaded at 8192 context. Expected roughly 4 to 6 tok/s generation with much faster prompt processing, to be measured. Alternative: only models that fit entirely in VRAM (a 12B Q4 is about 7.3 GiB and would give 25+ tok/s). Kept as an optional extra, not a replacement: the owner wants the 27B models. The two pulls are about 33 GB over the desktop's Wi-Fi.
+6. **Lifting quarantine is an operator step.** Per `platform/gpu-worker/README.md` rollback, quarantine is removed by hand after desktop acceptance (GPU visible, disk space), not by the chart. The Ollama pod tolerates only `compute`, so it stays Pending until the operator lifts quarantine. Alternative: tolerate quarantine in the chart. Rejected: it would bypass the acceptance gate the enrollment runbook relies on.
+
+Supporting choices:
+
+- **Manual power everywhere.** A request under `/b/desktop` while the desktop is unreachable returns "desktop is off, power it on and retry" at once, as a passthrough error or a done chunk for streamed chats. The router never calls a wake gateway for a `manual_power` backend and never falls back to the server.
+- **Pending delete.** Delete on an asleep backend marks that copy pending in the catalog; the next merge of that backend's `/api/tags` while awake deletes it instead of re-adding it.
+- **Desktop stage lines use `/api/ps` only.** No kubelet stats read and no host or worker stages; the desktop has no node on the server wake path and no `nodes/stats` permission is added.
+
+## Risks
+
+- The budget placeholders may be wrong until measured; a too-high budget lets a request through that Ollama then fails to load. The operator measurement step replaces them before the models are pulled.
+- `kv_type` facts are stored per model, not per backend. Harmless while both backends use q8_0; a different KV type on one backend would need per-backend facts.
+- The live Open WebUI persists connection config in its database, so the env change alone does not update it; a one-time update is needed, the same method used for the banner and built-in tools.
+- The desktop is powered by hand and may be turned off mid-chat; the stream then ends with the backend error, not a retry.

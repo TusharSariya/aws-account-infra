@@ -18,6 +18,9 @@ CREATE TABLE IF NOT EXISTS pulls (
 CREATE TABLE IF NOT EXISTS timings (
   model TEXT NOT NULL, backend TEXT NOT NULL, load_seconds REAL, prompt_tps REAL, eval_tps REAL, measured_at REAL NOT NULL,
   PRIMARY KEY (model, backend));
+CREATE TABLE IF NOT EXISTS pending_deletes (
+  model TEXT NOT NULL, backend TEXT NOT NULL, requested_at REAL NOT NULL,
+  PRIMARY KEY (model, backend));
 """
 
 
@@ -58,6 +61,35 @@ class Catalog:
             db.execute('BEGIN IMMEDIATE')
             db.execute('DELETE FROM copies WHERE model = ?', (name,))
             db.execute('DELETE FROM models WHERE name = ?', (name,))
+            db.execute('COMMIT')
+
+    def remove_copy(self, name, backend):
+        """Drop one backend's copy; the model row goes with its last copy."""
+        with self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            db.execute('DELETE FROM copies WHERE model = ? AND backend = ?', (name, backend))
+            if db.execute('SELECT 1 FROM copies WHERE model = ?', (name,)).fetchone() is None:
+                db.execute('DELETE FROM models WHERE name = ?', (name,))
+            db.execute('COMMIT')
+
+    def add_pending_delete(self, name, backend):
+        """A delete the backend could not take while asleep or off; applied on its next awake merge."""
+        with self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            db.execute('INSERT INTO pending_deletes (model, backend, requested_at) VALUES (?, ?, ?)'
+                       ' ON CONFLICT(model, backend) DO UPDATE SET requested_at=excluded.requested_at',
+                       (name, backend, time.time()))
+            db.execute('COMMIT')
+
+    def pending_deletes(self, backend):
+        with self.connect() as db:
+            rows = db.execute('SELECT model FROM pending_deletes WHERE backend = ? ORDER BY model', (backend,)).fetchall()
+        return [r['model'] for r in rows]
+
+    def drop_pending_delete(self, name, backend):
+        with self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            db.execute('DELETE FROM pending_deletes WHERE model = ? AND backend = ?', (name, backend))
             db.execute('COMMIT')
 
     def set_override(self, name, enabled):

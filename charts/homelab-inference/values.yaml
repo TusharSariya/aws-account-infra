@@ -1,6 +1,11 @@
 # Hardware acceptance and external secret creation precede activation.
 enabled: false
 workerEnabled: false
+# Opens the desktop ClusterQueue quota without the batch gateway (playground desktop Ollama).
+# Requires measured capacity and the accepted node UID; lifting quarantine stays an operator step.
+desktopQuota: false
+desktopAcceptedNodeUID: ''
+
 node: ubuntu-gpu-01
 # Each additional desktop supplies name, node and measured cpu/memoryGi/scratchGi/gpu.
 additionalDesktops: []

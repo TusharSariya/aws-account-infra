@@ -30,7 +30,8 @@ class AppError(ValueError):
 # Always-on releases are owned and guarded by homelab-management after migration.
 ADDRESSES = {'helm_release.postgres_operator', 'helm_release.postgres',
              'helm_release.ollama', 'helm_release.odysseus',
-             'helm_release.capacity', 'helm_release.ai', 'helm_release.playground'}
+             'helm_release.capacity', 'helm_release.ai', 'helm_release.playground',
+             'helm_release.playground_desktop'}
 
 
 def run(command, data=None, *, timeout=2400):

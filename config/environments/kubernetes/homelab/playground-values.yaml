@@ -2,3 +2,5 @@ node: talos-worker-01
 ui:
   enabled: true
   hostname: playground
+desktop:
+  enabled: true

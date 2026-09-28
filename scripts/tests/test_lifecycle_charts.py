@@ -8,12 +8,27 @@ ROOT = Path(__file__).resolve().parents[2]
 CONFIG = ROOT / 'config/environments/kubernetes/homelab'
 
 
-def render(name):
+def render(name, *sets):
     args = ['helm', 'template', 'homelab-' + name, str(ROOT / 'charts' / ('homelab-' + name))]
     values = CONFIG / (name + '-values.yaml')
     if values.exists():
         args += ['-f', str(values)]
+    for value in sets:
+        args += ['--set', value]
     return [doc for doc in yaml.safe_load_all(subprocess.check_output(args, text=True)) if doc]
+
+
+def find(docs, kind, name, namespace=None):
+    return next(doc for doc in docs if doc['kind'] == kind and doc['metadata']['name'] == name
+                and (namespace is None or doc['metadata'].get('namespace') == namespace))
+
+
+DESKTOP_OBJECTS = {('StorageClass', None, 'desktop-local-retain'), ('PersistentVolume', None, 'desktop-ollama-models'),
+                   ('PersistentVolumeClaim', 'homelab-inference', 'desktop-ollama-models'),
+                   ('Deployment', 'homelab-inference', 'desktop-ollama'), ('Service', 'homelab-inference', 'desktop-ollama'),
+                   ('NetworkPolicy', 'homelab-inference', 'desktop-ollama'),
+                   ('CiliumNetworkPolicy', 'homelab-inference', 'desktop-ollama-internet')}
+ROUTER = 'http://playground-router.homelab-models.svc.cluster.local:8080'
 
 
 class ChartTests(unittest.TestCase):
@@ -49,6 +64,99 @@ class ChartTests(unittest.TestCase):
                          [(['nodes'], ['talos-worker-01'], ['get']), (['nodes/stats'], ['talos-worker-01'], ['get'])])
         cilium = next(doc for doc in docs if doc['kind'] == 'CiliumNetworkPolicy' and doc['metadata']['name'] == 'playground-router-apiserver')
         self.assertIn({'toEntities': ['host'], 'toPorts': [{'ports': [{'port': '10250', 'protocol': 'TCP'}]}]}, cilium['spec']['egress'])
+
+    def test_desktop_objects_live_only_in_the_desktop_release(self):
+        def names(docs):
+            return {(d['kind'], d['metadata'].get('namespace'), d['metadata']['name']) for d in docs}
+        main, desktop = render('playground'), render('playground', 'desktopOnly=true')
+        self.assertEqual(names(desktop), DESKTOP_OBJECTS)
+        self.assertFalse(names(main) & names(desktop))
+        self.assertFalse(any(d['metadata'].get('namespace') == 'homelab-inference' for d in main))
+        self.assertEqual(render('playground', 'desktopOnly=true', 'desktop.enabled=false'), [])
+        # The main release still renders router and UI either way.
+        self.assertIn(('Deployment', 'homelab-models', 'playground-router'), names(main))
+        self.assertIn(('Deployment', 'homelab-models', 'playground-ui'), names(main))
+
+    def test_desktop_release_applies_without_helm_wait(self):
+        root = (ROOT / 'live/kubernetes/homelab/playground-desktop.tf').read_text()
+        self.assertIn('resource "helm_release" "playground_desktop"', root)
+        self.assertIn('desktopOnly   = true', root)
+        self.assertIn('wait        = false', root)
+        self.assertIn('namespace = "homelab-inference"', root)
+        main = (ROOT / 'live/kubernetes/homelab/playground.tf').read_text()
+        self.assertNotIn('desktopOnly', main)
+        self.assertIn('wait        = true', main)
+
+    def test_desktop_ollama_is_a_kueue_gpu_runtime_tolerating_only_compute(self):
+        desktop = render('playground', 'desktopOnly=true')
+        deployment = find(desktop, 'Deployment', 'desktop-ollama', 'homelab-inference')
+        self.assertEqual(deployment['metadata']['labels']['kueue.x-k8s.io/queue-name'], 'desktop')
+        template = deployment['spec']['template']
+        self.assertEqual(template['metadata']['labels']['kueue.x-k8s.io/queue-name'], 'desktop')
+        pod = template['spec']
+        self.assertEqual(pod['runtimeClassName'], 'nvidia')
+        self.assertEqual(pod['nodeSelector'], {'kubernetes.io/hostname': 'ubuntu-gpu-01'})
+        self.assertEqual(pod['tolerations'], [{'key': 'homelab.tfdraw.dev/compute', 'operator': 'Equal',
+                                               'value': 'true', 'effect': 'NoSchedule'}])
+        self.assertFalse(any('quarantine' in t['key'] for t in pod['tolerations']))
+        self.assertEqual(deployment['spec']['strategy'], {'type': 'Recreate'})
+        container = pod['containers'][0]
+        self.assertRegex(container['image'], r'@sha256:[a-f0-9]{64}$')
+        resources = container['resources']
+        self.assertEqual(resources['limits']['nvidia.com/gpu'], 1)
+        self.assertEqual(resources['requests']['memory'], resources['limits']['memory'])
+        env = {e['name']: e['value'] for e in container['env']}
+        self.assertEqual((env['OLLAMA_KV_CACHE_TYPE'], env['OLLAMA_FLASH_ATTENTION'], env['OLLAMA_MAX_LOADED_MODELS']),
+                         ('q8_0', '1', '1'))
+        self.assertTrue(container['securityContext']['readOnlyRootFilesystem'])
+        volume = find(desktop, 'PersistentVolume', 'desktop-ollama-models')
+        self.assertEqual(volume['spec']['persistentVolumeReclaimPolicy'], 'Retain')
+        self.assertEqual(volume['spec']['claimRef'], {'namespace': 'homelab-inference', 'name': 'desktop-ollama-models'})
+
+    def test_only_the_router_reaches_desktop_ollama(self):
+        docs = render('playground')
+        policy = find(render('playground', 'desktopOnly=true'), 'NetworkPolicy', 'desktop-ollama', 'homelab-inference')
+        self.assertEqual(policy['spec']['ingress'], [{
+            'from': [{'namespaceSelector': {'matchLabels': {'kubernetes.io/metadata.name': 'homelab-models'}},
+                      'podSelector': {'matchLabels': {'app': 'playground-router'}}}],
+            'ports': [{'protocol': 'TCP', 'port': 11434}]}])
+        rule = {'to': [{'namespaceSelector': {'matchLabels': {'kubernetes.io/metadata.name': 'homelab-inference'}},
+                        'podSelector': {'matchLabels': {'app': 'desktop-ollama'}}}],
+                'ports': [{'protocol': 'TCP', 'port': 11434}]}
+        self.assertIn(rule, find(docs, 'NetworkPolicy', 'playground-router')['spec']['egress'])
+        off = find(render('playground', 'desktop.enabled=false'), 'NetworkPolicy', 'playground-router')
+        self.assertNotIn(rule, off['spec']['egress'])
+
+    def test_router_config_gains_the_manual_power_desktop_backend_only_when_enabled(self):
+        def config(docs):
+            return json.loads(find(docs, 'ConfigMap', 'playground-router-config')['data']['config.json'])
+        on, off = config(render('playground')), config(render('playground', 'desktop.enabled=false'))
+        self.assertEqual([b['name'] for b in on['backends']], ['server', 'desktop'])
+        self.assertEqual([b['name'] for b in off['backends']], ['server'])
+        desktop = on['backends'][1]
+        self.assertTrue(desktop['manual_power'])
+        self.assertEqual(desktop['url'], 'http://desktop-ollama.homelab-inference.svc.cluster.local:11434')
+        self.assertEqual(desktop['kv_type'], 'q8_0')
+        for key in ('token_file', 'node', 'namespace', 'runtime_selector'):
+            self.assertNotIn(key, desktop)
+
+    def test_ui_has_one_prefixed_connection_per_backend(self):
+        def env(docs):
+            ui = find(docs, 'Deployment', 'playground-ui')
+            return {e['name']: e for e in ui['spec']['template']['spec']['containers'][0]['env']}
+        on, off = env(render('playground')), env(render('playground', 'desktop.enabled=false'))
+        self.assertEqual(on['OLLAMA_BASE_URLS']['value'], ROUTER + '/b/server;' + ROUTER + '/b/desktop')
+        self.assertEqual(off['OLLAMA_BASE_URLS']['value'], ROUTER + '/b/server')
+        self.assertNotIn('OLLAMA_BASE_URL', on)
+        configs = json.loads(on['OLLAMA_API_CONFIGS']['value'])
+        self.assertEqual({k: (v['enable'], v['prefix_id']) for k, v in configs.items()},
+                         {'0': (True, 'server'), '1': (True, 'desktop')})
+        # The bearer never lands in values: Kubernetes expands it from the bootstrap-managed Secret.
+        self.assertTrue(all(v['key'] == '$(PLAYGROUND_ROUTER_TOKEN)' for v in configs.values()))
+        self.assertEqual(on['PLAYGROUND_ROUTER_TOKEN']['valueFrom'],
+                         {'secretKeyRef': {'name': 'playground-router-auth', 'key': 'token'}})
+        names = list(on)
+        self.assertLess(names.index('PLAYGROUND_ROUTER_TOKEN'), names.index('OLLAMA_API_CONFIGS'))
 
     def test_owner_hold_lease_is_configured_and_readable(self):
         docs = render('lifecycle')
