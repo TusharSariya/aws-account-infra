@@ -12,6 +12,30 @@ def run(*args):
     return subprocess.check_output(args, text=True, timeout=20)
 
 
+def start_worker(vm, status):
+    """Autostart and the coordinator may race; judge the observed postcondition."""
+    if status == "running":
+        return status
+    if status != "stopped":
+        raise RuntimeError("Unknown worker state")
+    try:
+        subprocess.run(
+            ["qm", "start", str(vm)],
+            check=True,
+            timeout=90,
+            stdout=subprocess.DEVNULL,
+        )
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        # Never match human stderr or assume a failed acknowledgement means the
+        # VM did not start. A direct observation also avoids pvestatd's cache.
+        if run("qm", "status", str(vm)).strip() == "status: running":
+            return "running"
+        raise
+    if run("qm", "status", str(vm)).strip() != "status: running":
+        raise RuntimeError("Worker start has not reached running")
+    return "running"
+
+
 def main():
     if os.geteuid() != 0:
         raise RuntimeError("Root-owned endpoint required")
@@ -64,15 +88,7 @@ def main():
         if not session_pid.isdigit() or int(session_pid) not in ancestors:
             users = True
     if action == "start-worker":
-        if worker["status"] == "stopped":
-            subprocess.run(
-                ["qm", "start", str(vm)],
-                check=True,
-                timeout=90,
-                stdout=subprocess.DEVNULL,
-            )
-        elif worker["status"] != "running":
-            raise RuntimeError("Unknown worker state")
+        worker["status"] = start_worker(vm, worker["status"])
     elif action == "poweroff":
         if running or users:
             raise RuntimeError(

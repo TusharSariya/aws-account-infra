@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from .capacity import verify, verify_storage
 from .config import INVENTORY, load
 from .effective import effective
+from .errors import RetryObservation, UncertainShutdown
 from .journal import Journal
 from .kube import Kube
 from .kueue import CHECK, CONTROLLER, admission_patch
@@ -343,7 +344,7 @@ class Coordinator:
                 or not fresh.retirement_ready
                 or not fresh.quiesced
             ):
-                raise RuntimeError("Demand/activity changed before shutdown commit")
+                return "cancel"
             self.management.talos(host, "shutdown", "--wait=false")
         elif action == "stop-host":
             self.require_acceptance(host)
@@ -419,14 +420,33 @@ class Coordinator:
                 self.persist(host)  # write-ahead of every external effect
                 if action:
                     try:
-                        self.effect(host, action, objects)
+                        outcome = self.effect(host, action, objects)
+                    except RetryObservation as exc:
+                        complete(state, action, retry=str(exc))
+                    except UncertainShutdown as exc:
+                        # Once a shutdown write may have reached the host, only
+                        # observations may advance it. Never turn this into retry.
+                        complete(state, action)
+                        state.reason = str(exc)
                     except Exception as exc:  # noqa: BLE001 - fail closed at external-effect boundaries
                         complete(
                             state, action, error=type(exc).__name__ + ": " + str(exc)
                         )
                     else:
-                        complete(state, action)
+                        complete(state, action, outcome=outcome)
                     self.persist(host)
+                    event = {
+                        "event": "power-transition",
+                        "host": host,
+                        "operation": state.operation,
+                        "action": action,
+                        "phase": state.phase,
+                        "pending": state.pending,
+                        "reason": state.reason,
+                        "at": time.time(),
+                    }
+                    self.journal.write(host + "-transition.json", event)
+                    print(json.dumps(event), flush=True)
                 if obs.ready and state.phase in {"ready", "idle"} and not state.paused:
                     ready.add(host)
                 if state.phase == "blocked" and self.config["modes"][host] != "observe":

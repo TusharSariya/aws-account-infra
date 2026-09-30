@@ -10,6 +10,32 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from .config import INVENTORY
+from .errors import RetryObservation
+
+
+def operation_error(result, operation):
+    diagnostic = (result.stdout + result.stderr).lower()
+    # Inspect captured text for categories but never put it in public diagnostics.
+    if any(
+        marker in diagnostic
+        for marker in (
+            "(conflict)",
+            "object has been modified",
+            "test failed",
+            "timed out",
+            "timeout",
+            "connection refused",
+            "connection reset",
+            "serviceunavailable",
+            "too many requests",
+            "unexpected eof",
+        )
+    ):
+        return RetryObservation(
+            f"Kubernetes {operation}: transient conflict/transport (exit {result.returncode})"
+        )
+    return RuntimeError(f"Kubernetes {operation}: rejected (exit {result.returncode})")
+
 
 RESOURCES = {
     "pods": "pods",
@@ -41,16 +67,21 @@ class Kube:
         ]
 
     def run(self, *args, data=None):
-        result = subprocess.run(
-            self.command + list(args),
-            input=data,
-            text=True,
-            capture_output=True,
-            check=False,
-            timeout=30,
-        )
+        try:
+            result = subprocess.run(
+                self.command + list(args),
+                input=data,
+                text=True,
+                capture_output=True,
+                check=False,
+                timeout=30,
+            )
+        except subprocess.TimeoutExpired:
+            raise RetryObservation(
+                f"Kubernetes {args[0]}: client deadline exceeded"
+            ) from None
         if result.returncode:
-            raise RuntimeError("Kubernetes operation failed: " + args[0])
+            raise operation_error(result, args[0])
         return result.stdout
 
     def stats(self, host):
@@ -90,7 +121,7 @@ class Kube:
         diagnostic = (result.stdout + result.stderr).lower()
         if "timed out waiting" in diagnostic or "timeout" in diagnostic:
             return False
-        raise RuntimeError("Kubernetes readiness check failed")
+        raise operation_error(result, "readiness")
 
     def get(self, resource, name=None, namespace=None):
         args = ["get", resource]

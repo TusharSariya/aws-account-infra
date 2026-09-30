@@ -140,10 +140,12 @@ def test_active_work_and_maintenance_hold_block_manual_shutdown():
         assert decide(s, healthy(**changes), 0, mode="automatic") is None
 
 
-def test_interrupted_transition_blocks_and_recovery_deadline_bounds_boot():
+def test_interrupted_idempotent_transition_reconciles_and_deadline_bounds_boot():
     s = State(phase="draining", pending="quiesce")
     s.restart()
-    assert s.phase == "blocked"
+    assert s.phase == "draining"
+    assert s.pending is None
+    assert decide(s, healthy(quiesced=False), 0, mode="automatic") == "quiesce"
     s = State(phase="waking", deadline=100)
     assert decide(s, healthy(ready=False, demand=True), 100, mode="automatic") is None
     assert s.phase == "blocked"

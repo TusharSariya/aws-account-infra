@@ -71,7 +71,7 @@ and explicitly released. Read-only management plans do not require a worker wake
 
 Recovery uses the laptop's private journals under
 `~/.local/share/homelab-capacity/main/`. Inspect `observations.json`, `HOST.json`,
-`HOST-platform.json`, and `journalctl --user -u homelab-coordinator.service` before
+`HOST-platform.json`, `HOST-transition.json`, and `journalctl --user -u homelab-coordinator.service` before
 resuming a blocked transition. Restoration checks resource UIDs and storage bindings
 and clears only its own cordon. Never delete a journal to make a blocked transition
 proceed. Never start retired VM100, replace worker disks, or force BMC power off.
@@ -79,3 +79,27 @@ proceed. Never start retired VM100, replace worker disks, or force BMC power off
 `commission-sleep.py` is a manual first-cycle validation tool, requiring a stopped
 coordinator and explicit observe mode. It does not create an automatic-shutdown
 acceptance receipt. Once commissioning is complete, use `powerctl` for normal work.
+
+## Recovery after management races
+
+The coordinator reobserves transient transport errors and Kubernetes conflicts
+within a bounded recovery window. New demand detected in the final pre-shutdown
+check cancels retirement and restores services. Proxmox autostart and the
+coordinator can both attempt VM startup; a failed start is accepted only when a
+fresh direct query proves the worker is running.
+
+On coordinator restart, platform restoration/quiescing resumes from its existing
+snapshot with fresh identity and ownership checks. A possibly committed shutdown
+is observed, never blindly repeated. If completion cannot be proved within the
+recovery window, status remains blocked for explicit inspection. Restart does not
+clear an existing identity/storage block.
+
+`HOST-transition.json` and the service journal retain the action, operation number,
+outcome phase and sanitized failure category. Captured API object bodies, private
+configuration and raw SSH output are not logged.
+
+For a legacy blocked start, first verify the registered VM identity and current
+state, inspect the platform snapshot and protected storage, and confirm no
+conflicting operator maintenance. Then use `powerctl --config PRIVATE.json resume
+primary`. Observe restoration and demand processing to completion; a successful
+command submission alone is not proof of recovery. Never delete the journal.
