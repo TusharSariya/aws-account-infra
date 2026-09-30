@@ -137,10 +137,10 @@ def decide(
     if obs.power == "off":
         state.phase = "off"
         state.shutdown_requested = False
-        state.deadline = None
         state.idle_since = None
         if demand and not state.paused:
             return effect("wake", "waking")
+        state.deadline = None
         state.reason = "Maintenance pause" if state.paused else "No demand"
         return None
     # A committed shutdown finishes even if demand arrives. The following off
@@ -225,8 +225,11 @@ def complete(
 
 
 def observe_off(state: State, obs: Observation):
+    if state.phase == "blocked":
+        return
     if state.pending == "await-on" and obs.power == "on" and obs.identity_ok:
         state.pending = None
     if state.pending == "await-off" and obs.power == "off" and obs.identity_ok:
         state.pending = None
         state.phase = "off"
+        state.deadline = None

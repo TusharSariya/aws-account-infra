@@ -131,3 +131,28 @@ def test_truncated_poweroff_response_is_uncertain_not_permanent_failure(monkeypa
         Management({"known_hosts": "known", "pve_key": "key"}).pve(
             "primary", "poweroff"
         )
+
+
+def test_ipmi_timeout_is_retryable_but_invalid_credential_is_not(monkeypatch):
+    from pathlib import Path
+    from homelab_capacity.imm2 import IPMITransport, PowerError
+    from homelab_capacity.errors import RetryObservation
+
+    transport = IPMITransport(Path("/private"), "primary")
+
+    def timeout(*a, **kw):
+        raise subprocess.TimeoutExpired("ipmi", 25)
+
+    monkeypatch.setattr(subprocess, "run", timeout)
+    with pytest.raises(RetryObservation):
+        transport.request_on()
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *a, **kw: SimpleNamespace(
+            returncode=1, stdout='{"error":"PermissionError"}'
+        ),
+    )
+    with pytest.raises(PowerError) as caught:
+        transport.request_on()
+    assert not isinstance(caught.value, RetryObservation)

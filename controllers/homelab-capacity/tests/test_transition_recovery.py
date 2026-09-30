@@ -110,3 +110,24 @@ def test_unknown_power_after_restart_still_gets_bounded_window():
     assert state.deadline == 1200
     decide(state, observation(power="unknown"), 1200, mode="automatic")
     assert state.phase == "blocked"
+
+
+def test_repeated_wake_transport_failures_keep_original_deadline():
+    state = State()
+    off = observation(power="off", demand=True, ready=False)
+    assert decide(state, off, 0, mode="automatic") == "wake"
+    complete(state, "wake", retry="IPMI timeout")
+    assert decide(state, off, 20, mode="automatic") == "wake"
+    assert state.deadline == 1200
+    complete(state, "wake", retry="IPMI timeout")
+    assert decide(state, off, 1200, mode="automatic") is None
+    assert state.phase == "blocked"
+
+
+def test_off_observation_does_not_clear_explicit_deadline_block():
+    from homelab_capacity.lifecycle import recovery_expired
+
+    state = State(phase="stopping", pending="await-off", deadline=10)
+    recovery_expired(state, 11)
+    observe_off(state, observation(power="off"))
+    assert state.phase == "blocked"
