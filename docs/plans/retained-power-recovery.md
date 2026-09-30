@@ -50,5 +50,8 @@ state, then recovered through the existing explicit `powerctl resume` operation.
 
 ## Evidence status
 
-Implementation and local fault-injection checks are in progress. Live recovery,
-PR review, CI, deployment acceptance and merge have not yet been completed.
+Implementation, 124 local tests, independent PR reviews, deployment, live
+restoration, transition restart, backup and both-host power-cycle verification
+are complete. Reviewed-code CI passed. Final documentation-commit CI and merge
+reconciliation are recorded in the PR delivery receipt; see
+[the acceptance record](../../platform/automatic-power/evidence-pr275.md).
