@@ -1,7 +1,7 @@
 """Pure retained-host lifecycle. Effects require a durable journal before execution.
 
 No wall-clock idle accounting: the caller supplies a monotonic clock and resets
-observations on process restart. Failed/uncertain effects require operator recovery.
+observations on process restart. Reconcile safe effects; observe uncertain shutdowns.
 """
 
 from dataclasses import asdict, dataclass, field
@@ -40,18 +40,48 @@ class State:
 
     def restart(self):
         self.idle_since = self.last_sample = self.deadline = None
-        if self.pending or self.phase in {
-            "waking",
-            "restoring",
-            "draining",
-            "stopping",
-        }:
-            self.phase = "blocked"
-            self.reason = "Interrupted transition; inspect observed state before resume"
-        self.pending = None
+        if self.phase == "blocked":
+            return
+        # A shutdown acknowledgement may have been lost. Never resend it on
+        # restart: observe its postcondition within a new bounded window.
+        if self.pending in {"stop-host", "await-off"}:
+            self.phase, self.pending = "stopping", "await-off"
+        elif self.pending == "stop-worker":
+            self.phase, self.pending = "stopping", None
+        elif self.pending == "wake":
+            # ensure_on is read-before-write and idempotent. A crash before the
+            # BMC call must not strand a host that is still verifiably off.
+            self.phase, self.pending = "waking", None
+            self.wake_requested = True
+        elif self.pending == "await-on":
+            self.phase, self.pending = "waking", "await-on"
+        else:
+            if self.pending == "cancel":
+                self.shutdown_requested = False
+            # Restore/quiesce use fresh UID/resource-version checks and durable
+            # snapshots, so partial execution can be reconciled safely.
+            self.pending = None
 
     def to_dict(self):
         return asdict(self)
+
+
+def recovery_expired(state: State, now: float, recovery_seconds=1200):
+    """Bound recovery even while every external observation is unavailable."""
+    if state.phase == "blocked":
+        return True
+    if state.deadline is None and state.phase in {
+        "waking",
+        "restoring",
+        "draining",
+        "stopping",
+    }:
+        state.deadline = now + recovery_seconds
+    if state.deadline is not None and now >= state.deadline:
+        state.phase = "blocked"
+        state.reason = "Recovery deadline exceeded; inspect before resume"
+        return True
+    return False
 
 
 def decide(
@@ -78,15 +108,11 @@ def decide(
     ):
         state.idle_since = None
     state.last_sample = now
-    if state.phase == "blocked":
+    if recovery_expired(state, now, recovery_seconds):
         return None
     if obs.power not in {"on", "off"} or not obs.identity_ok:
         state.idle_since = None
         state.reason = "Power or registered identity is unknown"
-        return None
-    if state.deadline is not None and now >= state.deadline:
-        state.phase = "blocked"
-        state.reason = "Recovery deadline exceeded; inspect before resume"
         return None
     if state.pending:
         return None
@@ -99,6 +125,8 @@ def decide(
             state.reason = "Rollout mode suppresses " + action
             return None
         state.phase, state.pending = phase, action
+        if action == "cancel":
+            state.shutdown_requested = False
         state.operation += 1
         state.idle_since = None
         state.reason = action
@@ -109,10 +137,10 @@ def decide(
     if obs.power == "off":
         state.phase = "off"
         state.shutdown_requested = False
-        state.deadline = None
         state.idle_since = None
         if demand and not state.paused:
             return effect("wake", "waking")
+        state.deadline = None
         state.reason = "Maintenance pause" if state.paused else "No demand"
         return None
     # A committed shutdown finishes even if demand arrives. The following off
@@ -166,11 +194,24 @@ def decide(
     return None
 
 
-def complete(state: State, action: str, *, error: str | None = None):
+def complete(
+    state: State, action: str, *, error: str | None = None, outcome=None, retry=None
+):
     if state.pending != action:
         raise ValueError("Effect does not match journal")
     state.pending = None
-    if error:
+    if retry:
+        # The deadline is deliberately preserved: contention must not extend a
+        # recovery forever. Final preflight reads failed before a shutdown write.
+        if action in {"stop-worker", "cancel"}:
+            state.phase = "restoring"
+            state.shutdown_requested = False
+        state.reason = retry
+    elif outcome == "cancel":
+        state.phase = "restoring"
+        state.shutdown_requested = False
+        state.reason = "Shutdown cancelled after fresh activity observation"
+    elif error:
         state.phase, state.reason = "blocked", error
         state.idle_since = None
     elif action == "cancel":
@@ -184,8 +225,11 @@ def complete(state: State, action: str, *, error: str | None = None):
 
 
 def observe_off(state: State, obs: Observation):
+    if state.phase == "blocked":
+        return
     if state.pending == "await-on" and obs.power == "on" and obs.identity_ok:
         state.pending = None
     if state.pending == "await-off" and obs.power == "off" and obs.identity_ok:
         state.pending = None
         state.phase = "off"
+        state.deadline = None

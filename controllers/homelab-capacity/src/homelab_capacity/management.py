@@ -5,6 +5,24 @@ from pathlib import Path
 import subprocess
 from .config import INVENTORY
 from .imm2 import PowerController
+from .errors import RetryObservation, UncertainShutdown
+
+
+def command(argv, *, operation, shutdown=False, timeout=90):
+    """Keep operation/exit category, never captured credentials or server output."""
+    try:
+        result = subprocess.run(argv, capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        error = UncertainShutdown if shutdown else RetryObservation
+        raise error(f"{operation}: client deadline exceeded") from None
+    if result.returncode:
+        error = (
+            UncertainShutdown
+            if shutdown
+            else (RetryObservation if result.returncode == 255 else RuntimeError)
+        )
+        raise error(f"{operation}: command exited {result.returncode}")
+    return result
 
 
 class Management:
@@ -18,7 +36,7 @@ class Management:
         if action not in {"status", "start-worker", "poweroff"}:
             raise ValueError("Unsupported management action")
         node = INVENTORY[host]
-        result = subprocess.run(
+        result = command(
             [
                 "ssh",
                 "-F",
@@ -41,20 +59,22 @@ class Management:
                 "root@" + node["pve"],
                 action,
             ],
-            capture_output=True,
-            text=True,
+            operation="Proxmox " + action,
+            shutdown=action == "poweroff",
             timeout=110,
         )
-        if result.returncode:
-            raise RuntimeError("Restricted Proxmox operation failed")
-        data = json.loads(result.stdout)
+        try:
+            data = json.loads(result.stdout)
+        except json.JSONDecodeError:
+            error = UncertainShutdown if action == "poweroff" else RetryObservation
+            raise error(f"Proxmox {action}: incomplete response") from None
         if data["vm"] != node["vm"] or data["uuid"] != node["system_uuid"]:
             raise RuntimeError("Proxmox VM identity mismatch")
         return data
 
     def talos(self, host, *args):
         node = INVENTORY[host]
-        result = subprocess.run(
+        result = command(
             [
                 str(Path(self.config["talosctl"]).expanduser()),
                 "--talosconfig",
@@ -65,12 +85,10 @@ class Management:
                 node["talos"],
                 *args,
             ],
-            capture_output=True,
-            text=True,
+            operation="Talos " + args[0],
+            shutdown=args[0] == "shutdown",
             timeout=90,
         )
-        if result.returncode:
-            raise RuntimeError("Talos operation failed")
         return result.stdout
 
     def storage(self, host):

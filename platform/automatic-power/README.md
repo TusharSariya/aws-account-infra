@@ -18,8 +18,10 @@ through a private local journal. `hold HOST --token ID --reason TEXT` prevents
 retirement until `release HOST --token ID`; holds intentionally survive crashes.
 A normal shutdown leaves automation armed. Pause persists until explicit resume.
 
-The controller journals an effect before executing it. Interrupted or ambiguous
-operations block for explicit inspection. Idle time is monotonic, requires complete
+The controller journals an effect before executing it. Interrupted restore/quiesce operations reconcile from their durable snapshots.
+Transient conflicts retry from fresh observations within the recovery deadline.
+Uncertain shutdowns wait for observed completion without repeating the write;
+unresolved outcomes and identity/storage violations block for explicit inspection. Idle time is monotonic, requires complete
 observations, and resets after process restart, a timeout change, or an observation
 gap. The configured idle period is currently **300 seconds (5 minutes)**. New demand cancels before Talos shutdown;
 after that point shutdown completes before another wake. Platform snapshots retain
