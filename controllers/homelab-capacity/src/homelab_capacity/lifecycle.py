@@ -56,12 +56,32 @@ class State:
         elif self.pending == "await-on":
             self.phase, self.pending = "waking", "await-on"
         else:
+            if self.pending == "cancel":
+                self.shutdown_requested = False
             # Restore/quiesce use fresh UID/resource-version checks and durable
             # snapshots, so partial execution can be reconciled safely.
             self.pending = None
 
     def to_dict(self):
         return asdict(self)
+
+
+def recovery_expired(state: State, now: float, recovery_seconds=1200):
+    """Bound recovery even while every external observation is unavailable."""
+    if state.phase == "blocked":
+        return True
+    if state.deadline is None and state.phase in {
+        "waking",
+        "restoring",
+        "draining",
+        "stopping",
+    }:
+        state.deadline = now + recovery_seconds
+    if state.deadline is not None and now >= state.deadline:
+        state.phase = "blocked"
+        state.reason = "Recovery deadline exceeded; inspect before resume"
+        return True
+    return False
 
 
 def decide(
@@ -88,22 +108,11 @@ def decide(
     ):
         state.idle_since = None
     state.last_sample = now
-    if state.phase == "blocked":
+    if recovery_expired(state, now, recovery_seconds):
         return None
     if obs.power not in {"on", "off"} or not obs.identity_ok:
         state.idle_since = None
         state.reason = "Power or registered identity is unknown"
-        return None
-    if state.deadline is None and state.phase in {
-        "waking",
-        "restoring",
-        "draining",
-        "stopping",
-    }:
-        state.deadline = now + recovery_seconds
-    if state.deadline is not None and now >= state.deadline:
-        state.phase = "blocked"
-        state.reason = "Recovery deadline exceeded; inspect before resume"
         return None
     if state.pending:
         return None
@@ -116,6 +125,8 @@ def decide(
             state.reason = "Rollout mode suppresses " + action
             return None
         state.phase, state.pending = phase, action
+        if action == "cancel":
+            state.shutdown_requested = False
         state.operation += 1
         state.idle_since = None
         state.reason = action
@@ -192,8 +203,9 @@ def complete(
     if retry:
         # The deadline is deliberately preserved: contention must not extend a
         # recovery forever. Final preflight reads failed before a shutdown write.
-        if action == "stop-worker":
-            state.phase = "draining"
+        if action in {"stop-worker", "cancel"}:
+            state.phase = "restoring"
+            state.shutdown_requested = False
         state.reason = retry
     elif outcome == "cancel":
         state.phase = "restoring"

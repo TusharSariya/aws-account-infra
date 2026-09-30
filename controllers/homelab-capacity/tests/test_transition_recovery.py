@@ -73,3 +73,40 @@ def test_restart_does_not_clear_identity_or_storage_block():
     state.restart()
     assert decide(state, observation(demand=True), 0, mode="automatic") is None
     assert state.phase == "blocked"
+
+
+def test_cancel_intent_survives_conflict_and_restart_without_immediate_shutdown():
+    state = State(phase="draining", shutdown_requested=True)
+    assert decide(state, observation(demand=True), 0, mode="automatic") == "cancel"
+    complete(state, "cancel", retry="Kubernetes conflict")
+    state.restart()
+    assert not state.shutdown_requested
+    assert (
+        decide(state, observation(ready=False, demand=True), 15, mode="automatic")
+        == "restore"
+    )
+    complete(state, "restore")
+    assert decide(state, observation(), 30, mode="automatic", idle_seconds=300) is None
+    assert state.phase == "idle"
+
+
+def test_failed_final_read_restores_instead_of_retrying_shutdown():
+    state = State(phase="stopping", pending="stop-worker", shutdown_requested=True)
+    complete(state, "stop-worker", retry="Inventory unavailable")
+    assert state.phase == "restoring"
+    assert not state.shutdown_requested
+
+
+def test_unknown_power_cannot_extend_uncertain_shutdown_forever():
+    state = State(phase="stopping", pending="await-off", deadline=30)
+    assert decide(state, observation(power="unknown"), 31, mode="automatic") is None
+    assert state.phase == "blocked"
+
+
+def test_unknown_power_after_restart_still_gets_bounded_window():
+    state = State(phase="stopping", pending="await-off")
+    state.restart()
+    decide(state, observation(power="unknown"), 0, mode="automatic")
+    assert state.deadline == 1200
+    decide(state, observation(power="unknown"), 1200, mode="automatic")
+    assert state.phase == "blocked"

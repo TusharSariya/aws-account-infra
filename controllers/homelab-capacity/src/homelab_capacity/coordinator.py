@@ -13,7 +13,14 @@ from .errors import RetryObservation, UncertainShutdown
 from .journal import Journal
 from .kube import Kube
 from .kueue import CHECK, CONTROLLER, admission_patch
-from .lifecycle import Observation, State, complete, decide, observe_off
+from .lifecycle import (
+    Observation,
+    State,
+    complete,
+    decide,
+    observe_off,
+    recovery_expired,
+)
 from .management import Management
 from .platform import Platform
 from .policy import DAEMONSETS, classify, done, housekeeping_jobs, owner
@@ -361,6 +368,9 @@ class Coordinator:
             raise RuntimeError("Automatic shutdown acceptance is incomplete")
 
     def tick(self):
+        for host, state in self.states.items():
+            recovery_expired(state, time.monotonic())
+            self.persist(host)
         try:
             objects = self.kube.inventory()
         except Exception:
