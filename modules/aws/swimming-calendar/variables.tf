@@ -49,3 +49,17 @@ variable "sync_timeout" {
   type    = number
   default = 600
 }
+
+variable "oauth_secrets" {
+  description = "Optional credential resource metadata only. Values are populated outside OpenTofu."
+  type = object({
+    client_name         = string
+    token_name          = string
+    maintenance_enabled = optional(bool, false)
+  })
+  default = null
+  validation {
+    condition     = var.oauth_secrets == null ? true : var.oauth_secrets.client_name != var.oauth_secrets.token_name
+    error_message = "Client credentials and tokens must use separate secrets."
+  }
+}

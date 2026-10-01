@@ -1,0 +1,63 @@
+[
+  {
+    "all_day": false,
+    "cars": "NASCAR Cup Series Next Gen Chevrolet Camaro ZL1, NASCAR Cup Series Next Gen Ford Mustang, NASCAR Cup Series Next Gen Toyota Camry",
+    "coverage": "series:2026 Season",
+    "created": "2026-09-24T11:37:28.352392+00:00",
+    "eligibility": "Class D 4.0 --> Pro/WC 4.0",
+    "end": null,
+    "id": "NASCAR iRacing Series Open|2026 Season|30|1",
+    "length": "134 laps",
+    "name": "NASCAR iRacing Series Open",
+    "round_id": "NASCAR iRacing Series Open|2026 Season|30",
+    "sequence": 0,
+    "sources": [
+      "https://iracinghub.com/",
+      "https://members-assets.iracing.com/public/schedulepdf/SeasonSchedule.pdf",
+      "https://www.iracing.com/this-week-in-iracing-september-22nd-to-september-28th-2026/"
+    ],
+    "start": "2026-09-24T18:00:00+00:00",
+    "track": "Kansas Speedway - Oval",
+    "updated": "2026-09-24T11:37:28.352392+00:00"
+  },
+  {
+    "all_day": true,
+    "cars": "Supercars",
+    "coverage": "special:2026",
+    "created": "2026-09-24T11:37:28.352392+00:00",
+    "description": "TEAM EVENT\nThe Bathurst 1000 is\u00a0staged on the Mount Panorama Circuit in Bathurst, New South Wales, Australia. Regarded as the pinnacle of motorsport in Australia, this is the biggest event on the calendar for the Supercars Series .",
+    "eligibility": "",
+    "end": "2026-10-05",
+    "id": "special:2026:bathurst-1000|0",
+    "length": "",
+    "name": "Bathurst 1000",
+    "round_id": "special:2026:bathurst-1000",
+    "sequence": 0,
+    "sources": [
+      "https://www.iracing.com/special-events/#bathurst-1000"
+    ],
+    "start": "2026-10-02",
+    "track": "Mount Panorama Circuit",
+    "updated": "2026-09-24T11:37:28.352392+00:00"
+  },
+  {
+    "all_day": true,
+    "cars": "GT3 Class",
+    "coverage": "special:2026",
+    "created": "2026-09-24T11:37:28.352392+00:00",
+    "description": "TEAM EVENT\nThe Suzuka 1000km, is an annual sports car endurance race that has been held at the Suzuka Circuit in Japan since 1966. After a five-year hiatus, the event returned in September 2025 as part of an International GT Series.",
+    "eligibility": "",
+    "end": "2026-09-14",
+    "id": "special:2026:suzuka-1000km|0",
+    "length": "",
+    "name": "Suzuka 1000km",
+    "round_id": "special:2026:suzuka-1000km",
+    "sequence": 0,
+    "sources": [
+      "https://www.iracing.com/special-events/#suzuka-1000km"
+    ],
+    "start": "2026-09-11",
+    "track": "",
+    "updated": "2026-09-24T11:37:28.352392+00:00"
+  }
+]

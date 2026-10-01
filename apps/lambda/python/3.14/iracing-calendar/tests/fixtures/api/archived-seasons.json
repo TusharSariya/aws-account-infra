@@ -1,0 +1,2544 @@
+[
+  {
+    "season_id": 6262,
+    "series_id": 618,
+    "season_name": "2026 IMSA Classic 500",
+    "season_year": 2026,
+    "season_quarter": 2,
+    "fixed_setup": false,
+    "official": true,
+    "active": false,
+    "license_group": 3,
+    "schedules": [
+      {
+        "season_id": 6262,
+        "series_id": 618,
+        "race_week_num": 0,
+        "category": "sports_car",
+        "category_id": 5,
+        "race_lap_limit": 139,
+        "race_time_limit": 1440,
+        "race_time_descriptors": [
+          {
+            "repeating": false,
+            "session_minutes": 1481,
+            "session_times": [
+              "2026-04-10T22:00:00Z",
+              "2026-04-11T07:00:00Z",
+              "2026-04-11T12:00:00Z",
+              "2026-04-11T16:00:00Z",
+              "2026-04-12T00:00:00Z"
+            ],
+            "super_session": false
+          }
+        ],
+        "event_sessions": [
+          {
+            "laps": 32767,
+            "minutes": 30,
+            "start_time_offset": 0,
+            "type": 3,
+            "type_name": "Open Practice",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          },
+          {
+            "laps": 2,
+            "minutes": 8,
+            "start_time_offset": 0,
+            "type": 4,
+            "type_name": "Lone Qualifying",
+            "unlimited_laps": false,
+            "unlimited_time": false
+          },
+          {
+            "laps": 139,
+            "minutes": 1440,
+            "start_time_offset": 0,
+            "type": 6,
+            "type_name": "Race",
+            "unlimited_laps": false,
+            "unlimited_time": false
+          }
+        ],
+        "start_date": "2026-04-10",
+        "week_end_time": "2026-04-12T00:00:00Z",
+        "track": {
+          "category": "road",
+          "category_id": 2,
+          "config_name": "[Retired] Full Course",
+          "track_id": 47,
+          "track_name": "[Retired] WeatherTech Raceway at Laguna Seca"
+        },
+        "series_name": "IMSA Classic 500",
+        "season_name": "2026 IMSA Classic 500",
+        "special_event_type": null,
+        "weather": {
+          "simulated_start_time": "2026-05-02T10:15:00"
+        }
+      }
+    ]
+  },
+  {
+    "season_id": 6215,
+    "series_id": 329,
+    "season_name": "2026 Bathurst 12 Hour Presented by RSS",
+    "season_year": 2026,
+    "season_quarter": 1,
+    "fixed_setup": false,
+    "official": true,
+    "active": false,
+    "license_group": 3,
+    "schedules": [
+      {
+        "season_id": 6215,
+        "series_id": 329,
+        "race_week_num": 0,
+        "category": "sports_car",
+        "category_id": 5,
+        "race_lap_limit": null,
+        "race_time_limit": 720,
+        "race_time_descriptors": [
+          {
+            "repeating": false,
+            "session_minutes": 761,
+            "session_times": [
+              "2026-02-20T22:00:00Z",
+              "2026-02-21T07:00:00Z",
+              "2026-02-21T12:00:00Z",
+              "2026-02-21T16:00:00Z"
+            ],
+            "super_session": false
+          }
+        ],
+        "event_sessions": [
+          {
+            "laps": 32767,
+            "minutes": 30,
+            "start_time_offset": 0,
+            "type": 3,
+            "type_name": "Open Practice",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          },
+          {
+            "laps": 2,
+            "minutes": 8,
+            "start_time_offset": 0,
+            "type": 4,
+            "type_name": "Lone Qualifying",
+            "unlimited_laps": false,
+            "unlimited_time": false
+          },
+          {
+            "laps": 32767,
+            "minutes": 720,
+            "start_time_offset": 0,
+            "type": 6,
+            "type_name": "Race",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          }
+        ],
+        "start_date": "2026-02-20",
+        "week_end_time": "2026-02-21T16:00:00Z",
+        "track": {
+          "category": "road",
+          "category_id": 2,
+          "track_id": 219,
+          "track_name": "Mount Panorama Circuit"
+        },
+        "series_name": "Bathurst 12 Hour",
+        "season_name": "2026 Bathurst 12 Hour Presented by RSS",
+        "special_event_type": null,
+        "weather": {
+          "simulated_start_time": "2026-02-15T05:05:00"
+        }
+      }
+    ]
+  },
+  {
+    "season_id": 6432,
+    "series_id": 580,
+    "season_name": "2026 4 Hours at Thruxton Presented by Thrustmaster",
+    "season_year": 2026,
+    "season_quarter": 2,
+    "fixed_setup": false,
+    "official": true,
+    "active": false,
+    "license_group": 3,
+    "schedules": [
+      {
+        "season_id": 6432,
+        "series_id": 580,
+        "race_week_num": 0,
+        "category": "sports_car",
+        "category_id": 5,
+        "race_lap_limit": null,
+        "race_time_limit": 240,
+        "race_time_descriptors": [
+          {
+            "repeating": false,
+            "session_minutes": 281,
+            "session_times": [
+              "2026-05-29T22:00:00Z",
+              "2026-05-30T07:00:00Z",
+              "2026-05-30T12:00:00Z",
+              "2026-05-30T16:00:00Z",
+              "2026-05-31T00:00:00Z"
+            ],
+            "super_session": false
+          }
+        ],
+        "event_sessions": [
+          {
+            "laps": 32767,
+            "minutes": 30,
+            "start_time_offset": 0,
+            "type": 3,
+            "type_name": "Open Practice",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          },
+          {
+            "laps": 2,
+            "minutes": 8,
+            "start_time_offset": 0,
+            "type": 4,
+            "type_name": "Lone Qualifying",
+            "unlimited_laps": false,
+            "unlimited_time": false
+          },
+          {
+            "laps": 32767,
+            "minutes": 240,
+            "start_time_offset": 0,
+            "type": 6,
+            "type_name": "Race",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          }
+        ],
+        "start_date": "2026-05-29",
+        "week_end_time": "2026-05-31T00:00:00Z",
+        "track": {
+          "category": "road",
+          "category_id": 2,
+          "track_id": 532,
+          "track_name": "Thruxton Circuit"
+        },
+        "series_name": "4 Hours at Thruxton",
+        "season_name": "2026 4 Hours at Thruxton Presented by Thrustmaster",
+        "special_event_type": null,
+        "weather": {
+          "simulated_start_time": "2026-05-30T12:00:00"
+        }
+      }
+    ]
+  },
+  {
+    "season_id": 6442,
+    "series_id": 622,
+    "season_name": "2026 6 Hours of Road America",
+    "season_year": 2026,
+    "season_quarter": 3,
+    "fixed_setup": false,
+    "official": true,
+    "active": false,
+    "license_group": 3,
+    "schedules": [
+      {
+        "season_id": 6442,
+        "series_id": 622,
+        "race_week_num": 0,
+        "category": "sports_car",
+        "category_id": 5,
+        "race_lap_limit": null,
+        "race_time_limit": 360,
+        "race_time_descriptors": [
+          {
+            "repeating": false,
+            "session_minutes": 401,
+            "session_times": [
+              "2026-07-24T22:00:00Z",
+              "2026-07-25T07:00:00Z",
+              "2026-07-25T12:00:00Z",
+              "2026-07-25T16:00:00Z",
+              "2026-07-26T00:00:00Z"
+            ],
+            "super_session": false
+          }
+        ],
+        "event_sessions": [
+          {
+            "laps": 32767,
+            "minutes": 30,
+            "start_time_offset": 0,
+            "type": 3,
+            "type_name": "Open Practice",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          },
+          {
+            "laps": 2,
+            "minutes": 8,
+            "start_time_offset": 0,
+            "type": 4,
+            "type_name": "Lone Qualifying",
+            "unlimited_laps": false,
+            "unlimited_time": false
+          },
+          {
+            "laps": 32767,
+            "minutes": 360,
+            "start_time_offset": 0,
+            "type": 6,
+            "type_name": "Race",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          }
+        ],
+        "start_date": "2026-07-24",
+        "week_end_time": "2026-07-26T00:00:00Z",
+        "track": {
+          "category": "road",
+          "category_id": 2,
+          "config_name": "[Retired] Full Course",
+          "track_id": 18,
+          "track_name": "[Retired] Road America"
+        },
+        "series_name": "6 Hours of Road America",
+        "season_name": "2026 6 Hours of Road America",
+        "special_event_type": null,
+        "weather": {
+          "simulated_start_time": "2026-08-02T10:00:00"
+        }
+      }
+    ]
+  },
+  {
+    "season_id": 6403,
+    "series_id": 247,
+    "season_name": "2026 iRacing.com Indy 500",
+    "season_year": 2026,
+    "season_quarter": 2,
+    "fixed_setup": false,
+    "official": true,
+    "active": false,
+    "license_group": 3,
+    "schedules": [
+      {
+        "season_id": 6403,
+        "series_id": 247,
+        "race_week_num": 0,
+        "category": "oval",
+        "category_id": 1,
+        "race_lap_limit": 200,
+        "race_time_limit": null,
+        "race_time_descriptors": [
+          {
+            "repeating": false,
+            "session_minutes": 308,
+            "session_times": [
+              "2026-05-16T01:00:00Z",
+              "2026-05-16T13:00:00Z",
+              "2026-05-16T17:00:00Z",
+              "2026-05-17T13:00:00Z"
+            ],
+            "super_session": false
+          }
+        ],
+        "event_sessions": [
+          {
+            "laps": 32767,
+            "minutes": 15,
+            "start_time_offset": 0,
+            "type": 3,
+            "type_name": "Open Practice",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          },
+          {
+            "laps": 200,
+            "minutes": 10080,
+            "start_time_offset": 0,
+            "type": 6,
+            "type_name": "Race",
+            "unlimited_laps": false,
+            "unlimited_time": true
+          }
+        ],
+        "start_date": "2026-05-16",
+        "week_end_time": "2026-05-17T13:00:00Z",
+        "track": {
+          "category": "oval",
+          "category_id": 1,
+          "config_name": "Open Wheel Oval",
+          "track_id": 453,
+          "track_name": "Indianapolis Motor Speedway"
+        },
+        "series_name": "iRacing.com Indy 500",
+        "season_name": "2026 iRacing.com Indy 500",
+        "special_event_type": null,
+        "weather": {
+          "simulated_start_time": "2026-05-24T12:30:00"
+        }
+      }
+    ]
+  },
+  {
+    "season_id": 6618,
+    "series_id": 597,
+    "season_name": "2026 Suzuka 1000km Presented by PIMAX",
+    "season_year": 2026,
+    "season_quarter": 3,
+    "fixed_setup": false,
+    "official": true,
+    "active": false,
+    "license_group": 3,
+    "schedules": [
+      {
+        "season_id": 6618,
+        "series_id": 597,
+        "race_week_num": 0,
+        "category": "sports_car",
+        "category_id": 5,
+        "race_lap_limit": 173,
+        "race_time_limit": null,
+        "race_time_descriptors": [
+          {
+            "repeating": false,
+            "session_minutes": 427,
+            "session_times": [
+              "2026-09-11T22:00:00Z",
+              "2026-09-12T07:00:00Z",
+              "2026-09-12T12:00:00Z",
+              "2026-09-12T16:00:00Z",
+              "2026-09-13T00:00:00Z"
+            ],
+            "super_session": false
+          }
+        ],
+        "event_sessions": [
+          {
+            "laps": 32767,
+            "minutes": 30,
+            "start_time_offset": 0,
+            "type": 3,
+            "type_name": "Open Practice",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          },
+          {
+            "laps": 2,
+            "minutes": 8,
+            "start_time_offset": 0,
+            "type": 4,
+            "type_name": "Lone Qualifying",
+            "unlimited_laps": false,
+            "unlimited_time": false
+          },
+          {
+            "laps": 173,
+            "minutes": 10080,
+            "start_time_offset": 0,
+            "type": 6,
+            "type_name": "Race",
+            "unlimited_laps": false,
+            "unlimited_time": true
+          }
+        ],
+        "start_date": "2026-09-11",
+        "week_end_time": "2026-09-13T00:00:00Z",
+        "track": {
+          "category": "road",
+          "category_id": 2,
+          "config_name": "Grand Prix",
+          "track_id": 168,
+          "track_name": "Suzuka International Racing Course"
+        },
+        "series_name": "Suzuka 1000km Presented by PIMAX",
+        "season_name": "2026 Suzuka 1000km Presented by PIMAX",
+        "special_event_type": null,
+        "weather": {
+          "simulated_start_time": "2026-11-12T08:00:00"
+        }
+      }
+    ]
+  },
+  {
+    "season_id": 6072,
+    "series_id": 298,
+    "season_name": "2026 24 Hours of Daytona Presented by VCO",
+    "season_year": 2026,
+    "season_quarter": 1,
+    "fixed_setup": false,
+    "official": true,
+    "active": false,
+    "license_group": 3,
+    "schedules": [
+      {
+        "season_id": 6072,
+        "series_id": 298,
+        "race_week_num": 0,
+        "category": "sports_car",
+        "category_id": 5,
+        "race_lap_limit": null,
+        "race_time_limit": 1440,
+        "race_time_descriptors": [
+          {
+            "repeating": false,
+            "session_minutes": 1481,
+            "session_times": [
+              "2026-01-16T22:00:00Z",
+              "2026-01-17T07:00:00Z",
+              "2026-01-17T12:00:00Z",
+              "2026-01-17T16:00:00Z"
+            ],
+            "super_session": false
+          }
+        ],
+        "event_sessions": [
+          {
+            "laps": 32767,
+            "minutes": 30,
+            "start_time_offset": 0,
+            "type": 3,
+            "type_name": "Open Practice",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          },
+          {
+            "laps": 2,
+            "minutes": 8,
+            "start_time_offset": 0,
+            "type": 4,
+            "type_name": "Lone Qualifying",
+            "unlimited_laps": false,
+            "unlimited_time": false
+          },
+          {
+            "laps": 32767,
+            "minutes": 1440,
+            "start_time_offset": 0,
+            "type": 6,
+            "type_name": "Race",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          }
+        ],
+        "start_date": "2026-01-16",
+        "week_end_time": "2026-01-17T16:00:00Z",
+        "track": {
+          "category": "road",
+          "category_id": 2,
+          "config_name": "Road Course",
+          "track_id": 192,
+          "track_name": "Daytona International Speedway"
+        },
+        "series_name": "Daytona 24",
+        "season_name": "2026 24 Hours of Daytona Presented by VCO",
+        "special_event_type": null,
+        "weather": {
+          "simulated_start_time": "2026-01-24T13:00:00"
+        }
+      }
+    ]
+  },
+  {
+    "season_id": 6623,
+    "series_id": 286,
+    "season_name": "2026 Petit Le Mans Presented by VCO",
+    "season_year": 2026,
+    "season_quarter": 4,
+    "fixed_setup": false,
+    "official": true,
+    "active": false,
+    "license_group": 3,
+    "schedules": [
+      {
+        "season_id": 6623,
+        "series_id": 286,
+        "race_week_num": 0,
+        "category": "sports_car",
+        "category_id": 5,
+        "race_lap_limit": null,
+        "race_time_limit": 600,
+        "race_time_descriptors": [
+          {
+            "repeating": false,
+            "session_minutes": 641,
+            "session_times": [
+              "2026-09-25T22:00:00Z",
+              "2026-09-26T07:00:00Z",
+              "2026-09-26T12:00:00Z",
+              "2026-09-26T16:00:00Z",
+              "2026-09-27T00:00:00Z"
+            ],
+            "super_session": false
+          }
+        ],
+        "event_sessions": [
+          {
+            "laps": 32767,
+            "minutes": 30,
+            "start_time_offset": 0,
+            "type": 3,
+            "type_name": "Open Practice",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          },
+          {
+            "laps": 2,
+            "minutes": 8,
+            "start_time_offset": 0,
+            "type": 4,
+            "type_name": "Lone Qualifying",
+            "unlimited_laps": false,
+            "unlimited_time": false
+          },
+          {
+            "laps": 32767,
+            "minutes": 600,
+            "start_time_offset": 0,
+            "type": 6,
+            "type_name": "Race",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          }
+        ],
+        "start_date": "2026-09-25",
+        "week_end_time": "2026-09-27T00:00:00Z",
+        "track": {
+          "category": "road",
+          "category_id": 2,
+          "config_name": "Full Course",
+          "track_id": 127,
+          "track_name": "Road Atlanta"
+        },
+        "series_name": "Petit Le Mans Presented by VCO",
+        "season_name": "2026 Petit Le Mans Presented by VCO",
+        "special_event_type": null,
+        "weather": {
+          "simulated_start_time": "2026-10-03T10:55:00"
+        }
+      }
+    ]
+  },
+  {
+    "season_id": 6438,
+    "series_id": 590,
+    "season_name": "2026 Firecracker 400 - Fixed",
+    "season_year": 2026,
+    "season_quarter": 3,
+    "fixed_setup": true,
+    "official": true,
+    "active": false,
+    "license_group": 3,
+    "schedules": [
+      {
+        "season_id": 6438,
+        "series_id": 590,
+        "race_week_num": 0,
+        "category": "oval",
+        "category_id": 1,
+        "race_lap_limit": 160,
+        "race_time_limit": null,
+        "race_time_descriptors": [
+          {
+            "repeating": false,
+            "session_minutes": 205,
+            "session_times": [
+              "2026-07-01T21:00:00Z",
+              "2026-07-03T02:00:00Z",
+              "2026-07-04T10:00:00Z",
+              "2026-07-04T17:00:00Z",
+              "2026-07-06T02:00:00Z"
+            ],
+            "super_session": false
+          }
+        ],
+        "event_sessions": [
+          {
+            "laps": 32767,
+            "minutes": 3,
+            "start_time_offset": 0,
+            "type": 3,
+            "type_name": "Open Practice",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          },
+          {
+            "laps": 2,
+            "minutes": 5,
+            "start_time_offset": 0,
+            "type": 4,
+            "type_name": "Lone Qualifying",
+            "unlimited_laps": false,
+            "unlimited_time": false
+          },
+          {
+            "laps": 160,
+            "minutes": 10080,
+            "start_time_offset": 0,
+            "type": 6,
+            "type_name": "Race",
+            "unlimited_laps": false,
+            "unlimited_time": true
+          }
+        ],
+        "start_date": "2026-07-01",
+        "week_end_time": "2026-07-06T23:59:00Z",
+        "track": {
+          "category": "oval",
+          "category_id": 1,
+          "config_name": "Oval - 2008",
+          "track_id": 27,
+          "track_name": "Daytona International Speedway"
+        },
+        "series_name": "Firecracker 400 - Fixed",
+        "season_name": "2026 Firecracker 400 - Fixed",
+        "special_event_type": null,
+        "weather": {
+          "simulated_start_time": "2026-07-04T12:00:00"
+        }
+      }
+    ]
+  },
+  {
+    "season_id": 6402,
+    "series_id": 411,
+    "season_name": "2026 iRacing.com Indy 500 - Fixed",
+    "season_year": 2026,
+    "season_quarter": 2,
+    "fixed_setup": true,
+    "official": true,
+    "active": false,
+    "license_group": 3,
+    "schedules": [
+      {
+        "season_id": 6402,
+        "series_id": 411,
+        "race_week_num": 0,
+        "category": "oval",
+        "category_id": 1,
+        "race_lap_limit": 200,
+        "race_time_limit": null,
+        "race_time_descriptors": [
+          {
+            "repeating": false,
+            "session_minutes": 308,
+            "session_times": [
+              "2026-05-09T01:00:00Z",
+              "2026-05-09T13:00:00Z",
+              "2026-05-09T17:00:00Z",
+              "2026-05-10T13:00:00Z"
+            ],
+            "super_session": false
+          }
+        ],
+        "event_sessions": [
+          {
+            "laps": 32767,
+            "minutes": 15,
+            "start_time_offset": 0,
+            "type": 3,
+            "type_name": "Open Practice",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          },
+          {
+            "laps": 200,
+            "minutes": 10080,
+            "start_time_offset": 0,
+            "type": 6,
+            "type_name": "Race",
+            "unlimited_laps": false,
+            "unlimited_time": true
+          }
+        ],
+        "start_date": "2026-05-09",
+        "week_end_time": "2026-05-10T13:00:00Z",
+        "track": {
+          "category": "oval",
+          "category_id": 1,
+          "config_name": "Open Wheel Oval",
+          "track_id": 453,
+          "track_name": "Indianapolis Motor Speedway"
+        },
+        "series_name": "iRacing.com Indy 500 - Fixed",
+        "season_name": "2026 iRacing.com Indy 500 - Fixed",
+        "special_event_type": null,
+        "weather": {
+          "simulated_start_time": "2026-05-24T12:30:00"
+        }
+      }
+    ]
+  },
+  {
+    "season_id": 6401,
+    "series_id": 279,
+    "season_name": "2026 24 Hours of Nurburgring Presented by Thrustmaster",
+    "season_year": 2026,
+    "season_quarter": 2,
+    "fixed_setup": false,
+    "official": true,
+    "active": false,
+    "license_group": 3,
+    "schedules": [
+      {
+        "season_id": 6401,
+        "series_id": 279,
+        "race_week_num": 0,
+        "category": "sports_car",
+        "category_id": 5,
+        "race_lap_limit": null,
+        "race_time_limit": 1440,
+        "race_time_descriptors": [
+          {
+            "repeating": false,
+            "session_minutes": 1488,
+            "session_times": [
+              "2026-05-01T22:00:00Z",
+              "2026-05-02T07:00:00Z",
+              "2026-05-02T12:00:00Z",
+              "2026-05-02T16:00:00Z"
+            ],
+            "super_session": false
+          }
+        ],
+        "event_sessions": [
+          {
+            "laps": 32767,
+            "minutes": 20,
+            "start_time_offset": 0,
+            "type": 3,
+            "type_name": "Open Practice",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          },
+          {
+            "laps": 2,
+            "minutes": 25,
+            "start_time_offset": 0,
+            "type": 4,
+            "type_name": "Lone Qualifying",
+            "unlimited_laps": false,
+            "unlimited_time": false
+          },
+          {
+            "laps": 32767,
+            "minutes": 1440,
+            "start_time_offset": 0,
+            "type": 6,
+            "type_name": "Race",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          }
+        ],
+        "start_date": "2026-05-01",
+        "week_end_time": "2026-05-02T16:00:00Z",
+        "track": {
+          "category": "road",
+          "category_id": 2,
+          "config_name": "Gesamtstrecke 24h",
+          "track_id": 252,
+          "track_name": "N\u00fcrburgring Combined"
+        },
+        "series_name": "24 Hours of Nurburgring",
+        "season_name": "2026 24 Hours of Nurburgring Presented by Thrustmaster",
+        "special_event_type": null,
+        "weather": {
+          "simulated_start_time": "2026-05-16T15:13:00"
+        }
+      }
+    ]
+  },
+  {
+    "season_id": 6440,
+    "series_id": 281,
+    "season_name": "2026 24 hours of Spa Presented by Falken Tyre",
+    "season_year": 2026,
+    "season_quarter": 3,
+    "fixed_setup": false,
+    "official": true,
+    "active": false,
+    "license_group": 3,
+    "schedules": [
+      {
+        "season_id": 6440,
+        "series_id": 281,
+        "race_week_num": 0,
+        "category": "sports_car",
+        "category_id": 5,
+        "race_lap_limit": null,
+        "race_time_limit": 1440,
+        "race_time_descriptors": [
+          {
+            "repeating": false,
+            "session_minutes": 1488,
+            "session_times": [
+              "2026-07-10T22:00:00Z",
+              "2026-07-11T07:00:00Z",
+              "2026-07-11T12:00:00Z",
+              "2026-07-11T16:00:00Z"
+            ],
+            "super_session": false
+          }
+        ],
+        "event_sessions": [
+          {
+            "laps": 32767,
+            "minutes": 30,
+            "start_time_offset": 0,
+            "type": 3,
+            "type_name": "Open Practice",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          },
+          {
+            "laps": 4,
+            "minutes": 15,
+            "start_time_offset": 0,
+            "type": 4,
+            "type_name": "Lone Qualifying",
+            "unlimited_laps": false,
+            "unlimited_time": false
+          },
+          {
+            "laps": 32767,
+            "minutes": 1440,
+            "start_time_offset": 0,
+            "type": 6,
+            "type_name": "Race",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          }
+        ],
+        "start_date": "2026-07-10",
+        "week_end_time": "2026-07-11T16:00:00Z",
+        "track": {
+          "category": "road",
+          "category_id": 2,
+          "config_name": "Endurance",
+          "track_id": 525,
+          "track_name": "Circuit de Spa-Francorchamps"
+        },
+        "series_name": "24 Hours of Spa Presented by Falken Tyre",
+        "season_name": "2026 24 hours of Spa Presented by Falken Tyre",
+        "special_event_type": null,
+        "weather": {
+          "simulated_start_time": "2026-06-27T15:40:00"
+        }
+      }
+    ]
+  },
+  {
+    "season_id": 6437,
+    "series_id": 589,
+    "season_name": "2026 Firecracker 400",
+    "season_year": 2026,
+    "season_quarter": 3,
+    "fixed_setup": false,
+    "official": true,
+    "active": false,
+    "license_group": 3,
+    "schedules": [
+      {
+        "season_id": 6437,
+        "series_id": 589,
+        "race_week_num": 0,
+        "category": "oval",
+        "category_id": 1,
+        "race_lap_limit": 160,
+        "race_time_limit": null,
+        "race_time_descriptors": [
+          {
+            "repeating": false,
+            "session_minutes": 205,
+            "session_times": [
+              "2026-07-02T02:00:00Z",
+              "2026-07-02T19:00:00Z",
+              "2026-07-04T02:00:00Z",
+              "2026-07-05T15:00:00Z"
+            ],
+            "super_session": false
+          }
+        ],
+        "event_sessions": [
+          {
+            "laps": 32767,
+            "minutes": 3,
+            "start_time_offset": 0,
+            "type": 3,
+            "type_name": "Open Practice",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          },
+          {
+            "laps": 2,
+            "minutes": 5,
+            "start_time_offset": 0,
+            "type": 4,
+            "type_name": "Lone Qualifying",
+            "unlimited_laps": false,
+            "unlimited_time": false
+          },
+          {
+            "laps": 160,
+            "minutes": 10080,
+            "start_time_offset": 0,
+            "type": 6,
+            "type_name": "Race",
+            "unlimited_laps": false,
+            "unlimited_time": true
+          }
+        ],
+        "start_date": "2026-07-02",
+        "week_end_time": "2026-07-05T15:00:00Z",
+        "track": {
+          "category": "oval",
+          "category_id": 1,
+          "config_name": "Oval - 2008",
+          "track_id": 27,
+          "track_name": "Daytona International Speedway"
+        },
+        "series_name": "Firecracker 400",
+        "season_name": "2026 Firecracker 400",
+        "special_event_type": null,
+        "weather": {
+          "simulated_start_time": "2026-07-04T12:00:00"
+        }
+      }
+    ]
+  },
+  {
+    "season_id": 6071,
+    "series_id": 297,
+    "season_name": "2026 Roar Before the 24 by Go Motorsports Shop",
+    "season_year": 2026,
+    "season_quarter": 1,
+    "fixed_setup": false,
+    "official": true,
+    "active": false,
+    "license_group": 3,
+    "schedules": [
+      {
+        "season_id": 6071,
+        "series_id": 297,
+        "race_week_num": 0,
+        "category": "sports_car",
+        "category_id": 5,
+        "race_lap_limit": null,
+        "race_time_limit": 144,
+        "race_time_descriptors": [
+          {
+            "repeating": false,
+            "session_minutes": 185,
+            "session_times": [
+              "2026-01-09T22:00:00Z",
+              "2026-01-10T07:00:00Z",
+              "2026-01-10T12:00:00Z",
+              "2026-01-10T16:00:00Z",
+              "2026-01-11T00:00:00Z"
+            ],
+            "super_session": false
+          }
+        ],
+        "event_sessions": [
+          {
+            "laps": 32767,
+            "minutes": 30,
+            "start_time_offset": 0,
+            "type": 3,
+            "type_name": "Open Practice",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          },
+          {
+            "laps": 2,
+            "minutes": 8,
+            "start_time_offset": 0,
+            "type": 4,
+            "type_name": "Lone Qualifying",
+            "unlimited_laps": false,
+            "unlimited_time": false
+          },
+          {
+            "laps": 32767,
+            "minutes": 144,
+            "start_time_offset": 0,
+            "type": 6,
+            "type_name": "Race",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          }
+        ],
+        "start_date": "2026-01-09",
+        "week_end_time": "2026-01-11T00:00:00Z",
+        "track": {
+          "category": "road",
+          "category_id": 2,
+          "config_name": "Road Course",
+          "track_id": 192,
+          "track_name": "Daytona International Speedway"
+        },
+        "series_name": "Roar Before the 24",
+        "season_name": "2026 Roar Before the 24 by Go Motorsports Shop",
+        "special_event_type": null,
+        "weather": {
+          "simulated_start_time": "2026-01-18T13:00:00"
+        }
+      }
+    ]
+  },
+  {
+    "season_id": 6620,
+    "series_id": 623,
+    "season_name": "2026 Britcar 24 Presented by Cosworth",
+    "season_year": 2026,
+    "season_quarter": 4,
+    "fixed_setup": false,
+    "official": true,
+    "active": false,
+    "license_group": 3,
+    "schedules": [
+      {
+        "season_id": 6620,
+        "series_id": 623,
+        "race_week_num": 0,
+        "category": "sports_car",
+        "category_id": 5,
+        "race_lap_limit": null,
+        "race_time_limit": 1440,
+        "race_time_descriptors": [
+          {
+            "repeating": false,
+            "session_minutes": 1481,
+            "session_times": [
+              "2026-09-18T22:00:00Z",
+              "2026-09-19T07:00:00Z",
+              "2026-09-19T12:00:00Z",
+              "2026-09-19T16:00:00Z"
+            ],
+            "super_session": false
+          }
+        ],
+        "event_sessions": [
+          {
+            "laps": 32767,
+            "minutes": 30,
+            "start_time_offset": 0,
+            "type": 3,
+            "type_name": "Open Practice",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          },
+          {
+            "laps": 2,
+            "minutes": 8,
+            "start_time_offset": 0,
+            "type": 4,
+            "type_name": "Lone Qualifying",
+            "unlimited_laps": false,
+            "unlimited_time": false
+          },
+          {
+            "laps": 32767,
+            "minutes": 1440,
+            "start_time_offset": 0,
+            "type": 6,
+            "type_name": "Race",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          }
+        ],
+        "start_date": "2026-09-18",
+        "week_end_time": "2026-09-19T16:00:00Z",
+        "track": {
+          "category": "road",
+          "category_id": 2,
+          "config_name": "Grand Prix",
+          "track_id": 341,
+          "track_name": "Silverstone Circuit"
+        },
+        "series_name": "Britcar 24 Presented by Cosworth",
+        "season_name": "2026 Britcar 24 Presented by Cosworth",
+        "special_event_type": null,
+        "weather": {
+          "simulated_start_time": "2026-09-19T15:30:00"
+        }
+      }
+    ]
+  },
+  {
+    "season_id": 6436,
+    "series_id": 280,
+    "season_name": "2026 6 Hours of the Glen Powered by VCO",
+    "season_year": 2026,
+    "season_quarter": 3,
+    "fixed_setup": false,
+    "official": true,
+    "active": false,
+    "license_group": 3,
+    "schedules": [
+      {
+        "season_id": 6436,
+        "series_id": 280,
+        "race_week_num": 0,
+        "category": "sports_car",
+        "category_id": 5,
+        "race_lap_limit": null,
+        "race_time_limit": 360,
+        "race_time_descriptors": [
+          {
+            "repeating": false,
+            "session_minutes": 401,
+            "session_times": [
+              "2026-06-19T22:00:00Z",
+              "2026-06-20T07:00:00Z",
+              "2026-06-20T12:00:00Z",
+              "2026-06-20T16:00:00Z",
+              "2026-06-21T00:00:00Z"
+            ],
+            "super_session": false
+          }
+        ],
+        "event_sessions": [
+          {
+            "laps": 32767,
+            "minutes": 30,
+            "start_time_offset": 0,
+            "type": 3,
+            "type_name": "Open Practice",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          },
+          {
+            "laps": 2,
+            "minutes": 8,
+            "start_time_offset": 0,
+            "type": 4,
+            "type_name": "Lone Qualifying",
+            "unlimited_laps": false,
+            "unlimited_time": false
+          },
+          {
+            "laps": 32767,
+            "minutes": 360,
+            "start_time_offset": 0,
+            "type": 6,
+            "type_name": "Race",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          }
+        ],
+        "start_date": "2026-06-19",
+        "week_end_time": "2026-06-21T00:00:00Z",
+        "track": {
+          "category": "road",
+          "category_id": 2,
+          "config_name": "Boot",
+          "track_id": 434,
+          "track_name": "Watkins Glen International"
+        },
+        "series_name": "6 Hours of the Glen",
+        "season_name": "2026 6 Hours of the Glen Powered by VCO",
+        "special_event_type": null,
+        "weather": {
+          "simulated_start_time": "2026-06-28T11:30:00"
+        }
+      }
+    ]
+  },
+  {
+    "season_id": 6260,
+    "series_id": 271,
+    "season_name": "2026 12 Hours of Sebring Presented by VCO",
+    "season_year": 2026,
+    "season_quarter": 2,
+    "fixed_setup": false,
+    "official": true,
+    "active": false,
+    "license_group": 3,
+    "schedules": [
+      {
+        "season_id": 6260,
+        "series_id": 271,
+        "race_week_num": 0,
+        "category": "sports_car",
+        "category_id": 5,
+        "race_lap_limit": null,
+        "race_time_limit": 720,
+        "race_time_descriptors": [
+          {
+            "repeating": false,
+            "session_minutes": 761,
+            "session_times": [
+              "2026-03-27T22:00:00Z",
+              "2026-03-28T07:00:00Z",
+              "2026-03-28T12:00:00Z",
+              "2026-03-28T16:00:00Z"
+            ],
+            "super_session": false
+          }
+        ],
+        "event_sessions": [
+          {
+            "laps": 32767,
+            "minutes": 30,
+            "start_time_offset": 0,
+            "type": 3,
+            "type_name": "Open Practice",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          },
+          {
+            "laps": 2,
+            "minutes": 8,
+            "start_time_offset": 0,
+            "type": 4,
+            "type_name": "Lone Qualifying",
+            "unlimited_laps": false,
+            "unlimited_time": false
+          },
+          {
+            "laps": 32767,
+            "minutes": 720,
+            "start_time_offset": 0,
+            "type": 6,
+            "type_name": "Race",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          }
+        ],
+        "start_date": "2026-03-27",
+        "week_end_time": "2026-03-28T16:00:00Z",
+        "track": {
+          "category": "road",
+          "category_id": 2,
+          "config_name": "International",
+          "track_id": 95,
+          "track_name": "Sebring International Raceway"
+        },
+        "series_name": "12 Hours of Sebring",
+        "season_name": "2026 12 Hours of Sebring Presented by VCO",
+        "special_event_type": null,
+        "weather": {
+          "simulated_start_time": "2026-03-21T09:30:00"
+        }
+      }
+    ]
+  },
+  {
+    "season_id": 6578,
+    "series_id": 587,
+    "season_name": "2026 Portimao 1000km Presented by Simucube",
+    "season_year": 2026,
+    "season_quarter": 4,
+    "fixed_setup": false,
+    "official": true,
+    "active": false,
+    "license_group": 3,
+    "schedules": [
+      {
+        "season_id": 6578,
+        "series_id": 587,
+        "race_week_num": 0,
+        "category": "sports_car",
+        "category_id": 5,
+        "race_lap_limit": 215,
+        "race_time_limit": null,
+        "race_time_descriptors": [
+          {
+            "repeating": false,
+            "session_minutes": 439,
+            "session_times": [
+              "2026-08-14T22:00:00Z",
+              "2026-08-15T07:00:00Z",
+              "2026-08-15T12:00:00Z",
+              "2026-08-15T16:00:00Z",
+              "2026-08-16T00:00:00Z"
+            ],
+            "super_session": false
+          }
+        ],
+        "event_sessions": [
+          {
+            "laps": 32767,
+            "minutes": 30,
+            "start_time_offset": 0,
+            "type": 3,
+            "type_name": "Open Practice",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          },
+          {
+            "laps": 2,
+            "minutes": 8,
+            "start_time_offset": 0,
+            "type": 4,
+            "type_name": "Lone Qualifying",
+            "unlimited_laps": false,
+            "unlimited_time": false
+          },
+          {
+            "laps": 215,
+            "minutes": 10080,
+            "start_time_offset": 0,
+            "type": 6,
+            "type_name": "Race",
+            "unlimited_laps": false,
+            "unlimited_time": true
+          }
+        ],
+        "start_date": "2026-08-14",
+        "week_end_time": "2026-08-16T00:00:00Z",
+        "track": {
+          "category": "road",
+          "category_id": 2,
+          "config_name": "Grand Prix",
+          "track_id": 509,
+          "track_name": "Algarve International Circuit"
+        },
+        "series_name": "Portimao 1000km Presented by Simucube",
+        "season_name": "2026 Portimao 1000km Presented by Simucube",
+        "special_event_type": null,
+        "weather": {
+          "simulated_start_time": "2026-08-15T10:00:00"
+        }
+      }
+    ]
+  },
+  {
+    "season_id": 6216,
+    "series_id": 374,
+    "season_name": "INDYCAR iRacing Series - 2026 Season",
+    "season_year": 2026,
+    "season_quarter": 1,
+    "fixed_setup": false,
+    "official": true,
+    "active": false,
+    "license_group": 3,
+    "schedules": [
+      {
+        "season_id": 6216,
+        "series_id": 374,
+        "race_week_num": 0,
+        "category": "formula_car",
+        "category_id": 6,
+        "race_lap_limit": 48,
+        "race_time_limit": null,
+        "race_time_descriptors": [
+          {
+            "repeating": false,
+            "session_minutes": 117,
+            "session_times": [
+              "2026-02-26T01:00:00Z",
+              "2026-02-27T20:00:00Z",
+              "2026-02-28T18:00:00Z",
+              "2026-03-01T02:00:00Z"
+            ],
+            "super_session": false
+          }
+        ],
+        "event_sessions": [
+          {
+            "laps": 32767,
+            "minutes": 3,
+            "start_time_offset": 0,
+            "type": 3,
+            "type_name": "Open Practice",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          },
+          {
+            "laps": 2,
+            "minutes": 8,
+            "start_time_offset": 0,
+            "type": 4,
+            "type_name": "Lone Qualifying",
+            "unlimited_laps": false,
+            "unlimited_time": false
+          },
+          {
+            "laps": 48,
+            "minutes": 10080,
+            "start_time_offset": 0,
+            "type": 6,
+            "type_name": "Race",
+            "unlimited_laps": false,
+            "unlimited_time": true
+          }
+        ],
+        "start_date": "2026-02-26",
+        "week_end_time": "2026-03-02T23:58:00Z",
+        "track": {
+          "category": "road",
+          "category_id": 2,
+          "config_name": "International",
+          "track_id": 95,
+          "track_name": "Sebring International Raceway"
+        },
+        "series_name": "INDYCAR iRacing Series",
+        "season_name": "INDYCAR iRacing Series - 2026 Season",
+        "special_event_type": null,
+        "weather": {
+          "simulated_start_time": "2026-03-01T12:00:00"
+        }
+      },
+      {
+        "season_id": 6216,
+        "series_id": 374,
+        "race_week_num": 1,
+        "category": "oval",
+        "category_id": 1,
+        "race_lap_limit": 250,
+        "race_time_limit": null,
+        "race_time_descriptors": [
+          {
+            "repeating": false,
+            "session_minutes": 197,
+            "session_times": [
+              "2026-03-05T01:00:00Z",
+              "2026-03-06T20:00:00Z",
+              "2026-03-07T18:00:00Z",
+              "2026-03-08T02:00:00Z"
+            ],
+            "super_session": false
+          }
+        ],
+        "event_sessions": [
+          {
+            "laps": 32767,
+            "minutes": 3,
+            "start_time_offset": 0,
+            "type": 3,
+            "type_name": "Open Practice",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          },
+          {
+            "laps": 2,
+            "minutes": 5,
+            "start_time_offset": 0,
+            "type": 4,
+            "type_name": "Lone Qualifying",
+            "unlimited_laps": false,
+            "unlimited_time": false
+          },
+          {
+            "laps": 250,
+            "minutes": 10080,
+            "start_time_offset": 0,
+            "type": 6,
+            "type_name": "Race",
+            "unlimited_laps": false,
+            "unlimited_time": true
+          }
+        ],
+        "start_date": "2026-03-05",
+        "week_end_time": "2026-03-09T23:58:00Z",
+        "track": {
+          "category": "oval",
+          "category_id": 1,
+          "config_name": "Oval",
+          "track_id": 418,
+          "track_name": "Phoenix Raceway"
+        },
+        "series_name": "INDYCAR iRacing Series",
+        "season_name": "INDYCAR iRacing Series - 2026 Season",
+        "special_event_type": null,
+        "weather": {
+          "simulated_start_time": "2026-03-07T13:00:00"
+        }
+      },
+      {
+        "season_id": 6216,
+        "series_id": 374,
+        "race_week_num": 2,
+        "category": "formula_car",
+        "category_id": 6,
+        "race_lap_limit": 100,
+        "race_time_limit": null,
+        "race_time_descriptors": [
+          {
+            "repeating": false,
+            "session_minutes": 142,
+            "session_times": [
+              "2026-03-19T01:00:00Z",
+              "2026-03-20T20:00:00Z",
+              "2026-03-21T18:00:00Z",
+              "2026-03-22T02:00:00Z"
+            ],
+            "super_session": false
+          }
+        ],
+        "event_sessions": [
+          {
+            "laps": 32767,
+            "minutes": 3,
+            "start_time_offset": 0,
+            "type": 3,
+            "type_name": "Open Practice",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          },
+          {
+            "laps": 2,
+            "minutes": 8,
+            "start_time_offset": 0,
+            "type": 4,
+            "type_name": "Lone Qualifying",
+            "unlimited_laps": false,
+            "unlimited_time": false
+          },
+          {
+            "laps": 100,
+            "minutes": 10080,
+            "start_time_offset": 0,
+            "type": 6,
+            "type_name": "Race",
+            "unlimited_laps": false,
+            "unlimited_time": true
+          }
+        ],
+        "start_date": "2026-03-19",
+        "week_end_time": "2026-03-23T23:58:00Z",
+        "track": {
+          "category": "road",
+          "category_id": 2,
+          "config_name": "Grand Prix",
+          "track_id": 584,
+          "track_name": "St. Petersburg Grand Prix"
+        },
+        "series_name": "INDYCAR iRacing Series",
+        "season_name": "INDYCAR iRacing Series - 2026 Season",
+        "special_event_type": null,
+        "weather": {
+          "simulated_start_time": "2026-03-21T11:30:00"
+        }
+      },
+      {
+        "season_id": 6216,
+        "series_id": 374,
+        "race_week_num": 3,
+        "category": "formula_car",
+        "category_id": 6,
+        "race_lap_limit": 90,
+        "race_time_limit": null,
+        "race_time_descriptors": [
+          {
+            "repeating": false,
+            "session_minutes": 148,
+            "session_times": [
+              "2026-03-26T01:00:00Z",
+              "2026-03-27T20:00:00Z",
+              "2026-03-28T18:00:00Z",
+              "2026-03-29T02:00:00Z"
+            ],
+            "super_session": false
+          }
+        ],
+        "event_sessions": [
+          {
+            "laps": 32767,
+            "minutes": 3,
+            "start_time_offset": 0,
+            "type": 3,
+            "type_name": "Open Practice",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          },
+          {
+            "laps": 2,
+            "minutes": 8,
+            "start_time_offset": 0,
+            "type": 4,
+            "type_name": "Lone Qualifying",
+            "unlimited_laps": false,
+            "unlimited_time": false
+          },
+          {
+            "laps": 90,
+            "minutes": 10080,
+            "start_time_offset": 0,
+            "type": 6,
+            "type_name": "Race",
+            "unlimited_laps": false,
+            "unlimited_time": true
+          }
+        ],
+        "start_date": "2026-03-26",
+        "week_end_time": "2026-03-30T23:58:00Z",
+        "track": {
+          "category": "road",
+          "category_id": 2,
+          "track_id": 585,
+          "track_name": "Barber Motorsports Park"
+        },
+        "series_name": "INDYCAR iRacing Series",
+        "season_name": "INDYCAR iRacing Series - 2026 Season",
+        "special_event_type": null,
+        "weather": {
+          "simulated_start_time": "2026-03-29T12:00:00"
+        }
+      },
+      {
+        "season_id": 6216,
+        "series_id": 374,
+        "race_week_num": 4,
+        "category": "formula_car",
+        "category_id": 6,
+        "race_lap_limit": 85,
+        "race_time_limit": null,
+        "race_time_descriptors": [
+          {
+            "repeating": false,
+            "session_minutes": 131,
+            "session_times": [
+              "2026-04-16T01:00:00Z",
+              "2026-04-17T20:00:00Z",
+              "2026-04-18T18:00:00Z",
+              "2026-04-19T02:00:00Z"
+            ],
+            "super_session": false
+          }
+        ],
+        "event_sessions": [
+          {
+            "laps": 32767,
+            "minutes": 3,
+            "start_time_offset": 0,
+            "type": 3,
+            "type_name": "Open Practice",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          },
+          {
+            "laps": 2,
+            "minutes": 8,
+            "start_time_offset": 0,
+            "type": 4,
+            "type_name": "Lone Qualifying",
+            "unlimited_laps": false,
+            "unlimited_time": false
+          },
+          {
+            "laps": 85,
+            "minutes": 10080,
+            "start_time_offset": 0,
+            "type": 6,
+            "type_name": "Race",
+            "unlimited_laps": false,
+            "unlimited_time": true
+          }
+        ],
+        "start_date": "2026-04-16",
+        "week_end_time": "2026-04-20T23:58:00Z",
+        "track": {
+          "category": "road",
+          "category_id": 2,
+          "track_id": 179,
+          "track_name": "Long Beach Street Circuit"
+        },
+        "series_name": "INDYCAR iRacing Series",
+        "season_name": "INDYCAR iRacing Series - 2026 Season",
+        "special_event_type": null,
+        "weather": {
+          "simulated_start_time": "2026-04-19T14:30:00"
+        }
+      },
+      {
+        "season_id": 6216,
+        "series_id": 374,
+        "race_week_num": 5,
+        "category": "formula_car",
+        "category_id": 6,
+        "race_lap_limit": 85,
+        "race_time_limit": null,
+        "race_time_descriptors": [
+          {
+            "repeating": false,
+            "session_minutes": 142,
+            "session_times": [
+              "2026-05-07T01:00:00Z",
+              "2026-05-08T20:00:00Z",
+              "2026-05-09T18:00:00Z",
+              "2026-05-10T02:00:00Z"
+            ],
+            "super_session": false
+          }
+        ],
+        "event_sessions": [
+          {
+            "laps": 32767,
+            "minutes": 3,
+            "start_time_offset": 0,
+            "type": 3,
+            "type_name": "Open Practice",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          },
+          {
+            "laps": 2,
+            "minutes": 8,
+            "start_time_offset": 0,
+            "type": 4,
+            "type_name": "Lone Qualifying",
+            "unlimited_laps": false,
+            "unlimited_time": false
+          },
+          {
+            "laps": 85,
+            "minutes": 10080,
+            "start_time_offset": 0,
+            "type": 6,
+            "type_name": "Race",
+            "unlimited_laps": false,
+            "unlimited_time": true
+          }
+        ],
+        "start_date": "2026-05-07",
+        "week_end_time": "2026-05-11T23:58:00Z",
+        "track": {
+          "category": "road",
+          "category_id": 2,
+          "config_name": "Road Course",
+          "track_id": 448,
+          "track_name": "Indianapolis Motor Speedway"
+        },
+        "series_name": "INDYCAR iRacing Series",
+        "season_name": "INDYCAR iRacing Series - 2026 Season",
+        "special_event_type": null,
+        "weather": {
+          "simulated_start_time": "2026-05-09T16:30:00"
+        }
+      },
+      {
+        "season_id": 6216,
+        "series_id": 374,
+        "race_week_num": 6,
+        "category": "oval",
+        "category_id": 1,
+        "race_lap_limit": 125,
+        "race_time_limit": null,
+        "race_time_descriptors": [
+          {
+            "repeating": false,
+            "session_minutes": 193,
+            "session_times": [
+              "2026-05-21T01:00:00Z",
+              "2026-05-22T20:00:00Z",
+              "2026-05-23T18:00:00Z",
+              "2026-05-24T02:00:00Z"
+            ],
+            "super_session": false
+          }
+        ],
+        "event_sessions": [
+          {
+            "laps": 32767,
+            "minutes": 3,
+            "start_time_offset": 0,
+            "type": 3,
+            "type_name": "Open Practice",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          },
+          {
+            "laps": 2,
+            "minutes": 5,
+            "start_time_offset": 0,
+            "type": 4,
+            "type_name": "Lone Qualifying",
+            "unlimited_laps": false,
+            "unlimited_time": false
+          },
+          {
+            "laps": 125,
+            "minutes": 10080,
+            "start_time_offset": 0,
+            "type": 6,
+            "type_name": "Race",
+            "unlimited_laps": false,
+            "unlimited_time": true
+          }
+        ],
+        "start_date": "2026-05-21",
+        "week_end_time": "2026-05-25T23:58:00Z",
+        "track": {
+          "category": "oval",
+          "category_id": 1,
+          "config_name": "Open Wheel Oval",
+          "track_id": 453,
+          "track_name": "Indianapolis Motor Speedway"
+        },
+        "series_name": "INDYCAR iRacing Series",
+        "season_name": "INDYCAR iRacing Series - 2026 Season",
+        "special_event_type": null,
+        "weather": {
+          "simulated_start_time": "2026-05-24T10:00:00"
+        }
+      },
+      {
+        "season_id": 6216,
+        "series_id": 374,
+        "race_week_num": 7,
+        "category": "formula_car",
+        "category_id": 6,
+        "race_lap_limit": 70,
+        "race_time_limit": null,
+        "race_time_descriptors": [
+          {
+            "repeating": false,
+            "session_minutes": 127,
+            "session_times": [
+              "2026-05-28T01:00:00Z",
+              "2026-05-29T20:00:00Z",
+              "2026-05-30T18:00:00Z",
+              "2026-05-31T02:00:00Z"
+            ],
+            "super_session": false
+          }
+        ],
+        "event_sessions": [
+          {
+            "laps": 32767,
+            "minutes": 3,
+            "start_time_offset": 0,
+            "type": 3,
+            "type_name": "Open Practice",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          },
+          {
+            "laps": 2,
+            "minutes": 8,
+            "start_time_offset": 0,
+            "type": 4,
+            "type_name": "Lone Qualifying",
+            "unlimited_laps": false,
+            "unlimited_time": false
+          },
+          {
+            "laps": 70,
+            "minutes": 10080,
+            "start_time_offset": 0,
+            "type": 6,
+            "type_name": "Race",
+            "unlimited_laps": false,
+            "unlimited_time": true
+          }
+        ],
+        "start_date": "2026-05-28",
+        "week_end_time": "2026-06-01T23:58:00Z",
+        "track": {
+          "category": "road",
+          "category_id": 2,
+          "config_name": "Belle Isle",
+          "track_id": 319,
+          "track_name": "Detroit Grand Prix at Belle Isle"
+        },
+        "series_name": "INDYCAR iRacing Series",
+        "season_name": "INDYCAR iRacing Series - 2026 Season",
+        "special_event_type": null,
+        "weather": {
+          "simulated_start_time": "2026-05-31T12:30:00"
+        }
+      },
+      {
+        "season_id": 6216,
+        "series_id": 374,
+        "race_week_num": 8,
+        "category": "oval",
+        "category_id": 1,
+        "race_lap_limit": 260,
+        "race_time_limit": null,
+        "race_time_descriptors": [
+          {
+            "repeating": false,
+            "session_minutes": 249,
+            "session_times": [
+              "2026-06-04T01:00:00Z",
+              "2026-06-05T20:00:00Z",
+              "2026-06-06T18:00:00Z",
+              "2026-06-07T02:00:00Z"
+            ],
+            "super_session": false
+          }
+        ],
+        "event_sessions": [
+          {
+            "laps": 32767,
+            "minutes": 3,
+            "start_time_offset": 0,
+            "type": 3,
+            "type_name": "Open Practice",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          },
+          {
+            "laps": 2,
+            "minutes": 5,
+            "start_time_offset": 0,
+            "type": 4,
+            "type_name": "Lone Qualifying",
+            "unlimited_laps": false,
+            "unlimited_time": false
+          },
+          {
+            "laps": 260,
+            "minutes": 10080,
+            "start_time_offset": 0,
+            "type": 6,
+            "type_name": "Race",
+            "unlimited_laps": false,
+            "unlimited_time": true
+          }
+        ],
+        "start_date": "2026-06-04",
+        "week_end_time": "2026-06-08T23:58:00Z",
+        "track": {
+          "category": "oval",
+          "category_id": 1,
+          "config_name": "Oval",
+          "track_id": 560,
+          "track_name": "World Wide Technology Raceway (Gateway)"
+        },
+        "series_name": "INDYCAR iRacing Series",
+        "season_name": "INDYCAR iRacing Series - 2026 Season",
+        "special_event_type": null,
+        "weather": {
+          "simulated_start_time": "2026-06-07T20:00:00"
+        }
+      },
+      {
+        "season_id": 6216,
+        "series_id": 374,
+        "race_week_num": 9,
+        "category": "formula_car",
+        "category_id": 6,
+        "race_lap_limit": 55,
+        "race_time_limit": null,
+        "race_time_descriptors": [
+          {
+            "repeating": false,
+            "session_minutes": 44,
+            "session_times": [
+              "2026-06-18T01:00:00Z",
+              "2026-06-19T20:00:00Z",
+              "2026-06-20T18:00:00Z",
+              "2026-06-21T02:00:00Z"
+            ],
+            "super_session": false
+          }
+        ],
+        "event_sessions": [
+          {
+            "laps": 32767,
+            "minutes": 3,
+            "start_time_offset": 0,
+            "type": 3,
+            "type_name": "Open Practice",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          },
+          {
+            "laps": 2,
+            "minutes": 8,
+            "start_time_offset": 0,
+            "type": 4,
+            "type_name": "Lone Qualifying",
+            "unlimited_laps": false,
+            "unlimited_time": false
+          },
+          {
+            "laps": 55,
+            "minutes": 10080,
+            "start_time_offset": 0,
+            "type": 6,
+            "type_name": "Race",
+            "unlimited_laps": false,
+            "unlimited_time": true
+          }
+        ],
+        "start_date": "2026-06-18",
+        "week_end_time": "2026-06-22T23:58:00Z",
+        "track": {
+          "category": "road",
+          "category_id": 2,
+          "config_name": "[Retired] Full Course",
+          "track_id": 18,
+          "track_name": "[Retired] Road America"
+        },
+        "series_name": "INDYCAR iRacing Series",
+        "season_name": "INDYCAR iRacing Series - 2026 Season",
+        "special_event_type": null,
+        "weather": {
+          "simulated_start_time": "2026-06-21T13:00:00"
+        }
+      },
+      {
+        "season_id": 6216,
+        "series_id": 374,
+        "race_week_num": 10,
+        "category": "formula_car",
+        "category_id": 6,
+        "race_lap_limit": 90,
+        "race_time_limit": null,
+        "race_time_descriptors": [
+          {
+            "repeating": false,
+            "session_minutes": 44,
+            "session_times": [
+              "2026-07-02T01:00:00Z",
+              "2026-07-03T20:00:00Z",
+              "2026-07-04T18:00:00Z",
+              "2026-07-05T02:00:00Z"
+            ],
+            "super_session": false
+          }
+        ],
+        "event_sessions": [
+          {
+            "laps": 32767,
+            "minutes": 3,
+            "start_time_offset": 0,
+            "type": 3,
+            "type_name": "Open Practice",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          },
+          {
+            "laps": 2,
+            "minutes": 8,
+            "start_time_offset": 0,
+            "type": 4,
+            "type_name": "Lone Qualifying",
+            "unlimited_laps": false,
+            "unlimited_time": false
+          },
+          {
+            "laps": 90,
+            "minutes": 10080,
+            "start_time_offset": 0,
+            "type": 6,
+            "type_name": "Race",
+            "unlimited_laps": false,
+            "unlimited_time": true
+          }
+        ],
+        "start_date": "2026-07-02",
+        "week_end_time": "2026-07-06T23:58:00Z",
+        "track": {
+          "category": "road",
+          "category_id": 2,
+          "config_name": "[Retired] Full Course",
+          "track_id": 153,
+          "track_name": "[Retired] Mid-Ohio Sports Car Course"
+        },
+        "series_name": "INDYCAR iRacing Series",
+        "season_name": "INDYCAR iRacing Series - 2026 Season",
+        "special_event_type": null,
+        "weather": {
+          "simulated_start_time": "2026-07-05T12:30:00"
+        }
+      },
+      {
+        "season_id": 6216,
+        "series_id": 374,
+        "race_week_num": 11,
+        "category": "oval",
+        "category_id": 1,
+        "race_lap_limit": 300,
+        "race_time_limit": null,
+        "race_time_descriptors": [
+          {
+            "repeating": false,
+            "session_minutes": 261,
+            "session_times": [
+              "2026-07-16T01:00:00Z",
+              "2026-07-17T20:00:00Z",
+              "2026-07-18T18:00:00Z",
+              "2026-07-19T02:00:00Z"
+            ],
+            "super_session": false
+          }
+        ],
+        "event_sessions": [
+          {
+            "laps": 32767,
+            "minutes": 3,
+            "start_time_offset": 0,
+            "type": 3,
+            "type_name": "Open Practice",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          },
+          {
+            "laps": 2,
+            "minutes": 5,
+            "start_time_offset": 0,
+            "type": 4,
+            "type_name": "Lone Qualifying",
+            "unlimited_laps": false,
+            "unlimited_time": false
+          },
+          {
+            "laps": 300,
+            "minutes": 10080,
+            "start_time_offset": 0,
+            "type": 6,
+            "type_name": "Race",
+            "unlimited_laps": false,
+            "unlimited_time": true
+          }
+        ],
+        "start_date": "2026-07-16",
+        "week_end_time": "2026-07-20T23:58:00Z",
+        "track": {
+          "category": "oval",
+          "category_id": 1,
+          "track_id": 400,
+          "track_name": "Nashville Superspeedway"
+        },
+        "series_name": "INDYCAR iRacing Series",
+        "season_name": "INDYCAR iRacing Series - 2026 Season",
+        "special_event_type": null,
+        "weather": {
+          "simulated_start_time": "2026-07-19T16:00:00"
+        }
+      },
+      {
+        "season_id": 6216,
+        "series_id": 374,
+        "race_week_num": 12,
+        "category": "formula_car",
+        "category_id": 6,
+        "race_lap_limit": 110,
+        "race_time_limit": null,
+        "race_time_descriptors": [
+          {
+            "repeating": false,
+            "session_minutes": 150,
+            "session_times": [
+              "2026-08-06T01:00:00Z",
+              "2026-08-07T20:00:00Z",
+              "2026-08-08T18:00:00Z",
+              "2026-08-09T02:00:00Z"
+            ],
+            "super_session": false
+          }
+        ],
+        "event_sessions": [
+          {
+            "laps": 32767,
+            "minutes": 3,
+            "start_time_offset": 0,
+            "type": 3,
+            "type_name": "Open Practice",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          },
+          {
+            "laps": 2,
+            "minutes": 8,
+            "start_time_offset": 0,
+            "type": 4,
+            "type_name": "Lone Qualifying",
+            "unlimited_laps": false,
+            "unlimited_time": false
+          },
+          {
+            "laps": 110,
+            "minutes": 10080,
+            "start_time_offset": 0,
+            "type": 6,
+            "type_name": "Race",
+            "unlimited_laps": false,
+            "unlimited_time": true
+          }
+        ],
+        "start_date": "2026-08-06",
+        "week_end_time": "2026-08-10T23:58:00Z",
+        "track": {
+          "category": "road",
+          "category_id": 2,
+          "config_name": "Full Circuit",
+          "track_id": 536,
+          "track_name": "Portland International Raceway"
+        },
+        "series_name": "INDYCAR iRacing Series",
+        "season_name": "INDYCAR iRacing Series - 2026 Season",
+        "special_event_type": null,
+        "weather": {
+          "simulated_start_time": "2026-08-09T13:00:00"
+        }
+      },
+      {
+        "season_id": 6216,
+        "series_id": 374,
+        "race_week_num": 13,
+        "category": "formula_car",
+        "category_id": 6,
+        "race_lap_limit": 65,
+        "race_time_limit": null,
+        "race_time_descriptors": [
+          {
+            "repeating": false,
+            "session_minutes": 126,
+            "session_times": [
+              "2026-08-13T01:00:00Z",
+              "2026-08-14T20:00:00Z",
+              "2026-08-15T18:00:00Z",
+              "2026-08-16T02:00:00Z"
+            ],
+            "super_session": false
+          }
+        ],
+        "event_sessions": [
+          {
+            "laps": 32767,
+            "minutes": 3,
+            "start_time_offset": 0,
+            "type": 3,
+            "type_name": "Open Practice",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          },
+          {
+            "laps": 2,
+            "minutes": 8,
+            "start_time_offset": 0,
+            "type": 4,
+            "type_name": "Lone Qualifying",
+            "unlimited_laps": false,
+            "unlimited_time": false
+          },
+          {
+            "laps": 65,
+            "minutes": 10080,
+            "start_time_offset": 0,
+            "type": 6,
+            "type_name": "Race",
+            "unlimited_laps": false,
+            "unlimited_time": true
+          }
+        ],
+        "start_date": "2026-08-13",
+        "week_end_time": "2026-08-17T23:58:00Z",
+        "track": {
+          "category": "road",
+          "category_id": 2,
+          "track_id": 218,
+          "track_name": "Circuit Gilles Villeneuve"
+        },
+        "series_name": "INDYCAR iRacing Series",
+        "season_name": "INDYCAR iRacing Series - 2026 Season",
+        "special_event_type": null,
+        "weather": {
+          "simulated_start_time": "2026-08-16T12:00:00"
+        }
+      },
+      {
+        "season_id": 6216,
+        "series_id": 374,
+        "race_week_num": 14,
+        "category": "formula_car",
+        "category_id": 6,
+        "race_lap_limit": 65,
+        "race_time_limit": null,
+        "race_time_descriptors": [
+          {
+            "repeating": false,
+            "session_minutes": 110,
+            "session_times": [
+              "2026-08-20T01:00:00Z",
+              "2026-08-21T20:00:00Z",
+              "2026-08-22T18:00:00Z",
+              "2026-08-23T02:00:00Z"
+            ],
+            "super_session": false
+          }
+        ],
+        "event_sessions": [
+          {
+            "laps": 32767,
+            "minutes": 3,
+            "start_time_offset": 0,
+            "type": 3,
+            "type_name": "Open Practice",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          },
+          {
+            "laps": 2,
+            "minutes": 8,
+            "start_time_offset": 0,
+            "type": 4,
+            "type_name": "Lone Qualifying",
+            "unlimited_laps": false,
+            "unlimited_time": false
+          },
+          {
+            "laps": 65,
+            "minutes": 10080,
+            "start_time_offset": 0,
+            "type": 6,
+            "type_name": "Race",
+            "unlimited_laps": false,
+            "unlimited_time": true
+          }
+        ],
+        "start_date": "2026-08-20",
+        "week_end_time": "2026-08-24T23:58:00Z",
+        "track": {
+          "category": "road",
+          "category_id": 2,
+          "config_name": "2023 Cup",
+          "track_id": 483,
+          "track_name": "Chicago Street Course"
+        },
+        "series_name": "INDYCAR iRacing Series",
+        "season_name": "INDYCAR iRacing Series - 2026 Season",
+        "special_event_type": null,
+        "weather": {
+          "simulated_start_time": "2026-08-23T13:35:00"
+        }
+      },
+      {
+        "season_id": 6216,
+        "series_id": 374,
+        "race_week_num": 15,
+        "category": "oval",
+        "category_id": 1,
+        "race_lap_limit": 250,
+        "race_time_limit": null,
+        "race_time_descriptors": [
+          {
+            "repeating": false,
+            "session_minutes": 41,
+            "session_times": [
+              "2026-08-27T01:00:00Z",
+              "2026-08-28T20:00:00Z",
+              "2026-08-29T18:00:00Z",
+              "2026-08-30T02:00:00Z"
+            ],
+            "super_session": false
+          }
+        ],
+        "event_sessions": [
+          {
+            "laps": 32767,
+            "minutes": 3,
+            "start_time_offset": 0,
+            "type": 3,
+            "type_name": "Open Practice",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          },
+          {
+            "laps": 2,
+            "minutes": 5,
+            "start_time_offset": 0,
+            "type": 4,
+            "type_name": "Lone Qualifying",
+            "unlimited_laps": false,
+            "unlimited_time": false
+          },
+          {
+            "laps": 250,
+            "minutes": 10080,
+            "start_time_offset": 0,
+            "type": 6,
+            "type_name": "Race",
+            "unlimited_laps": false,
+            "unlimited_time": true
+          }
+        ],
+        "start_date": "2026-08-27",
+        "week_end_time": "2026-08-31T23:58:00Z",
+        "track": {
+          "category": "oval",
+          "category_id": 1,
+          "config_name": "[Retired] Old",
+          "track_id": 94,
+          "track_name": "[Retired] The Milwaukee Mile"
+        },
+        "series_name": "INDYCAR iRacing Series",
+        "season_name": "INDYCAR iRacing Series - 2026 Season",
+        "special_event_type": null,
+        "weather": {
+          "simulated_start_time": "2026-08-29T13:30:00"
+        }
+      },
+      {
+        "season_id": 6216,
+        "series_id": 374,
+        "race_week_num": 16,
+        "category": "formula_car",
+        "category_id": 6,
+        "race_lap_limit": 95,
+        "race_time_limit": null,
+        "race_time_descriptors": [
+          {
+            "repeating": false,
+            "session_minutes": 154,
+            "session_times": [
+              "2026-09-03T01:00:00Z",
+              "2026-09-04T20:00:00Z",
+              "2026-09-05T18:00:00Z",
+              "2026-09-06T02:00:00Z"
+            ],
+            "super_session": false
+          }
+        ],
+        "event_sessions": [
+          {
+            "laps": 32767,
+            "minutes": 3,
+            "start_time_offset": 0,
+            "type": 3,
+            "type_name": "Open Practice",
+            "unlimited_laps": true,
+            "unlimited_time": false
+          },
+          {
+            "laps": 2,
+            "minutes": 8,
+            "start_time_offset": 0,
+            "type": 4,
+            "type_name": "Lone Qualifying",
+            "unlimited_laps": false,
+            "unlimited_time": false
+          },
+          {
+            "laps": 95,
+            "minutes": 10080,
+            "start_time_offset": 0,
+            "type": 6,
+            "type_name": "Race",
+            "unlimited_laps": false,
+            "unlimited_time": true
+          }
+        ],
+        "start_date": "2026-09-03",
+        "week_end_time": "2026-09-07T23:58:00Z",
+        "track": {
+          "category": "road",
+          "category_id": 2,
+          "config_name": "2026",
+          "track_id": 586,
+          "track_name": "WeatherTech Raceway at Laguna Seca"
+        },
+        "series_name": "INDYCAR iRacing Series",
+        "season_name": "INDYCAR iRacing Series - 2026 Season",
+        "special_event_type": null,
+        "weather": {
+          "simulated_start_time": "2026-09-06T11:30:00"
+        }
+      }
+    ]
+  }
+]

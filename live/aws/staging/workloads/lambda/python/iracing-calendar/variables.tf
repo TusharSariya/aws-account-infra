@@ -21,3 +21,15 @@ variable "default_tags" {
   type    = map(string)
   default = {}
 }
+
+variable "provision_oauth" {
+  description = "Prepare empty credential stores; enable only for the staged API migration."
+  type        = bool
+  default     = false
+}
+
+variable "auth_maintenance_enabled" {
+  description = "Enable hourly token maintenance after successful local bootstrap."
+  type        = bool
+  default     = false
+}
