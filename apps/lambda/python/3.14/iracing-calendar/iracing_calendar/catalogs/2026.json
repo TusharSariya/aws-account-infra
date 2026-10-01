@@ -1,0 +1,971 @@
+{
+  "year": 2026,
+  "source": "https://www.iracing.com/special-events/",
+  "events": [
+    {
+      "name": "Bathurst 1000",
+      "start": "2026-10-02",
+      "end": "2026-10-05",
+      "source_urls": [
+        "https://forums.iracing.com/discussion/100630/2026-bathurst-1000-powered-by-next-level-racing/p1/",
+        "https://www.iracing.com/special-events/"
+      ],
+      "id": "2026:bathurst-1000",
+      "aliases": [],
+      "discipline": "Sports Car",
+      "track": "Mount Panorama Circuit",
+      "layout": null,
+      "classification": "special",
+      "expected_distance": null,
+      "applicable_series": [],
+      "setup_variants": [],
+      "api_mappings": [
+        {
+          "series_id": 423,
+          "season_id": 6624,
+          "race_week_num": 0,
+          "track_id": 219,
+          "fixed_setup": false
+        },
+        {
+          "series_id": 422,
+          "season_id": 6625,
+          "race_week_num": 0,
+          "track_id": 219,
+          "fixed_setup": false
+        }
+      ],
+      "review_status": "API identity verified"
+    },
+    {
+      "name": "8 Hours of Indianapolis",
+      "start": "2026-10-16",
+      "end": "2026-10-19",
+      "source_urls": [
+        "https://www.iracing.com/special-events/"
+      ],
+      "id": "2026:8-hours-of-indianapolis",
+      "aliases": [],
+      "discipline": "Sports Car",
+      "track": "Indianapolis Motor Speedway",
+      "layout": null,
+      "classification": "special",
+      "expected_distance": {
+        "value": 8,
+        "unit": "hours"
+      },
+      "applicable_series": [],
+      "setup_variants": [],
+      "api_mappings": [],
+      "review_status": "API schedule not yet published"
+    },
+    {
+      "name": "iRacing FF1600 Festival",
+      "start": "2026-10-30",
+      "end": "2026-11-01",
+      "source_urls": [
+        "https://www.iracing.com/special-events/"
+      ],
+      "id": "2026:iracing-ff1600-festival",
+      "aliases": [],
+      "discipline": "Formula Car",
+      "track": "Brands Hatch",
+      "layout": "Indy",
+      "classification": "special",
+      "expected_distance": null,
+      "applicable_series": [],
+      "setup_variants": [],
+      "api_mappings": [],
+      "review_status": "API schedule not yet published"
+    },
+    {
+      "name": "Homestead Championship",
+      "start": "2026-11-04",
+      "end": "2026-11-10",
+      "source_urls": [
+        "https://www.iracing.com/special-events/"
+      ],
+      "id": "2026:homestead-championship",
+      "aliases": [],
+      "discipline": "Oval",
+      "track": "Homestead-Miami Speedway",
+      "layout": null,
+      "classification": "special",
+      "expected_distance": null,
+      "applicable_series": [
+        "NASCAR iRacing Series"
+      ],
+      "setup_variants": [
+        "Open",
+        "Fixed"
+      ],
+      "api_mappings": [
+        {
+          "series_id": 229,
+          "season_id": 6080,
+          "race_week_num": 35,
+          "track_id": 20,
+          "fixed_setup": false
+        },
+        {
+          "series_id": 207,
+          "season_id": 6081,
+          "race_week_num": 35,
+          "track_id": 20,
+          "fixed_setup": true
+        }
+      ],
+      "review_status": "API identity verified"
+    },
+    {
+      "name": "SFL Mountain Showdown",
+      "start": "2026-11-13",
+      "end": "2026-11-16",
+      "source_urls": [
+        "https://www.iracing.com/special-events/"
+      ],
+      "id": "2026:sfl-mountain-showdown",
+      "aliases": [],
+      "discipline": "Formula Car",
+      "track": "Mount Panorama Circuit",
+      "layout": null,
+      "classification": "special",
+      "expected_distance": null,
+      "applicable_series": [],
+      "setup_variants": [],
+      "api_mappings": [],
+      "review_status": "API schedule not yet published"
+    },
+    {
+      "name": "SCCA Runoffs",
+      "start": "2026-11-17",
+      "end": "2026-11-22",
+      "source_urls": [
+        "https://www.iracing.com/special-events/"
+      ],
+      "id": "2026:scca-runoffs",
+      "aliases": [],
+      "discipline": "Sports Car",
+      "track": null,
+      "layout": null,
+      "classification": "special",
+      "expected_distance": null,
+      "applicable_series": [],
+      "setup_variants": [],
+      "api_mappings": [],
+      "review_status": "API schedule not yet published"
+    },
+    {
+      "name": "992 Endurance Cup",
+      "start": "2026-11-27",
+      "end": "2026-11-30",
+      "source_urls": [
+        "https://www.iracing.com/special-events/"
+      ],
+      "id": "2026:992-endurance-cup",
+      "aliases": [],
+      "discipline": "Sports Car",
+      "track": null,
+      "layout": null,
+      "classification": "special",
+      "expected_distance": {
+        "value": 12,
+        "unit": "hours"
+      },
+      "applicable_series": [],
+      "setup_variants": [],
+      "api_mappings": [],
+      "review_status": "API schedule not yet published"
+    },
+    {
+      "name": "Winter Derby",
+      "start": "2026-12-02",
+      "end": "2026-12-08",
+      "source_urls": [
+        "https://www.iracing.com/special-events/"
+      ],
+      "id": "2026:winter-derby",
+      "aliases": [],
+      "discipline": "Oval",
+      "track": "Five Flags Speedway",
+      "layout": null,
+      "classification": "special",
+      "expected_distance": {
+        "value": 300,
+        "unit": "laps"
+      },
+      "applicable_series": [],
+      "setup_variants": [],
+      "api_mappings": [],
+      "review_status": "API schedule not yet published"
+    },
+    {
+      "name": "Chili Bowl",
+      "start": "2026-12-15",
+      "end": "2026-12-21",
+      "source_urls": [
+        "https://www.iracing.com/special-events/"
+      ],
+      "id": "2026:chili-bowl",
+      "aliases": [],
+      "discipline": "Excluded dirt/off-road",
+      "track": "Tulsa Expo Center",
+      "layout": null,
+      "classification": "special",
+      "expected_distance": null,
+      "applicable_series": [],
+      "setup_variants": [],
+      "api_mappings": [],
+      "review_status": "excluded discipline"
+    },
+    {
+      "name": "THE Production Car Challenge @ViR",
+      "start": "2026-12-18",
+      "end": "2026-12-20",
+      "source_urls": [
+        "https://www.iracing.com/special-events/"
+      ],
+      "id": "2026:the-production-car-challenge-vir",
+      "aliases": [],
+      "discipline": "Sports Car",
+      "track": "ViR Grand Course",
+      "layout": "Grand Course",
+      "classification": "special",
+      "expected_distance": {
+        "value": 4,
+        "unit": "hours"
+      },
+      "applicable_series": [],
+      "setup_variants": [],
+      "api_mappings": [],
+      "review_status": "API schedule not yet published"
+    },
+    {
+      "name": "Dale Jr Charity Event",
+      "start": null,
+      "end": null,
+      "source_urls": [
+        "https://www.iracing.com/special-events/"
+      ],
+      "id": "2026:dale-jr-charity-event",
+      "aliases": [],
+      "discipline": "Oval",
+      "track": "Iowa Speedway",
+      "layout": null,
+      "classification": "special",
+      "expected_distance": null,
+      "applicable_series": [],
+      "setup_variants": [],
+      "api_mappings": [],
+      "review_status": "API schedule not yet published"
+    },
+    {
+      "name": "iRacing ROAR",
+      "start": "2026-01-09",
+      "end": "2026-01-11",
+      "source_urls": [
+        "https://forums.iracing.com/discussion/90576/initial-bop-2026-iracing-roar-presented-by-go-motorsports-shop/p1/",
+        "https://www.iracing.com/special-events/"
+      ],
+      "id": "2026:iracing-roar",
+      "aliases": [],
+      "discipline": "Sports Car",
+      "track": "Daytona International Speedway",
+      "layout": null,
+      "classification": "special",
+      "expected_distance": null,
+      "applicable_series": [],
+      "setup_variants": [],
+      "api_mappings": [
+        {
+          "series_id": 297,
+          "season_id": 6071,
+          "race_week_num": 0,
+          "track_id": 192,
+          "fixed_setup": false
+        }
+      ],
+      "review_status": "API identity verified"
+    },
+    {
+      "name": "Daytona 24",
+      "start": "2026-01-16",
+      "end": "2026-01-19",
+      "source_urls": [
+        "https://forums.iracing.com/discussion/90696/initial-bop-2026-daytona-24h-powered-by-vco/p1/",
+        "https://www.iracing.com/special-events/"
+      ],
+      "id": "2026:daytona-24",
+      "aliases": [],
+      "discipline": "Sports Car",
+      "track": "Daytona International Speedway",
+      "layout": null,
+      "classification": "special",
+      "expected_distance": {
+        "value": 24,
+        "unit": "hours"
+      },
+      "applicable_series": [],
+      "setup_variants": [],
+      "api_mappings": [
+        {
+          "series_id": 298,
+          "season_id": 6072,
+          "race_week_num": 0,
+          "track_id": 192,
+          "fixed_setup": false
+        }
+      ],
+      "review_status": "API identity verified"
+    },
+    {
+      "name": "Daytona 500",
+      "start": "2026-02-11",
+      "end": "2026-02-19",
+      "source_urls": [
+        "https://www.iracing.com/special-events/"
+      ],
+      "id": "2026:daytona-500",
+      "aliases": [],
+      "discipline": "Oval",
+      "track": "Daytona International Speedway",
+      "layout": null,
+      "classification": "special",
+      "expected_distance": null,
+      "applicable_series": [
+        "NASCAR iRacing Series"
+      ],
+      "setup_variants": [
+        "Open",
+        "Fixed"
+      ],
+      "api_mappings": [
+        {
+          "series_id": 229,
+          "season_id": 6080,
+          "race_week_num": 0,
+          "track_id": 191,
+          "fixed_setup": false
+        },
+        {
+          "series_id": 207,
+          "season_id": 6081,
+          "race_week_num": 0,
+          "track_id": 191,
+          "fixed_setup": true
+        }
+      ],
+      "review_status": "API identity verified"
+    },
+    {
+      "name": "Bathurst 12",
+      "start": "2026-02-20",
+      "end": "2026-02-23",
+      "source_urls": [
+        "https://forums.iracing.com/discussion/92109/bathurst-12-hour-presented-by-rss/p1/",
+        "https://www.iracing.com/special-events/"
+      ],
+      "id": "2026:bathurst-12",
+      "aliases": [],
+      "discipline": "Sports Car",
+      "track": "Mount Panorama Circuit",
+      "layout": null,
+      "classification": "special",
+      "expected_distance": {
+        "value": 12,
+        "unit": "hours"
+      },
+      "applicable_series": [],
+      "setup_variants": [],
+      "api_mappings": [
+        {
+          "series_id": 329,
+          "season_id": 6215,
+          "race_week_num": 0,
+          "track_id": 219,
+          "fixed_setup": false
+        }
+      ],
+      "review_status": "API identity verified"
+    },
+    {
+      "name": "Sebring 12HR",
+      "start": "2026-03-27",
+      "end": "2026-03-30",
+      "source_urls": [
+        "https://forums.iracing.com/discussion/93459/2026-sebring-12-hour-powered-by-vco/p1/",
+        "https://www.iracing.com/special-events/"
+      ],
+      "id": "2026:sebring-12hr",
+      "aliases": [],
+      "discipline": "Sports Car",
+      "track": "Sebring International Raceway",
+      "layout": null,
+      "classification": "special",
+      "expected_distance": {
+        "value": 12,
+        "unit": "hours"
+      },
+      "applicable_series": [],
+      "setup_variants": [],
+      "api_mappings": [
+        {
+          "series_id": 271,
+          "season_id": 6260,
+          "race_week_num": 0,
+          "track_id": 95,
+          "fixed_setup": false
+        }
+      ],
+      "review_status": "API identity verified"
+    },
+    {
+      "name": "IMSA Classic 500",
+      "start": "2026-04-10",
+      "end": "2026-04-12",
+      "source_urls": [
+        "https://forums.iracing.com/discussion/94373/2026-imsa-classic-500/p1/",
+        "https://www.iracing.com/special-events/"
+      ],
+      "id": "2026:imsa-classic-500",
+      "aliases": [],
+      "discipline": "Sports Car",
+      "track": "WeatherTech Raceway Laguna Seca",
+      "layout": null,
+      "classification": "special",
+      "expected_distance": null,
+      "applicable_series": [],
+      "setup_variants": [],
+      "api_mappings": [
+        {
+          "series_id": 618,
+          "season_id": 6262,
+          "race_week_num": 0,
+          "track_id": 47,
+          "fixed_setup": false
+        }
+      ],
+      "review_status": "API identity verified"
+    },
+    {
+      "name": "Nürburgring 24h",
+      "start": "2026-05-01",
+      "end": "2026-05-04",
+      "source_urls": [
+        "https://forums.iracing.com/discussion/95079/2026-nuerburgring-24h-presented-by-thrustmaster/p1/",
+        "https://www.iracing.com/special-events/"
+      ],
+      "id": "2026:n-rburgring-24h",
+      "aliases": [],
+      "discipline": "Sports Car",
+      "track": "Nürburgring Combined – Gesamtstrecke 24h",
+      "layout": "Combined - Gesamtstrecke 24h",
+      "classification": "special",
+      "expected_distance": {
+        "value": 24,
+        "unit": "hours"
+      },
+      "applicable_series": [],
+      "setup_variants": [],
+      "api_mappings": [
+        {
+          "series_id": 279,
+          "season_id": 6401,
+          "race_week_num": 0,
+          "track_id": 252,
+          "fixed_setup": false
+        }
+      ],
+      "review_status": "API identity verified"
+    },
+    {
+      "name": "INDY 500",
+      "start": "2026-05-05",
+      "end": "2026-05-19",
+      "source_urls": [
+        "https://forums.iracing.com/discussion/95240/2026-indy-500s/p1/",
+        "https://www.iracing.com/special-events/"
+      ],
+      "id": "2026:indy-500",
+      "aliases": [],
+      "discipline": "Oval",
+      "track": "Indianapolis Motor Speedway",
+      "layout": null,
+      "classification": "special",
+      "expected_distance": null,
+      "applicable_series": [],
+      "setup_variants": [
+        "Open",
+        "Fixed"
+      ],
+      "api_mappings": [
+        {
+          "series_id": 247,
+          "season_id": 6403,
+          "race_week_num": 0,
+          "track_id": 453,
+          "fixed_setup": false
+        },
+        {
+          "series_id": 411,
+          "season_id": 6402,
+          "race_week_num": 0,
+          "track_id": 453,
+          "fixed_setup": true
+        }
+      ],
+      "review_status": "API identity verified"
+    },
+    {
+      "name": "World 600",
+      "start": "2026-05-20",
+      "end": "2026-05-26",
+      "source_urls": [
+        "https://forums.iracing.com/categories/nascar-iracing-series-%28nis%29",
+        "https://www.iracing.com/special-events/"
+      ],
+      "id": "2026:world-600",
+      "aliases": [],
+      "discipline": "Oval",
+      "track": "Charlotte Motor Speedway",
+      "layout": null,
+      "classification": "special",
+      "expected_distance": null,
+      "applicable_series": [
+        "NASCAR iRacing Series"
+      ],
+      "setup_variants": [
+        "Open",
+        "Fixed"
+      ],
+      "api_mappings": [
+        {
+          "series_id": 229,
+          "season_id": 6080,
+          "race_week_num": 12,
+          "track_id": 556,
+          "fixed_setup": false
+        },
+        {
+          "series_id": 207,
+          "season_id": 6081,
+          "race_week_num": 12,
+          "track_id": 556,
+          "fixed_setup": true
+        }
+      ],
+      "review_status": "API identity verified"
+    },
+    {
+      "name": "4 Hours at Thruxton",
+      "start": "2026-05-29",
+      "end": "2026-06-01",
+      "source_urls": [
+        "https://forums.iracing.com/discussion/95909/4-hours-at-thruxton/p1/",
+        "https://www.iracing.com/special-events/"
+      ],
+      "id": "2026:4-hours-at-thruxton",
+      "aliases": [],
+      "discipline": "Sports Car",
+      "track": "Thruxton",
+      "layout": null,
+      "classification": "special",
+      "expected_distance": {
+        "value": 4,
+        "unit": "hours"
+      },
+      "applicable_series": [],
+      "setup_variants": [],
+      "api_mappings": [
+        {
+          "series_id": 580,
+          "season_id": 6432,
+          "race_week_num": 0,
+          "track_id": 532,
+          "fixed_setup": false
+        }
+      ],
+      "review_status": "API identity verified"
+    },
+    {
+      "name": "Watkins Glen 6 Hour",
+      "start": "2026-06-19",
+      "end": "2026-06-22",
+      "source_urls": [
+        "https://forums.iracing.com/discussion/96784/2026-wakins-glen-6h-presented-by-vco/p1/",
+        "https://www.iracing.com/special-events/"
+      ],
+      "id": "2026:watkins-glen-6-hour",
+      "aliases": [],
+      "discipline": "Sports Car",
+      "track": "Watkins Glen International",
+      "layout": null,
+      "classification": "special",
+      "expected_distance": {
+        "value": 6,
+        "unit": "hours"
+      },
+      "applicable_series": [],
+      "setup_variants": [],
+      "api_mappings": [
+        {
+          "series_id": 280,
+          "season_id": 6436,
+          "race_week_num": 0,
+          "track_id": 434,
+          "fixed_setup": false
+        }
+      ],
+      "review_status": "API identity verified"
+    },
+    {
+      "name": "Firecracker 400",
+      "start": "2026-06-30",
+      "end": "2026-07-07",
+      "source_urls": [
+        "https://www.iracing.com/special-events/"
+      ],
+      "id": "2026:firecracker-400",
+      "aliases": [],
+      "discipline": "Oval",
+      "track": "Daytona International Speedway",
+      "layout": null,
+      "classification": "special",
+      "expected_distance": null,
+      "applicable_series": [],
+      "setup_variants": [],
+      "api_mappings": [
+        {
+          "series_id": 590,
+          "season_id": 6438,
+          "race_week_num": 0,
+          "track_id": 27,
+          "fixed_setup": true
+        },
+        {
+          "series_id": 589,
+          "season_id": 6437,
+          "race_week_num": 0,
+          "track_id": 27,
+          "fixed_setup": false
+        }
+      ],
+      "review_status": "API identity verified"
+    },
+    {
+      "name": "Spa 24HR",
+      "start": "2026-07-10",
+      "end": "2026-07-13",
+      "source_urls": [
+        "https://forums.iracing.com/discussion/97720/2026-24-hours-of-spa-presented-by-falken/p1/",
+        "https://www.iracing.com/special-events/"
+      ],
+      "id": "2026:spa-24hr",
+      "aliases": [],
+      "discipline": "Sports Car",
+      "track": "Circuit de Spa-Francorchamps",
+      "layout": null,
+      "classification": "special",
+      "expected_distance": null,
+      "applicable_series": [],
+      "setup_variants": [],
+      "api_mappings": [
+        {
+          "series_id": 281,
+          "season_id": 6440,
+          "race_week_num": 0,
+          "track_id": 525,
+          "fixed_setup": false
+        }
+      ],
+      "review_status": "API identity verified"
+    },
+    {
+      "name": "Brickyard 400",
+      "start": "2026-07-22",
+      "end": "2026-07-28",
+      "source_urls": [
+        "https://www.iracing.com/special-events/"
+      ],
+      "id": "2026:brickyard-400",
+      "aliases": [],
+      "discipline": "Oval",
+      "track": "Indianapolis Motor Speedway",
+      "layout": null,
+      "classification": "special",
+      "expected_distance": null,
+      "applicable_series": [
+        "NASCAR iRacing Series"
+      ],
+      "setup_variants": [
+        "Open",
+        "Fixed"
+      ],
+      "api_mappings": [
+        {
+          "series_id": 229,
+          "season_id": 6080,
+          "race_week_num": 21,
+          "track_id": 522,
+          "fixed_setup": false
+        },
+        {
+          "series_id": 207,
+          "season_id": 6081,
+          "race_week_num": 21,
+          "track_id": 522,
+          "fixed_setup": true
+        }
+      ],
+      "review_status": "API identity verified"
+    },
+    {
+      "name": "6 Hours Of Road America",
+      "start": "2026-07-24",
+      "end": "2026-07-27",
+      "source_urls": [
+        "https://forums.iracing.com/discussion/98226/2026-iracing-road-america-6-hour-final-bop/p1/",
+        "https://www.iracing.com/special-events/"
+      ],
+      "id": "2026:6-hours-of-road-america",
+      "aliases": [],
+      "discipline": "Sports Car",
+      "track": "Road America",
+      "layout": null,
+      "classification": "special",
+      "expected_distance": {
+        "value": 6,
+        "unit": "hours"
+      },
+      "applicable_series": [],
+      "setup_variants": [],
+      "api_mappings": [
+        {
+          "series_id": 622,
+          "season_id": 6442,
+          "race_week_num": 0,
+          "track_id": 18,
+          "fixed_setup": false
+        }
+      ],
+      "review_status": "API identity verified"
+    },
+    {
+      "name": "Knoxville Nationals",
+      "start": "2026-08-04",
+      "end": "2026-08-10",
+      "source_urls": [
+        "https://forums.iracing.com/discussion/98227/iracing-presents-2026-knoxville-nationals/p1/",
+        "https://www.iracing.com/special-events/"
+      ],
+      "id": "2026:knoxville-nationals",
+      "aliases": [],
+      "discipline": "Excluded dirt/off-road",
+      "track": "Knoxville Raceway",
+      "layout": null,
+      "classification": "special",
+      "expected_distance": null,
+      "applicable_series": [],
+      "setup_variants": [],
+      "api_mappings": [],
+      "review_status": "excluded discipline"
+    },
+    {
+      "name": "Portimao 1000",
+      "start": "2026-08-14",
+      "end": "2026-08-16",
+      "source_urls": [
+        "https://www.iracing.com/special-events/"
+      ],
+      "id": "2026:portimao-1000",
+      "aliases": [],
+      "discipline": "Sports Car",
+      "track": "Algarve International Circuit",
+      "layout": null,
+      "classification": "special",
+      "expected_distance": {
+        "value": 1000,
+        "unit": "km"
+      },
+      "applicable_series": [],
+      "setup_variants": [],
+      "api_mappings": [
+        {
+          "series_id": 587,
+          "season_id": 6578,
+          "race_week_num": 0,
+          "track_id": 509,
+          "fixed_setup": false
+        }
+      ],
+      "review_status": "API identity verified"
+    },
+    {
+      "name": "Crandon Championship",
+      "start": "2026-08-25",
+      "end": "2026-08-31",
+      "source_urls": [
+        "https://forums.iracing.com/discussion/99206/2026-crandon-championship-presented-by-trak-racer/p1/",
+        "https://www.iracing.com/special-events/"
+      ],
+      "id": "2026:crandon-championship",
+      "aliases": [],
+      "discipline": "Excluded dirt/off-road",
+      "track": "Crandon International Raceway",
+      "layout": null,
+      "classification": "special",
+      "expected_distance": null,
+      "applicable_series": [],
+      "setup_variants": [],
+      "api_mappings": [],
+      "review_status": "excluded discipline"
+    },
+    {
+      "name": "Southern 500",
+      "start": "2026-09-02",
+      "end": "2026-09-08",
+      "source_urls": [
+        "https://www.iracing.com/special-events/"
+      ],
+      "id": "2026:southern-500",
+      "aliases": [],
+      "discipline": "Oval",
+      "track": "Darlington Raceway",
+      "layout": null,
+      "classification": "special",
+      "expected_distance": null,
+      "applicable_series": [
+        "NASCAR iRacing Series"
+      ],
+      "setup_variants": [
+        "Open",
+        "Fixed"
+      ],
+      "api_mappings": [
+        {
+          "series_id": 229,
+          "season_id": 6080,
+          "race_week_num": 26,
+          "track_id": 115,
+          "fixed_setup": false
+        },
+        {
+          "series_id": 207,
+          "season_id": 6081,
+          "race_week_num": 26,
+          "track_id": 115,
+          "fixed_setup": true
+        }
+      ],
+      "review_status": "API identity verified"
+    },
+    {
+      "name": "Suzuka 1000km",
+      "start": "2026-09-11",
+      "end": "2026-09-14",
+      "source_urls": [
+        "https://forums.iracing.com/discussion/99629/2026-suzuka-1000-presented-by-pimax/p1/",
+        "https://www.iracing.com/special-events/"
+      ],
+      "id": "2026:suzuka-1000km",
+      "aliases": [],
+      "discipline": "Sports Car",
+      "track": "Suzuka Circuit",
+      "layout": null,
+      "classification": "special",
+      "expected_distance": null,
+      "applicable_series": [],
+      "setup_variants": [],
+      "api_mappings": [
+        {
+          "series_id": 597,
+          "season_id": 6618,
+          "race_week_num": 0,
+          "track_id": 168,
+          "fixed_setup": false
+        }
+      ],
+      "review_status": "API identity verified"
+    },
+    {
+      "name": "Britcar 24HR",
+      "start": "2026-09-18",
+      "end": "2026-09-21",
+      "source_urls": [
+        "https://forums.iracing.com/discussion/100050/2026-britcar-24-presented-by-cosworth/p1",
+        "https://www.iracing.com/special-events/"
+      ],
+      "id": "2026:britcar-24hr",
+      "aliases": [],
+      "discipline": "Sports Car",
+      "track": "Silverstone Circuit",
+      "layout": null,
+      "classification": "special",
+      "expected_distance": {
+        "value": 24,
+        "unit": "hours"
+      },
+      "applicable_series": [],
+      "setup_variants": [],
+      "api_mappings": [
+        {
+          "series_id": 623,
+          "season_id": 6620,
+          "race_week_num": 0,
+          "track_id": 341,
+          "fixed_setup": false
+        }
+      ],
+      "review_status": "API identity verified"
+    },
+    {
+      "name": "Petit Le Mans",
+      "start": "2026-09-25",
+      "end": "2026-09-28",
+      "source_urls": [
+        "https://forums.iracing.com/discussion/100400/2026-petit-le-mans-powered-by-vco/p1/",
+        "https://www.iracing.com/special-events/"
+      ],
+      "id": "2026:petit-le-mans",
+      "aliases": [],
+      "discipline": "Sports Car",
+      "track": "Michelin Raceway Road Atlanta",
+      "layout": null,
+      "classification": "special",
+      "expected_distance": {
+        "value": 10,
+        "unit": "hours"
+      },
+      "applicable_series": [],
+      "setup_variants": [],
+      "api_mappings": [
+        {
+          "series_id": 286,
+          "season_id": 6623,
+          "race_week_num": 0,
+          "track_id": 127,
+          "fixed_setup": false
+        }
+      ],
+      "review_status": "API identity verified"
+    }
+  ],
+  "release_checks": [
+    "Validate September Bristol at 250 laps using authenticated API; do not label Bristol 500 in 2026.",
+    "Research additional full-length tour rounds separately; distance alone does not classify specials."
+  ],
+  "full_length_tours": [
+    {
+      "year": 2026,
+      "series_id": 374,
+      "classification": "full_length_tour",
+      "source_urls": [
+        "https://www.iracing.com/this-week-in-iracing-june-30th-to-july-6th-2026/"
+      ],
+      "categories": [
+        "formula_car"
+      ],
+      "note": "Full-length road rounds; do not classify as marquee specials."
+    }
+  ]
+}

@@ -156,14 +156,17 @@ resource "aws_lambda_function" "app" {
   reserved_concurrent_executions = each.value.concurrency
   environment {
     variables = merge({
-      SNAPSHOT_BUCKET = aws_s3_bucket.snapshot.id
-      CALENDAR_SOURCE = var.calendar_source
-      CALENDAR_NAME   = var.calendar_name
-      UID_DOMAIN      = var.uid_domain
-      SERVICE_NAME    = var.service_name
-    }, var.health_threshold_seconds == 129600 ? {} : { HEALTH_THRESHOLD_SECONDS = tostring(var.health_threshold_seconds) })
+      SNAPSHOT_BUCKET                                                             = aws_s3_bucket.snapshot.id
+      CALENDAR_SOURCE                                                             = var.calendar_source
+      CALENDAR_NAME                                                               = var.calendar_name
+      UID_DOMAIN                                                                  = var.uid_domain
+      SERVICE_NAME                                                                = var.service_name
+      }, var.health_threshold_seconds == 129600 ? {} : { HEALTH_THRESHOLD_SECONDS = tostring(var.health_threshold_seconds) }, each.key == "sync" && var.oauth_secrets != null ? {
+      IRACING_CLIENT_SECRET                                                       = aws_secretsmanager_secret.oauth["client"].arn
+      IRACING_TOKEN_SECRET                                                        = aws_secretsmanager_secret.oauth["tokens"].arn
+    } : {})
   }
-  depends_on = [aws_cloudwatch_log_group.lambda, aws_iam_role_policy.lambda]
+  depends_on = [aws_cloudwatch_log_group.lambda, aws_iam_role_policy.lambda, aws_iam_role_policy.oauth]
 }
 resource "aws_lambda_function_event_invoke_config" "sync" {
   function_name                = aws_lambda_function.app["sync"].function_name

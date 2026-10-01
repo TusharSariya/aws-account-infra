@@ -1,0 +1,144 @@
+{
+  "series": {
+    "assets": {
+      "link": "https://members-ng.iracing.com/data/series/assets",
+      "note": [
+        "image paths are relative to https://images-static.iracing.com/"
+      ],
+      "expirationSeconds": 900
+    },
+    "get": {
+      "link": "https://members-ng.iracing.com/data/series/get",
+      "expirationSeconds": 900
+    },
+    "past_seasons": {
+      "link": "https://members-ng.iracing.com/data/series/past_seasons",
+      "note": "Get all seasons for a series. Filter list by official:true for seasons with standings.",
+      "parameters": {
+        "series_id": {
+          "type": "number",
+          "required": true
+        }
+      },
+      "expirationSeconds": 900
+    },
+    "seasons": {
+      "link": "https://members-ng.iracing.com/data/series/seasons",
+      "parameters": {
+        "include_series": {
+          "type": "boolean"
+        },
+        "season_year": {
+          "type": "number",
+          "note": "To look up past seasons use both a season_year and season_quarter.  Without both, the active seasons are returned."
+        },
+        "season_quarter": {
+          "type": "number",
+          "note": "To look up past seasons use both a season_year and season_quarter.  Without both, the active seasons are returned."
+        }
+      },
+      "expirationSeconds": 900
+    },
+    "season_list": {
+      "link": "https://members-ng.iracing.com/data/series/season_list",
+      "parameters": {
+        "include_series": {
+          "type": "boolean"
+        },
+        "season_year": {
+          "type": "number"
+        },
+        "season_quarter": {
+          "type": "number"
+        }
+      },
+      "expirationSeconds": 900
+    },
+    "season_schedule": {
+      "link": "https://members-ng.iracing.com/data/series/season_schedule",
+      "parameters": {
+        "season_id": {
+          "type": "number",
+          "required": true
+        }
+      },
+      "expirationSeconds": 900
+    },
+    "stats_series": {
+      "link": "https://members-ng.iracing.com/data/series/stats_series",
+      "note": "To get series and seasons for which standings should be available, filter the list by official: true.",
+      "expirationSeconds": 900
+    }
+  },
+  "season": {
+    "list": {
+      "link": "https://members-ng.iracing.com/data/season/list",
+      "parameters": {
+        "season_year": {
+          "type": "number",
+          "required": true
+        },
+        "season_quarter": {
+          "type": "number",
+          "required": true
+        }
+      },
+      "expirationSeconds": 900
+    },
+    "race_guide": {
+      "link": "https://members-ng.iracing.com/data/season/race_guide",
+      "parameters": {
+        "from": {
+          "type": "string",
+          "note": "ISO-8601 offset format. Defaults to the current time. Include sessions with start times up to 3 hours after this time. Times in the past will be rewritten to the current time."
+        },
+        "include_end_after_from": {
+          "type": "boolean",
+          "note": "Include sessions which start before 'from' but end after."
+        }
+      },
+      "expirationSeconds": 60
+    },
+    "spectator_subsessionids": {
+      "link": "https://members-ng.iracing.com/data/season/spectator_subsessionids",
+      "parameters": {
+        "event_types": {
+          "type": "numbers",
+          "note": "Types of events to include in the search. Defaults to all. ?event_types=2,3,4,5"
+        }
+      },
+      "expirationSeconds": 60
+    },
+    "spectator_subsessionids_detail": {
+      "link": "https://members-ng.iracing.com/data/season/spectator_subsessionids_detail",
+      "parameters": {
+        "event_types": {
+          "type": "numbers",
+          "note": "Types of events to include in the search. Defaults to all. ?event_types=2,3,4,5"
+        },
+        "season_ids": {
+          "type": "numbers",
+          "note": "Seasons to include in the search. Defaults to all. ?season_ids=513,937"
+        }
+      },
+      "expirationSeconds": 60
+    }
+  },
+  "constants": {
+    "categories": {
+      "link": "https://members-ng.iracing.com/data/constants/categories",
+      "note": "Constant; returned directly as an array of objects",
+      "expirationSeconds": 900
+    },
+    "divisions": {
+      "link": "https://members-ng.iracing.com/data/constants/divisions",
+      "note": "Constant; returned directly as an array of objects",
+      "expirationSeconds": 900
+    },
+    "event_types": {
+      "link": "https://members-ng.iracing.com/data/constants/event_types",
+      "note": "Constant; returned directly as an array of objects",
+      "expirationSeconds": 900
+    }
+  }
+}

@@ -11,12 +11,18 @@ module "calendar" {
   package_builder          = "scripts/iracing-package.py"
   handlers                 = { sync = "iracing_calendar.sync.lambda_handler", feed = "iracing_calendar.feed.lambda_handler" }
   route                    = "/calendars/iracing.ics"
-  refresh_schedule         = "cron(0 3 ? * TUE *)"
-  refresh_name_suffix      = "weekly"
-  health_threshold_seconds = 691200
+  refresh_schedule         = "rate(6 hours)"
+  refresh_name_suffix      = "six-hourly"
+  health_threshold_seconds = 86400
   sync_object_keys         = ["current.json", "source-cache.json"]
   memory_sizes             = { sync = 1024, feed = 256 }
   sync_timeout             = 540
+  oauth_secrets = var.provision_oauth ? {
+    client_name         = "/staging/iracing-calendar/client"
+    token_name          = "/staging/iracing-calendar/tokens"
+    maintenance_enabled = var.auth_maintenance_enabled
+  } : null
 }
 output "calendar_url" { value = module.calendar.calendar_url }
 output "sync_function" { value = module.calendar.sync_function }
+output "oauth_secret_names" { value = module.calendar.oauth_secret_names }

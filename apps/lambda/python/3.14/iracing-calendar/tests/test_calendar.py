@@ -224,7 +224,7 @@ def test_source_failure_preserves_snapshot(store):
     previous = snapshot()
     store.write(previous)
 
-    def broken(fetcher, saved):
+    def broken(*args):
         raise ValueError("unrecognized source")
 
     with pytest.raises(ValueError):
@@ -233,7 +233,7 @@ def test_source_failure_preserves_snapshot(store):
 
 
 def test_refresh_and_busy(store):
-    def extractor(fetcher, saved):
+    def extractor(*args):
         return occurrences(SERIES), ["series:2026 Season 4"], {}
 
     result = refresh(store, NOW, extractor)
