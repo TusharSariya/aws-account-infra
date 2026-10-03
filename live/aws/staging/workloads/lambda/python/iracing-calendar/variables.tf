@@ -23,7 +23,7 @@ variable "default_tags" {
 }
 
 variable "provision_oauth" {
-  description = "Prepare empty credential stores; enable only for the staged API migration."
+  description = "Enable IAM access to OAuth SSM parameters populated outside OpenTofu."
   type        = bool
   default     = false
 }

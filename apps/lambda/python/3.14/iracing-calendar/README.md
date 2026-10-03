@@ -35,9 +35,12 @@ chunk pagination, caches and request budgets are bounded.
 
 ## Authentication
 
-AWS stores client credentials and rotating tokens in separate Secrets Manager secrets
-encrypted by a dedicated rotating KMS key. OpenTofu manages metadata and IAM only.
-The feed role cannot read either secret. Hourly sync-role maintenance renews tokens
+AWS stores client credentials and rotating tokens in separate SSM Standard
+SecureString parameters encrypted with the AWS-managed `alias/aws/ssm` key.
+OpenTofu manages parameter names and IAM; values never enter its state. Bootstrap
+or migration creates the parameters, and writes enforce the 4 KB UTF-8 limit
+without upgrading to the paid Advanced tier. The feed role cannot read either
+parameter. Hourly sync-role maintenance renews tokens
 under the same lease used by extraction. New tokens are persisted before subsequent
 network calls. An uncertain exchange leaves a durable pending marker: never restore
 or retry an old single-use refresh token. Run local bootstrap to recover.
@@ -50,14 +53,14 @@ client configuration and prompts without echo for missing fields and the passwor
 AWS_PROFILE=admin AWS_DEFAULT_REGION=us-east-1 \
 uv run --locked --directory apps/lambda/python/3.14/iracing-calendar \
 python -m iracing_calendar.cli auth bootstrap \
-  --client-secret /staging/iracing-calendar/client \
-  --token-secret /staging/iracing-calendar/tokens \
+  --client-parameter /staging/iracing-calendar/client \
+  --token-parameter /staging/iracing-calendar/tokens \
   --bucket iracing-calendar-992382747916-us-east-1
 ```
 
-`auth status` takes the same secret arguments, without `--bucket`, and reports only
+`auth status` takes the same parameter arguments, without `--bucket`, and reports only
 configuration, expiry timestamps and reauthentication requirements. The actual OAuth
-client ID is the named client configured in Secrets Manager, not the UUID identifying
+client ID is the named client configured in SSM, not the UUID identifying
 a secret on the issuer's screen.
 
 Protocol: [OAuth token endpoint](https://oauth.iracing.com/oauth2/book/token_endpoint.html),
@@ -77,8 +80,8 @@ content-addressed Lambda artifacts provide rollback; old snapshots expire after 
 # Does not publish a new calendar. Outputs ICS plus a full JSON coverage/diff report.
 AWS_PROFILE=admin AWS_DEFAULT_REGION=us-east-1 \
 SNAPSHOT_BUCKET=iracing-calendar-992382747916-us-east-1 \
-IRACING_CLIENT_SECRET=/staging/iracing-calendar/client \
-IRACING_TOKEN_SECRET=/staging/iracing-calendar/tokens \
+IRACING_CLIENT_PARAMETER=/staging/iracing-calendar/client \
+IRACING_TOKEN_PARAMETER=/staging/iracing-calendar/tokens \
 uv run --locked --directory apps/lambda/python/3.14/iracing-calendar \
 python -m iracing_calendar.cli extract --output /tmp/iracing-preview.ics
 
@@ -101,3 +104,9 @@ in the repository for the initial comparison and rollback references.
 Deployment follows the existing PR `apply` label workflow: checks and OpenTofu plans,
 CI apply, synchronous initialization, then merge. Authentication metadata and hourly
 maintenance remain optional shared-module inputs; swimming defaults are unchanged.
+
+The apply workflow runs `auth migrate` before changing infrastructure. It stages
+the existing tokens under the shared lease, disables the old token store, then
+activates SSM. OpenTofu retires the old Secrets Manager resources and dedicated
+KMS key only after this guard succeeds. See [SSM cutover](../../../../../docs/iracing-ssm-cutover.md)
+for recovery, rollback restrictions and the exact command.

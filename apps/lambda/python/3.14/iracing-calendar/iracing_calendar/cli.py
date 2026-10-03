@@ -14,17 +14,28 @@ from .sources import Fetcher
 
 
 def auth_command(args):
-    from .auth import Auth, AuthError, Secrets
+    from .auth import Auth, AuthError, Parameters
     from .store import Conflict, Store
 
-    secrets = Secrets(args.client_secret, args.token_secret)
+    secrets = Parameters(args.client_parameter, args.token_parameter)
     try:
+        if args.auth_action == "migrate":
+            from .auth_migration import migrate_auth
+
+            result = migrate_auth(
+                secrets,
+                Store(bucket=args.bucket),
+                args.legacy_client_secret,
+                args.legacy_token_secret,
+            )
+            print(json.dumps(result))
+            return 0
         if args.auth_action == "status":
             status = secrets.status()
             print(json.dumps(status, indent=2))
             return int(status["reauthentication_required"])
         # Refuse getpass's fallback to echoed stdin. Credentials never enter argv.
-        saved = secrets.read(secrets.client_secret)
+        saved = secrets.read(secrets.client_parameter)
         with warnings.catch_warnings():
             warnings.simplefilter("error", getpass.GetPassWarning)
             config = {
@@ -41,10 +52,21 @@ def auth_command(args):
             }
             password = getpass.getpass("iRacing account password (never stored): ")
         store = Store(bucket=args.bucket)
-        _, etag, owner = store.claim()
+        previous, etag, owner = store.claim()
         try:
             Auth(secrets, store, etag, owner).bootstrap(
                 config, config["allowed_username"], password
+            )
+            store.publish(
+                previous
+                | {
+                    "auth_storage": {
+                        "client": args.client_parameter,
+                        "tokens": args.token_parameter,
+                    }
+                },
+                etag,
+                owner,
             )
         finally:
             password = None
@@ -75,20 +97,25 @@ def main():
     sync.add_argument("--function", required=True)
     auth = subs.add_parser("auth")
     commands = auth.add_subparsers(dest="auth_action", required=True)
-    for name in ("bootstrap", "status"):
+    for name in ("bootstrap", "status", "migrate"):
         command = commands.add_parser(name)
         command.add_argument(
-            "--client-secret", required=True, help="Secrets Manager name or ARN"
+            "--client-parameter", required=True, help="SSM SecureString parameter name"
         )
         command.add_argument(
-            "--token-secret", required=True, help="Separate Secrets Manager name or ARN"
+            "--token-parameter",
+            required=True,
+            help="Separate SSM SecureString parameter name",
         )
-        if name == "bootstrap":
+        if name in {"bootstrap", "migrate"}:
             command.add_argument(
                 "--bucket",
                 required=True,
                 help="Existing snapshot bucket for the shared lease",
             )
+        if name == "migrate":
+            command.add_argument("--legacy-client-secret", required=True)
+            command.add_argument("--legacy-token-secret", required=True)
     args = parser.parse_args()
     if args.command == "auth":
         return auth_command(args)

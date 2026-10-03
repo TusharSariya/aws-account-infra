@@ -37,10 +37,8 @@ def leased(monkeypatch):
         store = Store(s3, "auth-test")
         store.write({"ics": "last-good", "last_success": 1})
         _, etag, owner = store.claim()
-        api = boto3.client("secretsmanager")
-        for name in ("client", "tokens"):
-            api.create_secret(Name=name)
-        secrets = auth.Secrets("client", "tokens", api)
+        api = boto3.client("ssm")
+        secrets = auth.Parameters("client", "tokens", api)
         exchanges = []
 
         def exchange(url, form):
@@ -183,16 +181,16 @@ def test_cli_status_never_prints_credentials(leased, monkeypatch, capsys):
 
     service, _ = leased
     service.bootstrap(CONFIG, CONFIG["allowed_username"], "password")
-    monkeypatch.setattr(auth, "Secrets", lambda *_: service.secrets)
+    monkeypatch.setattr(auth, "Parameters", lambda *_: service.secrets)
     monkeypatch.setattr(
         "sys.argv",
         [
             "cli",
             "auth",
             "status",
-            "--client-secret",
+            "--client-parameter",
             "client",
-            "--token-secret",
+            "--token-parameter",
             "tokens",
         ],
     )
@@ -216,7 +214,7 @@ def test_bootstrap_reuses_saved_client_and_prompts_only_for_account(
     service.secrets.write(
         "client", {k: v for k, v in CONFIG.items() if k != "allowed_username"}
     )
-    monkeypatch.setattr(auth, "Secrets", lambda *_: service.secrets)
+    monkeypatch.setattr(auth, "Parameters", lambda *_: service.secrets)
     monkeypatch.setattr(store, "Store", lambda **_: service.store)
     prompts = []
 
@@ -237,9 +235,9 @@ def test_bootstrap_reuses_saved_client_and_prompts_only_for_account(
             "cli",
             "auth",
             "bootstrap",
-            "--client-secret",
+            "--client-parameter",
             "client",
-            "--token-secret",
+            "--token-parameter",
             "tokens",
             "--bucket",
             "auth-test",
@@ -356,7 +354,7 @@ def test_hourly_action_preserves_snapshot_and_releases_lease(leased, monkeypatch
     monkeypatch.setattr(sync, "Store", lambda: service.store)
     monkeypatch.setattr(auth.Auth, "access", lambda self: "access")
     monkeypatch.setattr(sync, "authentication", lambda *_: service)
-    monkeypatch.setenv("IRACING_CLIENT_SECRET", "client")
-    monkeypatch.setenv("IRACING_TOKEN_SECRET", "tokens")
+    monkeypatch.setenv("IRACING_CLIENT_PARAMETER", "client")
+    monkeypatch.setenv("IRACING_TOKEN_PARAMETER", "tokens")
     assert sync.lambda_handler({"action": "auth"}, None)["status"] == "ok"
     assert service.store.read()[0] == {"ics": "last-good", "last_success": 1}
