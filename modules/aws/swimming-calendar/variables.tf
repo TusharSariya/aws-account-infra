@@ -50,8 +50,8 @@ variable "sync_timeout" {
   default = 600
 }
 
-variable "oauth_secrets" {
-  description = "Optional credential resource metadata only. Values are populated outside OpenTofu."
+variable "oauth_parameters" {
+  description = "Optional SSM SecureString parameter names. Values are populated outside OpenTofu."
   type = object({
     client_name         = string
     token_name          = string
@@ -59,7 +59,14 @@ variable "oauth_secrets" {
   })
   default = null
   validation {
-    condition     = var.oauth_secrets == null ? true : var.oauth_secrets.client_name != var.oauth_secrets.token_name
-    error_message = "Client credentials and tokens must use separate secrets."
+    condition     = var.oauth_parameters == null ? true : var.oauth_parameters.client_name != var.oauth_parameters.token_name
+    error_message = "Client credentials and tokens must use separate parameters."
+  }
+  validation {
+    condition = var.oauth_parameters == null ? true : alltrue([
+      for name in [var.oauth_parameters.client_name, var.oauth_parameters.token_name] :
+      startswith(name, "/") && length(regexall(":", name)) == 0
+    ])
+    error_message = "Use absolute, unversioned SSM parameter paths."
   }
 }

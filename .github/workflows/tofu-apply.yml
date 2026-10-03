@@ -148,6 +148,17 @@ jobs:
           PROXMOX_VE_ENDPOINT: https://pve.tail2f646b.ts.net/
           PROXMOX_VE_API_TOKEN: ${{ secrets.PROXMOX_APPLY_API_TOKEN }}
         run: python3 scripts/proxmox-ci-check.py apply
+      - name: Migrate iRacing OAuth to SSM before retiring legacy storage
+        if: contains(fromJSON(needs.detect.outputs.units).*.id, 'aws-staging-iracing-calendar')
+        run: |
+          uv run --frozen --directory apps/lambda/python/3.14/iracing-calendar \
+            python -m iracing_calendar.cli auth migrate \
+            --client-parameter /staging/iracing-calendar/client \
+            --token-parameter /staging/iracing-calendar/tokens \
+            --legacy-client-secret /staging/iracing-calendar/client \
+            --legacy-token-secret /staging/iracing-calendar/tokens \
+            --bucket iracing-calendar-992382747916-us-east-1
+
       - name: Apply AWS and Proxmox prerequisites in dependency order
         env:
           UNITS_JSON: ${{ needs.detect.outputs.units }}

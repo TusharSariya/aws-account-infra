@@ -1,6 +1,6 @@
 """Local Password Limited bootstrap and fail-closed, leased token rotation.
 
-Only Secrets Manager contains credentials. The snapshot lease coordinates every
+Only SSM SecureString parameters contain credentials. The snapshot lease coordinates every
 exchange, including local bootstrap. An in-flight marker is durable *before*
 using a single-use refresh token, so a crash cannot accidentally replay it.
 """
@@ -9,7 +9,6 @@ import base64
 import hashlib
 import json
 import time
-import uuid
 from http.client import HTTPException
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
@@ -139,41 +138,57 @@ def verify_access(token, config, clock=time.time, fetch=request_json):
         ) from None
 
 
-class Secrets:
-    def __init__(self, client_secret, token_secret, api=None):
-        if client_secret == token_secret:
-            raise AuthError("Client credentials and tokens require separate secrets")
-        self.api = api or client("secretsmanager")
-        self.client_secret = client_secret
-        self.token_secret = token_secret
+class Parameters:
+    def __init__(self, client_parameter, token_parameter, api=None):
+        if client_parameter == token_parameter or any(
+            ":" in name for name in (client_parameter, token_parameter)
+        ):
+            raise AuthError("Use separate unversioned SSM parameter names")
+        self.api = api or client("ssm")
+        self.client_parameter = client_parameter
+        self.token_parameter = token_parameter
 
     def read(self, secret):
         try:
-            return json.loads(
-                self.api.get_secret_value(SecretId=secret)["SecretString"]
-            )
-        except self.api.exceptions.ResourceNotFoundException:
+            parameter = self.api.get_parameter(Name=secret, WithDecryption=True)[
+                "Parameter"
+            ]
+            value = json.loads(parameter["Value"])
+            if parameter["Type"] != "SecureString" or not isinstance(value, dict):
+                raise ValueError()
+            return value
+        except self.api.exceptions.ParameterNotFound:
             return {}
         except BotoCoreError, ClientError, ValueError, KeyError:
-            raise AuthError("Unable to read authentication secret") from None
+            raise AuthError("Unable to read authentication parameter") from None
 
     def write(self, secret, value):
         try:
-            self.api.put_secret_value(
-                SecretId=secret,
-                SecretString=json.dumps(value, separators=(",", ":")),
-                ClientRequestToken=str(uuid.uuid4()),
+            self.api.put_parameter(
+                Name=secret,
+                Value=self.serialize(value),
+                Type="SecureString",
+                KeyId="alias/aws/ssm",
+                Tier="Standard",
+                Overwrite=True,
             )
         except BotoCoreError, ClientError:
             raise AuthError(
                 "Unable to persist authentication state; do not retry token exchange"
             ) from None
 
+    @staticmethod
+    def serialize(value):
+        body = json.dumps(value, separators=(",", ":"), ensure_ascii=False)
+        if len(body.encode("utf-8")) > 4096:
+            raise AuthError("Authentication state exceeds SSM Standard's 4 KB limit")
+        return body
+
     def status(self, now=None):
         now = time.time() if now is None else now
-        state = self.read(self.token_secret)
+        state = self.read(self.token_parameter)
         return {
-            "configured": bool(self.read(self.client_secret)),
+            "configured": bool(self.read(self.client_parameter)),
             "reauthentication_required": state.get("state") != "ready"
             or state.get("refresh_expires_at", 0) <= now,
             "access_expires_at": state.get("access_expires_at"),
@@ -212,7 +227,7 @@ class Auth:
         if username.strip().lower() != config["allowed_username"].strip().lower():
             raise AuthError("Account is not the configured allowed user")
         self.fence()
-        self.secrets.write(self.secrets.client_secret, config)
+        self.secrets.write(self.secrets.client_parameter, config)
         return self._exchange(
             config,
             {
@@ -225,8 +240,8 @@ class Auth:
 
     def access(self):
         self.fence()
-        config = self.secrets.read(self.secrets.client_secret)
-        tokens = self.secrets.read(self.secrets.token_secret)
+        config = self.secrets.read(self.secrets.client_parameter)
+        tokens = self.secrets.read(self.secrets.token_parameter)
         if (
             tokens.get("state") != "ready"
             or tokens.get("refresh_expires_at", 0) <= self.clock() + 60
@@ -244,9 +259,9 @@ class Auth:
 
     def _exchange(self, config, form):
         self.fence()
-        # This deliberately removes the old refresh token from AWSCURRENT before
-        # exchange. Never recover from AWSPREVIOUS: it may already be consumed.
-        self.secrets.write(self.secrets.token_secret, {"state": "exchange_pending"})
+        # Replace the latest value before exchange. Never recover a historical
+        # parameter version: its single-use refresh token may already be consumed.
+        self.secrets.write(self.secrets.token_parameter, {"state": "exchange_pending"})
         self.fence()
         started = self.clock()
         response = self.exchange(
@@ -282,8 +297,8 @@ class Auth:
             ) from None
         self.fence()
         # Persist the issued pair before any follow-up network request.
-        self.secrets.write(self.secrets.token_secret, tokens)
+        self.secrets.write(self.secrets.token_parameter, tokens)
         self.verify(tokens["access_token"], config)
         self.fence()
-        self.secrets.write(self.secrets.token_secret, tokens | {"state": "ready"})
+        self.secrets.write(self.secrets.token_parameter, tokens | {"state": "ready"})
         return tokens["access_token"]

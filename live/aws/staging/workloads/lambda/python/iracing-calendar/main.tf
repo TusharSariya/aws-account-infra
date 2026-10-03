@@ -17,7 +17,7 @@ module "calendar" {
   sync_object_keys         = ["current.json", "source-cache.json"]
   memory_sizes             = { sync = 1024, feed = 256 }
   sync_timeout             = 540
-  oauth_secrets = var.provision_oauth ? {
+  oauth_parameters = var.provision_oauth ? {
     client_name         = "/staging/iracing-calendar/client"
     token_name          = "/staging/iracing-calendar/tokens"
     maintenance_enabled = var.auth_maintenance_enabled
@@ -25,4 +25,4 @@ module "calendar" {
 }
 output "calendar_url" { value = module.calendar.calendar_url }
 output "sync_function" { value = module.calendar.sync_function }
-output "oauth_secret_names" { value = module.calendar.oauth_secret_names }
+output "oauth_parameter_names" { value = module.calendar.oauth_parameter_names }

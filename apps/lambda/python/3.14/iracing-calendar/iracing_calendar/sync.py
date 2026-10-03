@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 
 from .adapter import extract
 from .api import DataAPI
-from .auth import Auth, Secrets
+from .auth import Auth, Parameters
 from .catalog import load_catalog
 from .migration import differences, migrate
 from .reconcile import reconcile
@@ -32,8 +32,9 @@ def health(store, now):
 
 def authentication(store, etag, owner):
     return Auth(
-        Secrets(
-            os.environ["IRACING_CLIENT_SECRET"], os.environ["IRACING_TOKEN_SECRET"]
+        Parameters(
+            os.environ["IRACING_CLIENT_PARAMETER"],
+            os.environ["IRACING_TOKEN_PARAMETER"],
         ),
         store,
         etag,

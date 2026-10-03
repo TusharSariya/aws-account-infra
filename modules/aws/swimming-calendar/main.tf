@@ -161,9 +161,9 @@ resource "aws_lambda_function" "app" {
       CALENDAR_NAME                                                               = var.calendar_name
       UID_DOMAIN                                                                  = var.uid_domain
       SERVICE_NAME                                                                = var.service_name
-      }, var.health_threshold_seconds == 129600 ? {} : { HEALTH_THRESHOLD_SECONDS = tostring(var.health_threshold_seconds) }, each.key == "sync" && var.oauth_secrets != null ? {
-      IRACING_CLIENT_SECRET                                                       = aws_secretsmanager_secret.oauth["client"].arn
-      IRACING_TOKEN_SECRET                                                        = aws_secretsmanager_secret.oauth["tokens"].arn
+      }, var.health_threshold_seconds == 129600 ? {} : { HEALTH_THRESHOLD_SECONDS = tostring(var.health_threshold_seconds) }, each.key == "sync" && var.oauth_parameters != null ? {
+      IRACING_CLIENT_PARAMETER                                                    = var.oauth_parameters.client_name
+      IRACING_TOKEN_PARAMETER                                                     = var.oauth_parameters.token_name
     } : {})
   }
   depends_on = [aws_cloudwatch_log_group.lambda, aws_iam_role_policy.lambda, aws_iam_role_policy.oauth]
