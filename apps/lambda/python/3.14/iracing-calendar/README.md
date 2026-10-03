@@ -12,7 +12,20 @@ round. Continuous interval racing and practice/qualifying-only schedules are exc
 All published future rounds are included; completed events are retained for 30 days.
 Starts are published race-session starts, including attached practice/qualifying,
 not estimated green flags. Simulated weather timestamps never supply calendar starts.
-No race finish time is guessed. Clients display confirmed UTC starts in local time.
+Clients display confirmed UTC starts in local time. Timed events now occupy a
+calendar block using the corresponding API `race_time_descriptors.session_minutes`.
+This includes the scheduled session overhead and also provides an iRacing estimate
+for lap/distance races, without inventing lap speeds or adding practice twice.
+Descriptions label ends as estimated. Mixed lap/time races whose session block
+includes the race time cap are explicitly labelled as maximum planned blocks;
+they can finish much earlier when the lap limit is reached.
+
+If session duration is missing, a published race time limit supplies a race-only
+block, with omitted overhead disclosed. A reviewed hours-based special can use
+the same fallback once an announcement confirms its start. Without either source,
+the end remains unknown. Date-only placeholders retain their date ranges.
+Duration corrections preserve UIDs and increment sequence, and the preview reports
+`end_changes`. See `docs/iracing-duration-research.md` for source evidence and limits.
 
 `catalogs/2026.json` records the complete 2026 official inventory, including all five
 NASCAR rounds and separate Open/Fixed identity mappings. Names alone never resolve an

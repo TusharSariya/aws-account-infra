@@ -7,6 +7,7 @@ from urllib.parse import urljoin, urlsplit
 from bs4 import BeautifulSoup
 
 from .api import ContractError
+from .duration import end_time
 from .sources import NEWS
 
 DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -97,7 +98,7 @@ def supplement(events, catalog, fetch, now):
                         "id": placeholder["round_id"] + f"|{i}",
                         "start": start,
                         "all_day": False,
-                        "end": None,
+                        "end": end_time(start, placeholder.get("duration")),
                         "sources": sorted(set(placeholder["sources"]) | {url}),
                         "provenance": placeholder["provenance"] | {"starts": url},
                     }

@@ -66,4 +66,15 @@ def differences(previous, result):
             for key in sorted(new.keys() & old.keys())
             if new[key]["start"] != old[key]["start"]
         ],
+        "end_changes": [
+            {
+                "id": key,
+                "name": new[key]["name"],
+                "before": old[key].get("end"),
+                "after": new[key].get("end"),
+                "duration": new[key].get("duration"),
+            }
+            for key in sorted(new.keys() & old.keys())
+            if new[key].get("end") != old[key].get("end")
+        ],
     }

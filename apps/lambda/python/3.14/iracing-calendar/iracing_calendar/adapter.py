@@ -4,6 +4,7 @@ from datetime import UTC, date, datetime, time, timedelta
 
 from .api import ContractError
 from .catalog import SOURCE, coverage_report, parse_inventory
+from .duration import catalog_duration, end_time, race_duration
 
 PAVED = {"oval", "sports_car", "formula_car"}
 API_SOURCE = "https://members-ng.iracing.com/data/series/season_schedule"
@@ -17,11 +18,16 @@ def instant(value):
 
 
 def starts(round_, include_repeating=False):
+    return sorted(session_blocks(round_, include_repeating))
+
+
+def session_blocks(round_, include_repeating=False):
+    """Keep each start paired with its own descriptor's published duration."""
     lower = datetime.combine(date.fromisoformat(round_["start_date"]), time(), UTC)
     upper = instant(round_["week_end_time"])
     if upper < lower:
         raise ContractError("Invalid round boundaries")
-    output = set()
+    output = {}
     descriptors = round_["race_time_descriptors"]
     for descriptor in descriptors:
         if descriptor.get("timezone", "UTC") not in ("UTC", "Etc/UTC", "GMT"):
@@ -52,8 +58,12 @@ def starts(round_, include_repeating=False):
             continue
         if any(not lower <= value <= upper for value in values):
             raise ContractError("Explicit race start outside its published round")
-        output.update(values)
-    return sorted(output)
+        duration = race_duration(round_, descriptor)
+        for value in values:
+            if value in output and output[value] != duration:
+                raise ContractError("Conflicting durations for the same race start")
+            output[value] = duration
+    return output
 
 
 def round_key(season, round_):
@@ -127,7 +137,8 @@ def normalize(seasons, catalog, html, now):
                 raise ContractError(
                     f"Unreviewed standalone API race identity: {season['season_id']}"
                 )
-            values = starts(round_, include_repeating=bool(special))
+            blocks = session_blocks(round_, include_repeating=bool(special))
+            values = sorted(blocks)
             identity = round_key(season, round_)
             track = round_["track"]
             classes = ["irregular"] if irregular else []
@@ -157,6 +168,7 @@ def normalize(seasons, catalog, html, now):
             if season["fixed_setup"] and "Fixed" not in name:
                 name += " - Fixed"
             for index, start in enumerate(values or [None]):
+                duration = blocks[start] if start else race_duration(round_)
                 events.append(
                     {
                         "id": f"{identity}|{index}",
@@ -178,7 +190,8 @@ def normalize(seasons, catalog, html, now):
                             else ""
                         ),
                         "start": start.isoformat() if start else round_["start_date"],
-                        "end": None
+                        "duration": duration,
+                        "end": end_time(start.isoformat(), duration)
                         if start
                         else (
                             instant(round_["week_end_time"]).date() + timedelta(days=1)
@@ -227,6 +240,7 @@ def normalize(seasons, catalog, html, now):
                 "start": entry["start"],
                 "end": entry["end"],
                 "all_day": True,
+                "duration": catalog_duration(entry),
                 "length": "Unpublished",
                 "cars": "",
                 "eligibility": "",
