@@ -5,6 +5,8 @@ from datetime import date, datetime, timedelta
 
 from icalendar import Calendar, Event
 
+from .duration import describe
+
 
 def render(events):
     calendar = Calendar()
@@ -41,6 +43,8 @@ def render(events):
         ]
         if item.get("description"):
             description.append(item["description"])
+        if not item["all_day"] and item.get("duration"):
+            description.append(describe(item["duration"]))
         if item["all_day"]:
             description.append("Start times unconfirmed.")
         description.extend(item["sources"])
