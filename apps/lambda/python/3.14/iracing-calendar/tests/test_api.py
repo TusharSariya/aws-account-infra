@@ -31,7 +31,8 @@ def test_captured_api_inventory_specials_and_bristol():
     assert bristol and all(
         e["length"] == "250 laps"
         and "special" not in e["classification"]
-        and e["end"] is None
+        and e["end"] is not None
+        and e["duration"]["kind"] == "session_estimate"
         for e in bristol
     )
     daytona = [e for e in events if e["provenance"]["special_id"] == "2026:daytona-500"]
