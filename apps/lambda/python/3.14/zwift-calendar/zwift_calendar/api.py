@@ -1,0 +1,131 @@
+"""Observed public events and authenticated score/result contracts."""
+
+import math
+from datetime import UTC, datetime, timedelta
+from urllib.parse import urlencode
+
+from .errors import AuthenticationError, ContractError
+from .transport import API
+
+
+def instant(value):
+    try:
+        result = datetime.fromisoformat(value)
+        if result.tzinfo is None:
+            raise ValueError
+        return result.astimezone(UTC)
+    except ValueError, TypeError:
+        raise ContractError("Invalid upstream timestamp") from None
+
+
+def score_value(data):
+    if not isinstance(data, dict) or not isinstance(data.get("scores"), dict):
+        raise ContractError("Invalid score response")
+    score = data["scores"].get("ZWIFT_PUBLIC_SCORE")
+    if score is None:
+        return None
+    if not isinstance(score, dict) or "value" not in score:
+        raise ContractError("Invalid score entry")
+    value = score["value"]
+    if value is None:
+        return None
+    if (
+        type(value) not in (int, float)
+        or not math.isfinite(value)
+        or not 0 <= value <= 1000
+    ):
+        raise ContractError("Invalid score value")
+    return value
+
+
+class Zwift:
+    def __init__(self, transport, token=None):
+        self.http, self.token = transport, token
+
+    def get(self, path, *, authenticated=False):
+        return self.http.request(
+            API + path, token=self.token if authenticated else None
+        )
+
+    def profile(self, now):
+        data = self.get("profiles/me", authenticated=True)
+        if (
+            not isinstance(data, dict)
+            or type(data.get("id")) is not int
+            or type(data.get("male")) is not bool
+        ):
+            raise ContractError("Invalid account profile")
+        current = score_value(self.get("scoring/current", authenticated=True))
+        maximum = score_value(self.get("scoring/max30", authenticated=True))
+        if current is not None and maximum is not None and maximum < current:
+            raise ContractError("Inconsistent current and maximum scores")
+        return {
+            "current": current,
+            "max30": maximum,
+            "retrieved_at": now.timestamp(),
+            "fields": {
+                "profile.profileId": data["id"],
+                "profile.male": data["male"],
+                "profile.playerType": data.get("playerType"),
+                "profile.age": data.get("age"),
+            },
+        }
+
+    def upcoming(self, until):
+        if not self.token:
+            raise AuthenticationError(
+                "Complete event discovery requires authentication"
+            )
+        output, cursors = {}, set()
+        query = {
+            "from": int((until - timedelta(days=14)).timestamp() * 1000),
+            "limit": 50,
+        }
+        for _ in range(400):
+            page = self.get("event-feed?" + urlencode(query), authenticated=True)
+            if (
+                not isinstance(page, dict)
+                or not isinstance(page.get("data"), list)
+                or "cursor" not in page
+            ):
+                raise ContractError("Invalid event-feed page")
+            for entry in page["data"]:
+                row = entry.get("event") if isinstance(entry, dict) else None
+                if not isinstance(row, dict) or type(row.get("id")) is not int:
+                    raise ContractError("Invalid event identity")
+                instant(row.get("eventStart"))
+                # The live feed overlaps pages as its inventory changes. Keep
+                # the latest observation; opaque cursor repetition still fails.
+                output[row["id"]] = row
+            cursor = page["cursor"]
+            if not cursor:
+                return list(output.values())
+            if (
+                not isinstance(cursor, str)
+                or len(cursor) > 2048
+                or cursor in cursors
+                or not page["data"]
+            ):
+                raise ContractError("Invalid event-feed cursor")
+            cursors.add(cursor)
+            query = {"cursor": cursor, "limit": 50}
+        raise ContractError("Event pagination limit reached")
+
+    def event(self, event_id):
+        if type(event_id) is not int or event_id <= 0:
+            raise ContractError("Invalid historical event identity")
+        data = self.get(f"public/events/{event_id}")
+        if not isinstance(data, dict) or data.get("id") != event_id:
+            raise ContractError("Historical event identity mismatch")
+        return data
+
+    def results(self, subgroup_id):
+        data = self.get(
+            f"race-results/summary?event_subgroup_id={int(subgroup_id)}",
+            authenticated=True,
+        )
+        if not isinstance(data, dict) or not isinstance(
+            data.get("firstEntries", []), list
+        ):
+            raise ContractError("Invalid race results response")
+        return data.get("firstEntries", [])

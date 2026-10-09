@@ -8,9 +8,41 @@ variable "uid_domain" { type = string }
 variable "calendar_source" {
   type = string
   validation {
-    condition     = contains(["ymca", "paul_reynolds", "iracing"], var.calendar_source)
+    condition     = contains(["ymca", "paul_reynolds", "iracing", "zwift"], var.calendar_source)
     error_message = "Choose exactly one supported calendar source."
   }
+}
+
+variable "function_environment" {
+  description = "Additional non-secret configuration per runtime function."
+  type        = map(map(string))
+  default     = {}
+}
+
+variable "sync_parameter_reads" {
+  description = "SSM parameter names populated outside OpenTofu; readable only by sync."
+  type        = list(string)
+  default     = []
+  validation {
+    condition     = alltrue([for name in var.sync_parameter_reads : startswith(name, "/") && length(regexall("[:*?]", name)) == 0])
+    error_message = "Use exact, absolute, unversioned SSM parameter paths."
+  }
+}
+
+variable "sync_parameter_writes" {
+  description = "Subset of sync parameters containing renewable tokens."
+  type        = list(string)
+  default     = []
+  validation {
+    condition     = alltrue([for name in var.sync_parameter_writes : contains(var.sync_parameter_reads, name)])
+    error_message = "Writable parameters must also be readable by sync."
+  }
+}
+
+variable "schedule_enabled" {
+  description = "Enable refresh and health schedules after initialization."
+  type        = bool
+  default     = true
 }
 
 variable "package_builder" {
@@ -32,6 +64,11 @@ variable "refresh_schedule" {
 variable "refresh_name_suffix" {
   type    = string
   default = "daily"
+}
+
+variable "refresh_timezone" {
+  type    = string
+  default = "America/St_Johns"
 }
 variable "health_threshold_seconds" {
   type    = number
@@ -68,5 +105,15 @@ variable "oauth_parameters" {
       startswith(name, "/") && length(regexall(":", name)) == 0
     ])
     error_message = "Use absolute, unversioned SSM parameter paths."
+  }
+}
+
+variable "additional_routes" {
+  description = "Additional public calendar GET paths handled by the same feed Lambda."
+  type        = set(string)
+  default     = []
+  validation {
+    condition     = alltrue([for route in var.additional_routes : startswith(route, "/calendars/") && endswith(route, ".ics") && length(regexall("[{}*?]", route)) == 0 && route != var.route])
+    error_message = "Additional routes must be distinct, literal /calendars/*.ics paths."
   }
 }

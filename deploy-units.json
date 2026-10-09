@@ -390,6 +390,26 @@
         "live/aws/staging/workloads/technology-digest/",
         "config/environments/aws/staging/technology-digest.tfvars"
       ]
+    },
+    {
+      "id": "aws-staging-zwift-calendar",
+      "cloud": "aws",
+      "environment": "staging",
+      "path": "live/aws/staging/workloads/lambda/python/zwift-calendar",
+      "var_file": "config/environments/aws/staging/zwift-calendar.tfvars",
+      "region": "us-east-1",
+      "dependencies": [
+        "aws-staging-account",
+        "aws-staging-court-booker-api"
+      ],
+      "ci": true,
+      "watch": [
+        "live/aws/staging/workloads/lambda/python/zwift-calendar/",
+        "modules/aws/swimming-calendar/",
+        "apps/lambda/python/3.14/zwift-calendar/",
+        "config/environments/aws/staging/zwift-calendar.tfvars",
+        "scripts/zwift-package.py"
+      ]
     }
   ]
 }

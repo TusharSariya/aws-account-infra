@@ -38,7 +38,7 @@ def test_complete_reviewed_inventory_and_all_five_nascar_rounds():
     assert not any("Bristol" in e["name"] for e in catalog["events"])
     report = coverage_report(catalog, inventory)
     assert not report["publication_ready"]
-    assert len(report["unresolved"]) == 8
+    assert len(report["unresolved"]) == 7
     assert report["undated"] == ["Dale Jr Charity Event"]
     assert not report["new"] and not report["missing"] and not report["disagreements"]
     assert inventory["Daytona 500"]["start"] == "2026-02-11"

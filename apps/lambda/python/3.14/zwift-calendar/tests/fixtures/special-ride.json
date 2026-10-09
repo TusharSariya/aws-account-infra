@@ -1,0 +1,100 @@
+{
+  "id": 5716994,
+  "name": "Stage 1 - Tour of Watopia 2026",
+  "eventStart": "2026-10-09T17:00:00.000+0000",
+  "eventType": "GROUP_RIDE",
+  "type": "EVENT_TYPE_GROUP_RIDE",
+  "sport": "CYCLING",
+  "privateEvent": false,
+  "unlisted": false,
+  "restricted": false,
+  "accessExpression": null,
+  "rulesSet": [
+    "NO_TT_BIKES",
+    "ALLOWS_LATE_JOIN"
+  ],
+  "timeTrialOptions": null,
+  "eventSeries": {
+    "id": 13101,
+    "name": "Tour of Watopia 2026 - Ride Stage 1",
+    "description": null,
+    "imported": false
+  },
+  "tags": [
+    "tourofwatopia2026",
+    "tourofwatopia2026ride",
+    "tourofwatopia2026ridestage1",
+    "tourofwatopia2026stage1",
+    "tow2026",
+    "towstage1",
+    "steering_enabled",
+    "cinematic_screenshot",
+    "rain_override=0",
+    "event_timeofday=12",
+    "showplacements",
+    "powerup_percent=\"1,35,5,35,0,30\"",
+    "head_gear=510898553",
+    "socks=1418681064",
+    "timestamp=1791235838107"
+  ],
+  "categoryEnforcement": false,
+  "eventSubgroups": [
+    {
+      "id": 7362792,
+      "name": "Long - Stage 1 - Tour of Watopia 2026 ",
+      "label": 1,
+      "subgroupLabel": "A",
+      "rangeAccessLabel": null,
+      "eventSubgroupStart": "2026-10-09T17:00:00.000+0000",
+      "durationInSeconds": 0,
+      "distanceInMeters": 0.0,
+      "laps": 1,
+      "routeId": 979250573,
+      "rulesSet": [
+        "NO_TT_BIKES",
+        "ALLOWS_LATE_JOIN"
+      ],
+      "accessRules": [],
+      "fromPaceValue": 1.0,
+      "toPaceValue": 5.0
+    },
+    {
+      "id": 7362793,
+      "name": "Standard - Stage 1 - Tour of Watopia 2026",
+      "label": 2,
+      "subgroupLabel": "B",
+      "rangeAccessLabel": null,
+      "eventSubgroupStart": "2026-10-09T17:00:00.000+0000",
+      "durationInSeconds": 0,
+      "distanceInMeters": 0.0,
+      "laps": 1,
+      "routeId": 604330868,
+      "rulesSet": [
+        "NO_TT_BIKES",
+        "ALLOWS_LATE_JOIN"
+      ],
+      "accessRules": [],
+      "fromPaceValue": 1.0,
+      "toPaceValue": 5.0
+    },
+    {
+      "id": 7362794,
+      "name": "Short - Stage 1 - Tour of Watopia 2026",
+      "label": 3,
+      "subgroupLabel": "C",
+      "rangeAccessLabel": null,
+      "eventSubgroupStart": "2026-10-09T17:00:00.000+0000",
+      "durationInSeconds": 0,
+      "distanceInMeters": 0.0,
+      "laps": 1,
+      "routeId": 2474227587,
+      "rulesSet": [
+        "NO_TT_BIKES",
+        "ALLOWS_LATE_JOIN"
+      ],
+      "accessRules": [],
+      "fromPaceValue": 1.0,
+      "toPaceValue": 5.0
+    }
+  ]
+}

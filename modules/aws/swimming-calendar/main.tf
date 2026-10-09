@@ -164,9 +164,9 @@ resource "aws_lambda_function" "app" {
       }, var.health_threshold_seconds == 129600 ? {} : { HEALTH_THRESHOLD_SECONDS = tostring(var.health_threshold_seconds) }, each.key == "sync" && var.oauth_parameters != null ? {
       IRACING_CLIENT_PARAMETER                                                    = var.oauth_parameters.client_name
       IRACING_TOKEN_PARAMETER                                                     = var.oauth_parameters.token_name
-    } : {})
+    } : {}, lookup(var.function_environment, each.key, {}))
   }
-  depends_on = [aws_cloudwatch_log_group.lambda, aws_iam_role_policy.lambda, aws_iam_role_policy.oauth]
+  depends_on = [aws_cloudwatch_log_group.lambda, aws_iam_role_policy.lambda, aws_iam_role_policy.oauth, aws_iam_role_policy.sync_parameters]
 }
 resource "aws_lambda_function_event_invoke_config" "sync" {
   function_name                = aws_lambda_function.app["sync"].function_name
@@ -207,8 +207,9 @@ resource "aws_iam_role_policy" "scheduler" {
 resource "aws_scheduler_schedule" "refresh" {
   # checkov:skip=CKV_AWS_297:Schedule payloads contain no secrets; AWS-owned encryption is sufficient.
   name                         = "${var.service_name}-${var.refresh_name_suffix}"
+  state                        = var.schedule_enabled ? "ENABLED" : "DISABLED"
   schedule_expression          = var.refresh_schedule
-  schedule_expression_timezone = "America/St_Johns"
+  schedule_expression_timezone = var.refresh_timezone
   flexible_time_window { mode = "OFF" }
   target {
     arn      = aws_lambda_function.app["sync"].arn
@@ -224,6 +225,7 @@ resource "aws_scheduler_schedule" "refresh" {
 resource "aws_scheduler_schedule" "health" {
   # checkov:skip=CKV_AWS_297:Schedule payloads contain no secrets; AWS-owned encryption is sufficient.
   name                = "${var.service_name}-health"
+  state               = var.schedule_enabled ? "ENABLED" : "DISABLED"
   schedule_expression = "rate(1 hour)"
   flexible_time_window { mode = "OFF" }
   target {
@@ -283,7 +285,7 @@ resource "aws_lambda_permission" "api" {
 resource "aws_cloudwatch_metric_alarm" "errors" {
   for_each            = local.functions
   alarm_name          = "${var.service_name}-${each.key}-errors"
-  alarm_description   = var.calendar_source == "iracing" ? "iRacing calendar ${each.key} failed; health threshold is ${var.health_threshold_seconds} seconds" : each.key == "feed" ? "Feed failure or hourly check found snapshot older than 36 hours" : "Daily swimming refresh failed; previous snapshot retained"
+  alarm_description   = var.calendar_source == "zwift" ? "Zwift calendar ${each.key} failed; health threshold is ${var.health_threshold_seconds} seconds" : var.calendar_source == "iracing" ? "iRacing calendar ${each.key} failed; health threshold is ${var.health_threshold_seconds} seconds" : each.key == "feed" ? "Feed failure or hourly check found snapshot older than 36 hours" : "Daily swimming refresh failed; previous snapshot retained"
   namespace           = "AWS/Lambda"
   metric_name         = "Errors"
   dimensions          = { FunctionName = aws_lambda_function.app[each.key].function_name }
@@ -310,3 +312,23 @@ resource "aws_cloudwatch_metric_alarm" "delivery" {
 }
 output "calendar_url" { value = "${aws_apigatewayv2_api.feed.api_endpoint}${var.route}" }
 output "sync_function" { value = aws_lambda_function.app["sync"].function_name }
+
+resource "aws_apigatewayv2_route" "additional_feed" {
+  # checkov:skip=CKV_AWS_309:These routes intentionally publish public calendar subscriptions without authentication.
+  for_each  = var.additional_routes
+  api_id    = aws_apigatewayv2_api.feed.id
+  route_key = "GET ${each.value}"
+  target    = "integrations/${aws_apigatewayv2_integration.feed.id}"
+}
+
+resource "aws_lambda_permission" "additional_api" {
+  for_each      = var.additional_routes
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.app["feed"].function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.feed.execution_arn}/*/GET${each.value}"
+}
+
+output "calendar_urls" {
+  value = { for route in setunion(toset([var.route]), var.additional_routes) : route => "${aws_apigatewayv2_api.feed.api_endpoint}${route}" }
+}
