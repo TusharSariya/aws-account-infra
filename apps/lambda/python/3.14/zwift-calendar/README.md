@@ -132,3 +132,52 @@ publish or advance published revisions. Disable the schedule before credential
 rotation or snapshot rollback. Restore an earlier S3 `current.json` version to
 roll back a publication; rolling back code uses its content-addressed Lambda
 artifact. See [contract evidence](../../../../../docs/zwift-api-contract.md).
+
+## Historical duration backfill
+
+`zwift-calendar-history` is a separate batch Lambda. Every three hours at minute
+20 UTC it resumes historical discovery and samples comparable finishers. The
+hourly calendar sync writes `history/targets.json`, reads `history/state.json`,
+and publishes improved durations through the same two subscription URLs. It no
+longer fetches historical results inline. The worker never publishes calendars.
+
+The worker imports the legacy history once. Its versioned private state includes
+anonymous score/time bins, pending event/subgroup work, discovery cursors and
+admission counters. Only qualified, unflagged finishers count. Estimates still
+require ten finishes from two races on the same route/distance/laps/type within
+50 score points. The verified upstream summary is sampled, not a complete finish
+distribution. Insufficient evidence keeps the labeled 60-minute placeholder.
+
+Bounds: 512 MB Arm, 180-second Lambda timeout, 150-second upstream deadline,
+120 HTTP attempts/run, two attempts/second, at most eight admitted runs per UTC
+day and 248/month (manual invocations share these limits). A three-hour slot is
+reserved durably before upstream calls. Invocation retries are disabled. HTTP
+429 saves a cooldown. Work state is capped at 5 MiB and 10,000 queued events,
+with at most five state writes/run; obsolete unused evidence is evicted first.
+History expires after 90 days. The existing 35-day S3 noncurrent-version lifecycle
+also bounds historical checkpoint storage. Logs retain seven days.
+
+The account has a concurrency quota of ten and requires ten unreserved slots,
+so reserved concurrency one cannot be configured. The shared conditional S3 lease
+serializes backfill, authentication and calendar writes; overlapping workers exit
+immediately. Schedule offset avoids the hourly publisher. Credential values never
+enter IaC, fixtures or logs. No new public HTTP endpoint is added.
+
+Worst scheduled compute allowance is 248 x 180 x 0.5 = 22,320 GB-seconds/month,
+approximately US$0.30 at Arm pricing before free-tier credits. Budget another
+US$0.30-0.40 for bounded versioned S3 storage/requests, logging and one alarm.
+This is incremental cost, not a hard billing cap or the whole calendar bill.
+
+```sh
+# Uses the same AWS operator environment as the commands above.
+uv run --frozen --directory apps/lambda/python/3.14/zwift-calendar python -m zwift_calendar.cli backfill
+uv run --frozen --directory apps/lambda/python/3.14/zwift-calendar python -m zwift_calendar.cli backfill-status
+```
+
+Rollout: keep `history_enabled = false`, deploy through the PR apply workflow
+(which initializes targets through the normal calendar sync), run one bounded
+batch, inspect coverage and budgets, then sync and verify both feeds. Enable the
+schedule in IaC after verification. Enabled feed health checks alert if remaining
+placeholders have no successful worker check-in for 24 hours. Inspect the batch
+summary at 24/72 hours; limited evidence is not a promise of complete coverage.
+Rollback disables `history_enabled`; cached estimates and subscriptions continue.

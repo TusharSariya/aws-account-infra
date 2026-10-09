@@ -19,3 +19,13 @@ class BudgetExceeded(UpstreamError):
 
 class UnsupportedRule(ContractError):
     pass
+
+
+class RateLimited(UpstreamError):
+    def __init__(self, seconds):
+        super().__init__("Zwift rate limited the request")
+        self.seconds = seconds
+
+
+class CursorRejected(ContractError):
+    pass

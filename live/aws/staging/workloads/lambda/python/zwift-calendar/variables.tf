@@ -27,3 +27,9 @@ variable "schedule_enabled" {
   type        = bool
   default     = false
 }
+
+variable "history_enabled" {
+  description = "Enable bounded historical batches after a verified initial run."
+  type        = bool
+  default     = false
+}

@@ -111,3 +111,15 @@ snapshot. Each calendar has its own name and content ETag; common event/subgroup
 UIDs and private revisions survive a move between feeds. The HTTP API routes have
 separate exact-path Lambda invocation permissions and share the existing read-only
 feed Lambda. Other calendar services retain their single-route defaults.
+
+## Historical discovery (2026-10-09)
+
+Read-only probes using a still-valid cached token confirmed `event-feed?from=`
+returns past events: the seven-day probe began October 2 and the ninety-day probe
+began July 11. Both returned 50 entries and a continuation cursor. Parent event
+5559069 resolved to October 4 and linked to parent 5550688. JSON result requests
+must carry `Accept: application/json`; the verified summary response exposes only
+`firstEntries` and does not establish complete-result pagination. Backfill uses
+these contracts only, resumes cursors, deduplicates identities, and never assumes
+parent timestamps are a safe pagination stopping boundary. Cursor expiration
+restarts the same scan after a bounded cooldown rather than claiming completion.

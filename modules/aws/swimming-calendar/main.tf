@@ -112,7 +112,7 @@ data "aws_iam_policy_document" "lambda" {
   }
   statement {
     actions   = each.key == "sync" ? ["s3:GetObject", "s3:PutObject"] : ["s3:GetObject"]
-    resources = each.key == "sync" ? [for key in var.sync_object_keys : "${aws_s3_bucket.snapshot.arn}/${key}"] : ["${aws_s3_bucket.snapshot.arn}/current.json"]
+    resources = each.key == "sync" ? [for key in var.sync_object_keys : "${aws_s3_bucket.snapshot.arn}/${key}"] : [for key in var.feed_object_keys : "${aws_s3_bucket.snapshot.arn}/${key}"]
   }
   # Allows the SDK to distinguish an uninitialized snapshot (404) from access denied.
   statement {
@@ -331,4 +331,17 @@ resource "aws_lambda_permission" "additional_api" {
 
 output "calendar_urls" {
   value = { for route in setunion(toset([var.route]), var.additional_routes) : route => "${aws_apigatewayv2_api.feed.api_endpoint}${route}" }
+}
+
+output "background_worker" {
+  description = "Shared deployment artifact and private resources for workload-specific batch workers."
+  value = {
+    artifact_bucket = aws_s3_object.release.bucket
+    artifact_key    = aws_s3_object.release.key
+    artifact_hash   = data.external.package.result.base64sha256
+    snapshot_bucket = aws_s3_bucket.snapshot.id
+    snapshot_arn    = aws_s3_bucket.snapshot.arn
+    failure_queue   = aws_sqs_queue.failures.arn
+    alerts_topic    = data.aws_sns_topic.alerts.arn
+  }
 }

@@ -2,12 +2,15 @@
 
 import json
 import logging
+import os
 from datetime import UTC, datetime, timedelta
 
 from .api import Zwift, instant
 from .auth import Auth
+from .backfill import STATE, TARGETS, targets
+from .backfill import status as history_status
 from .calendar import CALENDAR_NAMES, split_calendars
-from .duration import estimate, learn
+from .duration import estimate
 from .errors import ContractError, UpstreamError
 from .filtering import select
 from .storage import Busy, Parameters, Store
@@ -61,9 +64,14 @@ def collect(api, state, now):
     score = next(
         (profile[key] for key in ("current", "max30") if profile[key] is not None), 100
     )
-    history, history_report = learn(
-        api, events, selected, state.get("history", {}), score, now
-    )
+    history = state.get("history", {})
+    history = history | {
+        "races": {
+            k: v
+            for k, v in history.get("races", {}).items()
+            if instant(v["start"]) >= now - timedelta(days=90)
+        }
+    }
     for event in selected:
         event["duration"] = estimate(event, history, score)
     snapshot, revisions = split_calendars(selected, state.get("revisions", {}), now)
@@ -80,11 +88,17 @@ def collect(api, state, now):
         "latest_matching_start": max((e["start"] for e in selected), default=None),
         "latest_published_start": max((e["eventStart"] for e in events), default=None),
         "estimated_from_history": sum(e["duration"]["samples"] > 0 for e in selected),
-        **history_report,
+        "history_requests": 0,
+        "history_failures": 0,
     }
     return (
         snapshot,
-        {"profile": profile, "history": history, "revisions": revisions},
+        {
+            "profile": profile,
+            "history": history,
+            "revisions": revisions,
+            "_targets": targets(events, selected, score, now),
+        },
         report,
     )
 
@@ -96,13 +110,24 @@ def refresh(store, parameters, http, now, *, preview=False):
         return {"status": "busy"}
     try:
         state, etag = store.read("private.json")
+        learned, _ = store.read(STATE)
+        if learned:
+            if learned.get("version") != 1:
+                raise ContractError("Unknown historical state version")
+            state["history"] = learned
         published_revisions = state.get("revisions", {})
         token = Auth(http, parameters, store).access()
         snapshot, state, report = collect(Zwift(http, token), state, now)
+        next_targets = state.pop("_targets", None)
+        if learned:
+            state.pop("history", None)
         if preview:
             state["revisions"] = published_revisions
         store.private_write("private.json", state, etag)
         if not preview:
+            if next_targets is not None:
+                _, target_etag = store.read(TARGETS)
+                store.private_write(TARGETS, next_targets, target_etag)
             store.publish(snapshot)
         return {
             "status": "degraded" if report["score_degraded"] else "ok",
@@ -144,6 +169,15 @@ def serve(event, store, now):
             )
         ):
             raise RuntimeError("Zwift calendars are missing or older than three hours")
+        if os.environ.get("HISTORY_ENABLED") == "true":
+            historical, _ = store.read(STATE)
+            target, _ = store.read(TARGETS)
+            report = history_status(historical, target)
+            if (
+                report["placeholder_events"]
+                and now.timestamp() - (historical.get("last_success") or 0) > 86400
+            ):
+                raise RuntimeError("Historical backfill has not succeeded for 24 hours")
         return {"status": "ok"}
     routes = {f"GET /calendars/zwift-{key}.ics": key for key in CALENDAR_NAMES}
     key = routes.get(event.get("routeKey"))
