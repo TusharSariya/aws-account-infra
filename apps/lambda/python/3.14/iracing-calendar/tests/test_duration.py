@@ -122,8 +122,12 @@ def test_session_block_crosses_midnight_and_newfoundland_dst():
 
 def test_announcement_confirmation_turns_dated_timed_special_into_duration_block():
     catalog = load_catalog(2026)
-    events, coverage, _ = normalize(SEASONS, catalog, HTML, NOW)
     entry = next(e for e in catalog["events"] if e["name"] == "8 Hours of Indianapolis")
+    # Exercise the pre-publication announcement fallback independently of the
+    # subsequently reviewed API mapping and captured Indianapolis schedule.
+    entry["api_mappings"] = []
+    seasons = [season for season in SEASONS if season["season_id"] != 6626]
+    events, coverage, _ = normalize(seasons, catalog, HTML, NOW)
     placeholder = next(
         e for e in events if e.get("provenance", {}).get("special_id") == entry["id"]
     )

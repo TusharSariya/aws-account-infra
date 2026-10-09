@@ -13,3 +13,9 @@ and official detail links. Images, scripts, tracking and descriptive prose were
 removed. It contains all 33 published entries (30 paved and 3 dirt/off-road),
 including the undated charity event. This is public-page evidence, not an
 authenticated API fixture. The catalog's API mappings remain unresolved.
+
+`api/indianapolis-2026.json` is a minimized, public-field-only capture of the
+2026-10-09 authenticated active-season response. Season 6626 / series 635
+confirms the catalog's 8 Hours of Indianapolis: October 16-18, road track 448,
+open setup, 480 racing minutes, and five published session starts. No account
+identifiers, credentials, or signed download URLs are included.

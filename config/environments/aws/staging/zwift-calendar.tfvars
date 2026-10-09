@@ -3,5 +3,5 @@ region         = "us-east-1"
 aws_profile    = "admin"
 default_tags   = { managed_by = "opentofu", repo = "aws-account-infra" }
 
-# Enable after authenticated preview, reviewed apply, and initial sync.
-schedule_enabled = false
+# Initial authenticated sync and both live calendar feeds verified.
+schedule_enabled = true

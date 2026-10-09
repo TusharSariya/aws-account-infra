@@ -15,6 +15,7 @@ FIXTURES = Path(__file__).with_name("fixtures")
 SEASONS = json.loads((FIXTURES / "api/active-seasons.json").read_text()) + json.loads(
     (FIXTURES / "api/archived-seasons.json").read_text()
 )
+SEASONS.append(json.loads((FIXTURES / "api/indianapolis-2026.json").read_text()))
 HTML = (FIXTURES / "special-events-2026.html").read_text()
 NOW = datetime(2026, 10, 1, tzinfo=UTC)
 

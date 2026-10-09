@@ -1,0 +1,45 @@
+{
+  "season_id": 6626,
+  "series_id": 635,
+  "season_name": "2026 8 Hours of Indianapolis Presented by PC's by THOMAS",
+  "season_year": 2026,
+  "fixed_setup": false,
+  "car_class_ids": [
+    2708
+  ],
+  "license_group": 3,
+  "schedules": [
+    {
+      "season_id": 6626,
+      "series_id": 635,
+      "series_name": "8 Hours of Indianapolis Presented by PC's by THOMAS",
+      "race_week_num": 0,
+      "category": "sports_car",
+      "track": {
+        "category": "road",
+        "category_id": 2,
+        "config_name": "Road Course",
+        "track_id": 448,
+        "track_name": "Indianapolis Motor Speedway"
+      },
+      "start_date": "2026-10-16",
+      "week_end_time": "2026-10-18T00:00:00Z",
+      "race_time_limit": 480,
+      "race_lap_limit": null,
+      "race_time_descriptors": [
+        {
+          "repeating": false,
+          "session_minutes": 521,
+          "session_times": [
+            "2026-10-16T22:00:00Z",
+            "2026-10-17T07:00:00Z",
+            "2026-10-17T12:00:00Z",
+            "2026-10-17T16:00:00Z",
+            "2026-10-18T00:00:00Z"
+          ],
+          "super_session": false
+        }
+      ]
+    }
+  ]
+}

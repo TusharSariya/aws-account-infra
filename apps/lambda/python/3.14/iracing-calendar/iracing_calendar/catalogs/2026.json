@@ -56,8 +56,16 @@
       },
       "applicable_series": [],
       "setup_variants": [],
-      "api_mappings": [],
-      "review_status": "API schedule not yet published"
+      "api_mappings": [
+        {
+          "series_id": 635,
+          "season_id": 6626,
+          "race_week_num": 0,
+          "track_id": 448,
+          "fixed_setup": false
+        }
+      ],
+      "review_status": "API identity verified"
     },
     {
       "name": "iRacing FF1600 Festival",

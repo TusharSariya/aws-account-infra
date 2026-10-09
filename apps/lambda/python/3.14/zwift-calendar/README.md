@@ -111,9 +111,10 @@ uv run --frozen --directory apps/lambda/python/3.14/zwift-calendar pytest
 ```
 
 Deploy unit `aws-staging-zwift-calendar` uses the existing PR plan/apply workflow,
-which synchronously initializes the calendar after apply. The new unit starts
-with `schedule_enabled = false`. After successful initialization and feed review,
-set it to true in `config/environments/aws/staging/zwift-calendar.tfvars` and apply
+which synchronously initializes the calendar after apply. The initial deployment
+used `schedule_enabled = false`; authenticated sync and both live feeds were
+verified before enabling hourly refresh. The staging configuration now uses
+`schedule_enabled = true`. For a new rollout, repeat that disabled-first sequence
 through the same workflow. Obtain the subscription URLs from the root's
 `banded_calendar_url` and `unbanded_calendar_url` outputs. Subscribe to either or
 both as separate calendars; a downloaded ICS import does not stay up to date.
