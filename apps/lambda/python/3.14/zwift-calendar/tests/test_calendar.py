@@ -19,7 +19,9 @@ FIXTURES = Path(__file__).parent / "fixtures"
 
 @pytest.fixture
 def race():
-    return json.loads((FIXTURES / "race.json").read_text())
+    event = json.loads((FIXTURES / "race.json").read_text())
+    event["name"] = "Synthetic scored race"
+    return event
 
 
 @pytest.fixture

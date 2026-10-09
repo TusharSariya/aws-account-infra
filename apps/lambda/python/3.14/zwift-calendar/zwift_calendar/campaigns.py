@@ -21,6 +21,10 @@ CAMPAIGNS = {
 }
 
 
+# User preference: omit the hourly Tour of Watopia ride and race programmes.
+EXCLUDED_CAMPAIGNS = frozenset({"Tour of Watopia"})
+
+
 def campaign(event):
     series = event.get("eventSeries") or {}
     names = [

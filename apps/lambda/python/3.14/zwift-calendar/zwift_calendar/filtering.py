@@ -6,7 +6,7 @@ from collections import Counter
 from datetime import timedelta
 
 from .api import instant
-from .campaigns import campaign
+from .campaigns import EXCLUDED_CAMPAIGNS, campaign
 from .errors import ContractError, UnsupportedRule
 from .rules import evaluate, parse
 
@@ -82,6 +82,9 @@ def select(events, profile, now):
     output, excluded = [], Counter()
     for event in events:
         special = campaign(event)
+        if special in EXCLUDED_CAMPAIGNS:
+            excluded["excluded_campaign"] += 1
+            continue
         ride = event.get("eventType") == "GROUP_RIDE" and special is not None
         if event.get("sport") != "CYCLING" or (
             event.get("eventType") not in TYPES and not ride

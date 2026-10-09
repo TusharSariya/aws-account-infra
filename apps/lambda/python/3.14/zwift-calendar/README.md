@@ -22,8 +22,9 @@ verdict always excludes a group. Without a verdict, only unrestricted events or
 locally understood entry expressions qualify. Missing score bands do not bypass
 privacy, gender, age, category or other entry restrictions.
 
-Recognized special-event group rides are also included: Tour of Watopia, Tour de
-Zwift, Zwift Games and Zwift Big Spin. Recognition uses campaign names, event-series
+Recognized special-event group rides include Tour de Zwift, Zwift Games and
+Zwift Big Spin. Tour of Watopia rides and races are explicitly excluded at the
+user's request because their hourly starts make the calendar noisy. Recognition uses campaign names, event-series
 names and explicit tag patterns in `campaigns.py`. New campaigns require an entry;
 ordinary club rides, workouts, running, private events and team time trials remain
 excluded. Announcements and on-demand activities without a scheduled start are not

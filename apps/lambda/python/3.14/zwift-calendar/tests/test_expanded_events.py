@@ -28,7 +28,10 @@ PROFILE = {
 
 @pytest.fixture
 def ride():
-    return json.loads((FIXTURES / "special-ride.json").read_text())
+    # Reuse the observed route-option shape for a campaign still included.
+    event = json.loads((FIXTURES / "special-ride.json").read_text())
+    event.update(name="Stage 1 - Tour de Zwift", tags=["tdz2026"], eventSeries=None)
+    return event
 
 
 @pytest.fixture
@@ -54,7 +57,7 @@ def test_shortest_special_ride_from_live_label(ride):
     assert rows[0]["group_name"].startswith("Short -")
     assert rows[0]["band"] is None
     assert rows[0]["event_kind"] == "special_ride"
-    assert rows[0]["special_event"] == "Tour of Watopia"
+    assert rows[0]["special_event"] == "Tour de Zwift"
 
 
 def test_shortest_eligible_route_checks_gender_and_other_restrictions(ride):
@@ -225,4 +228,19 @@ def test_malformed_expression_is_not_unrestricted(race, expression):
 
 def test_mixed_unknown_route_labels_do_not_claim_shortest(ride):
     ride["eventSubgroups"][0]["name"] = "Unknown route option"
+    assert choose(ride) == []
+
+
+@pytest.mark.parametrize("fixture", ["race.json", "special-ride.json"])
+def test_hourly_watopia_programmes_are_excluded(fixture):
+    event = json.loads((FIXTURES / fixture).read_text())
+    rows, exclusions = select(
+        [event], PROFILE, instant(event["eventStart"]) - timedelta(minutes=1)
+    )
+    assert rows == []
+    assert exclusions["excluded_campaign"] == 1
+
+
+def test_excluded_campaign_tag_survives_renamed_event(ride):
+    ride.update(name="Stage 3 ride", tags=["tourofwatopia2026"], eventSeries=None)
     assert choose(ride) == []

@@ -77,3 +77,16 @@ seven days had 578 entries (302, 108, and 168 respectively). Each special ride u
 one shortest eligible route. These are currently published start slots, not a
 historical weekly average or a guarantee of the eventual second-week inventory.
 An independent ICS parser verified 1,512 unique entries across the two weeks.
+
+## Hourly programme exclusion
+
+The user subsequently excluded both Tour of Watopia rides and races. This is an
+explicit campaign preference, not a heuristic that removes any programme whose
+published inventory happens to be dense. Campaign recognition still checks names,
+series metadata and tags, so renamed stages remain excluded. Other programmes
+and recognized campaigns retain their existing eligibility rules.
+
+Applied to the same October 9 snapshot, the next seven days drop from 934 to 601
+slots: 322 score-banded races and 279 unbanded races. All 167 special rides in that
+week belonged to Tour of Watopia. The 166 Tour of Watopia race slots are also
+removed. These are counts from the saved snapshot, not a new live inventory fetch.
