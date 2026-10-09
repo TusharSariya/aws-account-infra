@@ -12,6 +12,60 @@ spec.loader.exec_module(maintenance)
 
 
 class MaintenanceTests(unittest.TestCase):
+    def test_settle_off_waits_for_a_stop_in_progress_but_not_for_wanted_ai(self):
+        stopping = Mock()
+        stopping.status.return_value = {'desired': 'off', 'observed': 'Stopping'}
+        stopping.off.return_value = 7
+        self.assertEqual(maintenance.settle_off(stopping), 7)
+        stopping.wait.assert_called_once()
+        predicate = stopping.wait.call_args.args[0]
+        self.assertFalse(predicate({'desired': 'off', 'observed': 'Stopping'}))
+        self.assertTrue(predicate({'desired': 'off', 'observed': 'Off'}))
+        wanted = Mock()
+        wanted.status.return_value = {'desired': 'on', 'observed': 'On'}
+        wanted.off.side_effect = maintenance.apps.AppError('Observed Off required before application-data maintenance')
+        with self.assertRaises(maintenance.apps.AppError):
+            maintenance.settle_off(wanted)
+        wanted.wait.assert_not_called()
+
+    def test_cpu_constrained_accepts_scheduler_or_admission_budget_signal(self):
+        pod = {'metadata': {'uid': 'p1'}, 'spec': {'schedulingGates': [{'name': 'kueue.x-k8s.io/admission'}]},
+               'status': {'phase': 'Pending', 'conditions': []}}
+        waiting = [{'metadata': {'ownerReferences': [{'uid': 'p1'}]}, 'status': {'admissionChecks': [
+            {'name': 'homelab-host-ready', 'state': 'Pending', 'message': 'Waiting for: primary'}]}}]
+        self.assertTrue(maintenance.cpu_constrained(pod, waiting))
+        other = [{'metadata': {'ownerReferences': [{'uid': 'p2'}]}, 'status': waiting[0]['status']}]
+        self.assertFalse(maintenance.cpu_constrained(pod, other))
+        ready = [{'metadata': {'ownerReferences': [{'uid': 'p1'}]}, 'status': {'admissionChecks': [
+            {'name': 'homelab-host-ready', 'state': 'Ready', 'message': ''}]}}]
+        self.assertFalse(maintenance.cpu_constrained(pod, ready))
+        ungated = {'metadata': {'uid': 'p1'}, 'spec': {}, 'status': {'phase': 'Pending', 'conditions': []}}
+        self.assertFalse(maintenance.cpu_constrained(ungated, waiting))
+        scheduler = {'metadata': {'uid': 'p1'}, 'spec': {}, 'status': {'phase': 'Pending', 'conditions': [
+            {'type': 'PodScheduled', 'status': 'False', 'reason': 'Unschedulable', 'message': '0/4 nodes are available: 1 Insufficient cpu.'}]}}
+        self.assertTrue(maintenance.cpu_constrained(scheduler, []))
+
+    def test_cpu_constrained_accepts_kueue_capacity_rejection_but_not_quota_contention(self):
+        pod = {'metadata': {'uid': 'p1'}, 'spec': {'schedulingGates': [{'name': 'kueue.x-k8s.io/admission'}]},
+               'status': {'phase': 'Pending', 'conditions': []}}
+        prefix = "couldn't assign flavors to pod set main: flavor homelab-secondary doesn't match node affinity, "
+
+        def workload(message, uid='p1'):
+            return [{'metadata': {'name': 'w', 'ownerReferences': [{'uid': uid}]}, 'status': {'conditions': [
+                {'type': 'QuotaReserved', 'status': 'False', 'reason': 'Pending', 'message': prefix + message}]}}]
+
+        capacity = ('insufficient quota for cpu in flavor homelab-worker, previously considered podsets requests (0) '
+                    '+ current podset request (31250m) > maximum capacity (29280m)')
+        self.assertTrue(maintenance.cpu_constrained(pod, workload(capacity)))
+        self.assertFalse(maintenance.cpu_constrained(pod, workload(capacity, uid='p2')))
+        contention = 'insufficient unused quota for cpu in flavor homelab-worker, 9970m more needed'
+        self.assertFalse(maintenance.cpu_constrained(pod, workload(contention)))
+        ungated = {'metadata': {'uid': 'p1'}, 'spec': {}, 'status': {'phase': 'Pending', 'conditions': []}}
+        self.assertFalse(maintenance.cpu_constrained(ungated, workload(capacity)))
+        self.assertIn('QuotaReserved=False', maintenance.workload_state([pod], workload(contention))[0])
+        self.assertEqual(maintenance.workload_state([], []), ['no workload owned by 0 ai-runtime Pod(s)'])
+
+
     def test_short_idle_acceptance_detects_late_timer_reset(self):
         session = Mock()
         session.status.side_effect = [
