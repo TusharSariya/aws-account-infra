@@ -1,0 +1,89 @@
+"""Bounded HTTP requests; credentials are sent only to fixed Zwift origins."""
+
+import time
+
+import httpx
+
+from .errors import AuthenticationError, BudgetExceeded, ContractError, UpstreamError
+
+API = "https://us-or-rly101.zwift.com/api/"
+TOKEN_URL = "https://secure.zwift.com/auth/realms/zwift/tokens/access/codes"
+
+
+class Transport:
+    def __init__(
+        self, client=None, *, budget=500, clock=time.monotonic, sleep=time.sleep
+    ):
+        self.client = client or httpx.Client(
+            timeout=httpx.Timeout(12, connect=4), follow_redirects=False
+        )
+        self.remaining = budget
+        self.clock, self.sleep = clock, sleep
+        self.deadline = clock() + 420
+
+    def request(self, url, *, token=None, form=None):
+        if not (url.startswith(API) or url == TOKEN_URL):
+            raise ContractError("Untrusted upstream destination")
+        if token and not url.startswith(API):
+            raise ContractError("Bearer token destination rejected")
+        if form is not None and url != TOKEN_URL:
+            raise ContractError("Credential destination rejected")
+        headers = {
+            "Accept": "application/json",
+            "Source": "zwift-web",
+            "Zwift-Api-Version": "2.5",
+        }
+        if token:
+            headers["Authorization"] = "Bearer " + token
+        attempts = 1 if form is not None else 3
+        for attempt in range(attempts):
+            if self.remaining <= 0 or self.clock() >= self.deadline:
+                raise BudgetExceeded("Upstream request budget exhausted")
+            self.remaining -= 1
+            try:
+                with self.client.stream(
+                    "POST" if form is not None else "GET",
+                    url,
+                    headers=headers,
+                    data=form,
+                ) as response:
+                    status = response.status_code
+                    if status in (401, 403) or (form is not None and status == 400):
+                        raise AuthenticationError(
+                            "Zwift authentication requires attention"
+                        )
+                    if status == 429 or status >= 500:
+                        if attempt + 1 == attempts:
+                            raise UpstreamError("Zwift temporarily unavailable")
+                        try:
+                            delay = min(
+                                10,
+                                max(
+                                    1,
+                                    float(
+                                        response.headers.get("Retry-After", 2**attempt)
+                                    ),
+                                ),
+                            )
+                        except ValueError:
+                            delay = 2**attempt
+                        self.sleep(delay)
+                        continue
+                    if status != 200:
+                        raise UpstreamError("Unexpected Zwift HTTP response")
+                    body = bytearray()
+                    for chunk in response.iter_bytes():
+                        body.extend(chunk)
+                        if len(body) > 8_000_000:
+                            raise ContractError("Upstream response too large")
+                    import json
+
+                    try:
+                        return json.loads(body)
+                    except ValueError, UnicodeError:
+                        raise ContractError("Invalid upstream JSON") from None
+            except httpx.HTTPError:
+                if attempt + 1 == attempts:
+                    raise UpstreamError("Zwift transport failed") from None
+                self.sleep(2**attempt)
+        raise UpstreamError("Zwift request failed")

@@ -47,6 +47,10 @@ APPLICATIONS = {
         "scripts/lambda-package*.sh",
         "apps/platform/ci_runner/arm-package/**",
     ],
+    "zwift-calendar": [
+        "apps/lambda/python/3.14/zwift-calendar/**",
+        "scripts/zwift-package.py",
+    ],
     "iracing-calendar": [
         "apps/lambda/python/3.14/iracing-calendar/**",
         "scripts/iracing-package.py",

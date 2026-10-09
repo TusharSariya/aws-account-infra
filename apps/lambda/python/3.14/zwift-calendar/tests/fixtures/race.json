@@ -1,0 +1,107 @@
+{
+  "id": 5722329,
+  "name": "Stage 1 - Race - Tour of Watopia 2026",
+  "eventStart": "2026-10-09T16:10:00.000+0000",
+  "eventType": "RACE",
+  "type": "EVENT_TYPE_RACE",
+  "sport": "CYCLING",
+  "parentId": 5721630,
+  "routeId": 604330868,
+  "privateEvent": false,
+  "unlisted": false,
+  "restricted": false,
+  "accessExpression": "(profile.playerType == \"BROADCASTER\") ||\n(subgroup.label == 1 && scoring.current >= 390 && scoring.current <= 650) ||\n(subgroup.label == 2 && scoring.current >= 270 && scoring.current < 510) ||\n(subgroup.label == 3 && scoring.current >= 160 && scoring.current < 390) ||\n(subgroup.label == 4 && scoring.current < 270) ||\n(subgroup.label == 5 && scoring.current < 160)",
+  "rulesSet": [
+    "NO_TT_BIKES",
+    "ENFORCE_NO_ZPOWER",
+    "SHOW_RACE_RESULTS"
+  ],
+  "timeTrialOptions": null,
+  "eventSubgroups": [
+    {
+      "id": 7372631,
+      "label": 1,
+      "subgroupLabel": "A",
+      "rangeAccessLabel": "510-650",
+      "eventSubgroupStart": "2026-10-09T16:10:00.000+0000",
+      "durationInSeconds": 0,
+      "distanceInMeters": 0.0,
+      "laps": 1,
+      "routeId": 604330868,
+      "rulesSet": [
+        "NO_TT_BIKES",
+        "ENFORCE_NO_ZPOWER",
+        "SHOW_RACE_RESULTS"
+      ],
+      "accessRules": []
+    },
+    {
+      "id": 7372632,
+      "label": 2,
+      "subgroupLabel": "B",
+      "rangeAccessLabel": "390-510",
+      "eventSubgroupStart": "2026-10-09T16:11:00.000+0000",
+      "durationInSeconds": 0,
+      "distanceInMeters": 0.0,
+      "laps": 1,
+      "routeId": 604330868,
+      "rulesSet": [
+        "NO_TT_BIKES",
+        "ENFORCE_NO_ZPOWER",
+        "SHOW_RACE_RESULTS"
+      ],
+      "accessRules": []
+    },
+    {
+      "id": 7372633,
+      "label": 3,
+      "subgroupLabel": "C",
+      "rangeAccessLabel": "270-390",
+      "eventSubgroupStart": "2026-10-09T16:12:00.000+0000",
+      "durationInSeconds": 0,
+      "distanceInMeters": 0.0,
+      "laps": 1,
+      "routeId": 604330868,
+      "rulesSet": [
+        "NO_TT_BIKES",
+        "ENFORCE_NO_ZPOWER",
+        "SHOW_RACE_RESULTS"
+      ],
+      "accessRules": []
+    },
+    {
+      "id": 7372634,
+      "label": 4,
+      "subgroupLabel": "D",
+      "rangeAccessLabel": "160-270",
+      "eventSubgroupStart": "2026-10-09T16:13:00.000+0000",
+      "durationInSeconds": 0,
+      "distanceInMeters": 0.0,
+      "laps": 1,
+      "routeId": 604330868,
+      "rulesSet": [
+        "NO_TT_BIKES",
+        "ENFORCE_NO_ZPOWER",
+        "SHOW_RACE_RESULTS"
+      ],
+      "accessRules": []
+    },
+    {
+      "id": 7372635,
+      "label": 5,
+      "subgroupLabel": "E",
+      "rangeAccessLabel": "0-160",
+      "eventSubgroupStart": "2026-10-09T16:14:00.000+0000",
+      "durationInSeconds": 0,
+      "distanceInMeters": 0.0,
+      "laps": 1,
+      "routeId": 604330868,
+      "rulesSet": [
+        "NO_TT_BIKES",
+        "ENFORCE_NO_ZPOWER",
+        "SHOW_RACE_RESULTS"
+      ],
+      "accessRules": []
+    }
+  ]
+}
