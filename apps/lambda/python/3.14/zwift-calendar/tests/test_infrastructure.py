@@ -39,3 +39,26 @@ def test_deploy_unit_tracks_runtime_and_initializes_after_apply():
     assert (
         "python -m zwift_calendar.cli sync --function zwift-calendar-sync" in workflow
     )
+
+
+def test_two_exact_routes_share_feed_integration_without_extra_aws_storage():
+    config = (
+        ROOT / "live/aws/staging/workloads/lambda/python/zwift-calendar/main.tf"
+    ).read_text()
+    assert 'route                    = "/calendars/zwift-banded.ics"' in config
+    assert 'additional_routes        = ["/calendars/zwift-unbanded.ics"]' in config
+    module = (ROOT / "modules/aws/swimming-calendar/main.tf").read_text()
+    route = module.split('resource "aws_apigatewayv2_route" "additional_feed"')[
+        1
+    ].split('resource "aws_lambda_permission"')[0]
+    assert 'route_key = "GET ${each.value}"' in route
+    assert "aws_apigatewayv2_integration.feed.id" in route
+    permission = module.split('resource "aws_lambda_permission" "additional_api"')[1]
+    assert "/*/GET${each.value}" in permission
+    assert 'aws_lambda_function.app["feed"].function_name' in permission
+    variables = (
+        (ROOT / "modules/aws/swimming-calendar/variables.tf")
+        .read_text()
+        .split('variable "additional_routes"')[1]
+    )
+    assert "default     = []" in variables

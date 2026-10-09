@@ -312,3 +312,23 @@ resource "aws_cloudwatch_metric_alarm" "delivery" {
 }
 output "calendar_url" { value = "${aws_apigatewayv2_api.feed.api_endpoint}${var.route}" }
 output "sync_function" { value = aws_lambda_function.app["sync"].function_name }
+
+resource "aws_apigatewayv2_route" "additional_feed" {
+  # checkov:skip=CKV_AWS_309:These routes intentionally publish public calendar subscriptions without authentication.
+  for_each  = var.additional_routes
+  api_id    = aws_apigatewayv2_api.feed.id
+  route_key = "GET ${each.value}"
+  target    = "integrations/${aws_apigatewayv2_integration.feed.id}"
+}
+
+resource "aws_lambda_permission" "additional_api" {
+  for_each      = var.additional_routes
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.app["feed"].function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.feed.execution_arn}/*/GET${each.value}"
+}
+
+output "calendar_urls" {
+  value = { for route in setunion(toset([var.route]), var.additional_routes) : route => "${aws_apigatewayv2_api.feed.api_endpoint}${route}" }
+}

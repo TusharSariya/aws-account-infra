@@ -160,7 +160,7 @@ def test_score_failure_keeps_cached_score_but_not_forever():
     }
     snapshot, _, report = collect(api, {"profile": profile}, now)
     assert report["score_degraded"] is True
-    assert "VCALENDAR" in snapshot["ics"]
+    assert all("VCALENDAR" in feed["ics"] for feed in snapshot["calendars"].values())
     profile["retrieved_at"] -= 86400
     with pytest.raises(AuthenticationError):
         collect(api, {"profile": profile}, now)
@@ -186,13 +186,18 @@ def test_preview_does_not_publish_or_advance_revisions(storage, monkeypatch):
     monkeypatch.setattr(
         "zwift_calendar.service.collect",
         lambda *args: (
-            {"ics": "preview", "etag": "new"},
+            {
+                "calendars": {
+                    key: {"ics": "preview", "etag": "new"}
+                    for key in ("banded", "unbanded")
+                }
+            },
             {"revisions": {"new": {}}},
             {"score_degraded": False},
         ),
     )
     result = refresh(store, parameters, Mock(), datetime.now(UTC), preview=True)
-    assert result["ics"] == "preview"
+    assert all(feed["ics"] == "preview" for feed in result["calendars"].values())
     assert store.read()[0]["ics"] == "last good"
     assert store.read("private.json")[0]["revisions"] == {}
 
@@ -203,7 +208,12 @@ def test_feed_role_snapshot_contains_no_profile(storage, monkeypatch):
     monkeypatch.setattr(
         "zwift_calendar.service.collect",
         lambda *args: (
-            {"ics": "safe", "etag": "new"},
+            {
+                "calendars": {
+                    key: {"ics": "safe", "etag": "new"}
+                    for key in ("banded", "unbanded")
+                }
+            },
             {"profile": {"private": "account"}},
             {"score_degraded": False},
         ),
@@ -316,3 +326,35 @@ def test_missing_current_score_uses_known_maximum_without_provisional_claim():
     _, state, report = collect(api, {}, now)
     assert report["provisional"] is False
     assert state["profile"]["max30"] == 63
+
+
+def test_second_calendar_render_failure_preserves_both_published_feeds(
+    storage, monkeypatch
+):
+    store, parameters = storage
+    previous = {
+        "calendars": {
+            key: {"ics": key + " old", "etag": key} for key in ("banded", "unbanded")
+        },
+        "last_success": 1000,
+    }
+    store.write("current.json", previous, None)
+    monkeypatch.setattr("zwift_calendar.service.Auth.access", lambda self: "token")
+    api = Mock()
+    now = datetime.now(UTC)
+    api.profile.return_value = {
+        "current": 100,
+        "max30": 100,
+        "fields": {},
+        "retrieved_at": now.timestamp(),
+    }
+    api.upcoming.return_value = []
+    monkeypatch.setattr("zwift_calendar.service.Zwift", lambda *args: api)
+    monkeypatch.setattr(
+        "zwift_calendar.calendar.render",
+        Mock(side_effect=["banded new", ValueError("render failed")]),
+    )
+    with pytest.raises(ValueError):
+        refresh(store, parameters, Mock(), now)
+    assert store.read()[0] == previous
+    assert store.read("private.json")[0] == {}

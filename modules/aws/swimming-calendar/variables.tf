@@ -107,3 +107,13 @@ variable "oauth_parameters" {
     error_message = "Use absolute, unversioned SSM parameter paths."
   }
 }
+
+variable "additional_routes" {
+  description = "Additional public calendar GET paths handled by the same feed Lambda."
+  type        = set(string)
+  default     = []
+  validation {
+    condition     = alltrue([for route in var.additional_routes : startswith(route, "/calendars/") && endswith(route, ".ics") && length(regexall("[{}*?]", route)) == 0 && route != var.route])
+    error_message = "Additional routes must be distinct, literal /calendars/*.ics paths."
+  }
+}

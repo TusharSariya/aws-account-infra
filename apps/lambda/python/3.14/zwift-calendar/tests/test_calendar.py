@@ -182,9 +182,14 @@ def test_feed_conditional_and_initialization():
             return self.data, None
 
     store, now = Store(), datetime.now(UTC)
-    event = {"routeKey": "GET /calendars/zwift.ics"}
+    event = {"routeKey": "GET /calendars/zwift-banded.ics"}
     assert serve(event, store, now)["statusCode"] == 503
-    store.data = {"ics": "calendar", "etag": '"abc"', "last_success": now.timestamp()}
+    store.data = {
+        "calendars": {
+            key: {"ics": "calendar", "etag": '"abc"'} for key in ("banded", "unbanded")
+        },
+        "last_success": now.timestamp(),
+    }
     assert (
         serve(event | {"headers": {"If-None-Match": 'W/"abc"'}}, store, now)[
             "statusCode"

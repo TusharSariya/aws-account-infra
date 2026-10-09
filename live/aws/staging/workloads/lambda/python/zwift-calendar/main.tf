@@ -15,7 +15,8 @@ module "calendar" {
   uid_domain               = "zwift-calendar"
   package_builder          = "scripts/zwift-package.py"
   handlers                 = { sync = "zwift_calendar.service.sync_handler", feed = "zwift_calendar.service.feed_handler" }
-  route                    = "/calendars/zwift.ics"
+  route                    = "/calendars/zwift-banded.ics"
+  additional_routes        = ["/calendars/zwift-unbanded.ics"]
   refresh_schedule         = "cron(0 * * * ? *)"
   refresh_timezone         = "UTC"
   refresh_name_suffix      = "hourly"
@@ -34,6 +35,7 @@ module "calendar" {
   }
 }
 
-output "calendar_url" { value = module.calendar.calendar_url }
+output "banded_calendar_url" { value = module.calendar.calendar_urls["/calendars/zwift-banded.ics"] }
+output "unbanded_calendar_url" { value = module.calendar.calendar_urls["/calendars/zwift-unbanded.ics"] }
 output "sync_function" { value = module.calendar.sync_function }
 output "credentials_parameter" { value = local.credentials_parameter }

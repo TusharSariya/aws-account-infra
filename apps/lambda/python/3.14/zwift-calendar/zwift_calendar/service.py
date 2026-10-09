@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 
 from .api import Zwift, instant
 from .auth import Auth
-from .calendar import reconcile
+from .calendar import CALENDAR_NAMES, split_calendars
 from .duration import estimate, learn
 from .errors import ContractError, UpstreamError
 from .filtering import select
@@ -66,7 +66,7 @@ def collect(api, state, now):
     )
     for event in selected:
         event["duration"] = estimate(event, history, score)
-    snapshot, revisions = reconcile(selected, state.get("revisions", {}), now)
+    snapshot, revisions = split_calendars(selected, state.get("revisions", {}), now)
     report = {
         "matched": len(selected),
         "weekly_counts": weekly_counts(selected, now),
@@ -107,8 +107,11 @@ def refresh(store, parameters, http, now, *, preview=False):
         return {
             "status": "degraded" if report["score_degraded"] else "ok",
             "report": report,
-            "changed": snapshot["etag"] != previous.get("etag"),
-            **({"ics": snapshot["ics"]} if preview else {}),
+            "changed": any(
+                feed["etag"] != previous.get("calendars", {}).get(key, {}).get("etag")
+                for key, feed in snapshot["calendars"].items()
+            ),
+            **({"calendars": snapshot["calendars"]} if preview else {}),
         }
     finally:
         store.release()
@@ -132,12 +135,22 @@ def sync_handler(event, context):
 def serve(event, store, now):
     data, _ = store.read()
     if event.get("health") is True:
-        if now.timestamp() - data.get("last_success", 0) > 10800:
-            raise RuntimeError("Zwift calendar snapshot is older than three hours")
+        if (
+            now.timestamp() - data.get("last_success", 0) > 10800
+            or set(data.get("calendars", {})) != set(CALENDAR_NAMES)
+            or any(
+                not feed.get("ics") or not feed.get("etag")
+                for feed in data.get("calendars", {}).values()
+            )
+        ):
+            raise RuntimeError("Zwift calendars are missing or older than three hours")
         return {"status": "ok"}
-    if event.get("routeKey") != "GET /calendars/zwift.ics":
+    routes = {f"GET /calendars/zwift-{key}.ics": key for key in CALENDAR_NAMES}
+    key = routes.get(event.get("routeKey"))
+    if key is None:
         return {"statusCode": 404, "body": "Not found"}
-    if "ics" not in data:
+    feed = data.get("calendars", {}).get(key)
+    if not feed:
         return {
             "statusCode": 503,
             "headers": {"Retry-After": "300"},
@@ -145,18 +158,18 @@ def serve(event, store, now):
         }
     headers = {
         "Content-Type": "text/calendar; charset=utf-8",
-        "ETag": data["etag"],
+        "ETag": feed["etag"],
         "Cache-Control": "public, max-age=300",
-        "Content-Disposition": 'inline; filename="zwift.ics"',
+        "Content-Disposition": f'inline; filename="zwift-{key}.ics"',
     }
     request = {k.lower(): v for k, v in (event.get("headers") or {}).items()}
     tags = [
         s.strip().removeprefix("W/")
         for s in request.get("if-none-match", "").split(",")
     ]
-    if "*" in tags or data["etag"] in tags:
+    if "*" in tags or feed["etag"] in tags:
         return {"statusCode": 304, "headers": headers, "body": ""}
-    return {"statusCode": 200, "headers": headers, "body": data["ics"]}
+    return {"statusCode": 200, "headers": headers, "body": feed["ics"]}
 
 
 def feed_handler(event, context):

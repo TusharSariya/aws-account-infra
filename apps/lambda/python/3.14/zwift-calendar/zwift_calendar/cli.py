@@ -22,7 +22,7 @@ def main():
         "auth-check", help="Verify login and retrieve current/30-day scores"
     )
     preview = commands.add_parser("preview", help="Write ICS without publishing")
-    preview.add_argument("--output", type=Path, required=True)
+    preview.add_argument("--output-dir", type=Path, required=True)
     sync = commands.add_parser(
         "sync", help="Synchronously invoke the deployed sync function"
     )
@@ -58,7 +58,9 @@ def main():
             )
             if result["status"] == "busy":
                 raise RuntimeError("A sync is already running")
-            args.output.write_text(result.pop("ics"))
+            args.output_dir.mkdir(parents=True, exist_ok=True)
+            for key, feed in result.pop("calendars").items():
+                (args.output_dir / f"zwift-{key}.ics").write_text(feed["ics"])
             print(json.dumps(result, indent=2))
         else:
             store = Store()

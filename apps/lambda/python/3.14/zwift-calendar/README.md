@@ -2,7 +2,14 @@
 
 An hourly Lambda refreshes the signed-in rider's Zwift Racing Score, selects
 eligible races and special-event rides over the next 14 days, and atomically publishes
-an ICS subscription at `GET /calendars/zwift.ics`. Calendar clients choose their
+two independent ICS subscriptions:
+
+- `GET /calendars/zwift-banded.ics`: selected events with a Racing Score band.
+- `GET /calendars/zwift-unbanded.ics`: selected events without a score band, including
+  eligible individual time trials and retained special-event rides.
+
+Both use the same 06:00–23:00 Newfoundland start window and Tour of Watopia
+exclusion. Calendar clients choose their
 own refresh frequency; the server refreshes at minute zero of every UTC hour.
 
 ## Selection and estimates
@@ -72,13 +79,17 @@ exchange leaves a pending marker instead of retrying the old refresh token.
 
 S3 `private.json` holds the rider score, eligibility fields, anonymous history,
 and revision cache. The feed role can read only `current.json`, which contains
-the rendered calendar, ETag, freshness timestamp and transient lease metadata.
+both rendered calendars, their separate ETags, a shared freshness timestamp and
+transient lease metadata.
 The public ICS exposes matching bands but no login, profile ID or exact score.
 S3 is private, encrypted, versioned and requires TLS. A conditional 10-minute
 lease serializes sync and authentication. Network requests have time, response
 size and request-count limits; failures never publish partial discoveries.
 
-The feed supports ETag/304 and returns 503 before initialization. A separate
+Both feeds are committed together in one S3 write, so a partial refresh cannot
+replace just one. Each feed supports its own ETag/304 and returns 503 before
+initialization. Moving an event between bands preserves its UID and revision
+history while removing it from the other feed. A separate
 hourly health invocation alerts when the last successful publication is more
 than three hours old. Lambda errors and delivery failures use the existing
 calendar SNS alert channel.
@@ -94,7 +105,7 @@ export SNAPSHOT_BUCKET=zwift-calendar-992382747916-us-east-1
 uv run --frozen --directory apps/lambda/python/3.14/zwift-calendar python -m zwift_calendar.cli credentials
 # After infrastructure exists:
 uv run --frozen --directory apps/lambda/python/3.14/zwift-calendar python -m zwift_calendar.cli auth-check
-uv run --frozen --directory apps/lambda/python/3.14/zwift-calendar python -m zwift_calendar.cli preview --output /tmp/zwift-preview.ics
+uv run --frozen --directory apps/lambda/python/3.14/zwift-calendar python -m zwift_calendar.cli preview --output-dir /tmp/zwift-preview
 uv run --frozen --directory apps/lambda/python/3.14/zwift-calendar python -m zwift_calendar.cli sync
 uv run --frozen --directory apps/lambda/python/3.14/zwift-calendar pytest
 ```
@@ -103,9 +114,12 @@ Deploy unit `aws-staging-zwift-calendar` uses the existing PR plan/apply workflo
 which synchronously initializes the calendar after apply. The new unit starts
 with `schedule_enabled = false`. After successful initialization and feed review,
 set it to true in `config/environments/aws/staging/zwift-calendar.tfvars` and apply
-through the same workflow. Obtain the subscription URL from the root's
-`calendar_url` output. Add it as a calendar URL subscription, rather than importing
-a one-time downloaded file.
+through the same workflow. Obtain the subscription URLs from the root's
+`banded_calendar_url` and `unbanded_calendar_url` outputs. Subscribe to either or
+both as separate calendars; a downloaded ICS import does not stay up to date.
+The former combined `/calendars/zwift.ics` route is replaced before initial
+deployment. Preview writes `zwift-banded.ics` and `zwift-unbanded.ics` in the
+chosen output directory.
 
 The preview/sync report includes separate next-seven-day and following-seven-day
 counts for score-banded races, unbanded races and special rides. These count scheduled

@@ -7,25 +7,30 @@ from icalendar import Calendar, Event
 
 from .api import instant
 
+CALENDAR_NAMES = {
+    "banded": "Zwift - Banded races",
+    "unbanded": "Zwift - Unbanded races",
+}
 
-def render(events):
+
+def render(events, name="Zwift races and special events"):
     calendar = Calendar()
     calendar.add("prodid", "-//Zwift Race Calendar//EN")
     calendar.add("version", "2.0")
-    calendar.add("x-wr-calname", "Zwift races and special events")
+    calendar.add("x-wr-calname", name)
     for row in sorted(events, key=lambda e: (e["start"], e["id"])):
         event = Event()
         event.add("uid", row["id"] + "@zwift-calendar")
         category = row["band"] or "No score band"
         event.add("summary", f"{row['name']} [{category}, {row['group']}]")
-        for name, key in (
+        for property_name, key in (
             ("dtstart", "start"),
             ("dtend", "end"),
             ("dtstamp", "updated"),
             ("last-modified", "updated"),
             ("created", "created"),
         ):
-            event.add(name, instant(row[key]))
+            event.add(property_name, instant(row[key]))
         event.add("sequence", row["sequence"])
         event.add("transp", "TRANSPARENT")
         event.add("location", "Zwift")
@@ -76,7 +81,7 @@ def render(events):
     return calendar.to_ical().decode()
 
 
-def reconcile(incoming, revisions, now):
+def reconcile(incoming, revisions, now, *, name="Zwift races and special events"):
     old = {
         k: v
         for k, v in revisions.items()
@@ -103,9 +108,23 @@ def reconcile(incoming, revisions, now):
         )
         old[row["id"]] = row
         events.append(row)
-    body = render(events)
+    body = render(events, name)
     return {
         "ics": body,
         "etag": '"' + hashlib.sha256(body.encode()).hexdigest() + '"',
         "last_success": now.timestamp(),
     }, old
+
+
+def split_calendars(incoming, revisions, now):
+    """Publish two disjoint subscriptions in one atomic public snapshot."""
+    calendars = {}
+    for key, name in CALENDAR_NAMES.items():
+        rows = [
+            event
+            for event in incoming
+            if (event["band"] is not None) == (key == "banded")
+        ]
+        snapshot, revisions = reconcile(rows, revisions, now, name=name)
+        calendars[key] = {field: snapshot[field] for field in ("ics", "etag")}
+    return {"calendars": calendars, "last_success": now.timestamp()}, revisions

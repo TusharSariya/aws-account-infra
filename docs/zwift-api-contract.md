@@ -97,3 +97,17 @@ after the Tour of Watopia exclusion to the same saved snapshot, this removes 60
 more first-week slots: 541 remain (297 score-banded, 244 unbanded). The following
 week has 211 remaining slots (118 score-banded, 93 unbanded). This is a start-time
 filter; events may finish after 23:00.
+
+## Separate subscriptions
+
+The selected inventory is partitioned by presence of a score band into
+`/calendars/zwift-banded.ics` and `/calendars/zwift-unbanded.ics`. Both apply the
+Newfoundland start window and campaign exclusions before partitioning. Retained
+special rides without score bands belong in the unbanded feed. No new eligibility
+restriction or time-trial-only filter is introduced by this split.
+
+One hourly upstream extraction produces both feeds in one atomic `current.json`
+snapshot. Each calendar has its own name and content ETag; common event/subgroup
+UIDs and private revisions survive a move between feeds. The HTTP API routes have
+separate exact-path Lambda invocation permissions and share the existing read-only
+feed Lambda. Other calendar services retain their single-route defaults.
