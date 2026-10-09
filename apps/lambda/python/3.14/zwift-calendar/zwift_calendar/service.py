@@ -4,7 +4,7 @@ import json
 import logging
 from datetime import UTC, datetime, timedelta
 
-from .api import Zwift
+from .api import Zwift, instant
 from .auth import Auth
 from .calendar import reconcile
 from .duration import estimate, learn
@@ -15,6 +15,36 @@ from .transport import Transport
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
+
+
+def weekly_counts(selected, now):
+    """Count event slots, not all category pens or distinct campaign stages."""
+    weeks = []
+    for index in range(2):
+        start, end = (
+            now + timedelta(days=index * 7),
+            now + timedelta(days=(index + 1) * 7),
+        )
+        rows = [e for e in selected if start <= instant(e["start"]) < end]
+        weeks.append(
+            {
+                "from": start.isoformat(),
+                "until": end.isoformat(),
+                "total": len(rows),
+                "score_banded_races": sum(
+                    e.get("event_kind", "race") == "race" and e["band"] is not None
+                    for e in rows
+                ),
+                "unbanded_races": sum(
+                    e.get("event_kind", "race") == "race" and e["band"] is None
+                    for e in rows
+                ),
+                "special_event_rides": sum(
+                    e.get("event_kind") == "special_ride" for e in rows
+                ),
+            }
+        )
+    return weeks
 
 
 def collect(api, state, now):
@@ -39,6 +69,7 @@ def collect(api, state, now):
     snapshot, revisions = reconcile(selected, state.get("revisions", {}), now)
     report = {
         "matched": len(selected),
+        "weekly_counts": weekly_counts(selected, now),
         "excluded": exclusions,
         "discovered": len(events),
         "score_age_seconds": int(now.timestamp() - profile["retrieved_at"]),

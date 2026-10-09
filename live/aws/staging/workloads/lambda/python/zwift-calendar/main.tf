@@ -11,7 +11,7 @@ module "calendar" {
   region                   = var.region
   service_name             = "zwift-calendar"
   calendar_source          = "zwift"
-  calendar_name            = "Zwift races"
+  calendar_name            = "Zwift races and special events"
   uid_domain               = "zwift-calendar"
   package_builder          = "scripts/zwift-package.py"
   handlers                 = { sync = "zwift_calendar.service.sync_handler", feed = "zwift_calendar.service.feed_handler" }

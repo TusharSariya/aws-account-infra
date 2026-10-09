@@ -100,7 +100,7 @@ def test_restricted_and_unknown_events(race, profile):
     for key, value in [
         ("privateEvent", True),
         ("sport", "RUNNING"),
-        ("eventType", "GROUP_RIDE"),
+        ("eventType", "GROUP_WORKOUT"),
         ("accessExpression", "powerCurves.category == 1"),
     ]:
         item = copy.deepcopy(race)

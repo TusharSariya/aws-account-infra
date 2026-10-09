@@ -53,11 +53,12 @@ def learn(api, events, selected, previous, score, now, *, limit=12):
         for k, v in previous.get("races", {}).items()
         if instant(v["start"]) >= cutoff
     }
-    wanted = {json.dumps(e["signature"]) for e in selected}
+    races = [e for e in selected if e.get("event_kind", "race") == "race"]
+    wanted = {json.dumps(e["signature"]) for e in races}
     # Previously observed races become history after completion; recurring parent
     # links also supply a bounded bootstrap without scanning all riders' profiles.
     candidates = dict(previous.get("pending", {}))
-    selected_ids = {e["event_id"] for e in selected}
+    selected_ids = {e["event_id"] for e in races}
     for event in events:
         if event["id"] in selected_ids:
             candidates[str(event["id"])] = {"start": event["eventStart"]}
@@ -89,14 +90,16 @@ def learn(api, events, selected, previous, score, now, *, limit=12):
                 band = BAND.fullmatch(group.get("rangeAccessLabel") or "")
                 if (
                     json.dumps(sig) not in wanted
-                    or not band
                     or sig[0] is None
                     or (not sig[1] and not sig[2])
                 ):
                     continue
-                lower, upper = map(int, band.groups())
-                if upper < score - 50 or lower > score + 50:
+                if group.get("rangeAccessLabel") and not band:
                     continue
+                if band:
+                    lower, upper = map(int, band.groups())
+                    if upper < score - 50 or lower > score + 50:
+                        continue
                 samples.append(
                     {
                         "signature": sig,
@@ -117,7 +120,7 @@ def estimate(event, cache, score):
     if event["published_seconds"]:
         return {
             "seconds": math.ceil(event["published_seconds"]),
-            "source": "published timed-race duration",
+            "source": "published event duration",
             "samples": 0,
         }
     values, races = [], set()

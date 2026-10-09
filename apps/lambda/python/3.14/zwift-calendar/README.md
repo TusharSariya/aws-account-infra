@@ -1,7 +1,7 @@
-# Zwift racing calendar
+# Zwift race and special-event calendar
 
 An hourly Lambda refreshes the signed-in rider's Zwift Racing Score, selects
-eligible advertised score bands over the next 14 days, and atomically publishes
+eligible races and special-event rides over the next 14 days, and atomically publishes
 an ICS subscription at `GET /calendars/zwift.ics`. Calendar clients choose their
 own refresh frequency; the server refreshes at minute zero of every UTC hour.
 
@@ -14,13 +14,31 @@ A failed score lookup can reuse a successful lookup for at most 24 hours and
 raises an operational alert. Authentication, event-discovery failures, or older
 score data preserve the last published calendar.
 
-Cycling races and individual time trials qualify only when an advertised score
-band and a supported access expression both accept the rider. Team events,
-private events, unscored categories, unsupported restrictions, and malformed
-bands are excluded. Gender and profile restrictions in supported expressions
-are checked. The narrow safe expression parser does not execute upstream code.
-There is no route, time-of-day, series, or band-width preference. Overlapping
-eligible bands resolve to the lowest upper bound, then narrowest band.
+Cycling races and individual time trials are included with or without score bands.
+Banded races must satisfy both the published range and supported access expression;
+`Max` display bands use the 30-day maximum. For unbanded races, an authenticated
+Zwift eligibility verdict can confirm legacy power/category restrictions. A false
+verdict always excludes a group. Without a verdict, only unrestricted events or
+locally understood entry expressions qualify. Missing score bands do not bypass
+privacy, gender, age, category or other entry restrictions.
+
+Recognized special-event group rides are also included: Tour of Watopia, Tour de
+Zwift, Zwift Games and Zwift Big Spin. Recognition uses campaign names, event-series
+names and explicit tag patterns in `campaigns.py`. New campaigns require an entry;
+ordinary club rides, workouts, running, private events and team time trials remain
+excluded. Announcements and on-demand activities without a scheduled start are not
+calendar entries.
+
+There is one calendar entry per event. Banded race choices use the lowest upper
+score bound, then narrowest band. Unbanded races prefer the lowest advertised pace
+among eligible groups, with a stable subgroup-ID tie-break; unknown pace is never
+interpreted as zero or beginner difficulty. Descriptions explicitly distinguish
+unbanded events from score-matched races.
+
+Special rides choose the shortest eligible option using published distance, timed
+duration, or explicit Short/Standard/Long labels. Lap counts on different routes
+are not comparable. Ambiguous unlabeled route lengths are excluded and reported.
+There is no time-of-day or race-series preference.
 
 Each entry uses its subgroup's start time. Time trials describe that time as the
 session opening, because the rider's actual assigned start may be later. End
@@ -32,7 +50,8 @@ times use, in order:
    at least 10 finishes across two races.
 3. An explicitly labelled 60-minute placeholder.
 
-The result-summary API samples leading finishers, not an entire field. Estimates
+Only races consume the historical-result lookup budget. Special rides use their
+published duration or the labelled fallback. The result-summary API samples leading finishers, not an entire field. Estimates
 are labelled accordingly and may be optimistic. History bootstraps from recurring
 parent events and previously observed races; at most 12 historical events are
 queried per run. Only anonymous score/time histograms are stored, never finisher
@@ -83,6 +102,11 @@ set it to true in `config/environments/aws/staging/zwift-calendar.tfvars` and ap
 through the same workflow. Obtain the subscription URL from the root's
 `calendar_url` output. Add it as a calendar URL subscription, rather than importing
 a one-time downloaded file.
+
+The preview/sync report includes separate next-seven-day and following-seven-day
+counts for score-banded races, unbanded races and special rides. These count scheduled
+start slots, not unique courses or campaign stages. Counts reflect currently published
+inventory, so later-week counts may rise as organizers publish events.
 
 Preview renews tokens and warms private caches under the lease but does not
 publish or advance published revisions. Disable the schedule before credential

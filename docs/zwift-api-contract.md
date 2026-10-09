@@ -42,3 +42,38 @@ The score is read from Zwift's calculation; this service does not invent a score
 from watts/kg or assume race history is necessary. Fixtures keep only public
 race metadata and synthetic account/score data. No raw authentication, profile,
 or identifiable result responses are committed.
+
+## Special rides and unbanded events
+
+The 2026-10-09 authenticated inventory also verified:
+
+- Tour of Watopia `GROUP_RIDE` events have the `tourofwatopia2026` tag and an
+  `eventSeries.name` naming the campaign/stage. Their Long/Standard/Short subgroup
+  names distinguish route lengths even when `distanceInMeters` is zero. The rider's
+  selected route is the shortest eligible subgroup.
+- Unrestricted rides/races can have null `accessExpression`, null
+  `accessValidationResult`, and empty `accessRules`. Those fields do not constitute
+  a failed score lookup. A missing score band is explicitly displayed as unbanded.
+- Legacy category-enforced races can use `powerCurves.category` or compound-power
+  expressions. For unbanded entries only, an explicit authenticated subgroup
+  `accessValidationResult: true` confirms those rules against the current rider.
+  False, malformed and unresolved restrictions remain exclusions; Racing Score is
+  never converted into a legacy category.
+- Some score-band display labels end with ` Max` (for example `0-210 Max`) and
+  their access expressions use `scoring.max30`. These remain score-filtered races.
+
+First-party campaign references used for the explicit recognition list:
+[Tour of Watopia](https://forums.zwift.com/t/tour-of-watopia-october-2026/671621),
+[Tour of Watopia event tag](https://www.zwift.com/eu-de/events/tag/tourofwatopia2026),
+[Tour de Zwift](https://forums.zwift.com/t/tour-de-zwift-january-2026/661328),
+[Zwift Games](https://forums.zwift.com/t/zwift-games-february-2026/665119), and
+[Zwift Big Spin](https://forums.zwift.com/t/the-big-spin-february-2026/666258).
+This is a curated list of named campaigns, not automatic discovery of every future
+special event or every community-organized series.
+
+At 2026-10-09 16:26 UTC, the expanded filter found 934 entries in the next seven days:
+488 score-banded races, 279 unbanded races, and 167 special rides. The following
+seven days had 578 entries (302, 108, and 168 respectively). Each special ride used
+one shortest eligible route. These are currently published start slots, not a
+historical weekly average or a guarantee of the eventual second-week inventory.
+An independent ICS parser verified 1,512 unique entries across the two weeks.
