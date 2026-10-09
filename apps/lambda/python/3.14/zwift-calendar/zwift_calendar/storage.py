@@ -16,7 +16,14 @@ CONFIG = Config(
 
 
 def client(service):
-    return boto3.client(service, config=CONFIG)
+    # A synchronous Lambda refresh can run for 540 seconds. Replaying an invoke
+    # on a short read timeout only encounters its own still-active lease.
+    config = (
+        CONFIG.merge(Config(read_timeout=600, retries={"total_max_attempts": 1}))
+        if service == "lambda"
+        else CONFIG
+    )
+    return boto3.client(service, config=config)
 
 
 class Busy(RuntimeError):

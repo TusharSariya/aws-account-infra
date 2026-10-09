@@ -49,7 +49,7 @@ def main():
             )
             with response["Payload"] as body:
                 result = json.load(body)
-            if response.get("FunctionError"):
+            if response.get("FunctionError") or result.get("status") != "ok":
                 raise RuntimeError("Deployed sync failed")
             print(json.dumps(result))
         elif args.command == "preview":
