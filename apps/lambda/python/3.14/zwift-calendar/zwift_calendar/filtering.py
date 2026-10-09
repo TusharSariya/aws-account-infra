@@ -4,6 +4,7 @@ import math
 import re
 from collections import Counter
 from datetime import timedelta
+from zoneinfo import ZoneInfo
 
 from .api import instant
 from .campaigns import EXCLUDED_CAMPAIGNS, campaign
@@ -12,6 +13,11 @@ from .rules import evaluate, parse
 
 BAND = re.compile(r"^(\d{1,4})\s*[-–]\s*(\d{1,4})(?: Max)?$")
 TYPES = {"RACE", "TIME_TRIAL"}
+RIDING_TIMEZONE = ZoneInfo("America/St_Johns")
+
+
+def within_riding_hours(start):
+    return 6 <= start.astimezone(RIDING_TIMEZONE).hour < 23
 
 
 def signature(event, group):
@@ -124,6 +130,9 @@ def select(events, profile, now):
                 raise ContractError("Invalid subgroup identity")
             start = instant(group.get("eventSubgroupStart"))
             if not now <= start < now + timedelta(days=14):
+                continue
+            if not within_riding_hours(start):
+                excluded["outside_riding_hours"] += 1
                 continue
             raw_band = group.get("rangeAccessLabel")
             band = BAND.fullmatch(raw_band) if isinstance(raw_band, str) else None

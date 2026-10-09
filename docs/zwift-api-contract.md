@@ -90,3 +90,10 @@ Applied to the same October 9 snapshot, the next seven days drop from 934 to 601
 slots: 322 score-banded races and 279 unbanded races. All 167 special rides in that
 week belonged to Tour of Watopia. The 166 Tour of Watopia race slots are also
 removed. These are counts from the saved snapshot, not a new live inventory fetch.
+
+The subsequent riding-hours preference keeps starts from 06:00 inclusive to 23:00
+exclusive in America/St_Johns, with automatic daylight-saving adjustments. Applied
+after the Tour of Watopia exclusion to the same saved snapshot, this removes 60
+more first-week slots: 541 remain (297 score-banded, 244 unbanded). The following
+week has 211 remaining slots (118 score-banded, 93 unbanded). This is a start-time
+filter; events may finish after 23:00.

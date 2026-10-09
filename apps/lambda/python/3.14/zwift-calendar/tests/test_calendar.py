@@ -227,12 +227,10 @@ def test_utc_events_survive_newfoundland_dst(race, profile):
     second = datetime(2026, 11, 1, 1, 30, tzinfo=zone, fold=1)
     rendered = []
     for start in (first, second):
-        group = next(
-            g for g in race["eventSubgroups"] if g["rangeAccessLabel"] == "0-160"
-        )
-        group["eventSubgroupStart"] = start.isoformat()
+        # Test UTC serialization independently of the overnight start filter.
+        events = selected(race, profile)
+        events[0]["start"] = start.astimezone(UTC).isoformat()
         now = start.astimezone(UTC) - timedelta(minutes=1)
-        events = select([race], profile, now)[0]
         events[0]["duration"] = estimate(events[0], {}, 100)
         snapshot, _ = reconcile(events, {}, now)
         rendered.append(vobject.readOne(snapshot["ics"]).vevent.dtstart.value)

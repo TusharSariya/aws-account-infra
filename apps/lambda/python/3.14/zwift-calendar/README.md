@@ -39,7 +39,10 @@ unbanded events from score-matched races.
 Special rides choose the shortest eligible option using published distance, timed
 duration, or explicit Short/Standard/Long labels. Lap counts on different routes
 are not comparable. Ambiguous unlabeled route lengths are excluded and reported.
-There is no time-of-day or race-series preference.
+Starts must fall between 06:00 inclusive and 23:00 exclusive in
+`America/St_Johns`, including daylight-saving changes. The filter uses each
+subgroup's start, not the parent start or estimated finish. It applies to races
+and special rides; an event starting before 23:00 may finish later.
 
 Each entry uses its subgroup's start time. Time trials describe that time as the
 session opening, because the rider's actual assigned start may be later. End

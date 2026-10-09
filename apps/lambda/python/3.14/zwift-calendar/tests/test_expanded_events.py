@@ -244,3 +244,37 @@ def test_hourly_watopia_programmes_are_excluded(fixture):
 def test_excluded_campaign_tag_survives_renamed_event(ride):
     ride.update(name="Stage 3 ride", tags=["tourofwatopia2026"], eventSeries=None)
     assert choose(ride) == []
+
+
+@pytest.mark.parametrize("month,day", [(1, 15), (7, 15), (11, 1)])
+@pytest.mark.parametrize(
+    "hour,minute,allowed",
+    [(5, 59, False), (6, 0, True), (22, 59, True), (23, 0, False), (0, 0, False)],
+)
+def test_riding_window_uses_newfoundland_local_time(month, day, hour, minute, allowed):
+    from zoneinfo import ZoneInfo
+
+    from zwift_calendar.filtering import within_riding_hours
+
+    local = datetime(
+        2026, month, day, hour, minute, tzinfo=ZoneInfo("America/St_Johns")
+    )
+    assert within_riding_hours(local.astimezone(UTC)) is allowed
+
+
+def test_riding_window_filters_subgroup_start_not_parent(race):
+    from zoneinfo import ZoneInfo
+
+    local = datetime(2026, 10, 10, 5, 59, tzinfo=ZoneInfo("America/St_Johns"))
+    race["eventStart"] = (local + timedelta(hours=2)).isoformat()
+    for group in race["eventSubgroups"]:
+        group["eventSubgroupStart"] = local.isoformat()
+    now = local.astimezone(UTC) - timedelta(minutes=1)
+    rows, excluded = select([race], PROFILE, now)
+    assert rows == [] and excluded["outside_riding_hours"] == len(
+        race["eventSubgroups"]
+    )
+    race["eventSubgroups"][-1]["eventSubgroupStart"] = (
+        local + timedelta(minutes=1)
+    ).isoformat()
+    assert len(select([race], PROFILE, now)[0]) == 1
