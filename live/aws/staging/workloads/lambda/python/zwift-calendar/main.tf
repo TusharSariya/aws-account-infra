@@ -22,12 +22,14 @@ module "calendar" {
   refresh_name_suffix      = "hourly"
   schedule_enabled         = var.schedule_enabled
   health_threshold_seconds = 10800
-  sync_object_keys         = ["current.json", "private.json"]
+  sync_object_keys         = ["current.json", "private.json", "history/state.json", "history/targets.json"]
+  feed_object_keys         = ["current.json", "history/state.json", "history/targets.json"]
   memory_sizes             = { sync = 512, feed = 256 }
   sync_timeout             = 540
   sync_parameter_reads     = [local.credentials_parameter, local.tokens_parameter]
   sync_parameter_writes    = [local.tokens_parameter]
   function_environment = {
+    feed = { HISTORY_ENABLED = tostring(var.history_enabled) }
     sync = {
       ZWIFT_CREDENTIALS_PARAMETER = local.credentials_parameter
       ZWIFT_TOKENS_PARAMETER      = local.tokens_parameter

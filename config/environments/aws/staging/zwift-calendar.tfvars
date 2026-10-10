@@ -5,3 +5,6 @@ default_tags   = { managed_by = "opentofu", repo = "aws-account-infra" }
 
 # Initial authenticated sync and both live calendar feeds verified.
 schedule_enabled = true
+
+# Bounded live batch and both enriched calendar feeds verified.
+history_enabled = true

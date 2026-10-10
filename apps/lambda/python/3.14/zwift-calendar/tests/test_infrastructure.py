@@ -22,7 +22,11 @@ def test_private_parameters_never_enter_state_or_feed_permissions():
         'data "aws_ssm_parameter"' in p.read_text() for p in module.glob("*.tf")
     )
     shared = (module / "main.tf").read_text()
-    assert ': ["${aws_s3_bucket.snapshot.arn}/current.json"]' in shared
+    assert (
+        '[for key in var.feed_object_keys : "${aws_s3_bucket.snapshot.arn}/${key}"]'
+        in shared
+    )
+    assert 'default     = ["current.json"]' in (module / "variables.tf").read_text()
     assert 'refresh_schedule         = "cron(0 * * * ? *)"' in config
     assert 'refresh_timezone         = "UTC"' in config
 

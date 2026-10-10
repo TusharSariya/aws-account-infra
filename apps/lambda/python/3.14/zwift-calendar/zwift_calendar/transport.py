@@ -4,7 +4,14 @@ import time
 
 import httpx
 
-from .errors import AuthenticationError, BudgetExceeded, ContractError, UpstreamError
+from .errors import (
+    AuthenticationError,
+    BudgetExceeded,
+    ContractError,
+    CursorRejected,
+    RateLimited,
+    UpstreamError,
+)
 
 API = "https://us-or-rly101.zwift.com/api/"
 TOKEN_URL = "https://secure.zwift.com/auth/realms/zwift/tokens/access/codes"
@@ -12,14 +19,25 @@ TOKEN_URL = "https://secure.zwift.com/auth/realms/zwift/tokens/access/codes"
 
 class Transport:
     def __init__(
-        self, client=None, *, budget=500, clock=time.monotonic, sleep=time.sleep
+        self,
+        client=None,
+        *,
+        budget=500,
+        clock=time.monotonic,
+        sleep=time.sleep,
+        seconds=420,
+        interval=0,
+        defer_rate_limits=False,
     ):
         self.client = client or httpx.Client(
             timeout=httpx.Timeout(12, connect=4), follow_redirects=False
         )
         self.remaining = budget
         self.clock, self.sleep = clock, sleep
-        self.deadline = clock() + 420
+        self.deadline = clock() + seconds
+        self.interval = interval
+        self.next_request = clock()
+        self.defer_rate_limits = defer_rate_limits
 
     def request(self, url, *, token=None, form=None):
         if not (url.startswith(API) or url == TOKEN_URL):
@@ -39,6 +57,11 @@ class Transport:
         for attempt in range(attempts):
             if self.remaining <= 0 or self.clock() >= self.deadline:
                 raise BudgetExceeded("Upstream request budget exhausted")
+            delay = max(0, self.next_request - self.clock())
+            if self.clock() + delay + 12 >= self.deadline:
+                raise BudgetExceeded("Upstream request budget exhausted")
+            self.sleep(delay)
+            self.next_request = self.clock() + self.interval
             self.remaining -= 1
             try:
                 with self.client.stream(
@@ -48,6 +71,18 @@ class Transport:
                     data=form,
                 ) as response:
                     status = response.status_code
+                    if self.defer_rate_limits and status == 429:
+                        try:
+                            delay = max(
+                                60, float(response.headers.get("Retry-After", "10800"))
+                            )
+                            if not 0 < delay < float("inf"):
+                                delay = 10800
+                        except ValueError:
+                            delay = 10800
+                        raise RateLimited(delay)
+                    if status in (400, 410) and "/event-feed?cursor=" in url:
+                        raise CursorRejected("Historical cursor expired")
                     if status in (401, 403) or (form is not None and status == 400):
                         raise AuthenticationError(
                             "Zwift authentication requires attention"

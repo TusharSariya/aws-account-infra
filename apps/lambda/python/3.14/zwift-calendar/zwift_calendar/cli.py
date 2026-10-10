@@ -27,6 +27,11 @@ def main():
         "sync", help="Synchronously invoke the deployed sync function"
     )
     sync.add_argument("--function", default="zwift-calendar-sync")
+    history = commands.add_parser("backfill", help="Run one budgeted historical batch")
+    history.add_argument("--function", default="zwift-calendar-history")
+    commands.add_parser(
+        "backfill-status", help="Read private historical coverage and usage"
+    )
     args = parser.parse_args()
     try:
         if args.command == "credentials":
@@ -41,7 +46,16 @@ def main():
             )
             parameters.write(os.environ.get("ZWIFT_TOKENS_PARAMETER", TOKENS), {})
             print("Credentials saved; token cache invalidated.")
-        elif args.command == "sync":
+        elif args.command == "backfill-status":
+            from .backfill import STATE, TARGETS, status
+
+            store = Store()
+            print(
+                json.dumps(
+                    status(store.read(STATE)[0], store.read(TARGETS)[0]), indent=2
+                )
+            )
+        elif args.command in ("sync", "backfill"):
             response = client("lambda").invoke(
                 FunctionName=args.function,
                 InvocationType="RequestResponse",
@@ -49,7 +63,12 @@ def main():
             )
             with response["Payload"] as body:
                 result = json.load(body)
-            if response.get("FunctionError") or result.get("status") != "ok":
+            accepted = (
+                {"ok"}
+                if args.command == "sync"
+                else {"ok", "busy", "no_targets", "budget_limited", "deferred"}
+            )
+            if response.get("FunctionError") or result.get("status") not in accepted:
                 raise RuntimeError("Deployed sync failed")
             print(json.dumps(result))
         elif args.command == "preview":

@@ -117,3 +117,9 @@ variable "additional_routes" {
     error_message = "Additional routes must be distinct, literal /calendars/*.ics paths."
   }
 }
+
+variable "feed_object_keys" {
+  description = "Private objects read by feed health checks; only current.json is served."
+  type        = list(string)
+  default     = ["current.json"]
+}

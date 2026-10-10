@@ -111,6 +111,36 @@ class Zwift:
             query = {"cursor": cursor, "limit": 50}
         raise ContractError("Event pagination limit reached")
 
+    def history_page(self, since, cursor=None):
+        query = (
+            {"cursor": cursor, "limit": 50}
+            if cursor
+            else {"from": int(since.timestamp() * 1000), "limit": 50}
+        )
+        data = self.get("event-feed?" + urlencode(query), authenticated=True)
+        if (
+            not isinstance(data, dict)
+            or not isinstance(data.get("data"), list)
+            or "cursor" not in data
+        ):
+            raise ContractError("Invalid historical page")
+        rows = []
+        for item in data["data"]:
+            event = item.get("event") if isinstance(item, dict) else None
+            if not isinstance(event, dict) or type(event.get("id")) is not int:
+                raise ContractError("Invalid historical identity")
+            instant(event.get("eventStart"))
+            rows.append(event)
+        next_cursor = data["cursor"]
+        if next_cursor and (
+            not isinstance(next_cursor, str)
+            or len(next_cursor) > 2048
+            or not rows
+            or next_cursor == cursor
+        ):
+            raise ContractError("Invalid historical cursor")
+        return rows, next_cursor or None
+
     def event(self, event_id):
         if type(event_id) is not int or event_id <= 0:
             raise ContractError("Invalid historical event identity")
