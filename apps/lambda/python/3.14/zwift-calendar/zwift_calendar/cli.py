@@ -4,6 +4,7 @@ import argparse
 import getpass
 import json
 import os
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -69,13 +70,20 @@ def main():
             }
             print(json.dumps(report, indent=2))
         elif args.command in ("sync", "backfill"):
-            response = client("lambda").invoke(
-                FunctionName=args.function,
-                InvocationType="RequestResponse",
-                Payload=b"{}",
-            )
-            with response["Payload"] as body:
-                result = json.load(body)
+            functions = client("lambda")
+            attempts = 21 if args.command == "sync" else 1
+            for attempt in range(attempts):
+                response = functions.invoke(
+                    FunctionName=args.function,
+                    InvocationType="RequestResponse",
+                    Payload=b"{}",
+                )
+                with response["Payload"] as body:
+                    result = json.load(body)
+                if response.get("FunctionError") or result.get("status") != "busy":
+                    break
+                if attempt + 1 < attempts:
+                    time.sleep(10)
             accepted = (
                 {"ok"}
                 if args.command == "sync"
