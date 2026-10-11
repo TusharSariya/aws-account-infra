@@ -266,5 +266,8 @@ ICS consumers. A 60-minute fallback explicitly says the expected finish is unkno
 Expected finishers are the selected division's historical arithmetic average,
 not a promise of attendance. Finish-time estimates use the median for comparable
 course/distance/laps/type and riders within 50 Racing Score points, requiring at
-least ten finishes from two historical races. Updating this presentation increments
+least ten finishes from two historical races. When personal-score evidence is
+insufficient, an explicitly labelled median from the exact division is used
+with the same ten-finishes/two-races minimum; other divisions never supply that
+fallback. Updating this presentation increments
 existing event revisions without changing subscription URLs or event IDs.

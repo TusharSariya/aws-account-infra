@@ -124,11 +124,18 @@ def estimate(event, cache, score):
             "samples": 0,
         }
     values, races = [], set()
+    division_values, division_races = [], set()
     for identity, race in cache.get("races", {}).items():
         for sample in race["samples"]:
             if sample["signature"] != event["signature"]:
                 continue
             for rider_score, seconds, count in sample["bins"]:
+                if (
+                    event.get("turnout_division") is not None
+                    and sample.get("division") == event["turnout_division"]
+                ):
+                    division_values.extend([seconds] * count)
+                    division_races.add(identity)
                 if abs(rider_score - score) <= 50:
                     values.extend([seconds] * count)
                     races.add(identity)
@@ -137,5 +144,11 @@ def estimate(event, cache, score):
             "seconds": math.ceil(median(values)),
             "source": "estimated from sampled similar-score finishers",
             "samples": len(values),
+        }
+    if len(division_values) >= 10 and len(division_races) >= 2:
+        return {
+            "seconds": math.ceil(median(division_values)),
+            "source": "estimated division median; your finish time may differ",
+            "samples": len(division_values),
         }
     return {"seconds": 3600, "source": "estimated 60-minute placeholder", "samples": 0}
