@@ -387,3 +387,37 @@ def test_enabled_history_health_alerts_only_for_stale_uncovered_targets(monkeypa
         serve({"health": True}, store, NOW)
     state["last_success"] = NOW.timestamp()
     assert serve({"health": True}, store, NOW) == {"status": "ok"}
+
+
+def test_detail_float_distance_matches_integer_feed_signature():
+    sig = [1, 0, 1, "RACE"]
+    target = TARGET | {
+        "signatures": {backfill.key(sig): {"signature": sig, "count": 1}}
+    }
+    state = backfill.seed({}, target, NOW)
+    backfill.enqueue(state, "1", {"start": None})
+    detail = event()
+    detail["eventSubgroups"][0].update(distanceInMeters=0.0, laps=1)
+    api = Mock()
+    api.event.return_value = detail
+    api.results.return_value = results(10)
+    backfill.sample_event(api, state, "1", target, NOW)
+    assert state["races"]["1"]["samples"]
+    assert sum(b[2] for b in state["races"]["1"]["samples"][0]["bins"]) == 5
+
+
+def test_seed_migrates_frozen_float_keys_without_losing_event_counts():
+    sig = [1, 0, 1, "RACE"]
+    target = {
+        "score": 100,
+        "signatures": {
+            '[1,0,1,"RACE"]': {"signature": sig, "count": 2},
+            '[1,0.0,1,"RACE"]': {"signature": [1, 0.0, 1, "RACE"], "count": 3},
+        },
+    }
+    backfill.seed({}, target, NOW)
+    assert list(target["signatures"]) == [backfill.key(sig)]
+    assert target["signatures"][backfill.key(sig)]["count"] == 5
+    backfill.seed({}, target, NOW)
+    assert target["signatures"][backfill.key(sig)]["count"] == 5
+    assert backfill.key([1, 0.5, 1, "RACE"]) != backfill.key(sig)

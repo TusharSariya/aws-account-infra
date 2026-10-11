@@ -32,7 +32,13 @@ log.setLevel(logging.INFO)
 
 
 def key(sig):
-    return json.dumps(sig, separators=(",", ":"))
+    # Feed JSON uses integers; detail JSON uses floats for the same distance.
+    normalized = (
+        [int(v) if isinstance(v, float) and v.is_integer() else v for v in sig]
+        if isinstance(sig, list)
+        else sig
+    )
+    return json.dumps(normalized, separators=(",", ":"))
 
 
 def targets(events, selected, score, now):
@@ -114,6 +120,15 @@ def coverage(state, target):
 
 
 def seed(state, target, now):
+    normalized = {}
+    for row in target.get("signatures", {}).values():
+        identity = key(row["signature"])
+        if identity in normalized:
+            normalized[identity]["count"] += row["count"]
+        else:
+            normalized[identity] = dict(row)
+    if "signatures" in target:
+        target["signatures"] = normalized
     cutoff = now - timedelta(days=90)
     state.setdefault("version", 1)
     if state["version"] != 1:
@@ -131,7 +146,7 @@ def seed(state, target, now):
             [
                 sorted(target.get("signatures", {})),
                 target.get("score"),
-                "complete-results-with-division-v3",
+                "canonical-complete-results-with-division-v4",
             ]
         ).encode()
     ).hexdigest()
