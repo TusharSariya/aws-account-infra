@@ -46,7 +46,7 @@ resource "aws_sfn_state_machine" "bootstrap" {
   logging_configuration {
     log_destination        = "${aws_cloudwatch_log_group.bootstrap.arn}:*"
     include_execution_data = false
-    level                  = "ERROR"
+    level                  = "ALL"
   }
   definition = templatefile("${path.module}/bootstrap.asl.json", {
     history_arn = aws_lambda_function.history.arn
