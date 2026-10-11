@@ -5,7 +5,13 @@ from datetime import timedelta
 from zoneinfo import ZoneInfo
 
 from .api import instant
-from .errors import BudgetExceeded, ContractError, RateLimited, UpstreamError
+from .errors import (
+    AuthenticationError,
+    BudgetExceeded,
+    ContractError,
+    RateLimited,
+    UpstreamError,
+)
 
 ZONE = ZoneInfo("America/St_Johns")
 MIN_EDITIONS = 2
@@ -147,7 +153,7 @@ def populate(api, state, target, now, *, budget=40):
                         if group["id"] == request[2]:
                             group["finishers"] = count
                 state["successful_units"] = state.get("successful_units", 0) + 1
-            except RateLimited:
+            except RateLimited, AuthenticationError:
                 raise
             except BudgetExceeded:
                 return
