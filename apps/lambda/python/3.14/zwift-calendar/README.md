@@ -196,7 +196,10 @@ ordinary special rides are unaffected.
 Descriptions include the average and number of editions. Known averages also
 appear in `X-ZWIFT-AVERAGE-FINISHERS` and `X-ZWIFT-TURNOUT-EDITIONS`. Preview/sync
 reports include `before_turnout_filter` and `turnout.filtered`, with separate
-banded/unbanded exclusion counts plus known/unknown coverage. Filtered races stay
+banded/unbanded exclusion counts plus known/unknown coverage. Unknown counts
+distinguish pending lookups, missing parent links and insufficient comparable
+history. Collection prioritizes two editions across races before deepening to six.
+Filtered races stay
 in historical collection targets so subsequent evidence can restore them.
 
 The existing worker shares its 120-request budget between turnout collection
