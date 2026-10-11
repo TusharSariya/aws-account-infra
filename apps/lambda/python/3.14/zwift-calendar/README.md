@@ -145,8 +145,8 @@ The worker imports the legacy history once. Its versioned private state includes
 anonymous score/time bins, pending event/subgroup work, discovery cursors and
 admission counters. Only qualified, unflagged finishers count. Estimates still
 require ten finishes from two races on the same route/distance/laps/type within
-50 score points. The verified upstream summary is sampled, not a complete finish
-distribution. Insufficient evidence keeps the labeled 60-minute placeholder.
+50 score points. The worker validates complete paginated results before persisting anonymous
+score/time bins. Insufficient evidence keeps the labeled 60-minute placeholder.
 
 Bounds: 512 MB Arm, 180-second Lambda timeout, 150-second upstream deadline,
 120 HTTP attempts/run, two attempts/second, at most eight admitted runs per UTC
@@ -218,9 +218,11 @@ workflow runs the existing history Lambda repeatedly. This is separate from the
 small three-hourly maintenance pass. It freezes the current race targets in
 `history/state.json` under `bootstrap`, collects up to six comparable editions
 per race (two across the inventory first), and refreshes both calendars on exit.
-Its final execution output contains the frozen-target coverage report and the
+Its final execution output contains turnout and duration coverage reports and the
 new calendar report, including the current number filtered below ten finishers.
-Duration sampling remains the scheduled worker's responsibility.
+The same pass also backfills finish-time evidence, sharing its request allowance
+between turnout and duration discovery. It stops as complete only after both
+are covered or their available historical work is exhausted.
 
 Each execution reserves at most 100 batches of 120 requests (12,000 attempts,
 including authentication and retries), at two requests/second. Batches wait at
@@ -256,3 +258,13 @@ alarms, narrowly scoped invocation permissions, and no recurring bootstrap sched
 The KMS key, alarms, and execution logs have ongoing costs even while idle; the
 request allowance bounds work, not the total AWS bill. Stop an execution to halt
 future batches; an in-flight Lambda may finish its current bounded batch.
+
+Calendar descriptions show expected ride minutes and the corresponding local
+finish time whenever a published duration or supported historical estimate exists.
+`DTEND` uses that same duration; `X-ZWIFT-EXPECTED-DURATION-SECONDS` exposes it to
+ICS consumers. A 60-minute fallback explicitly says the expected finish is unknown.
+Expected finishers are the selected division's historical arithmetic average,
+not a promise of attendance. Finish-time estimates use the median for comparable
+course/distance/laps/type and riders within 50 Racing Score points, requiring at
+least ten finishes from two historical races. Updating this presentation increments
+existing event revisions without changing subscription URLs or event IDs.

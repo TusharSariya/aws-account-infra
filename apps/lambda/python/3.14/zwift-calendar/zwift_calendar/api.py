@@ -150,19 +150,15 @@ class Zwift:
         return data
 
     def results(self, subgroup_id):
-        data = self.get(
-            f"race-results/summary?event_subgroup_id={int(subgroup_id)}",
-            authenticated=True,
-        )
-        if not isinstance(data, dict) or not isinstance(
-            data.get("firstEntries", []), list
-        ):
-            raise ContractError("Invalid race results response")
-        return data.get("firstEntries", [])
+        """Return a verified complete field; callers persist anonymous bins only."""
+        return self._complete_results(subgroup_id)[1]
 
     def finisher_count(self, subgroup_id):
         """Count qualified finishers only after reaching an empty results page."""
-        seen, count = set(), 0
+        return self._complete_results(subgroup_id)[0]
+
+    def _complete_results(self, subgroup_id):
+        seen, count, entries = set(), 0, []
         for start in range(0, 2500, 25):
             data = self.get(
                 "race-results/entries?"
@@ -175,7 +171,7 @@ class Zwift:
             if not isinstance(rows, list) or len(rows) > 25:
                 raise ContractError("Invalid complete results page")
             if not rows:
-                return count
+                return count, entries
             for row in rows:
                 if not isinstance(row, dict) or type(row.get("profileId")) is not int:
                     raise ContractError("Invalid finisher identity")
@@ -183,6 +179,7 @@ class Zwift:
                 if identity in seen or row.get("eventSubgroupId") != subgroup_id:
                     raise ContractError("Repeated or mismatched finisher")
                 seen.add(identity)
+                entries.append(row)
                 elapsed = (row.get("activityData") or {}).get("durationInMilliseconds")
                 if (
                     type(row.get("qualified")) is not bool

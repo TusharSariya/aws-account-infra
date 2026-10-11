@@ -111,7 +111,13 @@ def seed(state, target, now):
         if not v.get("start") or instant(v["start"]) >= cutoff
     }
     scope = hashlib.sha256(
-        json.dumps([sorted(target.get("signatures", {})), target.get("score")]).encode()
+        json.dumps(
+            [
+                sorted(target.get("signatures", {})),
+                target.get("score"),
+                "complete-results-v2",
+            ]
+        ).encode()
     ).hexdigest()
     if state.get("scope") != scope:
         state["scope"] = scope
