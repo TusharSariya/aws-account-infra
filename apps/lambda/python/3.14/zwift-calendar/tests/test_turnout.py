@@ -231,3 +231,30 @@ def test_missing_finisher_status_is_not_a_zero_count():
     api.get = Mock(return_value={"entries": [{"profileId": 1, "eventSubgroupId": 10}]})
     with pytest.raises(ContractError):
         api.finisher_count(10)
+
+
+def test_collection_prioritizes_unknown_races_before_six_edition_depth():
+    data = cache([18, 20])
+    data["1"]["parent"] = 5
+    api = Mock()
+    api.http.remaining = 120
+    api.http.clock.return_value = 0
+    api.http.deadline = 150
+
+    def fetch(identity):
+        api.http.remaining -= 1
+        return {
+            "parentId": None,
+            "eventStart": (NOW - timedelta(days=7)).isoformat(),
+            "eventType": "RACE",
+            "eventSubgroups": [],
+        }
+
+    api.event.side_effect = fetch
+    other = ROW | {
+        "id": "4-40",
+        "parent_id": 10,
+        "start": (NOW + timedelta(days=1)).isoformat(),
+    }
+    populate(api, {"turnout_events": data}, {"turnout": [ROW, other]}, NOW, budget=1)
+    api.event.assert_called_once_with(10)

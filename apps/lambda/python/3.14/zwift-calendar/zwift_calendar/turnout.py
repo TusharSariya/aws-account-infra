@@ -49,7 +49,7 @@ def comparable(start, upcoming):
     return (a.weekday(), a.hour, a.minute) == (b.weekday(), b.hour, b.minute)
 
 
-def evidence(row, cache, now):
+def evidence(row, cache, now, *, maximum=MAX_EDITIONS):
     """Return known editions and the next missing piece of their parent chain."""
     identity = row.get("parent_id")
     seen, editions = set(), []
@@ -81,7 +81,7 @@ def evidence(row, cache, now):
                 if "finishers" not in group:
                     return editions, ("group", identity, group["id"])
                 editions.append({"event_id": identity, "finishers": group["finishers"]})
-                if len(editions) == MAX_EDITIONS:
+                if len(editions) == maximum:
                     break
         identity = event.get("parent")
     return editions, None
@@ -154,14 +154,17 @@ def populate(api, state, target, now, *, budget=40):
         if identity not in active or retries[identity] <= now.timestamp():
             del retries[identity]
     initial = api.http.remaining
-    for row in rows:
+    # Establish a usable average broadly before deepening already known races.
+    for maximum, row in (
+        (maximum, row) for maximum in (MIN_EDITIONS, MAX_EDITIONS) for row in rows
+    ):
         if row["id"] in retries:
             continue
         while (
             initial - api.http.remaining < budget
             and api.http.clock() + 15 < api.http.deadline
         ):
-            _, request = evidence(row, cache, now)
+            _, request = evidence(row, cache, now, maximum=maximum)
             if request is None:
                 break
             try:
