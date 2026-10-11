@@ -48,7 +48,14 @@ def targets(events, selected, score, now):
         "turnout": [
             {
                 k: e.get(k)
-                for k in ("id", "parent_id", "start", "signature", "turnout_division")
+                for k in (
+                    "id",
+                    "parent_id",
+                    "start",
+                    "signature",
+                    "turnout_division",
+                    "band",
+                )
             }
             for e in selected
             if e.get("event_kind", "race") == "race"
@@ -472,11 +479,16 @@ def refresh_history(store, parameters, http, now):
 
 def handler(event, context):
     try:
-        result = refresh_history(
+        from .bootstrap import refresh as bootstrap
+
+        worker = bootstrap if event.get("mode") == "bootstrap" else refresh_history
+        extra = {"run_id": event.get("run_id")} if worker is bootstrap else {}
+        result = worker(
             Store(),
             Parameters(),
             Transport(budget=120, seconds=150, interval=0.5, defer_rate_limits=True),
             datetime.now(UTC),
+            **extra,
         )
         log.info("Zwift history: %s", json.dumps(result))
         return result
