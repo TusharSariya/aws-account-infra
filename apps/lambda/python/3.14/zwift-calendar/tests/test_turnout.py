@@ -284,3 +284,96 @@ def test_duration_results_include_riders_beyond_first_page():
     assert len(rows) == 26
     assert "start=25" in api.get.call_args_list[1].args[0]
     assert "start=50" in api.get.call_args_list[2].args[0]
+
+
+def sibling(identity, weeks, *, parent=2, name="Test race", band="0-180", hour=0):
+    start = (NOW - timedelta(weeks=weeks) + timedelta(hours=hour)).isoformat()
+    return {
+        "id": identity,
+        "parentId": parent,
+        "name": name,
+        "sport": "CYCLING",
+        "eventType": "RACE",
+        "eventStart": start,
+        "eventSubgroups": [
+            {"id": identity * 10, "rangeAccessLabel": band, "eventSubgroupStart": start}
+        ],
+    }
+
+
+def older_parents():
+    data = cache([2, 4])
+    for event in data.values():
+        event["start"] = (
+            datetime.fromisoformat(event["start"]) - timedelta(weeks=3)
+        ).isoformat()
+        event["groups"][0]["start"] = event["start"]
+    return data
+
+
+def test_feed_discovers_recent_sibling_editions_and_updates_average():
+    from zwift_calendar.turnout import discover
+
+    state = {"turnout_events": older_parents()}
+    discover(state, {"turnout": [ROW]}, [sibling(4, 1), sibling(5, 2)], NOW)
+    assert evidence(ROW, state["turnout_events"], NOW)[1] == ("group", 4, 40)
+    api = Mock()
+    api.http.remaining = 120
+    api.http.clock.return_value = 0
+    api.http.deadline = 150
+    api.finisher_count.side_effect = [20, 30]
+    populate(api, state, {"turnout": [ROW]}, NOW)
+    rows, report = apply([copy.deepcopy(ROW)], state, NOW)
+    assert report["filtered"] == 0 and rows[0]["turnout"]["average"] == 14
+    assert rows[0]["turnout"]["editions"] == 4
+    # Repeated pages preserve completed results, including equivalent timestamps.
+    state["turnout_events"]["4"]["groups"][0]["start"] = sibling(4, 1)[
+        "eventStart"
+    ].replace("+00:00", "Z")
+    discover(state, {"turnout": [ROW]}, [sibling(4, 1)], NOW)
+    assert state["turnout_events"]["4"]["groups"][0]["finishers"] == 20
+
+
+def test_sibling_discovery_requires_family_name_division_and_time():
+    from zwift_calendar.turnout import discover
+
+    state = {"turnout_events": older_parents()}
+    for event in [
+        sibling(4, 1, parent=999),
+        sibling(4, 1, name="Unrelated race"),
+        sibling(4, 1, band="180-350"),
+        sibling(4, 1, hour=1),
+    ]:
+        discover(state, {"turnout": [ROW]}, [event], NOW)
+        assert "4" not in state["turnout_events"]
+
+
+def test_discovered_branch_can_connect_further_editions_on_later_pages():
+    from zwift_calendar.turnout import discover
+
+    state = {"turnout_events": older_parents()}
+    discover(state, {"turnout": [ROW]}, [sibling(5, 2)], NOW)
+    discover(state, {"turnout": [ROW]}, [sibling(4, 1, parent=5)], NOW)
+    assert state["turnout_events"]["4"]["series_anchor"] == 2
+    assert evidence(ROW, state["turnout_events"], NOW)[1] == ("group", 4, 40)
+
+
+def test_old_boundary_metadata_is_not_refetched_on_every_batch():
+    state = {
+        "turnout_events": {
+            "2": {
+                "start": (NOW - timedelta(days=91)).isoformat(),
+                "type": "RACE",
+                "groups": [],
+                "parent": 1,
+            }
+        }
+    }
+    api = Mock()
+    api.http.remaining = 120
+    api.http.clock.return_value = 0
+    api.http.deadline = 150
+    for _ in range(2):
+        populate(api, state, {"turnout": [ROW]}, NOW)
+    api.event.assert_not_called()
+    assert evidence(ROW, state["turnout_events"], NOW) == ([], None)

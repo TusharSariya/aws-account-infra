@@ -188,7 +188,7 @@ def test_bootstrap_continues_into_duration_history_after_turnout_is_exhausted(
     _, etag = store.read(backfill.TARGETS)
     store.write(backfill.TARGETS, target, etag)
 
-    def batch(_api, state, _target, _now, _save):
+    def batch(_api, state, _target, _now, _save, **_kwargs):
         # Simulate rollback replacing object references, then a successful unit.
         saved = copy.deepcopy(state)
         state.clear()
@@ -209,3 +209,24 @@ def test_bootstrap_continues_into_duration_history_after_turnout_is_exhausted(
     assert result["duration"]["covered_signatures"] == 1
     job = store.read(backfill.STATE)[0]["bootstrap"]
     assert job["status"] == "complete" and job["requests"] == 20
+
+
+@pytest.mark.parametrize(
+    "discovery_version,expected", [(None, "running"), (1, "complete")]
+)
+def test_named_series_requires_completed_sibling_discovery(
+    setup, monkeypatch, discovery_version, expected
+):
+    store, http, _populate, _auth = setup
+    target = copy.deepcopy(TARGET)
+    target["turnout"][0].update(name="Weekly Race", parent_id=None)
+    _, etag = store.read(backfill.TARGETS)
+    store.write(backfill.TARGETS, target, etag)
+    state = {
+        "version": 1,
+        "scan": {"complete": True, "turnout_discovery_version": discovery_version},
+    }
+    store.write(backfill.STATE, state, None)
+    monkeypatch.setattr(backfill, "run_batch", Mock())
+    result = bootstrap.refresh(store, None, http, NOW, "run1")
+    assert result["status"] == expected

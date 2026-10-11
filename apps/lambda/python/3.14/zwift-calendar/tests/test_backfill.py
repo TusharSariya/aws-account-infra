@@ -126,7 +126,9 @@ def test_empty_results_retried_once_after_a_day():
     state = backfill.seed({}, TARGET, NOW)
     backfill.enqueue(state, "1", {"start": None})
     api = Mock()
-    api.event.return_value = event()
+    recent = event()
+    recent["eventStart"] = (NOW - timedelta(hours=4)).isoformat()
+    api.event.return_value = recent
     api.results.return_value = []
     backfill.sample_event(api, state, "1", TARGET, NOW)
     assert state["pending"]["1"]["retry_after"] == NOW.timestamp() + 86400
@@ -421,3 +423,59 @@ def test_seed_migrates_frozen_float_keys_without_losing_event_counts():
     backfill.seed({}, target, NOW)
     assert target["signatures"][backfill.key(sig)]["count"] == 5
     assert backfill.key([1, 0.5, 1, "RACE"]) != backfill.key(sig)
+
+
+def test_mature_complete_empty_results_do_not_delay_full_backfill_a_day():
+    state = backfill.seed({}, TARGET, NOW)
+    backfill.enqueue(state, "1", {"start": None})
+    api = Mock()
+    old = event()
+    old["eventStart"] = (NOW - timedelta(days=7)).isoformat()
+    api.event.return_value = old
+    api.results.return_value = []
+    backfill.sample_event(api, state, "1", TARGET, NOW)
+    assert "1" not in state["pending"]
+    assert state["races"]["1"]["samples"][0]["bins"] == []
+
+
+def test_seed_releases_only_mature_empty_result_retries():
+    state = backfill.seed({}, TARGET, NOW)
+    state["pending"] = {
+        "1": {
+            "start": (NOW - timedelta(days=7)).isoformat(),
+            "empty_retries": 1,
+            "retry_after": NOW.timestamp() + 86400,
+        },
+        "2": {
+            "start": (NOW - timedelta(hours=4)).isoformat(),
+            "empty_retries": 1,
+            "retry_after": NOW.timestamp() + 86400,
+        },
+        "3": {
+            "start": (NOW - timedelta(days=7)).isoformat(),
+            "retry_after": NOW.timestamp() + 86400,
+        },
+    }
+    backfill.seed(state, TARGET, NOW)
+    assert "retry_after" not in state["pending"]["1"]
+    assert "retry_after" in state["pending"]["2"]
+    assert "retry_after" in state["pending"]["3"]
+
+
+def test_full_scan_continues_for_turnout_after_duration_coverage():
+    state = backfill.seed({}, TARGET | {"signatures": {}}, NOW)
+    api = Mock()
+    api.http.remaining = 1
+    api.http.clock.return_value = 0
+    api.http.deadline = 150
+
+    def page(*_args):
+        api.http.remaining -= 1
+        return [], None
+
+    api.history_page.side_effect = page
+    backfill.run_batch(
+        api, state, TARGET | {"signatures": {}}, NOW, Mock(), full_scan=True
+    )
+    assert api.history_page.call_count == 1
+    assert state["scan"]["turnout_discovery_version"] == 1
