@@ -15,6 +15,7 @@ from .errors import (
     BudgetExceeded,
     ContractError,
     CursorRejected,
+    EventUnavailable,
     RateLimited,
     UpstreamError,
 )
@@ -143,6 +144,18 @@ def seed(state, target, now):
         for k, v in state.get("pending", {}).items()
         if not v.get("start") or instant(v["start"]) >= cutoff
     }
+    state["unavailable_events"] = {
+        identity: retry
+        for identity, retry in state.get("unavailable_events", {}).items()
+        if retry > now.timestamp()
+    }
+    if not state.get("unavailable_event_handling"):
+        # Classify previously deferred metadata errors once under the new 404
+        # handling; global rate-limit cooldowns remain in force.
+        for job in state["pending"].values():
+            if not job.get("start") and "groups" not in job:
+                job.pop("retry_after", None)
+        state["unavailable_event_handling"] = 1
     scope = hashlib.sha256(
         json.dumps(
             [
@@ -192,6 +205,8 @@ def seed(state, target, now):
 
 
 def enqueue(state, identity, info):
+    if identity in state.get("unavailable_events", {}):
+        return
     if (
         identity in state.get("races", {})
         and state["races"][identity].get("scope") == state.get("scope")
@@ -305,7 +320,14 @@ def scan_page(api, state, target, now):
 def sample_event(api, state, identity, target, now):
     job = state["pending"][identity]
     if "groups" not in job:
-        event = api.event(int(identity))
+        try:
+            event = api.event(int(identity))
+        except EventUnavailable:
+            state.setdefault("unavailable_events", {})[identity] = (
+                now.timestamp() + 86400
+            )
+            del state["pending"][identity]
+            return
         start = instant(event["eventStart"])
         job["start"] = start.isoformat()
         if start < now - timedelta(days=90):
@@ -501,6 +523,14 @@ def status(state, target):
         ),
         "races": len(state.get("races", {})),
         "pending": len(state.get("pending", {})),
+        "unavailable_events": len(
+            set(state.get("unavailable_events", {}))
+            | {
+                k
+                for k, v in state.get("turnout_events", {}).items()
+                if v.get("unavailable")
+            }
+        ),
         "samples": sum(
             sum(b[2] for b in s["bins"])
             for r in state.get("races", {}).values()
@@ -569,7 +599,11 @@ def handler(event, context):
         from .bootstrap import refresh as bootstrap
 
         worker = bootstrap if event.get("mode") == "bootstrap" else refresh_history
-        extra = {"run_id": event.get("run_id")} if worker is bootstrap else {}
+        extra = (
+            {"run_id": event.get("run_id"), "max_batches": event.get("max_batches")}
+            if worker is bootstrap
+            else {}
+        )
         result = worker(
             Store(),
             Parameters(),

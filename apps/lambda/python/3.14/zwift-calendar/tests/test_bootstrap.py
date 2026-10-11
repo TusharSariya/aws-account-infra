@@ -230,3 +230,40 @@ def test_named_series_requires_completed_sibling_discovery(
     monkeypatch.setattr(backfill, "run_batch", Mock())
     result = bootstrap.refresh(store, None, http, NOW, "run1")
     assert result["status"] == expected
+
+
+def test_explicit_extension_preserves_existing_targets_deadline_and_reservations(setup):
+    store, http, _populate, _auth = setup
+    bootstrap.refresh(store, None, http, NOW, "run1")
+    state, etag = store.read(backfill.STATE)
+    state["bootstrap"]["batches"] = 100
+    deadline = state["bootstrap"]["deadline"]
+    store.write(backfill.STATE, state, etag)
+    result = bootstrap.refresh(store, None, http, NOW, "run1", max_batches=300)
+    assert result["status"] == "running"
+    assert result["batches"] == 101 and result["max_batches"] == 300
+    job = store.read(backfill.STATE)[0]["bootstrap"]
+    assert job["deadline"] == deadline and job["target"] == TARGET
+    result = bootstrap.refresh(store, None, http, NOW, "run1")
+    assert result["batches"] == 102 and result["max_batches"] == 300
+
+
+@pytest.mark.parametrize("limit", [True, 99, 301, "300"])
+def test_invalid_extension_fails_before_authentication_or_reservation(setup, limit):
+    store, http, _populate, auth = setup
+    with pytest.raises(bootstrap.ContractError):
+        bootstrap.refresh(store, None, http, NOW, "run1", max_batches=limit)
+    auth.assert_not_called()
+    assert not store.read(backfill.STATE)[0]
+
+
+def test_extension_does_not_reopen_terminal_execution(setup):
+    store, http, _populate, auth = setup
+    bootstrap.refresh(store, None, http, NOW, "run1")
+    state, etag = store.read(backfill.STATE)
+    state["bootstrap"].update(status="limited", batches=100)
+    store.write(backfill.STATE, state, etag)
+    auth.reset_mock()
+    result = bootstrap.refresh(store, None, http, NOW, "run1", max_batches=300)
+    assert result["status"] == "limited" and result["max_batches"] == 100
+    auth.assert_not_called()

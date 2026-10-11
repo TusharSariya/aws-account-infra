@@ -9,6 +9,7 @@ from .errors import (
     BudgetExceeded,
     ContractError,
     CursorRejected,
+    EventUnavailable,
     RateLimited,
     UpstreamError,
 )
@@ -104,6 +105,8 @@ class Transport:
                             delay = 2**attempt
                         self.sleep(delay)
                         continue
+                    if status == 404 and url.startswith(API + "public/events/"):
+                        raise EventUnavailable("Historical event unavailable")
                     if status != 200:
                         raise UpstreamError("Unexpected Zwift HTTP response")
                     body = bytearray()

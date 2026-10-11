@@ -9,6 +9,7 @@ from .errors import (
     AuthenticationError,
     BudgetExceeded,
     ContractError,
+    EventUnavailable,
     RateLimited,
     UpstreamError,
 )
@@ -59,8 +60,12 @@ def lineage(row, cache, now):
             break
         seen.add(identity)
         event = cache.get(str(identity))
-        if event is None:
+        if event is None or (
+            event.get("unavailable") and event.get("retry_after", 0) <= now.timestamp()
+        ):
             return seen, ancestors, ("event", identity)
+        if event.get("unavailable"):
+            return seen, ancestors, None
         start = instant(event["start"])
         if start >= newer or start < now - timedelta(days=90):
             break
@@ -149,7 +154,11 @@ def discover(state, target, events, now):
                 continue
             info = metadata(event)
             parent = cache.get(str(event["parentId"]))
-            if parent and instant(info["start"]) <= instant(parent["start"]):
+            if (
+                parent
+                and not parent.get("unavailable")
+                and instant(info["start"]) <= instant(parent["start"])
+            ):
                 continue
             if matching_group(row, info, now) is None:
                 continue
@@ -228,12 +237,23 @@ def populate(api, state, target, now, *, budget=40):
     """Share the worker's existing request budget; store aggregates only."""
     cache = state.setdefault("turnout_events", {})
     cutoff = now - timedelta(days=90)
+    for identity in list(cache):
+        if (
+            cache[identity].get("unavailable")
+            and cache[identity]["retry_after"] <= now.timestamp()
+        ):
+            del cache[identity]
     referenced = {str(row.get("parent_id")) for row in target.get("turnout", [])}
     referenced.update(
-        str(e.get("parent")) for e in cache.values() if instant(e["start"]) >= cutoff
+        str(e.get("parent"))
+        for e in cache.values()
+        if not e.get("unavailable") and instant(e["start"]) >= cutoff
     )
     for identity in list(cache):
-        if instant(cache[identity]["start"]) < cutoff:
+        if (
+            not cache[identity].get("unavailable")
+            and instant(cache[identity]["start"]) < cutoff
+        ):
             if identity in referenced:
                 cache[identity] = {
                     "start": cache[identity]["start"],
@@ -272,6 +292,12 @@ def populate(api, state, target, now, *, budget=40):
                     for group in cache[str(request[1])]["groups"]:
                         if group["id"] == request[2]:
                             group["finishers"] = count
+                state["successful_units"] = state.get("successful_units", 0) + 1
+            except EventUnavailable:
+                cache[str(request[1])] = {
+                    "unavailable": True,
+                    "retry_after": now.timestamp() + 86400,
+                }
                 state["successful_units"] = state.get("successful_units", 0) + 1
             except RateLimited, AuthenticationError:
                 raise

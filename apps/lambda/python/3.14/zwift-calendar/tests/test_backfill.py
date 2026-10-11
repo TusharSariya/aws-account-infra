@@ -525,3 +525,42 @@ def test_refresh_replaces_its_group_without_erasing_other_groups():
     refreshed = next(s for s in samples if s["subgroup_id"] == 10)
     assert sum(b[2] for b in refreshed["bins"]) == 5
     assert all(b[1] != 9999 for s in samples for b in s["bins"])
+
+
+def test_missing_metadata_is_unknown_not_an_empty_completed_race():
+    from zwift_calendar.errors import EventUnavailable
+
+    state = backfill.seed({}, TARGET, NOW)
+    api = Mock()
+    api.event.side_effect = EventUnavailable()
+    backfill.enqueue(state, "1", {"start": None})
+    backfill.sample_event(api, state, "1", TARGET, NOW)
+    assert "1" not in state["races"] and "1" not in state["pending"]
+    assert backfill.status(state, TARGET)["unavailable_events"] == 1
+    backfill.enqueue(state, "1", {"start": None})
+    assert not state["pending"]
+    backfill.seed(state, TARGET, NOW + timedelta(days=1))
+    backfill.enqueue(state, "1", {"start": None})
+    assert "1" in state["pending"]
+
+
+def test_deferred_metadata_is_reclassified_only_once():
+    state = {"pending": {"1": {"start": None, "retry_after": NOW.timestamp() + 86400}}}
+    backfill.seed(state, TARGET, NOW)
+    assert "retry_after" not in state["pending"]["1"]
+    state["pending"]["1"]["retry_after"] = NOW.timestamp() + 86400
+    backfill.seed(state, TARGET, NOW)
+    assert "retry_after" in state["pending"]["1"]
+
+
+def test_only_metadata_404_is_classified_as_unavailable():
+    from zwift_calendar.errors import EventUnavailable, UpstreamError
+
+    http = Transport(
+        httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(404)))
+    )
+    with pytest.raises(EventUnavailable):
+        Zwift(http).event(1)
+    with pytest.raises(UpstreamError) as exc:
+        Zwift(http, "token").finisher_count(10)
+    assert not isinstance(exc.value, EventUnavailable)

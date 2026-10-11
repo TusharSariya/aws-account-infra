@@ -29,3 +29,7 @@ class RateLimited(UpstreamError):
 
 class CursorRejected(ContractError):
     pass
+
+
+class EventUnavailable(UpstreamError):
+    """Historical event metadata is no longer available (HTTP 404)."""
