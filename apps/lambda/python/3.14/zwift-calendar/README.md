@@ -249,8 +249,9 @@ uv run --frozen --directory apps/lambda/python/3.14/zwift-calendar python -m zwi
 
 The start command returns an execution ARN for the AWS console/API. Status shows
 both current inventory coverage and the last bootstrap report. Standard execution
-history retains the final report; CloudWatch logs exclude execution data and use
-a rotating customer-managed KMS key. Infrastructure includes failure/timeout/abort
+history retains the final report; CloudWatch logs retain aggregate execution summaries using
+a rotating customer-managed KMS key. Credentials and race target inventories
+never enter workflow inputs or outputs. Infrastructure includes failure/timeout/abort
 alarms, narrowly scoped invocation permissions, and no recurring bootstrap schedule.
 The KMS key, alarms, and execution logs have ongoing costs even while idle; the
 request allowance bounds work, not the total AWS bill. Stop an execution to halt
