@@ -8,7 +8,7 @@ variable "uid_domain" { type = string }
 variable "calendar_source" {
   type = string
   validation {
-    condition     = contains(["ymca", "paul_reynolds", "iracing", "zwift"], var.calendar_source)
+    condition     = contains(["ymca", "ymca_yoga", "paul_reynolds", "iracing", "zwift"], var.calendar_source)
     error_message = "Choose exactly one supported calendar source."
   }
 }

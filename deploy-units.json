@@ -325,6 +325,26 @@
       ]
     },
     {
+      "id": "aws-staging-ymca-yoga-calendar",
+      "cloud": "aws",
+      "environment": "staging",
+      "path": "live/aws/staging/workloads/lambda/python/ymca-yoga-calendar",
+      "var_file": "config/environments/aws/staging/ymca-yoga-calendar.tfvars",
+      "region": "us-east-1",
+      "dependencies": [
+        "aws-staging-account",
+        "aws-staging-court-booker-api"
+      ],
+      "ci": true,
+      "watch": [
+        "live/aws/staging/workloads/lambda/python/ymca-yoga-calendar/",
+        "apps/lambda/python/3.14/swim-calendar/",
+        "config/environments/aws/staging/ymca-yoga-calendar.tfvars",
+        "scripts/swim-package.py",
+        "modules/aws/swimming-calendar/"
+      ]
+    },
+    {
       "id": "aws-staging-iracing-calendar",
       "cloud": "aws",
       "environment": "staging",
