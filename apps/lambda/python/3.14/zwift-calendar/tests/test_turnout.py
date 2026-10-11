@@ -377,3 +377,24 @@ def test_old_boundary_metadata_is_not_refetched_on_every_batch():
         populate(api, state, {"turnout": [ROW]}, NOW)
     api.event.assert_not_called()
     assert evidence(ROW, state["turnout_events"], NOW) == ([], None)
+
+
+def test_unavailable_parent_keeps_turnout_unknown_and_retries_later():
+    from zwift_calendar.errors import EventUnavailable
+
+    api = Mock()
+    api.http.remaining = 120
+    api.http.clock.return_value = 0
+    api.http.deadline = 1000
+    api.event.side_effect = EventUnavailable()
+    state = {}
+    target = {"turnout": [ROW]}
+    populate(api, state, target, NOW)
+    rows, report = apply([copy.deepcopy(ROW)], state, NOW)
+    assert report["unknown"] == 1 and report["filtered"] == 0
+    assert rows[0]["turnout"]["average"] is None
+    assert evidence(ROW, state["turnout_events"], NOW)[1] is None
+    populate(api, state, target, NOW)
+    assert api.event.call_count == 1
+    populate(api, state, target, NOW + timedelta(days=1))
+    assert api.event.call_count == 2

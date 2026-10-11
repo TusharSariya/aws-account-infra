@@ -224,7 +224,7 @@ The same pass also backfills finish-time evidence, sharing its request allowance
 between turnout and duration discovery. It stops as complete only after both
 are covered or their available historical work is exhausted.
 
-Each execution reserves at most 100 batches of 120 requests (12,000 attempts,
+By default, each execution reserves at most 100 batches of 120 requests (12,000 attempts,
 including authentication and retries), at two requests/second. Batches wait at
 least 10 seconds, respect upstream cooldowns, share the calendar/authentication
 lease, and checkpoint aggregate counts into the existing private S3 cache.
@@ -279,3 +279,18 @@ The one-off pass finishes the 90-day feed scan before declaring completion and
 keeps the six most recent comparable editions. Older boundary parents are retained
 as minimal metadata to avoid repeated lookups. Mature, completely fetched empty
 results are final; only results less than a day old receive the publication retry.
+
+An operator can extend an active bootstrap's allowance without resetting its frozen
+targets, cursor, consumed requests, or original deadline. Invoke the history Lambda
+with the same execution ARN as `run_id`, `mode: "bootstrap"`, and an explicit
+`max_batches` from 100 through 300. The higher allowance persists for subsequent
+workflow batches; the maximum is 36,000 requests, still at two requests/second.
+Omitting this option retains the default 100 batches for new jobs. Terminal jobs
+cannot be reopened, and a different execution cannot alter an active job.
+
+A 404 from historical event metadata is recorded as unavailable for one day. It
+contributes neither zero finishers nor a finish-time sample and does not prevent
+the pass from finishing. Result endpoint failures, authentication failures, and
+rate limits retain their separate error/retry handling. The duration report
+includes `unavailable_events` so exhausted history is distinguishable from data
+that could not be obtained.

@@ -10,6 +10,7 @@ from .errors import ContractError, RateLimited
 from .storage import Busy
 
 MAX_BATCHES = 100
+MAX_EXTENDED_BATCHES = 300
 MAX_AGE = 86400
 
 
@@ -37,9 +38,14 @@ def progress(state, target, now):
     }
 
 
-def refresh(store, parameters, http, now, run_id):
+def refresh(store, parameters, http, now, run_id, max_batches=None):
     if not isinstance(run_id, str) or not 1 <= len(run_id) <= 256:
         raise ContractError("Invalid bootstrap execution ID")
+    if max_batches is not None and (
+        type(max_batches) is not int
+        or not MAX_BATCHES <= max_batches <= MAX_EXTENDED_BATCHES
+    ):
+        raise ContractError("Invalid bootstrap batch extension")
     try:
         store.claim()
     except Busy:
@@ -71,6 +77,9 @@ def refresh(store, parameters, http, now, run_id):
                 "stalled_batches": 0,
                 "target": copy.deepcopy(target),
             }
+        job.setdefault("max_batches", MAX_BATCHES)
+        if max_batches is not None and job["status"] == "running":
+            job["max_batches"] = max(job["max_batches"], max_batches)
         target = job["target"]
         if any(not row.get("name") for row in target.get("turnout", [])):
             latest, _ = store.read(backfill.TARGETS)
@@ -95,6 +104,7 @@ def refresh(store, parameters, http, now, run_id):
                 "batches": job["batches"],
                 "requests": job["requests"],
                 "reserved_requests": job["batches"] * 120,
+                "max_batches": job["max_batches"],
                 "turnout": report,
                 "duration": backfill.status(state, target),
             }
@@ -130,7 +140,7 @@ def refresh(store, parameters, http, now, run_id):
 
         if done(report):
             return finish("complete", report)
-        if job["batches"] >= MAX_BATCHES or now.timestamp() >= job["deadline"]:
+        if job["batches"] >= job["max_batches"] or now.timestamp() >= job["deadline"]:
             return finish("limited", report)
         if job["stalled_batches"] >= 3:
             return finish("stalled", report)
