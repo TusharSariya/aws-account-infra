@@ -240,3 +240,61 @@ def test_utc_events_survive_newfoundland_dst(race, profile):
         snapshot, _ = reconcile(events, {}, now)
         rendered.append(vobject.readOne(snapshot["ics"]).vevent.dtstart.value)
     assert rendered[1] - rendered[0] == timedelta(hours=1)
+
+
+def test_finish_time_is_visible_and_matches_calendar_end(race, profile):
+    event = selected(race, profile)[0]
+    event["duration"] = {
+        "seconds": 2400,
+        "source": "estimated from similar-score finishers",
+        "samples": 25,
+    }
+    snapshot, _ = reconcile([event], {}, instant(event["start"]))
+    parsed = vobject.readOne(snapshot["ics"]).vevent
+    assert (
+        "Expected ride time: 40 minutes; expected finish:" in parsed.description.value
+    )
+    assert parsed.dtend.value - parsed.dtstart.value == timedelta(minutes=40)
+    assert parsed.contents["x-zwift-expected-duration-seconds"][0].value == "2400"
+    event["duration"] = {
+        "seconds": 3600,
+        "source": "estimated 60-minute placeholder",
+        "samples": 0,
+    }
+    snapshot, _ = reconcile([event], {}, instant(event["start"]))
+    parsed = vobject.readOne(snapshot["ics"]).vevent
+    assert "Expected finish time: unknown" in parsed.description.value
+    assert "x-zwift-expected-duration-seconds" not in parsed.contents
+
+
+def test_division_median_fallback_never_uses_another_division():
+    sig = [1, 10000, 0, "RACE"]
+    event = {
+        "published_seconds": 0,
+        "signature": sig,
+        "turnout_division": ["legacy", "D", 1, 2.5],
+    }
+    history = {
+        "races": {
+            str(i): {
+                "samples": [
+                    {
+                        "signature": sig,
+                        "division": event["turnout_division"],
+                        "bins": [[300, 2400, 5]],
+                    },
+                    {
+                        "signature": sig,
+                        "division": ["legacy", "A", 4, 6],
+                        "bins": [[900, 1200, 100]],
+                    },
+                ]
+            }
+            for i in (1, 2)
+        }
+    }
+    result = estimate(event, history, 60)
+    assert result["seconds"] == 2400 and result["samples"] == 10
+    assert "division median" in result["source"]
+    event["turnout_division"] = ["legacy", "E", None, None]
+    assert estimate(event, history, 60)["samples"] == 0

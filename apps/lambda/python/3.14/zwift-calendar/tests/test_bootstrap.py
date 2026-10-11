@@ -175,3 +175,37 @@ def test_shared_lease_prevents_spending_or_writing_job(setup):
     assert result["reason"] == "busy"
     assert not store.read(backfill.STATE)[0]
     auth.assert_not_called()
+
+
+def test_bootstrap_continues_into_duration_history_after_turnout_is_exhausted(
+    setup, monkeypatch
+):
+    store, http, _populate, _auth = setup
+    target = copy.deepcopy(TARGET)
+    target["turnout"] = []
+    sig = ROW["signature"]
+    target["signatures"] = {backfill.key(sig): {"signature": sig, "count": 1}}
+    _, etag = store.read(backfill.TARGETS)
+    store.write(backfill.TARGETS, target, etag)
+
+    def batch(_api, state, _target, _now, _save):
+        # Simulate rollback replacing object references, then a successful unit.
+        saved = copy.deepcopy(state)
+        state.clear()
+        state.update(saved)
+        state["races"] = {
+            str(i): {
+                "start": NOW.isoformat(),
+                "samples": [{"signature": sig, "bins": [[100, 1800, 5]]}],
+            }
+            for i in (1, 2)
+        }
+        state["successful_units"] = 1
+        http.remaining = 100
+
+    monkeypatch.setattr(backfill, "run_batch", batch)
+    result = bootstrap.refresh(store, None, http, NOW, "run1")
+    assert result["status"] == "complete"
+    assert result["duration"]["covered_signatures"] == 1
+    job = store.read(backfill.STATE)[0]["bootstrap"]
+    assert job["status"] == "complete" and job["requests"] == 20

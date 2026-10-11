@@ -87,8 +87,9 @@ def test_average_is_in_ics_and_revisions_stay_stable():
     rows, _ = apply([copy.deepcopy(ROW)], {"turnout_events": cache([18, 23])}, NOW)
     first, revisions = split_calendars(rows, {}, NOW)
     parsed = Calendar.from_ical(first["calendars"]["banded"]["ics"]).walk("VEVENT")[0]
-    assert "Average finishers in your division: 20.5 across 2" in str(
-        parsed["DESCRIPTION"]
+    assert (
+        "Expected finishers in your division: 20.5 (historical average across 2"
+        in str(parsed["DESCRIPTION"])
     )
     assert str(parsed["X-ZWIFT-AVERAGE-FINISHERS"]) == "20.5"
     again, _ = split_calendars(rows, revisions, NOW + timedelta(hours=1))
@@ -258,3 +259,28 @@ def test_collection_prioritizes_unknown_races_before_six_edition_depth():
     }
     populate(api, {"turnout_events": data}, {"turnout": [ROW, other]}, NOW, budget=1)
     api.event.assert_called_once_with(10)
+
+
+def test_duration_results_include_riders_beyond_first_page():
+    api = Zwift(Mock(), "token")
+
+    def result(identity):
+        return {
+            "profileId": identity,
+            "eventSubgroupId": 10,
+            "qualified": True,
+            "rank": identity,
+            "activityData": {"durationInMilliseconds": 2400000},
+        }
+
+    api.get = Mock(
+        side_effect=[
+            {"entries": [result(i) for i in range(1, 26)]},
+            {"entries": [result(26)]},
+            {"entries": []},
+        ]
+    )
+    rows = api.results(10)
+    assert len(rows) == 26
+    assert "start=25" in api.get.call_args_list[1].args[0]
+    assert "start=50" in api.get.call_args_list[2].args[0]

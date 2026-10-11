@@ -21,7 +21,7 @@ from .errors import (
 from .filtering import BAND, signature
 from .storage import Busy, Parameters, Store
 from .transport import Transport
-from .turnout import populate
+from .turnout import division, populate
 
 TARGETS = "history/targets.json"
 STATE = "history/state.json"
@@ -88,11 +88,27 @@ def coverage(state, target):
     covered = {
         k
         for k, row in signatures.items()
-        if estimate(
-            {"published_seconds": 0, "signature": row["signature"]},
-            state,
-            target["score"],
-        )["samples"]
+        if all(
+            estimate(
+                {
+                    "published_seconds": 0,
+                    "signature": row["signature"],
+                    "turnout_division": div,
+                },
+                state,
+                target["score"],
+            )["samples"]
+            for div in (
+                list(
+                    {
+                        key(e.get("turnout_division")): e.get("turnout_division")
+                        for e in target.get("turnout", [])
+                        if e["signature"] == row["signature"]
+                    }.values()
+                )
+                or [None]
+            )
+        )
     }
     return covered
 
@@ -111,7 +127,13 @@ def seed(state, target, now):
         if not v.get("start") or instant(v["start"]) >= cutoff
     }
     scope = hashlib.sha256(
-        json.dumps([sorted(target.get("signatures", {})), target.get("score")]).encode()
+        json.dumps(
+            [
+                sorted(target.get("signatures", {})),
+                target.get("score"),
+                "complete-results-with-division-v3",
+            ]
+        ).encode()
     ).hexdigest()
     if state.get("scope") != scope:
         state["scope"] = scope
@@ -278,6 +300,13 @@ def sample_event(api, state, identity, target, now):
         job["groups"] = []
         for group in event.get("eventSubgroups", []):
             sig = signature(event, group)
+            wanted_divisions = [
+                e.get("turnout_division")
+                for e in target.get("turnout", [])
+                if e["signature"] == sig
+            ]
+            if wanted_divisions and division(group) not in wanted_divisions:
+                continue
             label = group.get("rangeAccessLabel")
             band = BAND.fullmatch(label or "")
             if (
@@ -292,7 +321,9 @@ def sample_event(api, state, identity, target, now):
                 low, high = map(int, band.groups())
                 if high < target["score"] - 50 or low > target["score"] + 50:
                     continue
-            job["groups"].append({"id": group["id"], "signature": sig})
+            job["groups"].append(
+                {"id": group["id"], "signature": sig, "division": division(group)}
+            )
         job["samples"] = []
     if job["groups"]:
         group = job["groups"][0]
@@ -301,7 +332,12 @@ def sample_event(api, state, identity, target, now):
             job.update(empty_retries=1, retry_after=now.timestamp() + 86400)
             return
         job["samples"].append(
-            {"signature": group["signature"], "subgroup_id": group["id"], "bins": bins}
+            {
+                "signature": group["signature"],
+                "subgroup_id": group["id"],
+                "bins": bins,
+                "division": group.get("division"),
+            }
         )
         job["groups"].pop(0)
         job.pop("empty_retries", None)

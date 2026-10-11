@@ -2,6 +2,7 @@
 
 import hashlib
 from datetime import timedelta
+from zoneinfo import ZoneInfo
 
 from icalendar import Calendar, Event
 
@@ -44,6 +45,17 @@ def render(events, name="Zwift races and special events"):
             ),
             f"Duration: {duration['source']}.",
         ]
+        minutes = duration["seconds"] / 60
+        finish = instant(row["end"]).astimezone(ZoneInfo("America/St_Johns"))
+        if "placeholder" in duration["source"]:
+            description.append(
+                "Expected finish time: unknown; calendar reserves 60 minutes pending historical evidence."
+            )
+        else:
+            description.append(
+                f"Expected ride time: {minutes:.0f} minutes; expected finish: {finish:%H:%M %Z} ({duration['source']})."
+            )
+            event.add("x-zwift-expected-duration-seconds", duration["seconds"])
         if row.get("score_basis") == "max30":
             description.append("Eligibility uses your 30-day maximum Racing Score.")
         if row.get("event_kind", "race") == "race":
@@ -60,7 +72,7 @@ def render(events, name="Zwift races and special events"):
                 )
             else:
                 description.append(
-                    f"Average finishers in your division: {average:.1f} across {turnout['editions']} recent comparable editions (same weekday/time; up to 90 days)."
+                    f"Expected finishers in your division: {average:.1f} (historical average across {turnout['editions']} recent comparable editions; same weekday/time; up to 90 days)."
                 )
                 event.add("x-zwift-average-finishers", f"{average:.1f}")
                 event.add("x-zwift-turnout-editions", turnout["editions"])
@@ -108,10 +120,11 @@ def reconcile(incoming, revisions, now, *, name="Zwift races and special events"
     events = []
     for event in incoming:
         row = event | {
+            "presentation_version": 2,
             "end": (
                 instant(event["start"])
                 + timedelta(seconds=event["duration"]["seconds"])
-            ).isoformat()
+            ).isoformat(),
         }
         prior = old.get(row["id"], {})
         changed = {

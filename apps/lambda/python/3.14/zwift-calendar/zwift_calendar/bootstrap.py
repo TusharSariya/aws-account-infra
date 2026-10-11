@@ -71,6 +71,7 @@ def refresh(store, parameters, http, now, run_id):
                 "target": copy.deepcopy(target),
             }
         target = job["target"]
+        backfill.seed(state, target, now)
 
         def save(value):
             nonlocal etag
@@ -88,12 +89,29 @@ def refresh(store, parameters, http, now, run_id):
                 "requests": job["requests"],
                 "reserved_requests": job["batches"] * 120,
                 "turnout": report,
+                "duration": backfill.status(state, target),
             }
 
         report = progress(state, target, now)
         if job["status"] != "running":
             return finish(job["status"], report)
-        if not report["pending_editions"]:
+
+        def done(report):
+            return not report["pending_editions"] and (
+                len(backfill.coverage(state, target))
+                == len(target.get("signatures", {}))
+                or (
+                    state.get("scan", {}).get("complete")
+                    and not any(
+                        not row.get("start")
+                        or backfill.instant(row["start"])
+                        <= now - backfill.timedelta(hours=3)
+                        for row in state.get("pending", {}).values()
+                    )
+                )
+            )
+
+        if done(report):
             return finish("complete", report)
         if job["batches"] >= MAX_BATCHES or now.timestamp() >= job["deadline"]:
             return finish("limited", report)
@@ -117,9 +135,14 @@ def refresh(store, parameters, http, now, run_id):
         before = state.get("successful_units", 0)
         try:
             token = Auth(http, parameters, store).access()
-            turnout.populate(Zwift(http, token), state, target, now, budget=110)
+            api = Zwift(http, token)
+            turnout.populate(api, state, target, now, budget=40)
+            if target.get("signatures"):
+                backfill.run_batch(api, state, target, now, save)
         except RateLimited as exc:
             state["retry_after"] = now.timestamp() + exc.seconds
+        # Duration transactions may restore a deep-copied checkpoint on interruption.
+        job = state["bootstrap"]
         progressed = state.get("successful_units", 0) > before
         if progressed:
             job["stalled_batches"] = 0
@@ -129,7 +152,7 @@ def refresh(store, parameters, http, now, run_id):
         if progressed:
             state["last_success"] = now.timestamp()
         report = progress(state, target, now)
-        result = finish("running" if report["pending_editions"] else "complete", report)
-        return result | {"wait_seconds": 60}
+        result = finish("complete" if done(report) else "running", report)
+        return result | {"wait_seconds": 10}
     finally:
         store.release()
