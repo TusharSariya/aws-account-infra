@@ -226,7 +226,7 @@ are covered or their available historical work is exhausted.
 
 Each execution reserves at most 100 batches of 120 requests (12,000 attempts,
 including authentication and retries), at two requests/second. Batches wait at
-least 60 seconds, respect upstream cooldowns, share the calendar/authentication
+least 10 seconds, respect upstream cooldowns, share the calendar/authentication
 lease, and checkpoint aggregate counts into the existing private S3 cache.
 The execution keeps its targets across hourly syncs; another active bootstrap
 is rejected. No rider identities are persisted. A batch interrupted before its

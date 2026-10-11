@@ -153,6 +153,6 @@ def refresh(store, parameters, http, now, run_id):
             state["last_success"] = now.timestamp()
         report = progress(state, target, now)
         result = finish("complete" if done(report) else "running", report)
-        return result | {"wait_seconds": 60}
+        return result | {"wait_seconds": 10}
     finally:
         store.release()
