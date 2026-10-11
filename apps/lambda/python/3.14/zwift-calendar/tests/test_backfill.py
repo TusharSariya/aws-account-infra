@@ -460,3 +460,22 @@ def test_seed_releases_only_mature_empty_result_retries():
     assert "retry_after" not in state["pending"]["1"]
     assert "retry_after" in state["pending"]["2"]
     assert "retry_after" in state["pending"]["3"]
+
+
+def test_full_scan_continues_for_turnout_after_duration_coverage():
+    state = backfill.seed({}, TARGET | {"signatures": {}}, NOW)
+    api = Mock()
+    api.http.remaining = 1
+    api.http.clock.return_value = 0
+    api.http.deadline = 150
+
+    def page(*_args):
+        api.http.remaining -= 1
+        return [], None
+
+    api.history_page.side_effect = page
+    backfill.run_batch(
+        api, state, TARGET | {"signatures": {}}, NOW, Mock(), full_scan=True
+    )
+    assert api.history_page.call_count == 1
+    assert state["scan"]["turnout_discovery_version"] == 1

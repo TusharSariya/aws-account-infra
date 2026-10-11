@@ -21,6 +21,7 @@ from .errors import (
 from .filtering import BAND, signature
 from .storage import Busy, Parameters, Store
 from .transport import Transport
+from .turnout import discover as discover_turnout
 from .turnout import division, populate
 
 TARGETS = "history/targets.json"
@@ -56,6 +57,7 @@ def targets(events, selected, score, now):
                 k: e.get(k)
                 for k in (
                     "id",
+                    "name",
                     "parent_id",
                     "start",
                     "signature",
@@ -248,7 +250,10 @@ def admit(state, now):
 def scan_page(api, state, target, now):
     scan = state.setdefault("scan", {"anchor": now.isoformat(), "phase": 0})
     if scan.get("complete"):
-        if scan.get("completed_at", 0) > now.timestamp() - 86400:
+        if (
+            scan.get("turnout_discovery_version") == 1
+            and scan.get("completed_at", 0) > now.timestamp() - 86400
+        ):
             return False
         scan = state["scan"] = {"anchor": now.isoformat(), "phase": 0}
     if scan.get("retry_after", 0) > now.timestamp():
@@ -264,6 +269,8 @@ def scan_page(api, state, target, now):
         scan["retry_after"] = now.timestamp() + 86400
         scan["resets"] = scan.get("resets", 0) + 1
         return False
+    discover_turnout(state, target, rows, now)
+    scan["turnout_discovery_version"] = 1
     # Event-parent timestamps are not a pagination stopping boundary.
     for event in rows:
         if not since <= instant(event["eventStart"]) <= now - timedelta(hours=3):
@@ -376,7 +383,7 @@ def sample_event(api, state, identity, target, now):
         del state["pending"][identity]
 
 
-def run_batch(api, state, target, now, checkpoint):
+def run_batch(api, state, target, now, checkpoint, *, full_scan=False):
     """One transaction per unit; interrupted units are safe to replay."""
     covered = coverage(state, target)
     wanted = {k: v for k, v in target.get("signatures", {}).items() if k not in covered}
@@ -385,7 +392,7 @@ def run_batch(api, state, target, now, checkpoint):
     saves = 0
     discovery = 0
     while api.http.remaining > 0 and api.http.clock() + 15 < api.http.deadline:
-        if not wanted:
+        if not wanted and not full_scan:
             break
         due = [
             k
@@ -394,7 +401,11 @@ def run_batch(api, state, target, now, checkpoint):
             and (not v.get("start") or instant(v["start"]) <= now - timedelta(hours=3))
         ]
         # Bootstrap recurring history first, but discovery cannot be starved.
-        discover = not due or (discovery < 40 and (120 - api.http.remaining) % 3 == 0)
+        discover = (
+            not wanted
+            or not due
+            or (discovery < 40 and (120 - api.http.remaining) % 3 == 0)
+        )
         before = copy.deepcopy(state)
         try:
             if discover:
@@ -403,7 +414,7 @@ def run_batch(api, state, target, now, checkpoint):
                 discovery += max(1, remaining - api.http.remaining)
                 if not progressed:
                     discovery = 40
-                    if not due:
+                    if not due or not wanted:
                         break
                     continue
             elif due:

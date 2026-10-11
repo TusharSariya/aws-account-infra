@@ -20,10 +20,11 @@ def progress(state, target, now):
             "band", row.get("turnout_division", [None])[0] == "score" or None
         )
     _, counts = turnout.apply(rows, state, now)
+    index = turnout.family_index(state.get("turnout_events", {}))
     pending = [
         row
         for row in rows
-        if turnout.evidence(row, state.get("turnout_events", {}), now)[1]
+        if turnout.evidence(row, state.get("turnout_events", {}), now, index=index)[1]
     ]
     retries = state.get("turnout_retries", {})
     due = [row for row in pending if retries.get(row["id"], 0) <= now.timestamp()]
@@ -71,6 +72,12 @@ def refresh(store, parameters, http, now, run_id):
                 "target": copy.deepcopy(target),
             }
         target = job["target"]
+        if any(not row.get("name") for row in target.get("turnout", [])):
+            latest, _ = store.read(backfill.TARGETS)
+            names = {row["id"]: row.get("name") for row in latest.get("turnout", [])}
+            for row in target.get("turnout", []):
+                if names.get(row["id"]):
+                    row["name"] = names[row["id"]]
         backfill.seed(state, target, now)
 
         def save(value):
@@ -97,16 +104,26 @@ def refresh(store, parameters, http, now, run_id):
             return finish(job["status"], report)
 
         def done(report):
-            return not report["pending_editions"] and (
-                len(backfill.coverage(state, target))
-                == len(target.get("signatures", {}))
-                or (
-                    state.get("scan", {}).get("complete")
-                    and not any(
-                        not row.get("start")
-                        or backfill.instant(row["start"])
-                        <= now - backfill.timedelta(hours=3)
-                        for row in state.get("pending", {}).values()
+            discovery_done = not any(
+                row.get("name") for row in target.get("turnout", [])
+            ) or (
+                state.get("scan", {}).get("complete")
+                and state.get("scan", {}).get("turnout_discovery_version") == 1
+            )
+            return (
+                discovery_done
+                and not report["pending_editions"]
+                and (
+                    len(backfill.coverage(state, target))
+                    == len(target.get("signatures", {}))
+                    or (
+                        state.get("scan", {}).get("complete")
+                        and not any(
+                            not row.get("start")
+                            or backfill.instant(row["start"])
+                            <= now - backfill.timedelta(days=1)
+                            for row in state.get("pending", {}).values()
+                        )
                     )
                 )
             )
@@ -137,8 +154,10 @@ def refresh(store, parameters, http, now, run_id):
             token = Auth(http, parameters, store).access()
             api = Zwift(http, token)
             turnout.populate(api, state, target, now, budget=40)
-            if target.get("signatures"):
-                backfill.run_batch(api, state, target, now, save)
+            if target.get("signatures") or any(
+                row.get("name") for row in target.get("turnout", [])
+            ):
+                backfill.run_batch(api, state, target, now, save, full_scan=True)
         except RateLimited as exc:
             state["retry_after"] = now.timestamp() + exc.seconds
         # Duration transactions may restore a deep-copied checkpoint on interruption.

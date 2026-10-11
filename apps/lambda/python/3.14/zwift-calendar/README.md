@@ -271,3 +271,11 @@ insufficient, an explicitly labelled median from the exact division is used
 with the same ten-finishes/two-races minimum; other divisions never supply that
 fallback. Updating this presentation increments
 existing event revisions without changing subscription URLs or event IDs.
+
+Historical discovery also checks feed editions sharing a verified parent family,
+exact series name, division, event type, and local weekday/start time. This covers
+recurring events cloned from a common template rather than a linear parent chain.
+The one-off pass finishes the 90-day feed scan before declaring completion and
+keeps the six most recent comparable editions. Older boundary parents are retained
+as minimal metadata to avoid repeated lookups. Mature, completely fetched empty
+results are final; only results less than a day old receive the publication retry.
