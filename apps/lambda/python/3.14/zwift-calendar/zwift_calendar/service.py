@@ -15,6 +15,7 @@ from .errors import ContractError, UpstreamError
 from .filtering import select
 from .storage import Busy, Parameters, Store
 from .transport import Transport
+from .turnout import apply as apply_turnout
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -61,6 +62,7 @@ def collect(api, state, now):
         degraded = True
     events = api.upcoming(now + timedelta(days=14))
     selected, exclusions = select(events, profile, now)
+    candidates = list(selected)
     score = next(
         (profile[key] for key in ("current", "max30") if profile[key] is not None), 100
     )
@@ -74,9 +76,12 @@ def collect(api, state, now):
     }
     for event in selected:
         event["duration"] = estimate(event, history, score)
+    selected, turnout_report = apply_turnout(selected, history, now)
     snapshot, revisions = split_calendars(selected, state.get("revisions", {}), now)
     report = {
         "matched": len(selected),
+        "before_turnout_filter": len(candidates),
+        "turnout": turnout_report,
         "weekly_counts": weekly_counts(selected, now),
         "excluded": exclusions,
         "discovered": len(events),
@@ -97,7 +102,7 @@ def collect(api, state, now):
             "profile": profile,
             "history": history,
             "revisions": revisions,
-            "_targets": targets(events, selected, score, now),
+            "_targets": targets(events, candidates, score, now),
         },
         report,
     )

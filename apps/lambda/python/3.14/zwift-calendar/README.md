@@ -181,3 +181,29 @@ schedule in IaC after verification. Enabled feed health checks alert if remainin
 placeholders have no successful worker check-in for 24 hours. Inspect the batch
 summary at 24/72 hours; limited evidence is not a promise of complete coverage.
 Rollback disables `history_enabled`; cached estimates and subscriptions continue.
+
+## Historical turnout filter
+
+Both feeds omit races whose arithmetic mean is below 10 qualified, unflagged
+finishers in the selected division. Exactly 10 is retained. The mean uses the
+latest two to six available comparable editions within 90 days, following Zwift's
+recurring-parent links and matching event type, score band (or legacy label and
+pace bounds), weekday and subgroup start time in Newfoundland. Course changes
+within a recurring series do not alone invalidate turnout. Editions must be at
+least 24 hours old. Unknown turnout remains visible and is explicitly labelled;
+ordinary special rides are unaffected.
+
+Descriptions include the average and number of editions. Known averages also
+appear in `X-ZWIFT-AVERAGE-FINISHERS` and `X-ZWIFT-TURNOUT-EDITIONS`. Preview/sync
+reports include `before_turnout_filter` and `turnout.filtered`, with separate
+banded/unbanded exclusion counts plus known/unknown coverage. Filtered races stay
+in historical collection targets so subsequent evidence can restore them.
+
+The existing worker shares its 120-request budget between turnout collection
+(first approximately 40 requests, completing an in-flight subgroup if needed)
+and duration history. Full results use `start` pagination in pages of 25 and
+must reach an empty page before a count is trusted; partial responses, failures,
+repeated riders and pagination limits never become zero. Only complete aggregate
+counts are persisted, without rider names or identifiers. Coverage builds over
+scheduled runs. Historical discovery retains its cursor when hourly targets
+change; earlier pages are revisited in the next complete scan.
