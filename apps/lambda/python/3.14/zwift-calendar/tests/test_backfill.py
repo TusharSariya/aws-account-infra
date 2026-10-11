@@ -322,6 +322,41 @@ def test_resume_after_checkpoint_does_not_repeat_discovery_pages():
     assert saved[0]["scan"]["cursor"] == "150"
 
 
+@pytest.mark.parametrize("change", ["signature", "score"])
+def test_discovery_advances_across_hourly_target_changes(change):
+    state = backfill.seed({}, TARGET, NOW)
+    api = Mock()
+    api.http.clock.return_value = 0
+    api.http.deadline = 150
+    cursors = []
+
+    def page(since, cursor):
+        api.http.remaining -= 1
+        cursors.append(cursor)
+        number = int(cursor or "0") + 1
+        return [], str(number) if number < 3 else None
+
+    api.history_page.side_effect = page
+    for hour in range(3):
+        target = copy.deepcopy(TARGET)
+        if change == "score":
+            target["score"] += hour
+        else:
+            sig = [hour + 2, 10000, 0, "RACE"]
+            target["signatures"][backfill.key(sig)] = {
+                "signature": sig,
+                "count": 1,
+                "start": NOW.isoformat(),
+            }
+        backfill.seed(state, target, NOW + timedelta(hours=hour))
+        api.http.remaining = 1
+        backfill.run_batch(api, state, target, NOW + timedelta(hours=hour), Mock())
+
+    assert cursors == [None, "1", "2"]
+    assert state["scan"]["phase"] == 1
+    assert state["scan"]["anchor"] == NOW.isoformat()
+
+
 def test_seed_expires_history_and_pending_older_than_ninety_days():
     old = (NOW - timedelta(days=91)).isoformat()
     state = {

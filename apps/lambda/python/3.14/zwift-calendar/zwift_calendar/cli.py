@@ -32,6 +32,10 @@ def main():
     commands.add_parser(
         "backfill-status", help="Read private historical coverage and usage"
     )
+    bootstrap = commands.add_parser(
+        "backfill-all", help="Start the bounded one-off AWS historical workflow"
+    )
+    bootstrap.add_argument("--state-machine", required=True)
     args = parser.parse_args()
     try:
         if args.command == "credentials":
@@ -46,15 +50,24 @@ def main():
             )
             parameters.write(os.environ.get("ZWIFT_TOKENS_PARAMETER", TOKENS), {})
             print("Credentials saved; token cache invalidated.")
+        elif args.command == "backfill-all":
+            response = client("stepfunctions").start_execution(
+                stateMachineArn=args.state_machine, input="{}"
+            )
+            print(json.dumps({"execution_arn": response["executionArn"]}))
         elif args.command == "backfill-status":
             from .backfill import STATE, TARGETS, status
+            from .bootstrap import progress
 
             store = Store()
-            print(
-                json.dumps(
-                    status(store.read(STATE)[0], store.read(TARGETS)[0]), indent=2
-                )
-            )
+            state, _ = store.read(STATE)
+            target, _ = store.read(TARGETS)
+            report = status(state, target)
+            report["turnout"] = progress(state, target, datetime.now(UTC))
+            report["bootstrap"] = {
+                k: v for k, v in state.get("bootstrap", {}).items() if k != "target"
+            }
+            print(json.dumps(report, indent=2))
         elif args.command in ("sync", "backfill"):
             response = client("lambda").invoke(
                 FunctionName=args.function,

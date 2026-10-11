@@ -1,0 +1,50 @@
+{
+  "Comment": "Manually started bounded historical turnout pass; durable targets and checkpoints live in S3",
+  "QueryLanguage": "JSONata",
+  "StartAt": "Batch",
+  "TimeoutSeconds": 93600,
+  "States": {
+    "Batch": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Arguments": {
+        "FunctionName": "${history_arn}",
+        "Payload": {"mode": "bootstrap", "run_id": "{% $states.context.Execution.Id %}"}
+      },
+      "TimeoutSeconds": 200,
+      "Retry": [{"ErrorEquals": ["Lambda.ServiceException", "Lambda.AWSLambdaException", "Lambda.SdkClientException", "Lambda.TooManyRequestsException"], "IntervalSeconds": 60, "MaxAttempts": 3, "BackoffRate": 2, "JitterStrategy": "FULL"}],
+      "Output": "{% $type($states.result.Payload) = 'string' ? $parse($states.result.Payload) : $states.result.Payload %}",
+      "Next": "MoreHistory"
+    },
+    "MoreHistory": {
+      "Type": "Choice",
+      "Choices": [
+        {"Condition": "{% $states.input.status = 'running' %}", "Next": "Wait"},
+        {"Condition": "{% $states.input.status in ['complete', 'limited', 'stalled'] %}", "Next": "SaveReport"}
+      ],
+      "Default": "Unavailable"
+    },
+    "Wait": {"Type": "Wait", "Seconds": "{% $states.input.wait_seconds %}", "Next": "Batch"},
+    "SaveReport": {"Type": "Pass", "Assign": {"history": "{% $states.input %}"}, "Next": "Publish"},
+    "Publish": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Arguments": {"FunctionName": "${sync_arn}", "Payload": {}},
+      "TimeoutSeconds": 560,
+      "Retry": [{"ErrorEquals": ["Lambda.ServiceException", "Lambda.AWSLambdaException", "Lambda.SdkClientException", "Lambda.TooManyRequestsException"], "IntervalSeconds": 60, "MaxAttempts": 3, "BackoffRate": 2, "JitterStrategy": "FULL"}],
+      "Output": "{% $type($states.result.Payload) = 'string' ? $parse($states.result.Payload) : $states.result.Payload %}",
+      "Next": "Published"
+    },
+    "Published": {
+      "Type": "Choice",
+      "Choices": [
+        {"Condition": "{% $states.input.status = 'busy' %}", "Next": "PublicationWait"},
+        {"Condition": "{% $states.input.status = 'ok' %}", "Next": "Report"}
+      ],
+      "Default": "Unavailable"
+    },
+    "PublicationWait": {"Type": "Wait", "Seconds": 60, "Next": "Publish"},
+    "Report": {"Type": "Pass", "Output": {"history": "{% $history %}", "calendar": "{% $states.input %}"}, "End": true},
+    "Unavailable": {"Type": "Fail", "Error": "BootstrapUnavailable", "Cause": "Missing fresh targets, another active bootstrap, or publication did not succeed"}
+  }
+}

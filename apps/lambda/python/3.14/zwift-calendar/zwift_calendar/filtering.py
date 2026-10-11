@@ -10,6 +10,7 @@ from .api import instant
 from .campaigns import EXCLUDED_CAMPAIGNS, campaign
 from .errors import ContractError, UnsupportedRule
 from .rules import evaluate, parse
+from .turnout import division
 
 BAND = re.compile(r"^(\d{1,4})\s*[-–]\s*(\d{1,4})(?: Max)?$")
 TYPES = {"RACE", "TIME_TRIAL"}
@@ -186,6 +187,8 @@ def select(events, profile, now):
                 {
                     "id": f"{event['id']}-{group['id']}",
                     "event_id": event["id"],
+                    "parent_id": event.get("parentId"),
+                    "turnout_division": division(group),
                     "subgroup_id": group["id"],
                     "name": event["name"],
                     "group": group.get("subgroupLabel") or str(group.get("label", "")),

@@ -123,3 +123,22 @@ must carry `Accept: application/json`; the verified summary response exposes onl
 these contracts only, resumes cursors, deduplicates identities, and never assumes
 parent timestamps are a safe pagination stopping boundary. Cursor expiration
 restarts the same scan after a bounded cooldown rather than claiming completion.
+
+## Complete finisher counts (2026-10-11)
+
+Authenticated read-only probes verified
+`race-results/entries?event_subgroup_id=<id>&start=<offset>&limit=25`.
+For subgroup 7364660, starts 0, 25 and 50 returned 25, 10 and 0 entries,
+respectively, with ranks 1-25 then 26-35 and no repeated rider identities.
+`limit=2&start=2` returned ranks 3 and 4. The `offset` parameter was ignored;
+limits 100 and 1000 returned HTTP 400. The implementation therefore uses only
+verified `start`/25-page requests, validates subgroup identities and duplicates,
+and requires terminal emptiness. The count includes qualified, unflagged rows
+with a positive rank and recorded positive duration. Empty completed results
+count as zero; incomplete or failed requests remain unknown. This observed
+first-party contract is not an official third-party API guarantee.
+
+Popularity compares complete subgroup counts along recurring-parent chains,
+not the sampled duration histogram or event-wide registration totals. Changes
+to score bands or legacy pace bounds prevent comparison. Exact Newfoundland
+weekday/time matching may leave some DST-shifted international events unknown.

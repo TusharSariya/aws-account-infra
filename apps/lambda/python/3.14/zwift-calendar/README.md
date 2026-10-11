@@ -181,3 +181,78 @@ schedule in IaC after verification. Enabled feed health checks alert if remainin
 placeholders have no successful worker check-in for 24 hours. Inspect the batch
 summary at 24/72 hours; limited evidence is not a promise of complete coverage.
 Rollback disables `history_enabled`; cached estimates and subscriptions continue.
+
+## Historical turnout filter
+
+Both feeds omit races whose arithmetic mean is below 10 qualified, unflagged
+finishers in the selected division. Exactly 10 is retained. The mean uses the
+latest two to six available comparable editions within 90 days, following Zwift's
+recurring-parent links and matching event type, score band (or legacy label and
+pace bounds), weekday and subgroup start time in Newfoundland. Course changes
+within a recurring series do not alone invalidate turnout. Editions must be at
+least 24 hours old. Unknown turnout remains visible and is explicitly labelled;
+ordinary special rides are unaffected.
+
+Descriptions include the average and number of editions. Known averages also
+appear in `X-ZWIFT-AVERAGE-FINISHERS` and `X-ZWIFT-TURNOUT-EDITIONS`. Preview/sync
+reports include `before_turnout_filter` and `turnout.filtered`, with separate
+banded/unbanded exclusion counts plus known/unknown coverage. Unknown counts
+distinguish pending lookups, missing parent links and insufficient comparable
+history. Collection prioritizes two editions across races before deepening to six.
+Filtered races stay
+in historical collection targets so subsequent evidence can restore them.
+
+The existing worker shares its 120-request budget between turnout collection
+(first approximately 40 requests, completing an in-flight subgroup if needed)
+and duration history. Full results use `start` pagination in pages of 25 and
+must reach an empty page before a count is trusted; partial responses, failures,
+repeated riders and pagination limits never become zero. Only complete aggregate
+counts are persisted, without rider names or identifiers. Coverage builds over
+scheduled runs. Historical discovery retains its cursor when hourly targets
+change; earlier pages are revisited in the next complete scan.
+
+## One-off AWS turnout bootstrap
+
+The manually started `zwift-calendar-history-bootstrap` Standard Step Functions
+workflow runs the existing history Lambda repeatedly. This is separate from the
+small three-hourly maintenance pass. It freezes the current race targets in
+`history/state.json` under `bootstrap`, collects up to six comparable editions
+per race (two across the inventory first), and refreshes both calendars on exit.
+Its final execution output contains the frozen-target coverage report and the
+new calendar report, including the current number filtered below ten finishers.
+Duration sampling remains the scheduled worker's responsibility.
+
+Each execution reserves at most 100 batches of 120 requests (12,000 attempts,
+including authentication and retries), at two requests/second. Batches wait at
+least 60 seconds, respect upstream cooldowns, share the calendar/authentication
+lease, and checkpoint aggregate counts into the existing private S3 cache.
+The execution keeps its targets across hourly syncs; another active bootstrap
+is rejected. No rider identities are persisted. A batch interrupted before its
+checkpoint can repeat work, but its reserved request allowance is not refunded.
+Step Functions redrive resumes the same execution and saved allowance.
+
+Collection stops after 24 hours, 100 batches, three batches without progress,
+or exhaustion of comparable parent history. The workflow has a 26-hour overall
+timeout to leave room for the final publication. `complete` means available
+parent chains were checked, not that every race has an average. `limited` and
+`stalled` explicitly report remaining work; races with missing parent links or
+insufficient history remain visible as unknown. These terminal results still
+publish the evidence collected. Unexpected errors fail the execution and alert;
+the existing calendar remains available. Daily maintenance budgets are unchanged.
+
+After deployment and a successful calendar sync, start once using the output ARN:
+
+```sh
+uv run --frozen --directory apps/lambda/python/3.14/zwift-calendar python -m zwift_calendar.cli backfill-all --state-machine arn:aws:states:us-east-1:992382747916:stateMachine:zwift-calendar-history-bootstrap
+uv run --frozen --directory apps/lambda/python/3.14/zwift-calendar python -m zwift_calendar.cli backfill-status
+```
+
+The start command returns an execution ARN for the AWS console/API. Status shows
+both current inventory coverage and the last bootstrap report. Standard execution
+history retains the final report; CloudWatch logs retain aggregate execution summaries using
+a rotating customer-managed KMS key. Credentials and race target inventories
+never enter workflow inputs or outputs. Infrastructure includes failure/timeout/abort
+alarms, narrowly scoped invocation permissions, and no recurring bootstrap schedule.
+The KMS key, alarms, and execution logs have ongoing costs even while idle; the
+request allowance bounds work, not the total AWS bill. Stop an execution to halt
+future batches; an in-flight Lambda may finish its current bounded batch.

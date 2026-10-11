@@ -46,6 +46,24 @@ def render(events, name="Zwift races and special events"):
         ]
         if row.get("score_basis") == "max30":
             description.append("Eligibility uses your 30-day maximum Racing Score.")
+        if row.get("event_kind", "race") == "race":
+            turnout = row.get("turnout", {})
+            average = turnout.get("average")
+            if average is None:
+                reason = {
+                    "pending_history": "historical lookup pending",
+                    "no_parent_link": "no recurring-parent link available",
+                    "insufficient_history": "fewer than two comparable editions",
+                }.get(turnout.get("reason"), "historical lookup pending")
+                description.append(
+                    f"Historical turnout in your division: unknown ({reason})."
+                )
+            else:
+                description.append(
+                    f"Average finishers in your division: {average:.1f} across {turnout['editions']} recent comparable editions (same weekday/time; up to 90 days)."
+                )
+                event.add("x-zwift-average-finishers", f"{average:.1f}")
+                event.add("x-zwift-turnout-editions", turnout["editions"])
         if row.get("special_event"):
             description.append("Special event: " + row["special_event"] + ".")
         if row.get("event_kind") == "special_ride":

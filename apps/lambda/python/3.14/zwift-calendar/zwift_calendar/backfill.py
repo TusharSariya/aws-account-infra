@@ -21,6 +21,7 @@ from .errors import (
 from .filtering import BAND, signature
 from .storage import Busy, Parameters, Store
 from .transport import Transport
+from .turnout import populate
 
 TARGETS = "history/targets.json"
 STATE = "history/state.json"
@@ -44,6 +45,21 @@ def targets(events, selected, score, now):
     counts = Counter(key(e["signature"]) for e in rows)
     return {
         "version": 1,
+        "turnout": [
+            {
+                k: e.get(k)
+                for k in (
+                    "id",
+                    "parent_id",
+                    "start",
+                    "signature",
+                    "turnout_division",
+                    "band",
+                )
+            }
+            for e in selected
+            if e.get("event_kind", "race") == "race"
+        ],
         "updated": now.timestamp(),
         "score": score,
         "signatures": {
@@ -99,7 +115,9 @@ def seed(state, target, now):
     ).hexdigest()
     if state.get("scope") != scope:
         state["scope"] = scope
-        state.pop("scan", None)
+        # The cursor enumerates the upstream feed, independently of our targets.
+        # Hourly inventory changes must not restart a multi-run scan. Newly
+        # relevant events on earlier pages are revisited on the next full scan.
         # Retry metadata for the new target set; keep already learned evidence.
         for job in state["pending"].values():
             job.pop("groups", None)
@@ -437,11 +455,15 @@ def refresh_history(store, parameters, http, now):
         if not admit(state, now):
             return {"status": "budget_limited", **status(state, target)}
         save(state)
-        if len(coverage(state, target)) < len(target["signatures"]):
+        if target.get("turnout") or len(coverage(state, target)) < len(
+            target["signatures"]
+        ):
             before = state.get("successful_units", 0)
             try:
                 token = Auth(http, parameters, store).access()
-                run_batch(Zwift(http, token), state, target, now, save)
+                api = Zwift(http, token)
+                populate(api, state, target, now)
+                run_batch(api, state, target, now, save)
             except RateLimited as exc:
                 state["retry_after"] = now.timestamp() + exc.seconds
             if state.get("successful_units", 0) > before:
@@ -457,11 +479,16 @@ def refresh_history(store, parameters, http, now):
 
 def handler(event, context):
     try:
-        result = refresh_history(
+        from .bootstrap import refresh as bootstrap
+
+        worker = bootstrap if event.get("mode") == "bootstrap" else refresh_history
+        extra = {"run_id": event.get("run_id")} if worker is bootstrap else {}
+        result = worker(
             Store(),
             Parameters(),
             Transport(budget=120, seconds=150, interval=0.5, defer_rate_limits=True),
             datetime.now(UTC),
+            **extra,
         )
         log.info("Zwift history: %s", json.dumps(result))
         return result

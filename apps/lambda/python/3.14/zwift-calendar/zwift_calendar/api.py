@@ -159,3 +159,49 @@ class Zwift:
         ):
             raise ContractError("Invalid race results response")
         return data.get("firstEntries", [])
+
+    def finisher_count(self, subgroup_id):
+        """Count qualified finishers only after reaching an empty results page."""
+        seen, count = set(), 0
+        for start in range(0, 2500, 25):
+            data = self.get(
+                "race-results/entries?"
+                + urlencode(
+                    {"event_subgroup_id": subgroup_id, "start": start, "limit": 25}
+                ),
+                authenticated=True,
+            )
+            rows = data.get("entries") if isinstance(data, dict) else None
+            if not isinstance(rows, list) or len(rows) > 25:
+                raise ContractError("Invalid complete results page")
+            if not rows:
+                return count
+            for row in rows:
+                if not isinstance(row, dict) or type(row.get("profileId")) is not int:
+                    raise ContractError("Invalid finisher identity")
+                identity = row["profileId"]
+                if identity in seen or row.get("eventSubgroupId") != subgroup_id:
+                    raise ContractError("Repeated or mismatched finisher")
+                seen.add(identity)
+                elapsed = (row.get("activityData") or {}).get("durationInMilliseconds")
+                if (
+                    type(row.get("qualified")) is not bool
+                    or type(row.get("rank")) is not int
+                ):
+                    raise ContractError("Invalid finisher status")
+                if row["qualified"] and (
+                    type(elapsed) not in (int, float) or not math.isfinite(elapsed)
+                ):
+                    raise ContractError("Invalid finisher duration")
+                if (
+                    row.get("qualified") is True
+                    and type(row.get("rank")) is int
+                    and row["rank"] > 0
+                    and type(elapsed) in (int, float)
+                    and math.isfinite(elapsed)
+                    and elapsed > 0
+                    and not row.get("flaggedCheating")
+                    and not row.get("flaggedSandbagging")
+                ):
+                    count += 1
+        raise ContractError("Complete results pagination limit reached")
