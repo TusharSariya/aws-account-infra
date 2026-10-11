@@ -375,9 +375,23 @@ def sample_event(api, state, identity, target, now):
         job["groups"].pop(0)
         job.pop("empty_retries", None)
     if not job["groups"]:
+        # Each batch fetches only currently missing signatures. Replacing the
+        # entire race would erase samples for groups that already have coverage.
+        fresh = job["samples"]
+        refreshed = {sample["subgroup_id"] for sample in fresh}
+        previous = state.get("races", {}).get(identity, {}).get("samples", [])
+        preserved = [
+            sample
+            for sample in previous
+            if sample.get("subgroup_id") not in refreshed
+            and (
+                sample.get("subgroup_id") is not None
+                or not any(s["signature"] == sample["signature"] for s in fresh)
+            )
+        ]
         state.setdefault("races", {})[identity] = {
             "start": job["start"],
-            "samples": job["samples"],
+            "samples": preserved + fresh,
             "scope": state.get("scope"),
         }
         del state["pending"][identity]

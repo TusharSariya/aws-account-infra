@@ -479,3 +479,49 @@ def test_full_scan_continues_for_turnout_after_duration_coverage():
     )
     assert api.history_page.call_count == 1
     assert state["scan"]["turnout_discovery_version"] == 1
+
+
+def test_revisiting_covered_race_preserves_learned_duration():
+    state = backfill.seed({}, TARGET, NOW)
+    api = Mock()
+    api.event.side_effect = lambda identity: event(identity)
+    api.results.side_effect = results
+    for identity in ("1", "2"):
+        backfill.enqueue(state, identity, {"start": None})
+        backfill.sample_event(api, state, identity, TARGET, NOW)
+    before = copy.deepcopy(state["races"]["1"]["samples"])
+    state["pending"]["1"] = {"start": None}
+    backfill.sample_event(api, state, "1", TARGET | {"signatures": {}}, NOW)
+    assert state["races"]["1"]["samples"] == before
+    assert (
+        estimate({"signature": SIG, "published_seconds": 0}, state, 100)["samples"]
+        == 10
+    )
+
+
+def test_refresh_replaces_its_group_without_erasing_other_groups():
+    state = backfill.seed({}, TARGET, NOW)
+    unchanged = {
+        "subgroup_id": 11,
+        "signature": SIG,
+        "division": ["score", "200-300"],
+        "bins": [[250, 2000, 6]],
+    }
+    state["races"]["1"] = {
+        "start": event()["eventStart"],
+        "samples": [
+            {"subgroup_id": 10, "signature": SIG, "bins": [[100, 9999, 5]]},
+            {"signature": SIG, "bins": [[100, 9999, 5]]},
+            unchanged,
+        ],
+    }
+    state["pending"]["1"] = {"start": None}
+    api = Mock()
+    api.event.return_value = event()
+    api.results.return_value = results(10)
+    backfill.sample_event(api, state, "1", TARGET, NOW)
+    samples = state["races"]["1"]["samples"]
+    assert len(samples) == 2 and unchanged in samples
+    refreshed = next(s for s in samples if s["subgroup_id"] == 10)
+    assert sum(b[2] for b in refreshed["bins"]) == 5
+    assert all(b[1] != 9999 for s in samples for b in s["bins"])
