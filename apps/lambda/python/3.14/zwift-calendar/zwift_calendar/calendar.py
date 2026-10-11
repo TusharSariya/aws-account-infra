@@ -50,8 +50,13 @@ def render(events, name="Zwift races and special events"):
             turnout = row.get("turnout", {})
             average = turnout.get("average")
             if average is None:
+                reason = {
+                    "pending_history": "historical lookup pending",
+                    "no_parent_link": "no recurring-parent link available",
+                    "insufficient_history": "fewer than two comparable editions",
+                }.get(turnout.get("reason"), "historical lookup pending")
                 description.append(
-                    "Historical turnout in your division: unknown (fewer than two comparable editions)."
+                    f"Historical turnout in your division: unknown ({reason})."
                 )
             else:
                 description.append(

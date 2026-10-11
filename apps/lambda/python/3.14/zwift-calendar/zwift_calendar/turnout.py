@@ -75,6 +75,9 @@ def evidence(row, cache, now):
             # Ambiguous historical divisions are unknown, never combined.
             if len(groups) == 1:
                 group = groups[0]
+                if instant(group["start"]) > now - timedelta(days=1):
+                    identity = event.get("parent")
+                    continue
                 if "finishers" not in group:
                     return editions, ("group", identity, group["id"])
                 editions.append({"event_id": identity, "finishers": group["finishers"]})
@@ -92,21 +95,38 @@ def apply(rows, state, now):
         "known": 0,
         "filtered_banded": 0,
         "filtered_unbanded": 0,
+        "pending_history": 0,
+        "no_parent_link": 0,
+        "insufficient_history": 0,
     }
     cache = state.get("turnout_events", {})
     for row in rows:
         if row.get("event_kind", "race") != "race":
             kept.append(row)
             continue
-        editions, _ = evidence(row, cache, now)
+        editions, request = evidence(row, cache, now)
         average = (
             sum(e["finishers"] for e in editions) / len(editions)
             if len(editions) >= MIN_EDITIONS
             else None
         )
-        row["turnout"] = {"average": average, "editions": len(editions)}
+        reason = None
+        if average is None:
+            reason = (
+                "pending_history"
+                if request
+                else "no_parent_link"
+                if not row.get("parent_id")
+                else "insufficient_history"
+            )
+        row["turnout"] = {
+            "average": average,
+            "editions": len(editions),
+            "reason": reason,
+        }
         if average is None:
             report["unknown"] += 1
+            report[reason] += 1
         else:
             report["known"] += 1
             if average < MIN_FINISHERS:

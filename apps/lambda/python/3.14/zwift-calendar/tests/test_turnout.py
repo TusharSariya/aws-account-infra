@@ -201,3 +201,33 @@ def test_collection_filters_and_reports_but_keeps_backfill_targets():
         not Calendar.from_ical(f["ics"]).walk("VEVENT")
         for f in snapshot["calendars"].values()
     )
+
+
+def test_unknown_reasons_distinguish_pending_from_missing_history():
+    _, pending = apply([copy.deepcopy(ROW)], {}, NOW)
+    _, no_parent = apply([ROW | {"parent_id": None}], {}, NOW)
+    _, insufficient = apply(
+        [copy.deepcopy(ROW)],
+        {
+            "turnout_events": cache([20])
+            | {
+                "1": {
+                    "parent": None,
+                    "start": (NOW - timedelta(weeks=2)).isoformat(),
+                    "type": "RACE",
+                    "groups": [],
+                }
+            }
+        },
+        NOW,
+    )
+    assert pending["pending_history"] == 1
+    assert no_parent["no_parent_link"] == 1
+    assert insufficient["insufficient_history"] == 1
+
+
+def test_missing_finisher_status_is_not_a_zero_count():
+    api = Zwift(Mock(), "token")
+    api.get = Mock(return_value={"entries": [{"profileId": 1, "eventSubgroupId": 10}]})
+    with pytest.raises(ContractError):
+        api.finisher_count(10)

@@ -185,6 +185,15 @@ class Zwift:
                 seen.add(identity)
                 elapsed = (row.get("activityData") or {}).get("durationInMilliseconds")
                 if (
+                    type(row.get("qualified")) is not bool
+                    or type(row.get("rank")) is not int
+                ):
+                    raise ContractError("Invalid finisher status")
+                if row["qualified"] and (
+                    type(elapsed) not in (int, float) or not math.isfinite(elapsed)
+                ):
+                    raise ContractError("Invalid finisher duration")
+                if (
                     row.get("qualified") is True
                     and type(row.get("rank")) is int
                     and row["rank"] > 0
