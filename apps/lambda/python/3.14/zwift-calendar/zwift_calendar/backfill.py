@@ -159,6 +159,13 @@ def seed(state, target, now):
         for job in state["pending"].values():
             job.pop("groups", None)
             job.pop("samples", None)
+    for job in state["pending"].values():
+        if (
+            job.get("empty_retries")
+            and job.get("start")
+            and instant(job["start"]) <= now - timedelta(days=1)
+        ):
+            job.pop("retry_after", None)
     for identity, info in target.get("events", {}).items():
         enqueue(
             state,
@@ -343,7 +350,11 @@ def sample_event(api, state, identity, target, now):
     if job["groups"]:
         group = job["groups"][0]
         bins = histogram(api.results(group["id"]), group["id"])
-        if not bins and job.get("empty_retries", 0) < 1:
+        if (
+            not bins
+            and job.get("empty_retries", 0) < 1
+            and instant(job["start"]) > now - timedelta(days=1)
+        ):
             job.update(empty_retries=1, retry_after=now.timestamp() + 86400)
             return
         job["samples"].append(
