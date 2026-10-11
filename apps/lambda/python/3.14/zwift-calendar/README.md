@@ -233,7 +233,7 @@ is rejected. No rider identities are persisted. A batch interrupted before its
 checkpoint can repeat work, but its reserved request allowance is not refunded.
 Step Functions redrive resumes the same execution and saved allowance.
 
-Collection stops after 24 hours, 100 batches, three batches without progress,
+Collection stops after 24 hours, its configured batch allowance, three batches without progress,
 or exhaustion of comparable parent history. The workflow has a 26-hour overall
 timeout to leave room for the final publication. `complete` means available
 parent chains were checked, not that every race has an average. `limited` and
