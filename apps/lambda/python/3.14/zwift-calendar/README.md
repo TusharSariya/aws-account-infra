@@ -294,3 +294,9 @@ the pass from finishing. Result endpoint failures, authentication failures, and
 rate limits retain their separate error/retry handling. The duration report
 includes `unavailable_events` so exhausted history is distinguishable from data
 that could not be obtained.
+
+Scheduled history collection yields to an active one-off bootstrap before
+reseeding the cache or reserving its normal allowance. This preserves the frozen
+job scope between batches, even while hourly sync publishes newer calendar
+targets. Normal collection resumes after the job reaches a terminal state or
+its original deadline expires.
