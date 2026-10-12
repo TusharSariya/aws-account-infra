@@ -117,12 +117,21 @@ def equipment_events(payload, day):
     return events
 
 
-def class_events(payload, day):
+def class_events(payload, day, *, yoga=False):
+    pattern = r"\byoga\b" if yoga else r"adult\s+swim(?:ming)?\s+lessons?"
+    category = "Yoga" if yoga else "Adult Lesson"
+    description = (
+        "Published yoga class; you are not registered. Book through the My Y Canada app. "
+        "See the YMCA for eligibility, membership requirements, fees and availability."
+        if yoga else
+        "Published lesson session; you are not registered. Registration and an active "
+        "membership may be required. See the YMCA for eligibility, fees and availability."
+    )
     events = []
     for row in rows(payload, "classes"):
         if type(row.get("gym_id")) is not int:
             raise ValueError("Missing facility")
-        if row["gym_id"] != 785 or not re.search(r"adult\s+swim(?:ming)?\s+lessons?", row["name"], re.I):
+        if row["gym_id"] != 785 or not re.search(pattern, row["name"], re.I):
             continue
         if row.get("date") != day.isoformat():
             raise ValueError("Incorrect occurrence date")
@@ -135,14 +144,13 @@ def class_events(payload, day):
             raise ValueError("Occurrence outside published season")
         events.append(event(f"class:{identity(row['id'])}:{identity(row['slot_id'])}:{day}",
                             day, row["start_time"], row["end_time"], row["name"],
-                            "Adult Lesson", row["room_name"],
-                            "Published lesson session; you are not registered. Registration and an active "
-                            "membership may be required. See the YMCA for eligibility, fees and availability."))
+                            category, row["room_name"], description))
     return events
 
 
 class Upace:
-    def __init__(self):
+    def __init__(self, *, yoga=False):
+        self.yoga = yoga
         self.client = httpx.Client(base_url="https://upace.app/api/", timeout=httpx.Timeout(20, connect=5),
                                    headers={"Origin": "https://embed.upace.app", "Accept": "application/json"})
 
@@ -162,11 +170,14 @@ class Upace:
                 raise TimeoutError("Insufficient time to complete snapshot")
             # Query one date at a time: a weekly response can include templates
             # that expire partway through the week.
-            schedule = self.get("equipment/schedules/unauth", dict(university_id=105,
-                                facility_id=785, start_date=str(day), end_date=str(day)), "SCHEDULE")
+            pool_events = []
+            if not self.yoga:
+                schedule = self.get("equipment/schedules/unauth", dict(university_id=105,
+                                    facility_id=785, start_date=str(day), end_date=str(day)), "SCHEDULE")
+                pool_events = equipment_events(schedule, day)
             classes = self.get("classes/list/unauth", dict(university_id=105, gym_id=785,
                                date=str(day)), "EMBED")
-            for item in equipment_events(schedule, day) + class_events(classes, day):
+            for item in pool_events + class_events(classes, day, yoga=self.yoga):
                 if item["id"] in collected:
                     raise ValueError("Duplicate source identity")
                 collected[item["id"]] = item
@@ -178,6 +189,8 @@ def create_source(name):
     """Each deployed service owns exactly one upstream source."""
     if name == "ymca":
         return Upace()
+    if name == "ymca_yoga":
+        return Upace(yoga=True)
     if name == "paul_reynolds":
         from swim_calendar.city import PaulReynolds
         return PaulReynolds()
