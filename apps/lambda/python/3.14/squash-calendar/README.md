@@ -1,5 +1,10 @@
 # ASC squash calendar
 
+Subscribe: <https://y5dbvdbkz5.execute-api.us-east-1.amazonaws.com/calendars/squash.ics>
+
+Verified after deployment: HTTP 200, eight VEVENTs, six upcoming enriched
+previews, HTTP 304 on a matching ETag, and a healthy live Lambda check.
+
 Public `GET /calendars/squash.ics` publishes Tushar Sariya's eight confirmed
 Tuesday fixtures from **UPDATED ASC Fall League 2026 Schedule.pdf**, pages 1–2.
 `season.json` pins its SHA-256, opponent identities, court numbers and stable
