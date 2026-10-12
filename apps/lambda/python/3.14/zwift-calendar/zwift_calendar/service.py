@@ -14,6 +14,7 @@ from .backfill import STATE, TARGETS, targets
 from .backfill import status as history_status
 from .calendar import CALENDAR_NAMES, split_calendars
 from .duration import estimate
+from .duration_filter import apply as apply_duration_filter
 from .errors import ContractError, UpstreamError
 from .filtering import select
 from .power import PowerCurve
@@ -99,9 +100,13 @@ def collect(api, state, now, *, checkpoint=lambda state: None):
                     event, curve, profile.get("body", {}), power_report
                 )
             event["duration"] = predictions[key]
+    before_duration_filter = len(selected)
+    selected, duration_filter_report = apply_duration_filter(selected)
     snapshot, revisions = split_calendars(selected, state.get("revisions", {}), now)
     report = {
         "matched": len(selected),
+        "before_duration_filter": before_duration_filter,
+        "duration_filter": duration_filter_report,
         "estimate_coverage": dict(Counter(e["duration"]["category"] for e in selected)),
         "course_coverage": dict(
             Counter(
