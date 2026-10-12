@@ -31,7 +31,8 @@ def render(events, name="Zwift races and special events"):
             ("last-modified", "updated"),
             ("created", "created"),
         ):
-            event.add(property_name, instant(row[key]))
+            if row.get(key) is not None:
+                event.add(property_name, instant(row[key]))
         event.add("sequence", row["sequence"])
         event.add("transp", "TRANSPARENT")
         event.add("location", "Zwift")
@@ -45,17 +46,58 @@ def render(events, name="Zwift races and special events"):
             ),
             f"Duration: {duration['source']}.",
         ]
-        minutes = duration["seconds"] / 60
-        finish = instant(row["end"]).astimezone(ZoneInfo("America/St_Johns"))
-        if "placeholder" in duration["source"]:
+        if duration["seconds"] is None:
             description.append(
-                "Expected finish time: unknown; calendar reserves 60 minutes pending historical evidence."
+                "Start-only event; no supported finish time is available."
             )
         else:
+            minutes = duration["seconds"] / 60
+            finish = instant(row["end"]).astimezone(ZoneInfo("America/St_Johns"))
             description.append(
-                f"Expected ride time: {minutes:.0f} minutes; expected finish: {finish:%H:%M %Z} ({duration['source']})."
+                f"Central estimated ride time: {minutes:.1f} minutes; calendar end: {finish:%H:%M %Z}."
             )
             event.add("x-zwift-expected-duration-seconds", duration["seconds"])
+            event.add(
+                "x-zwift-reserved-duration-seconds",
+                duration.get("reserved_seconds", duration["seconds"]),
+            )
+            if "lower_seconds" in duration:
+                description.append(
+                    f"Planning range: {duration['lower_seconds'] / 60:.1f}-{duration['upper_seconds'] / 60:.1f} minutes; reserves {duration['reserved_seconds'] / 60:g} minutes. Configured planning margin, not a statistical confidence interval."
+                )
+                event.add("x-zwift-planning-lower-seconds", duration["lower_seconds"])
+                event.add("x-zwift-planning-upper-seconds", duration["upper_seconds"])
+        if "power_source" in duration:
+            description.append(
+                "Community physics approximation, not Zwift's official engine. Baseline road bike; solo riding without drafting or powerups."
+            )
+            dates = duration["evidence_dates"]
+            description.append(
+                f"Contributing activities: {duration['activities']}"
+                + (
+                    f"; completed {dates[0]} to {dates[-1]}."
+                    if dates
+                    else "; default assumptions, not measured fitness."
+                )
+            )
+            description.append(
+                f"Activities supporting model durations: {duration['duration_support_min']}-{duration['duration_support_max']} per duration point."
+            )
+            if duration.get("sparse"):
+                description.append("Sparse power evidence; wider planning margin.")
+            if duration.get("assumed_endurance_exponent"):
+                description.append(
+                    "Endurance extension uses assumed power-law decline exponent 0.1."
+                )
+            if duration.get("collection_degraded"):
+                description.append(
+                    "Activity collection degraded; available in-window cached evidence used."
+                )
+            if duration.get("collection_incomplete"):
+                description.append(
+                    "Activity collection incomplete; remaining recordings will be retried hourly."
+                )
+        event.add("x-zwift-estimate-source", duration.get("category", "unknown"))
         if row.get("score_basis") == "max30":
             description.append("Eligibility uses your 30-day maximum Racing Score.")
         if row.get("event_kind", "race") == "race":
@@ -120,11 +162,17 @@ def reconcile(incoming, revisions, now, *, name="Zwift races and special events"
     events = []
     for event in incoming:
         row = event | {
-            "presentation_version": 2,
+            "presentation_version": 3,
             "end": (
                 instant(event["start"])
-                + timedelta(seconds=event["duration"]["seconds"])
-            ).isoformat(),
+                + timedelta(
+                    seconds=event["duration"].get(
+                        "reserved_seconds", event["duration"]["seconds"]
+                    )
+                )
+            ).isoformat()
+            if event["duration"]["seconds"] is not None
+            else None,
         }
         prior = old.get(row["id"], {})
         changed = {

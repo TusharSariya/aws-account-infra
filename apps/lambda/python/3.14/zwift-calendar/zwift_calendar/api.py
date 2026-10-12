@@ -2,7 +2,7 @@
 
 import math
 from datetime import UTC, datetime, timedelta
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 from .errors import AuthenticationError, ContractError
 from .transport import API
@@ -63,6 +63,14 @@ class Zwift:
             "current": current,
             "max30": maximum,
             "retrieved_at": now.timestamp(),
+            "body": {
+                "weight_kg": data["weight"] / 1000
+                if type(data.get("weight")) in (int, float)
+                else None,
+                "height_cm": data["height"] / 10
+                if type(data.get("height")) in (int, float)
+                else None,
+            },
             "fields": {
                 "profile.profileId": data["id"],
                 "profile.male": data["male"],
@@ -70,6 +78,44 @@ class Zwift:
                 "profile.age": data.get("age"),
             },
         }
+
+    def activities(self, profile_id, start=0):
+        data = self.get(
+            f"profiles/{int(profile_id)}/activities?"
+            + urlencode({"start": start, "limit": 50}),
+            authenticated=True,
+        )
+        if (
+            not isinstance(data, list)
+            or len(data) > 50
+            or any(
+                not isinstance(row, dict) or type(row.get("id")) is not int
+                for row in data
+            )
+        ):
+            raise ContractError("Invalid activities page")
+        return data
+
+    def activity_fit(self, profile_id, activity_id):
+        data = self.get(
+            f"profiles/{int(profile_id)}/activities/{int(activity_id)}",
+            authenticated=True,
+        )
+        if not isinstance(data, dict) or data.get("id") != activity_id:
+            raise ContractError("Invalid activity detail")
+        bucket, key = data.get("fitFileBucket"), data.get("fitFileKey")
+        import re
+
+        if (
+            not isinstance(bucket, str)
+            or not re.fullmatch(r"[a-z0-9][a-z0-9-]{1,61}[a-z0-9]", bucket)
+            or not isinstance(key, str)
+            or not key
+        ):
+            raise ContractError("Activity FIT unavailable")
+        return self.http.download_fit(
+            f"https://{bucket}.s3.amazonaws.com/{quote(key, safe='/')}"
+        )
 
     def upcoming(self, until):
         if not self.token:

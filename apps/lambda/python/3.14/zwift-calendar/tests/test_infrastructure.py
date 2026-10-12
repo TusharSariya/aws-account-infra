@@ -66,3 +66,22 @@ def test_two_exact_routes_share_feed_integration_without_extra_aws_storage():
         .split('variable "additional_routes"')[1]
     )
     assert "default     = []" in variables
+
+
+def test_power_cache_is_private_to_sync_and_model_settings_are_explicit():
+    config = (
+        ROOT / "live/aws/staging/workloads/lambda/python/zwift-calendar/main.tf"
+    ).read_text()
+    sync_keys = next(line for line in config.splitlines() if "sync_object_keys" in line)
+    feed_keys = next(line for line in config.splitlines() if "feed_object_keys" in line)
+    assert "power-state.json" in sync_keys and "power-state.json" not in feed_keys
+    history = (
+        ROOT / "live/aws/staging/workloads/lambda/python/zwift-calendar/history.tf"
+    ).read_text()
+    assert "power-state.json" not in history
+    for setting in (
+        "ZWIFT_MEASURED_MARGIN",
+        "ZWIFT_WIDE_MARGIN",
+        "ZWIFT_DEFAULT_POWER_CURVE",
+    ):
+        assert setting in config

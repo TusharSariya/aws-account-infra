@@ -9,6 +9,7 @@ from statistics import median
 from .api import instant
 from .errors import ContractError, UpstreamError
 from .filtering import BAND, signature
+from .prediction import margin, reserve, unavailable
 
 
 def histogram(rows, subgroup):
@@ -122,6 +123,8 @@ def estimate(event, cache, score):
             "seconds": math.ceil(event["published_seconds"]),
             "source": "published event duration",
             "samples": 0,
+            "category": "published",
+            "reserved_seconds": math.ceil(event["published_seconds"]),
         }
     values, races = [], set()
     division_values, division_races = [], set()
@@ -140,15 +143,23 @@ def estimate(event, cache, score):
                     values.extend([seconds] * count)
                     races.add(identity)
     if len(values) >= 10 and len(races) >= 2:
-        return {
-            "seconds": math.ceil(median(values)),
-            "source": "estimated from sampled similar-score finishers",
-            "samples": len(values),
-        }
+        return reserve(
+            {
+                "category": "historical",
+                "seconds": math.ceil(median(values)),
+                "source": "estimated from sampled similar-score finishers",
+                "samples": len(values),
+            },
+            margin(),
+        )
     if len(division_values) >= 10 and len(division_races) >= 2:
-        return {
-            "seconds": math.ceil(median(division_values)),
-            "source": "estimated division median; your finish time may differ",
-            "samples": len(division_values),
-        }
-    return {"seconds": 3600, "source": "estimated 60-minute placeholder", "samples": 0}
+        return reserve(
+            {
+                "category": "historical",
+                "seconds": math.ceil(median(division_values)),
+                "source": "estimated division median; your finish time may differ",
+                "samples": len(division_values),
+            },
+            margin(),
+        )
+    return unavailable("personal course model required")

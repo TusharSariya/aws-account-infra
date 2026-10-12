@@ -1,6 +1,8 @@
 """Bounded HTTP requests; credentials are sent only to fixed Zwift origins."""
 
+import re
 import time
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -40,6 +42,36 @@ class Transport:
         self.next_request = clock()
         self.defer_rate_limits = defer_rate_limits
 
+    def download_fit(self, url):
+        parsed = urlsplit(url)
+        if parsed.scheme != "https" or not re.fullmatch(
+            r"[a-z0-9][a-z0-9-]{1,61}[a-z0-9]\.s3\.amazonaws\.com", parsed.netloc
+        ):
+            raise ContractError("Untrusted FIT destination")
+        if self.remaining <= 0 or self.clock() >= self.deadline:
+            raise BudgetExceeded("FIT budget exhausted")
+        self.remaining -= 1
+        try:
+            with self.client.stream(
+                "GET",
+                url,
+                headers={"Accept": "application/octet-stream"},
+                timeout=min(12, max(0.1, self.deadline - self.clock())),
+                follow_redirects=False,
+            ) as response:
+                if response.status_code != 200:
+                    raise UpstreamError("FIT download failed")
+                body = bytearray()
+                for chunk in response.iter_bytes():
+                    if self.clock() >= self.deadline:
+                        raise BudgetExceeded("FIT budget exhausted")
+                    body.extend(chunk)
+                    if len(body) > 16_000_000:
+                        raise ContractError("FIT response too large")
+                return bytes(body)
+        except httpx.HTTPError:
+            raise UpstreamError("FIT transport failed") from None
+
     def request(self, url, *, token=None, form=None):
         if not (url.startswith(API) or url == TOKEN_URL):
             raise ContractError("Untrusted upstream destination")
@@ -70,6 +102,7 @@ class Transport:
                     url,
                     headers=headers,
                     data=form,
+                    timeout=min(12, max(0.1, self.deadline - self.clock())),
                 ) as response:
                     status = response.status_code
                     if self.defer_rate_limits and status == 429:
@@ -103,6 +136,8 @@ class Transport:
                             )
                         except ValueError:
                             delay = 2**attempt
+                        if self.clock() + delay >= self.deadline:
+                            raise BudgetExceeded("Upstream time budget exhausted")
                         self.sleep(delay)
                         continue
                     if status == 404 and url.startswith(API + "public/events/"):
@@ -111,6 +146,8 @@ class Transport:
                         raise UpstreamError("Unexpected Zwift HTTP response")
                     body = bytearray()
                     for chunk in response.iter_bytes():
+                        if self.clock() >= self.deadline:
+                            raise BudgetExceeded("Upstream time budget exhausted")
                         body.extend(chunk)
                         if len(body) > 8_000_000:
                             raise ContractError("Upstream response too large")

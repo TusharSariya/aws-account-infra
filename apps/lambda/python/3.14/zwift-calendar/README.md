@@ -59,7 +59,10 @@ times use, in order:
 2. Median of sampled, qualified finishers within 50 score points on the same
    route, distance, lap count and event type during the previous 90 days, with
    at least 10 finishes across two races.
-3. An explicitly labelled 60-minute placeholder.
+3. Recent-power/default course physics, or an explicit start-only event when distance or rider dimensions cannot be established.
+
+See [the finish-time model](MODEL.md) for collection, source attribution,
+course resolution, uncertainty and configuration.
 
 Only races consume the historical-result lookup budget. Special rides use their
 published duration or the labelled fallback. The result-summary API samples leading finishers, not an entire field. Estimates
@@ -146,7 +149,7 @@ anonymous score/time bins, pending event/subgroup work, discovery cursors and
 admission counters. Only qualified, unflagged finishers count. Estimates still
 require ten finishes from two races on the same route/distance/laps/type within
 50 score points. The worker validates complete paginated results before persisting anonymous
-score/time bins. Insufficient evidence keeps the labeled 60-minute placeholder.
+score/time bins. Insufficient historical evidence uses the personal/default course model.
 
 Bounds: 512 MB Arm, 180-second Lambda timeout, 150-second upstream deadline,
 120 HTTP attempts/run, two attempts/second, at most eight admitted runs per UTC
@@ -178,7 +181,7 @@ Rollout: keep `history_enabled = false`, deploy through the PR apply workflow
 (which initializes targets through the normal calendar sync), run one bounded
 batch, inspect coverage and budgets, then sync and verify both feeds. Enable the
 schedule in IaC after verification. Enabled feed health checks alert if remaining
-placeholders have no successful worker check-in for 24 hours. Inspect the batch
+events lacking historical evidence have no successful worker check-in for 24 hours. The legacy `placeholder_events` history-status field now counts these events; it does not mean an hour is reserved. Inspect the batch
 summary at 24/72 hours; limited evidence is not a promise of complete coverage.
 Rollback disables `history_enabled`; cached estimates and subscriptions continue.
 
@@ -259,10 +262,11 @@ The KMS key, alarms, and execution logs have ongoing costs even while idle; the
 request allowance bounds work, not the total AWS bill. Stop an execution to halt
 future batches; an in-flight Lambda may finish its current bounded batch.
 
-Calendar descriptions show expected ride minutes and the corresponding local
-finish time whenever a published duration or supported historical estimate exists.
-`DTEND` uses that same duration; `X-ZWIFT-EXPECTED-DURATION-SECONDS` exposes it to
-ICS consumers. A 60-minute fallback explicitly says the expected finish is unknown.
+Calendar descriptions distinguish central estimated ride minutes from the conservative
+calendar reservation. `X-ZWIFT-EXPECTED-DURATION-SECONDS` is the central estimate;
+`X-ZWIFT-RESERVED-DURATION-SECONDS` controls `DTEND`. Estimates reserve the upper
+planning bound rounded up to five minutes. Published durations remain exact.
+Start-only events omit both `DTEND` and `DURATION` and explain the missing estimate.
 Expected finishers are the selected division's historical arithmetic average,
 not a promise of attendance. Finish-time estimates use the median for comparable
 course/distance/laps/type and riders within 50 Racing Score points, requiring at

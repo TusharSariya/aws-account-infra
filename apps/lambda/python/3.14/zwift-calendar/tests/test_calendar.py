@@ -135,7 +135,12 @@ def test_tt_and_ics_revisions(race, profile):
     assert "session opening" in parsed.vevent.description.value
     same, _ = reconcile(events, revisions, now + timedelta(hours=1))
     assert same["etag"] == snapshot["etag"]
-    events[0]["duration"]["seconds"] = 2400
+    events[0]["duration"] = {
+        "seconds": 2400,
+        "reserved_seconds": 3000,
+        "samples": 0,
+        "source": "test model",
+    }
     changed, _ = reconcile(events, revisions, now + timedelta(hours=2))
     revised = vobject.readOne(changed["ics"])
     assert revised.vevent.uid.value == parsed.vevent.uid.value
@@ -153,7 +158,7 @@ def test_estimate_requires_comparable_samples(race, profile):
     history = {"races": {"1": {"samples": [sample]}, "2": {"samples": [sample]}}}
     assert estimate(event, history, 100)["seconds"] == 2400
     history["races"].pop("2")
-    assert estimate(event, history, 100)["seconds"] == 3600
+    assert estimate(event, history, 100)["seconds"] is None
     event["published_seconds"] = 1800
     assert estimate(event, history, 100)["seconds"] == 1800
 
@@ -252,18 +257,20 @@ def test_finish_time_is_visible_and_matches_calendar_end(race, profile):
     snapshot, _ = reconcile([event], {}, instant(event["start"]))
     parsed = vobject.readOne(snapshot["ics"]).vevent
     assert (
-        "Expected ride time: 40 minutes; expected finish:" in parsed.description.value
+        "Central estimated ride time: 40.0 minutes; calendar end:"
+        in parsed.description.value
     )
     assert parsed.dtend.value - parsed.dtstart.value == timedelta(minutes=40)
     assert parsed.contents["x-zwift-expected-duration-seconds"][0].value == "2400"
     event["duration"] = {
-        "seconds": 3600,
-        "source": "estimated 60-minute placeholder",
+        "seconds": None,
+        "source": "finish time unavailable: course distance unavailable",
         "samples": 0,
     }
     snapshot, _ = reconcile([event], {}, instant(event["start"]))
     parsed = vobject.readOne(snapshot["ics"]).vevent
-    assert "Expected finish time: unknown" in parsed.description.value
+    assert "Start-only event" in parsed.description.value
+    assert not hasattr(parsed, "dtend")
     assert "x-zwift-expected-duration-seconds" not in parsed.contents
 
 

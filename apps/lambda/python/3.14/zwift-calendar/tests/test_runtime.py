@@ -185,7 +185,7 @@ def test_preview_does_not_publish_or_advance_revisions(storage, monkeypatch):
     monkeypatch.setattr("zwift_calendar.service.Auth.access", lambda self: "token")
     monkeypatch.setattr(
         "zwift_calendar.service.collect",
-        lambda *args: (
+        lambda *args, **kwargs: (
             {
                 "calendars": {
                     key: {"ics": "preview", "etag": "new"}
@@ -207,7 +207,7 @@ def test_feed_role_snapshot_contains_no_profile(storage, monkeypatch):
     monkeypatch.setattr("zwift_calendar.service.Auth.access", lambda self: "token")
     monkeypatch.setattr(
         "zwift_calendar.service.collect",
-        lambda *args: (
+        lambda *args, **kwargs: (
             {
                 "calendars": {
                     key: {"ics": "safe", "etag": "new"}
@@ -358,3 +358,75 @@ def test_second_calendar_render_failure_preserves_both_published_feeds(
         refresh(store, parameters, Mock(), now)
     assert store.read()[0] == previous
     assert store.read("private.json")[0] == {}
+
+
+def test_activity_checkpoints_survive_later_discovery_failure(storage, monkeypatch):
+    from zwift_calendar.activities import STATE as POWER_STATE
+
+    store, parameters = storage
+    monkeypatch.setattr("zwift_calendar.service.Auth.access", lambda self: "token")
+
+    def collect_then_fail(api, state, now, *, checkpoint):
+        checkpoint(
+            {"version": 1, "activities": {}, "scan": {"head": "1", "offset": 50}}
+        )
+        raise UpstreamError("event feed failed")
+
+    monkeypatch.setattr("zwift_calendar.service.collect", collect_then_fail)
+    previous = {"calendars": {"banded": {"ics": "old", "etag": "old"}}}
+    store.write("current.json", previous, None)
+    with pytest.raises(UpstreamError):
+        refresh(store, parameters, Mock(), datetime.now(UTC))
+    assert store.read()[0] == previous
+    assert store.read(POWER_STATE)[0]["scan"]["offset"] == 50
+
+
+def test_no_activities_publish_labelled_default_then_use_recording(monkeypatch):
+    from pathlib import Path
+
+    from icalendar import Calendar
+
+    from zwift_calendar.api import instant
+
+    race = json.loads((Path(__file__).parent / "fixtures/race.json").read_text())
+    race["name"] = "Synthetic eligible race"
+    now = instant(race["eventStart"]) - timedelta(minutes=1)
+    api = Mock()
+    api.profile.return_value = {
+        "current": 100,
+        "max30": 100,
+        "retrieved_at": now.timestamp(),
+        "fields": {
+            "profile.profileId": 1,
+            "profile.male": True,
+            "profile.playerType": "NORMAL",
+        },
+        "body": {"weight_kg": 75, "height_cm": 183},
+    }
+    api.upcoming.return_value = [race]
+    api.activities.return_value = []
+    first, state, report = collect(api, {}, now)
+    original = Calendar.from_ical(first["calendars"]["banded"]["ics"]).walk("VEVENT")[0]
+    assert original["X-ZWIFT-ESTIMATE-SOURCE"] == "default"
+    assert "100 W FTP-based default" in original["DESCRIPTION"]
+    assert report["power_collection"]["confirmed_no_activities"]
+    api.activities.side_effect = [
+        [
+            {
+                "id": 1,
+                "sport": "CYCLING",
+                "endDate": (now - timedelta(days=1)).isoformat(),
+            }
+        ],
+        [],
+    ]
+    api.activity_fit.return_value = b"fit"
+    monkeypatch.setattr(
+        "zwift_calendar.activities.fit_curve", lambda *args: {"60": 200, "3600": 180}
+    )
+    second, _, report = collect(api, state, now)
+    changed = Calendar.from_ical(second["calendars"]["banded"]["ics"]).walk("VEVENT")[0]
+    assert changed["UID"] == original["UID"]
+    assert changed["SEQUENCE"] == original["SEQUENCE"] + 1
+    assert changed["X-ZWIFT-ESTIMATE-SOURCE"] in ("measured", "extrapolated")
+    assert not report["power_collection"]["confirmed_no_activities"]

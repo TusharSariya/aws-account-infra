@@ -197,6 +197,14 @@ def select(events, profile, now):
                     "start": start.isoformat(),
                     "published_seconds": duration,
                     "signature": signature(event, group),
+                    "course": {
+                        "ascent": group.get(
+                            "elevationGainInMeters", event.get("elevationGainInMeters")
+                        ),
+                        "reverse": group.get(
+                            "routeReverse", event.get("routeReverse", False)
+                        ),
+                    },
                     "requirements": sorted(rules),
                     "provisional": provisional and band is not None,
                     "time_trial": event["eventType"] == "TIME_TRIAL",
