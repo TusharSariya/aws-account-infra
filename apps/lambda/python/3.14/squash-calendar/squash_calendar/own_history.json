@@ -1,0 +1,188 @@
+{
+  "exported_at": "2026-10-12",
+  "source": "Signed-in own matches profile page 1 (20 rows); seven completed non-league singles, one retirement excluded. Team-league rows refreshed from public scorecards.",
+  "names": {
+    "574599": "Liam Kelly",
+    "552579": "Megan Carroll",
+    "531624": "Alex Porter",
+    "560677": "Robbie Earle",
+    "477961": "Jillian Whittle",
+    "566061": "Matt Robinson",
+    "468770": "Andrew Lynch"
+  },
+  "matches": [
+    {
+      "id": "3926261",
+      "date": "2026-05-28",
+      "division": 0,
+      "home": "491725",
+      "away": "574599",
+      "winner": "491725",
+      "games": [
+        [
+          11,
+          9
+        ],
+        [
+          11,
+          5
+        ],
+        [
+          8,
+          11
+        ],
+        [
+          11,
+          9
+        ]
+      ],
+      "url": "https://clublocker.com/box-leagues/10616"
+    },
+    {
+      "id": "3921227",
+      "date": "2026-05-21",
+      "division": 0,
+      "home": "552579",
+      "away": "491725",
+      "winner": "552579",
+      "games": [
+        [
+          11,
+          6
+        ],
+        [
+          11,
+          5
+        ],
+        [
+          11,
+          2
+        ]
+      ],
+      "url": "https://clublocker.com/box-leagues/10616"
+    },
+    {
+      "id": "3916599",
+      "date": "2026-05-14",
+      "division": 0,
+      "home": "531624",
+      "away": "491725",
+      "winner": "531624",
+      "games": [
+        [
+          11,
+          7
+        ],
+        [
+          14,
+          12
+        ],
+        [
+          14,
+          12
+        ]
+      ],
+      "url": "https://clublocker.com/box-leagues/10616"
+    },
+    {
+      "id": "3859151",
+      "date": "2026-03-29",
+      "division": 0,
+      "home": "560677",
+      "away": "491725",
+      "winner": "560677",
+      "games": [
+        [
+          11,
+          7
+        ],
+        [
+          12,
+          10
+        ],
+        [
+          11,
+          9
+        ]
+      ],
+      "url": "https://clublocker.com/tournaments/19087"
+    },
+    {
+      "id": "3859150",
+      "date": "2026-03-29",
+      "division": 0,
+      "home": "477961",
+      "away": "491725",
+      "winner": "491725",
+      "games": [
+        [
+          5,
+          11
+        ],
+        [
+          11,
+          5
+        ],
+        [
+          9,
+          11
+        ],
+        [
+          11,
+          4
+        ],
+        [
+          8,
+          11
+        ]
+      ],
+      "url": "https://clublocker.com/tournaments/19087"
+    },
+    {
+      "id": "3859148",
+      "date": "2026-03-28",
+      "division": 0,
+      "home": "491725",
+      "away": "566061",
+      "winner": "491725",
+      "games": [
+        [
+          11,
+          5
+        ],
+        [
+          11,
+          6
+        ],
+        [
+          11,
+          8
+        ]
+      ],
+      "url": "https://clublocker.com/tournaments/19087"
+    },
+    {
+      "id": "3859141",
+      "date": "2026-03-27",
+      "division": 0,
+      "home": "491725",
+      "away": "468770",
+      "winner": "468770",
+      "games": [
+        [
+          1,
+          11
+        ],
+        [
+          4,
+          11
+        ],
+        [
+          5,
+          11
+        ]
+      ],
+      "url": "https://clublocker.com/tournaments/19087"
+    }
+  ]
+}

@@ -345,3 +345,23 @@ output "background_worker" {
     alerts_topic    = data.aws_sns_topic.alerts.arn
   }
 }
+
+resource "aws_scheduler_schedule" "additional_refresh" {
+  for_each = var.additional_refresh_schedules
+  # checkov:skip=CKV_AWS_297:Schedule payloads contain no secrets; AWS-owned encryption is sufficient.
+  name                         = "${var.service_name}-${each.key}"
+  state                        = var.schedule_enabled ? "ENABLED" : "DISABLED"
+  schedule_expression          = each.value
+  schedule_expression_timezone = var.refresh_timezone
+  flexible_time_window { mode = "OFF" }
+  target {
+    arn      = aws_lambda_function.app["sync"].arn
+    role_arn = aws_iam_role.scheduler.arn
+    input    = "{}"
+    retry_policy {
+      maximum_event_age_in_seconds = 3600
+      maximum_retry_attempts       = 2
+    }
+    dead_letter_config { arn = aws_sqs_queue.failures.arn }
+  }
+}

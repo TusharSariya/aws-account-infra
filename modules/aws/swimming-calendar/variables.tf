@@ -8,7 +8,7 @@ variable "uid_domain" { type = string }
 variable "calendar_source" {
   type = string
   validation {
-    condition     = contains(["ymca", "ymca_yoga", "paul_reynolds", "iracing", "zwift"], var.calendar_source)
+    condition     = contains(["ymca", "ymca_yoga", "paul_reynolds", "iracing", "zwift", "squash"], var.calendar_source)
     error_message = "Choose exactly one supported calendar source."
   }
 }
@@ -122,4 +122,10 @@ variable "feed_object_keys" {
   description = "Private objects read by feed health checks; only current.json is served."
   type        = list(string)
   default     = ["current.json"]
+}
+
+variable "additional_refresh_schedules" {
+  description = "Extra refresh cron expressions in the same service timezone."
+  type        = map(string)
+  default     = {}
 }

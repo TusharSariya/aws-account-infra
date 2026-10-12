@@ -1,0 +1,100 @@
+{
+  "version": 1,
+  "player": "491725",
+  "division": 6498,
+  "timezone": "America/St_Johns",
+  "time": "18:30",
+  "duration_minutes": 30,
+  "source": {
+    "filename": "UPDATED ASC Fall League 2026 Schedule.pdf",
+    "sha256": "4c8fe6420245fb12b9a40caa403b983809e23a315f507546befe351f82013d02",
+    "pages": [
+      1,
+      2
+    ]
+  },
+  "seasons": [
+    1957,
+    2083,
+    2226,
+    2388,
+    2616
+  ],
+  "players": {
+    "491725": {
+      "name": "Tushar Sariya",
+      "roster_name": "Sariya, Tushar",
+      "team": 49983
+    },
+    "442902": {
+      "name": "Meghan Churchill",
+      "roster_name": "Churchill, Meghan",
+      "team": 49986
+    },
+    "462638": {
+      "name": "Katie Thompson",
+      "roster_name": "Thompson, Katie",
+      "team": 49985
+    },
+    "377557": {
+      "name": "Catherine Dale",
+      "roster_name": "Dale, Catherine",
+      "team": 49982
+    },
+    "531624": {
+      "name": "Alex Porter",
+      "roster_name": "Porter, Alex",
+      "team": 49984
+    }
+  },
+  "fixtures": [
+    {
+      "id": "asc-2026-fall-tuesday-team2-slot6-round1",
+      "date": "2026-09-22",
+      "opponent": "442902",
+      "court": 2
+    },
+    {
+      "id": "asc-2026-fall-tuesday-team2-slot6-round2",
+      "date": "2026-10-06",
+      "opponent": "462638",
+      "court": 2
+    },
+    {
+      "id": "asc-2026-fall-tuesday-team2-slot6-round3",
+      "date": "2026-10-13",
+      "opponent": "377557",
+      "court": 1
+    },
+    {
+      "id": "asc-2026-fall-tuesday-team2-slot6-round4",
+      "date": "2026-10-20",
+      "opponent": "531624",
+      "court": 1
+    },
+    {
+      "id": "asc-2026-fall-tuesday-team2-slot6-round5",
+      "date": "2026-10-27",
+      "opponent": "442902",
+      "court": 2
+    },
+    {
+      "id": "asc-2026-fall-tuesday-team2-slot6-round6",
+      "date": "2026-11-17",
+      "opponent": "462638",
+      "court": 2
+    },
+    {
+      "id": "asc-2026-fall-tuesday-team2-slot6-round7",
+      "date": "2026-11-24",
+      "opponent": "377557",
+      "court": 1
+    },
+    {
+      "id": "asc-2026-fall-tuesday-team2-slot6-round8",
+      "date": "2026-12-01",
+      "opponent": "531624",
+      "court": 1
+    }
+  ]
+}
