@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "commit": "8a8952f3138ad45fb4f0f3bfbf2bcab73f758a44",
+  "gravity": 9.80665,
+  "air_density": 1.225,
+  "efficiency": 0.975,
+  "bike_mass": 8,
+  "equipment_cda": 0.32,
+  "crr": {
+    "tarmac": 0.004,
+    "brick": 0.0055,
+    "wood": 0.0065,
+    "cobbles": 0.0065,
+    "snow": 0.0055,
+    "dirt": 0.016,
+    "grass": 0.025,
+    "sand": 0.004,
+    "gravel": 0.012
+  }
+}

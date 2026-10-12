@@ -142,3 +142,17 @@ Popularity compares complete subgroup counts along recurring-parent chains,
 not the sampled duration histogram or event-wide registration totals. Changes
 to score bands or legacy pace bounds prevent comparison. Exact Newfoundland
 weekday/time matching may leave some DST-shifted international events unknown.
+
+## Activity power and course model (2026-10-12)
+
+The live account contract was checked without publishing personal values:
+`profiles/me.weight` is grams and `.height` is millimetres.
+`profiles/<id>/activities?start=<offset>&limit=50` returns a list, including
+`id`, `sport`, `startDate`, `endDate`, `lastSaveDate`, `fitFileBucket` and
+`fitFileKey`. `profiles/<id>/activities/<activity-id>` resolves the current FIT
+location. Download uses HTTPS S3 without a Zwift bearer token or redirects.
+This agrees with the [upstream client implementation](https://github.com/jsmits/zwift-client/blob/master/zwift/activity.py).
+Only completed CYCLING entries inside 28 days contribute; no activity-type limit
+is applied. Empty inventory pages establish completion. FIT/download failures are
+reported separately from confirmed absence. See the runtime [model notes](../apps/lambda/python/3.14/zwift-calendar/MODEL.md)
+for data versions, model sources, assumptions and public/private boundaries.

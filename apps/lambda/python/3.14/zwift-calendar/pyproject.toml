@@ -2,7 +2,12 @@
 name = "zwift-calendar"
 version = "0.1.0"
 requires-python = ">=3.14"
-dependencies = ["boto3>=1.40,<2", "httpx>=0.28,<1", "icalendar>=6.3,<8"]
+dependencies = [
+    "boto3>=1.40,<2",
+    "fitdecode>=0.11,<1",
+    "httpx>=0.28,<1",
+    "icalendar>=6.3,<8",
+]
 
 [dependency-groups]
 dev = ["pytest>=8,<10", "moto[s3,ssm]>=5,<6", "ruff>=0.13,<1", "vobject>=0.9,<1"]

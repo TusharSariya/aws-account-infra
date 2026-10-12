@@ -22,7 +22,7 @@ module "calendar" {
   refresh_name_suffix      = "hourly"
   schedule_enabled         = var.schedule_enabled
   health_threshold_seconds = 10800
-  sync_object_keys         = ["current.json", "private.json", "history/state.json", "history/targets.json"]
+  sync_object_keys         = ["current.json", "private.json", "power-state.json", "history/state.json", "history/targets.json"]
   feed_object_keys         = ["current.json", "history/state.json", "history/targets.json"]
   memory_sizes             = { sync = 512, feed = 256 }
   sync_timeout             = 540
@@ -33,6 +33,9 @@ module "calendar" {
     sync = {
       ZWIFT_CREDENTIALS_PARAMETER = local.credentials_parameter
       ZWIFT_TOKENS_PARAMETER      = local.tokens_parameter
+      ZWIFT_MEASURED_MARGIN       = tostring(var.measured_planning_margin)
+      ZWIFT_WIDE_MARGIN           = tostring(var.wide_planning_margin)
+      ZWIFT_DEFAULT_POWER_CURVE   = jsonencode(var.default_power_curve)
     }
   }
 }

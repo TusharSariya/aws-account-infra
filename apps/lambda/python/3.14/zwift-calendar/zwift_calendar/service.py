@@ -3,8 +3,11 @@
 import json
 import logging
 import os
+from collections import Counter
 from datetime import UTC, datetime, timedelta
 
+from .activities import STATE as POWER_STATE
+from .activities import collect_power
 from .api import Zwift, instant
 from .auth import Auth
 from .backfill import STATE, TARGETS, targets
@@ -13,6 +16,8 @@ from .calendar import CALENDAR_NAMES, split_calendars
 from .duration import estimate
 from .errors import ContractError, UpstreamError
 from .filtering import select
+from .power import PowerCurve
+from .prediction import predict
 from .storage import Busy, Parameters, Store
 from .transport import Transport
 from .turnout import apply as apply_turnout
@@ -51,7 +56,7 @@ def weekly_counts(selected, now):
     return weeks
 
 
-def collect(api, state, now):
+def collect(api, state, now, *, checkpoint=lambda state: None):
     degraded = False
     try:
         profile = api.profile(now)
@@ -60,6 +65,15 @@ def collect(api, state, now):
         if not profile or not 0 <= now.timestamp() - profile["retrieved_at"] <= 86400:
             raise
         degraded = True
+    power_state, power_report = collect_power(
+        api, profile, state.get("power", {}), now, checkpoint=checkpoint
+    )
+    default_points = (
+        json.loads(os.environ["ZWIFT_DEFAULT_POWER_CURVE"])
+        if "ZWIFT_DEFAULT_POWER_CURVE" in os.environ
+        else None
+    )
+    curve = PowerCurve(list(power_state["activities"].values()), now, default_points)
     events = api.upcoming(now + timedelta(days=14))
     selected, exclusions = select(events, profile, now)
     candidates = list(selected)
@@ -74,12 +88,41 @@ def collect(api, state, now):
             if instant(v["start"]) >= now - timedelta(days=90)
         }
     }
+    selected, turnout_report = apply_turnout(selected, history, now)
+    predictions = {}
     for event in selected:
         event["duration"] = estimate(event, history, score)
-    selected, turnout_report = apply_turnout(selected, history, now)
+        if event["duration"]["seconds"] is None:
+            key = json.dumps([event["signature"], event.get("course")], sort_keys=True)
+            if key not in predictions:
+                predictions[key] = predict(
+                    event, curve, profile.get("body", {}), power_report
+                )
+            event["duration"] = predictions[key]
     snapshot, revisions = split_calendars(selected, state.get("revisions", {}), now)
     report = {
         "matched": len(selected),
+        "estimate_coverage": dict(Counter(e["duration"]["category"] for e in selected)),
+        "course_coverage": dict(
+            Counter(
+                e["duration"].get("course_source", e["duration"]["category"])
+                for e in selected
+            )
+        ),
+        "start_only_reasons": dict(
+            Counter(
+                e["duration"]["source"]
+                for e in selected
+                if e["duration"]["seconds"] is None
+            )
+        ),
+        "missing_course_events": sum(
+            "course distance" in e["duration"]["source"] for e in selected
+        ),
+        "calculation_failures": sum(
+            e["duration"].get("calculation_failed", False) for e in selected
+        ),
+        "power_collection": power_report,
         "before_turnout_filter": len(candidates),
         "turnout": turnout_report,
         "weekly_counts": weekly_counts(selected, now),
@@ -99,6 +142,7 @@ def collect(api, state, now):
     return (
         snapshot,
         {
+            "power": power_state,
             "profile": profile,
             "history": history,
             "revisions": revisions,
@@ -122,7 +166,17 @@ def refresh(store, parameters, http, now, *, preview=False):
             state["history"] = learned
         published_revisions = state.get("revisions", {})
         token = Auth(http, parameters, store).access()
-        snapshot, state, report = collect(Zwift(http, token), state, now)
+        power_state, power_etag = store.read(POWER_STATE)
+        state["power"] = power_state
+
+        def checkpoint(power):
+            nonlocal power_etag
+            power_etag = store.private_write(POWER_STATE, power, power_etag)
+
+        snapshot, state, report = collect(
+            Zwift(http, token), state, now, checkpoint=checkpoint
+        )
+        state.pop("power", None)
         next_targets = state.pop("_targets", None)
         if learned:
             state.pop("history", None)
@@ -135,7 +189,10 @@ def refresh(store, parameters, http, now, *, preview=False):
                 store.private_write(TARGETS, next_targets, target_etag)
             store.publish(snapshot)
         return {
-            "status": "degraded" if report["score_degraded"] else "ok",
+            "status": "degraded"
+            if report["score_degraded"]
+            or report.get("power_collection", {}).get("collection_degraded")
+            else "ok",
             "report": report,
             "changed": any(
                 feed["etag"] != previous.get("calendars", {}).get(key, {}).get("etag")
@@ -153,7 +210,7 @@ def sync_handler(event, context):
         log.info("Zwift sync: %s", json.dumps(result))
         if result["status"] == "degraded":
             raise UpstreamError(
-                "Calendar updated using cached score; score refresh failed"
+                "Calendar updated with degraded upstream evidence; inspect collection report"
             )
         return result
     except Exception:  # noqa: BLE001 - sanitize upstream/SDK data at the Lambda boundary

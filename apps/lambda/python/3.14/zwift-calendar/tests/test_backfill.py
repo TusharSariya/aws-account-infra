@@ -292,7 +292,7 @@ def test_hourly_sync_enriches_from_cache_without_fetching_history():
     new = Calendar.from_ical(second["calendars"]["banded"]["ics"]).walk("VEVENT")[0]
     assert old["UID"] == new["UID"]
     assert new["SEQUENCE"] == old["SEQUENCE"] + 1
-    assert new.decoded("DTEND") - new.decoded("DTSTART") == timedelta(minutes=40)
+    assert new.decoded("DTEND") - new.decoded("DTSTART") == timedelta(minutes=50)
     assert report["history_requests"] == 0
     api.event.assert_not_called()
     api.results.assert_not_called()

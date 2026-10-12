@@ -25,8 +25,8 @@ def sample():
     }
     banded = select([race], profile, now)[0][0]
     banded["duration"] = {
-        "seconds": 3600,
-        "source": "estimated 60-minute placeholder",
+        "seconds": None,
+        "source": "finish time unavailable: course distance unavailable",
         "samples": 0,
     }
     unbanded = copy.deepcopy(banded) | {
