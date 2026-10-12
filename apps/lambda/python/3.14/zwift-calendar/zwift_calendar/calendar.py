@@ -23,7 +23,8 @@ def render(events, name="Zwift races and special events"):
         event = Event()
         event.add("uid", row["id"] + "@zwift-calendar")
         category = row["band"] or "No score band"
-        event.add("summary", f"{row['name']} [{category}, {row['group']}]")
+        prefix = "⭐ " if row.get("special_event") else ""
+        event.add("summary", f"{prefix}{row['name']} [{category}, {row['group']}]")
         for property_name, key in (
             ("dtstart", "start"),
             ("dtend", "end"),
@@ -120,7 +121,7 @@ def reconcile(incoming, revisions, now, *, name="Zwift races and special events"
     events = []
     for event in incoming:
         row = event | {
-            "presentation_version": 2,
+            "presentation_version": 3 if event.get("special_event") else 2,
             "end": (
                 instant(event["start"])
                 + timedelta(seconds=event["duration"]["seconds"])
