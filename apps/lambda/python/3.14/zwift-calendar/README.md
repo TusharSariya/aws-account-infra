@@ -266,6 +266,12 @@ Calendar descriptions distinguish central estimated ride minutes from the conser
 calendar reservation. `X-ZWIFT-EXPECTED-DURATION-SECONDS` is the central estimate;
 `X-ZWIFT-RESERVED-DURATION-SECONDS` controls `DTEND`. Estimates reserve the upper
 planning bound rounded up to five minutes. Published durations remain exact.
+Both feeds exclude races whose upper planning duration exceeds 150 minutes;
+exactly 150 minutes remains eligible. Published timed races use their exact
+duration. Special rides and start-only races remain visible. Each refresh reports
+the count removed in `duration_filter.filtered` and `filtered_by_calendar`, after
+the existing eligibility and turnout filters, and recalculates eligibility as
+estimates change. Historical discovery still includes these races.
 Start-only events omit both `DTEND` and `DURATION` and explain the missing estimate.
 Expected finishers are the selected division's historical arithmetic average,
 not a promise of attendance. Finish-time estimates use the median for comparable
