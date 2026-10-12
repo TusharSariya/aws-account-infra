@@ -41,6 +41,10 @@ SCOPES.update(
 # Shared runner and selection changes invalidate every suite. Dependencies for
 # application suites are explicit, including packaging helpers and lockfiles.
 APPLICATIONS = {
+    "squash-calendar": [
+        "apps/lambda/python/3.14/squash-calendar/**",
+        "scripts/squash-package.py",
+    ],
     "court-booker": [
         "apps/lambda/python/3.14/court-booker/**",
         "apps/ecr/court-booker/bookings.yaml",

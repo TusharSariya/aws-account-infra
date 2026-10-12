@@ -210,6 +210,10 @@ jobs:
         if: contains(fromJSON(needs.detect.outputs.units).*.id, 'aws-staging-zwift-calendar')
         run: uv run --frozen --directory apps/lambda/python/3.14/zwift-calendar python -m zwift_calendar.cli sync --function zwift-calendar-sync
 
+      - name: Initialize squash calendar after apply
+        if: contains(fromJSON(needs.detect.outputs.units).*.id, 'aws-staging-squash-calendar')
+        run: uv run --frozen --directory apps/lambda/python/3.14/squash-calendar python -m squash_calendar sync
+
       - name: Initialize swimming calendar after apply
         if: contains(fromJSON(needs.detect.outputs.units).*.id, 'aws-staging-swim-calendar')
         run: uv run --frozen --directory apps/lambda/python/3.14/swim-calendar python -m swim_calendar sync
