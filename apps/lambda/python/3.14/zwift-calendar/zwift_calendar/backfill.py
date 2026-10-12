@@ -555,6 +555,11 @@ def refresh_history(store, parameters, http, now):
         return {"status": "busy"}
     try:
         state, etag = store.read(STATE)
+        job = state.get("bootstrap", {})
+        if job.get("status") == "running" and job.get("deadline", 0) > now.timestamp():
+            # A free lease between batches is not permission to replace the
+            # one-off's frozen scope with the latest rolling calendar targets.
+            return {"status": "bootstrap_active"}
         target, _ = store.read(TARGETS)
         if not state:
             legacy, _ = store.read("private.json")

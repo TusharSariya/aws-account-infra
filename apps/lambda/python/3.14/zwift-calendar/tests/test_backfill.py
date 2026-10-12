@@ -564,3 +564,44 @@ def test_only_metadata_404_is_classified_as_unavailable():
     with pytest.raises(UpstreamError) as exc:
         Zwift(http, "token").finisher_count(10)
     assert not isinstance(exc.value, EventUnavailable)
+
+
+@pytest.mark.parametrize(
+    "job_status,deadline_offset,expected",
+    [
+        ("running", 3600, "bootstrap_active"),
+        ("complete", 3600, "ok"),
+        ("running", 0, "ok"),
+    ],
+)
+@mock_aws
+def test_scheduled_worker_yields_to_active_bootstrap_before_reseeding(
+    monkeypatch, job_status, deadline_offset, expected
+):
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
+    s3 = boto3.client("s3")
+    s3.create_bucket(Bucket="history-test")
+    store = Store("history-test", s3, clock=lambda: NOW.timestamp())
+    store.write("current.json", {"calendars": {}}, None)
+    original = {
+        "version": 1,
+        "scope": "frozen-bootstrap-scope",
+        "pending": {"1": {"start": None, "groups": []}},
+        "bootstrap": {
+            "status": job_status,
+            "deadline": NOW.timestamp() + deadline_offset,
+        },
+    }
+    original_etag = store.write(backfill.STATE, original, None)
+    store.write(backfill.TARGETS, TARGET | {"signatures": {}}, None)
+    auth = Mock()
+    monkeypatch.setattr(backfill, "Auth", auth)
+    http = Mock(remaining=120)
+    result = backfill.refresh_history(store, Parameters(), http, NOW)
+    assert result["status"] == expected
+    auth.assert_not_called()
+    if expected == "bootstrap_active":
+        assert store.read(backfill.STATE) == (original, original_etag)
+    else:
+        assert store.read(backfill.STATE)[0]["budget"]["daily_runs"] == 1
+    assert "lease" not in store.read()[0]
