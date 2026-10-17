@@ -17,7 +17,11 @@ def test_default_bookings_yaml():
     assert config.activity_label("court1").startswith("3-1")
     assert config.weekly[0].weekday == "Mon"
     assert config.weekly[0].time == "17:00"
-    assert config.weekly[0].enabled is True
+    assert config.weekly[0].enabled is False
     assert config.weekly[1].activity == "court2"
     assert config.weekly[1].time == "20:00"
     assert config.weekly[1].enabled is False
+
+    assert [(r.activity, r.weekday, r.time) for r in config.weekly if r.enabled] == [
+        ("court1", "Wed", "09:00"),
+    ]

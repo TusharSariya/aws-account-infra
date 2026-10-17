@@ -42,13 +42,14 @@ def repo():
 # --- bookings.yaml ---------------------------------------------------------
 
 
-def test_coaching_rules_are_private_and_enabled():
+def test_coaching_rules_remain_private_with_only_wednesday_enabled():
     coaching = [rule for rule in _config().weekly if rule.visibility == "private"]
     assert [(r.activity, r.weekday, r.time) for r in coaching] == [
         ("court1", "Wed", "09:00"),
         ("court1", "Fri", "09:00"),
     ]
-    assert all(r.title == "Coaching" and r.enabled for r in coaching)
+    assert all(r.title == "Coaching" for r in coaching)
+    assert [r.weekday for r in coaching if r.enabled] == ["Wed"]
     assert all(r.duration_min == 60 and r.people == 1 for r in coaching)
     public = [rule for rule in _config().weekly if rule.visibility == "public"]
     assert public and all(rule.title is None for rule in public)
@@ -68,7 +69,7 @@ def test_coaching_rules_are_private_and_enabled():
     ],
 )
 def test_visibility_for_matches_disabled_private_rules(activity, local_start, expected):
-    # Both coaching rules ship disabled; they still classify their slots.
+    # Friday remains private even though its booking schedule is disabled.
     assert _config().visibility_for(activity, local_start) == expected
 
 

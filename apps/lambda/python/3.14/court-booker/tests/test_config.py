@@ -13,3 +13,7 @@ def test_default_bookings_yaml():
     assert config.equipment_ids["court1"] == 7412
     assert config.equipment_ids["court2"] == 12739
     assert config.weekly[0].time == "17:00"
+
+    assert [(r.activity, r.weekday, r.time) for r in config.weekly if r.enabled] == [
+        ("court1", "Wed", "09:00"),
+    ]
