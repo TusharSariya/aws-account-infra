@@ -38,6 +38,36 @@ extraEnvVars:
   FTLCONF_webserver_domain: pihole-admin.tail2f646b.ts.net
 adlists:
   - https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
+# Triangle sign-in loads ThreatMetrix device-risk checks from this exact hostname.
+# The chart imports whitelist.txt only when creating a fresh gravity database.
+whitelist:
+  - h.online-metrix.net
+extraInitContainers:
+  - name: allow-triangle-risk-check
+    image: pihole/pihole:2026.07.2@sha256:f7d1be836e3bc608b56d82fc9904f5a831cdfbc0dc9c6d58f94e4c985c70038b
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        # Existing PVCs need a database update; fresh installs use whitelist above.
+        [ -f /etc/pihole/gravity.db ] || exit 0
+        pihole-FTL sqlite3 -ni /etc/pihole/gravity.db <<'SQL'
+        .timeout 30000
+        .bail on
+        BEGIN IMMEDIATE;
+        INSERT INTO domainlist (type, domain, enabled, comment)
+        VALUES (0, 'h.online-metrix.net', 1, 'Triangle sign-in device-risk check')
+        ON CONFLICT(domain, type) DO UPDATE SET enabled = 1;
+        INSERT OR IGNORE INTO domainlist_by_group (domainlist_id, group_id)
+        SELECT id, 0 FROM domainlist WHERE type = 0 AND domain = 'h.online-metrix.net';
+        COMMIT;
+        SQL
+    volumeMounts:
+      - name: config
+        mountPath: /etc/pihole
+    resources:
+      requests: {cpu: 10m, memory: 32Mi}
+      limits: {cpu: 100m, memory: 128Mi}
 serviceDhcp:
   enabled: false
 serviceDns:
