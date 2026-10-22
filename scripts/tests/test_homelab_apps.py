@@ -3,8 +3,10 @@ import base64
 import importlib.util
 import hashlib
 from copy import deepcopy
+from contextlib import closing
 import json
 import re
+import sqlite3
 from pathlib import Path
 import subprocess
 import tempfile
@@ -371,6 +373,43 @@ class ChartTests(unittest.TestCase):
             str(apps.TF / '.terraform' / f'{name}-{version}.tgz'), '-n', namespace,
             '-f', str(apps.CONFIG / values)], text=True)
         return [x for x in yaml.safe_load_all(data) if x]
+
+    def test_triangle_allowlist_migrates_existing_database_idempotently(self):
+        docs = self.render('pihole', '2.38.0', 'homelab-services', 'pihole-values.yaml')
+        deployment = next(x for x in docs if x['kind'] == 'Deployment')
+        pod = deployment['spec']['template']['spec']
+        init = next(x for x in pod['initContainers'] if x['name'] == 'allow-triangle-risk-check')
+        self.assertEqual(init['image'], pod['containers'][0]['image'])
+        self.assertIn({'name': 'config', 'mountPath': '/etc/pihole'}, init['volumeMounts'])
+        fresh = next(x for x in docs if x['kind'] == 'ConfigMap'
+                     and x['metadata']['name'] == 'pihole-whitelist')
+        self.assertEqual(fresh['data']['whitelist.txt'].strip(), 'h.online-metrix.net')
+        script = init['command'][-1]
+        subprocess.run(['sh', '-n'], input=script, text=True, check=True)
+        sql = script.split("<<'SQL'\n", 1)[1].rsplit('\nSQL', 1)[0]
+        sql = '\n'.join(line for line in sql.splitlines() if not line.startswith('.'))
+        with closing(sqlite3.connect(':memory:')) as db:
+            # Pi-hole domainlist keys and default-group insertion contract.
+            db.executescript('''
+                CREATE TABLE domainlist (id INTEGER PRIMARY KEY, type INTEGER,
+                    domain TEXT, enabled INTEGER, comment TEXT, UNIQUE(domain, type));
+                CREATE TABLE domainlist_by_group (domainlist_id INTEGER, group_id INTEGER,
+                    PRIMARY KEY(domainlist_id, group_id));
+                CREATE TRIGGER default_group AFTER INSERT ON domainlist BEGIN
+                    INSERT INTO domainlist_by_group VALUES (NEW.id, 0);
+                END;
+                INSERT INTO domainlist VALUES (1, 1, 'ads.example', 1, 'keep');
+            ''')
+            db.executescript(sql)
+            db.execute("UPDATE domainlist SET enabled = 0, comment = 'operator note' WHERE id = 2")
+            db.execute('DELETE FROM domainlist_by_group WHERE domainlist_id = 2')
+            db.commit()
+            db.executescript(sql)
+            self.assertEqual(db.execute('SELECT type, domain, enabled, comment FROM domainlist ORDER BY id').fetchall(),
+                             [(1, 'ads.example', 1, 'keep'),
+                              (0, 'h.online-metrix.net', 1, 'operator note')])
+            self.assertEqual(db.execute('SELECT * FROM domainlist_by_group ORDER BY domainlist_id').fetchall(),
+                             [(1, 0), (2, 0)])
 
     def test_pihole_ports_storage_auth_and_update_contract(self):
         docs = self.render('pihole', '2.38.0', 'homelab-services', 'pihole-values.yaml')
