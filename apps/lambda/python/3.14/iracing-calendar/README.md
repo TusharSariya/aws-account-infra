@@ -32,7 +32,8 @@ NASCAR rounds and separate Open/Fixed identity mappings. Names alone never resol
 API race. Verified series, season, round, track, date and setup identities classify
 specials on existing events without duplicating them. Paved future specials without
 published API schedules remain dated all-day placeholders. The undated charity event
-is omitted from ICS and reported. New or conflicting identities require catalog review.
+is omitted from ICS and reported. New or conflicting identities require catalog review; unresolved public-page identities
+warn without blocking verified API races.
 Classifications expire with their year; an unreviewed new year fails closed.
 
 The API confirms September 2026 Bristol at 250 laps in both NASCAR iRacing variants;
@@ -42,9 +43,53 @@ are classified separately from marquee specials using current-year official evid
 Official special-event HTML uses fixture-tested selectors and date formats. Supported
 announcements use explicit numbered GMT slots and a matching year. Announcement URLs
 survive news-index rollover in the source cache. API/announcement exact-start conflicts,
-malformed pages and ambiguous mappings abort publication. API credentials are never
+malformed pages and invalid API mappings abort publication. Ambiguous public-page
+identities are withheld and reported for review. API credentials are never
 sent to linked download hosts; redirects are disabled. GET retries, download sizes,
 chunk pagination, caches and request budgets are bounded.
+
+## Stable identity and review
+
+Catalog `id` values are immutable, including IDs containing historical event names.
+API rounds use numeric series/season/round IDs and setup variant. `name` is display
+text only: editing it never registers a new alias or changes a calendar UID.
+`aliases` explicitly lists reviewed external spellings; matching folds case and
+whitespace but does not guess sponsorship changes. Both Mountain Showdown spellings
+resolve to `2026:sfl-mountain-showdown`.
+
+Inventory cards and announcement titles use one resolver. Reviewed event-specific
+URLs can resolve renamed titles; forum links use the numeric discussion ID rather
+than the mutable slug. Shared calendar/news links cannot identify an event.
+Announcements match bounded alias phrases. Conflicting references or multiple
+candidate IDs never select a race silently. Duplicate IDs and cross-event alias
+registrations are configuration errors.
+
+Unrecognized or ambiguous public identities produce `identity_warnings` containing
+observed labels, candidate IDs, sources and matching evidence. Verified API races
+continue to refresh. Previously published affected specials retain their data and
+revision timestamps, subject to the usual 30-day retention window; new unverified
+placeholders are omitted. A confirmed announcement cannot regress to an all-day
+placeholder when its identity becomes unresolved. `retained_unverified_ids` lists
+retained events, so a fresh snapshot does not imply those events were reverified.
+A resolved date/start conflict or malformed source still aborts publication.
+
+Special coverage is tracked per immutable ID. Historical year-wide coverage is
+upgraded from `provenance.special_id` without changing UIDs, sequence or timestamps.
+Existing `uid_migration` mappings remain opaque compatibility records. Preview
+`name_changes` reports summary edits independently of additions/removals.
+
+To review a warning, verify the official event's dates, track, cars and source
+references, then add the observed spelling to that existing ID's `aliases` (or add
+an event-specific reviewed source URL). Do not rename IDs or generate IDs from titles.
+The `catalog` audit command stays nonzero for outstanding review even when sync can
+publish verified races. Review structured warning logs alongside freshness alarms.
+
+`retained_season_ids` explicitly preserves discovery of reviewed archived annual
+seasons. The 2026 IDs were verified against the deployed Data API source cache on
+2026-10-23; extraction no longer uses the mutable season-short-name field. New active
+seasons are discovered through API IDs, and previously published seasons remain
+required through their stored API identity. Review retained IDs with each yearly
+catalog. The retired Hub/PDF/weekly-post scraper is no longer packaged or supported.
 
 ## Authentication
 

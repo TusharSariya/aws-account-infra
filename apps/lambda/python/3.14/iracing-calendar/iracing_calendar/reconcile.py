@@ -96,9 +96,17 @@ def preserve_identities(old_events, incoming):
     return output
 
 
+def event_coverage(event):
+    """Upgrade historical coverage without changing subscriber-visible revisions."""
+    special = event.get("provenance", {}).get("special_id")
+    if special and event["coverage"] == "special:" + special.split(":", 1)[0]:
+        return event | {"coverage": "special:" + special}
+    return event
+
+
 def reconcile(previous, incoming, coverage, now):
     cutoff = (now - timedelta(days=30)).date().isoformat()
-    old = {event["id"]: event for event in previous.get("events", [])}
+    old = {event["id"]: event_coverage(event) for event in previous.get("events", [])}
     result = {
         key: event for key, event in old.items() if event["coverage"] not in coverage
     }
@@ -125,6 +133,11 @@ def reconcile(previous, incoming, coverage, now):
     events = sorted(result.values(), key=lambda e: e["id"])
     body = render(events)
     report = {
+        "retained_unverified_ids": sorted(
+            e["id"]
+            for e in events
+            if e["coverage"].startswith("special:") and e["coverage"] not in coverage
+        ),
         "timed": sum(not e["all_day"] for e in events),
         "date_only": sum(e["all_day"] for e in events),
         "removed": len(old.keys() - result.keys()),

@@ -66,6 +66,13 @@ def refresh(store, now, extractor=collect, preview=False):
         snapshot["uid_migration"] = mapping
         snapshot["report"]["sources"] = source_report
         snapshot["report"]["preview"] = differences(previous, snapshot)
+        for warning in source_report.get("identity_warnings", []):
+            log.warning("iRacing identity review: %s", json.dumps(warning))
+        if snapshot["report"]["retained_unverified_ids"]:
+            log.warning(
+                "iRacing retained unverified events: %s",
+                json.dumps(snapshot["report"]["retained_unverified_ids"]),
+            )
         if preview:
             return snapshot
         store.publish(previous | snapshot, etag, owner)

@@ -41,7 +41,10 @@ def test_complete_reviewed_inventory_and_all_five_nascar_rounds():
     assert len(report["unresolved"]) == 7
     assert report["undated"] == ["Dale Jr Charity Event"]
     assert not report["new"] and not report["missing"] and not report["disagreements"]
-    assert inventory["Daytona 500"]["start"] == "2026-02-11"
+    assert (
+        next(c for c in inventory if c["name"] == "Daytona 500")["start"]
+        == "2026-02-11"
+    )
 
 
 def test_official_detail_urls_retained_in_reviewed_catalog():
@@ -111,10 +114,12 @@ def test_unrecognized_page_structure_fails_closed(html):
 
 def test_changed_names_dates_and_missing_cards_reported():
     inventory = parse_inventory(HTML, 2026)
-    inventory["Daytona 500"]["start"] = "2026-02-12"
-    inventory["Renamed Event"] = inventory.pop("Bathurst 1000")
+    next(c for c in inventory if c["name"] == "Daytona 500")["start"] = "2026-02-12"
+    next(c for c in inventory if c["name"] == "SFL Mountain Showdown")["name"] = (
+        "Renamed Event"
+    )
     report = coverage_report(load_catalog(2026), inventory)
-    assert report["disagreements"] == ["Daytona 500"]
+    assert report["disagreements"] == ["2026:daytona-500"]
     assert report["new"] == ["Renamed Event"]
-    assert report["missing"] == ["Bathurst 1000"]
+    assert report["missing"] == ["Mountain Showdown"]
     assert not report["publication_ready"]

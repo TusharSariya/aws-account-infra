@@ -11,7 +11,9 @@
         "https://www.iracing.com/special-events/"
       ],
       "id": "2026:bathurst-1000",
-      "aliases": [],
+      "aliases": [
+        "Bathurst 1000"
+      ],
       "discipline": "Sports Car",
       "track": "Mount Panorama Circuit",
       "layout": null,
@@ -45,7 +47,10 @@
         "https://www.iracing.com/special-events/"
       ],
       "id": "2026:8-hours-of-indianapolis",
-      "aliases": [],
+      "aliases": [
+        "8 Hours of Indianapolis",
+        "iRacing Indy 8 Hour"
+      ],
       "discipline": "Sports Car",
       "track": "Indianapolis Motor Speedway",
       "layout": null,
@@ -75,7 +80,9 @@
         "https://www.iracing.com/special-events/"
       ],
       "id": "2026:iracing-ff1600-festival",
-      "aliases": [],
+      "aliases": [
+        "iRacing FF1600 Festival"
+      ],
       "discipline": "Formula Car",
       "track": "Brands Hatch",
       "layout": "Indy",
@@ -94,7 +101,9 @@
         "https://www.iracing.com/special-events/"
       ],
       "id": "2026:homestead-championship",
-      "aliases": [],
+      "aliases": [
+        "Homestead Championship"
+      ],
       "discipline": "Oval",
       "track": "Homestead-Miami Speedway",
       "layout": null,
@@ -126,14 +135,17 @@
       "review_status": "API identity verified"
     },
     {
-      "name": "SFL Mountain Showdown",
+      "name": "Mountain Showdown",
       "start": "2026-11-13",
       "end": "2026-11-16",
       "source_urls": [
         "https://www.iracing.com/special-events/"
       ],
       "id": "2026:sfl-mountain-showdown",
-      "aliases": [],
+      "aliases": [
+        "SFL Mountain Showdown",
+        "Mountain Showdown"
+      ],
       "discipline": "Formula Car",
       "track": "Mount Panorama Circuit",
       "layout": null,
@@ -152,7 +164,9 @@
         "https://www.iracing.com/special-events/"
       ],
       "id": "2026:scca-runoffs",
-      "aliases": [],
+      "aliases": [
+        "SCCA Runoffs"
+      ],
       "discipline": "Sports Car",
       "track": null,
       "layout": null,
@@ -171,7 +185,9 @@
         "https://www.iracing.com/special-events/"
       ],
       "id": "2026:992-endurance-cup",
-      "aliases": [],
+      "aliases": [
+        "992 Endurance Cup"
+      ],
       "discipline": "Sports Car",
       "track": null,
       "layout": null,
@@ -193,7 +209,9 @@
         "https://www.iracing.com/special-events/"
       ],
       "id": "2026:winter-derby",
-      "aliases": [],
+      "aliases": [
+        "Winter Derby"
+      ],
       "discipline": "Oval",
       "track": "Five Flags Speedway",
       "layout": null,
@@ -215,7 +233,9 @@
         "https://www.iracing.com/special-events/"
       ],
       "id": "2026:chili-bowl",
-      "aliases": [],
+      "aliases": [
+        "Chili Bowl"
+      ],
       "discipline": "Excluded dirt/off-road",
       "track": "Tulsa Expo Center",
       "layout": null,
@@ -234,7 +254,9 @@
         "https://www.iracing.com/special-events/"
       ],
       "id": "2026:the-production-car-challenge-vir",
-      "aliases": [],
+      "aliases": [
+        "THE Production Car Challenge @ViR"
+      ],
       "discipline": "Sports Car",
       "track": "ViR Grand Course",
       "layout": "Grand Course",
@@ -256,7 +278,9 @@
         "https://www.iracing.com/special-events/"
       ],
       "id": "2026:dale-jr-charity-event",
-      "aliases": [],
+      "aliases": [
+        "Dale Jr Charity Event"
+      ],
       "discipline": "Oval",
       "track": "Iowa Speedway",
       "layout": null,
@@ -276,7 +300,9 @@
         "https://www.iracing.com/special-events/"
       ],
       "id": "2026:iracing-roar",
-      "aliases": [],
+      "aliases": [
+        "iRacing ROAR"
+      ],
       "discipline": "Sports Car",
       "track": "Daytona International Speedway",
       "layout": null,
@@ -304,7 +330,9 @@
         "https://www.iracing.com/special-events/"
       ],
       "id": "2026:daytona-24",
-      "aliases": [],
+      "aliases": [
+        "Daytona 24"
+      ],
       "discipline": "Sports Car",
       "track": "Daytona International Speedway",
       "layout": null,
@@ -334,7 +362,9 @@
         "https://www.iracing.com/special-events/"
       ],
       "id": "2026:daytona-500",
-      "aliases": [],
+      "aliases": [
+        "Daytona 500"
+      ],
       "discipline": "Oval",
       "track": "Daytona International Speedway",
       "layout": null,
@@ -374,7 +404,9 @@
         "https://www.iracing.com/special-events/"
       ],
       "id": "2026:bathurst-12",
-      "aliases": [],
+      "aliases": [
+        "Bathurst 12"
+      ],
       "discipline": "Sports Car",
       "track": "Mount Panorama Circuit",
       "layout": null,
@@ -405,7 +437,9 @@
         "https://www.iracing.com/special-events/"
       ],
       "id": "2026:sebring-12hr",
-      "aliases": [],
+      "aliases": [
+        "Sebring 12HR"
+      ],
       "discipline": "Sports Car",
       "track": "Sebring International Raceway",
       "layout": null,
@@ -436,7 +470,9 @@
         "https://www.iracing.com/special-events/"
       ],
       "id": "2026:imsa-classic-500",
-      "aliases": [],
+      "aliases": [
+        "IMSA Classic 500"
+      ],
       "discipline": "Sports Car",
       "track": "WeatherTech Raceway Laguna Seca",
       "layout": null,
@@ -464,7 +500,9 @@
         "https://www.iracing.com/special-events/"
       ],
       "id": "2026:n-rburgring-24h",
-      "aliases": [],
+      "aliases": [
+        "Nürburgring 24h"
+      ],
       "discipline": "Sports Car",
       "track": "Nürburgring Combined – Gesamtstrecke 24h",
       "layout": "Combined - Gesamtstrecke 24h",
@@ -495,7 +533,9 @@
         "https://www.iracing.com/special-events/"
       ],
       "id": "2026:indy-500",
-      "aliases": [],
+      "aliases": [
+        "INDY 500"
+      ],
       "discipline": "Oval",
       "track": "Indianapolis Motor Speedway",
       "layout": null,
@@ -533,7 +573,9 @@
         "https://www.iracing.com/special-events/"
       ],
       "id": "2026:world-600",
-      "aliases": [],
+      "aliases": [
+        "World 600"
+      ],
       "discipline": "Oval",
       "track": "Charlotte Motor Speedway",
       "layout": null,
@@ -573,7 +615,9 @@
         "https://www.iracing.com/special-events/"
       ],
       "id": "2026:4-hours-at-thruxton",
-      "aliases": [],
+      "aliases": [
+        "4 Hours at Thruxton"
+      ],
       "discipline": "Sports Car",
       "track": "Thruxton",
       "layout": null,
@@ -604,7 +648,9 @@
         "https://www.iracing.com/special-events/"
       ],
       "id": "2026:watkins-glen-6-hour",
-      "aliases": [],
+      "aliases": [
+        "Watkins Glen 6 Hour"
+      ],
       "discipline": "Sports Car",
       "track": "Watkins Glen International",
       "layout": null,
@@ -634,7 +680,9 @@
         "https://www.iracing.com/special-events/"
       ],
       "id": "2026:firecracker-400",
-      "aliases": [],
+      "aliases": [
+        "Firecracker 400"
+      ],
       "discipline": "Oval",
       "track": "Daytona International Speedway",
       "layout": null,
@@ -669,7 +717,9 @@
         "https://www.iracing.com/special-events/"
       ],
       "id": "2026:spa-24hr",
-      "aliases": [],
+      "aliases": [
+        "Spa 24HR"
+      ],
       "discipline": "Sports Car",
       "track": "Circuit de Spa-Francorchamps",
       "layout": null,
@@ -696,7 +746,9 @@
         "https://www.iracing.com/special-events/"
       ],
       "id": "2026:brickyard-400",
-      "aliases": [],
+      "aliases": [
+        "Brickyard 400"
+      ],
       "discipline": "Oval",
       "track": "Indianapolis Motor Speedway",
       "layout": null,
@@ -736,7 +788,9 @@
         "https://www.iracing.com/special-events/"
       ],
       "id": "2026:6-hours-of-road-america",
-      "aliases": [],
+      "aliases": [
+        "6 Hours Of Road America"
+      ],
       "discipline": "Sports Car",
       "track": "Road America",
       "layout": null,
@@ -767,7 +821,9 @@
         "https://www.iracing.com/special-events/"
       ],
       "id": "2026:knoxville-nationals",
-      "aliases": [],
+      "aliases": [
+        "Knoxville Nationals"
+      ],
       "discipline": "Excluded dirt/off-road",
       "track": "Knoxville Raceway",
       "layout": null,
@@ -786,7 +842,9 @@
         "https://www.iracing.com/special-events/"
       ],
       "id": "2026:portimao-1000",
-      "aliases": [],
+      "aliases": [
+        "Portimao 1000"
+      ],
       "discipline": "Sports Car",
       "track": "Algarve International Circuit",
       "layout": null,
@@ -817,7 +875,9 @@
         "https://www.iracing.com/special-events/"
       ],
       "id": "2026:crandon-championship",
-      "aliases": [],
+      "aliases": [
+        "Crandon Championship"
+      ],
       "discipline": "Excluded dirt/off-road",
       "track": "Crandon International Raceway",
       "layout": null,
@@ -836,7 +896,9 @@
         "https://www.iracing.com/special-events/"
       ],
       "id": "2026:southern-500",
-      "aliases": [],
+      "aliases": [
+        "Southern 500"
+      ],
       "discipline": "Oval",
       "track": "Darlington Raceway",
       "layout": null,
@@ -876,7 +938,9 @@
         "https://www.iracing.com/special-events/"
       ],
       "id": "2026:suzuka-1000km",
-      "aliases": [],
+      "aliases": [
+        "Suzuka 1000km"
+      ],
       "discipline": "Sports Car",
       "track": "Suzuka Circuit",
       "layout": null,
@@ -904,7 +968,9 @@
         "https://www.iracing.com/special-events/"
       ],
       "id": "2026:britcar-24hr",
-      "aliases": [],
+      "aliases": [
+        "Britcar 24HR"
+      ],
       "discipline": "Sports Car",
       "track": "Silverstone Circuit",
       "layout": null,
@@ -935,7 +1001,9 @@
         "https://www.iracing.com/special-events/"
       ],
       "id": "2026:petit-le-mans",
-      "aliases": [],
+      "aliases": [
+        "Petit Le Mans"
+      ],
       "discipline": "Sports Car",
       "track": "Michelin Raceway Road Atlanta",
       "layout": null,
@@ -975,5 +1043,20 @@
       ],
       "note": "Full-length road rounds; do not classify as marquee specials."
     }
+  ],
+  "retained_season_ids": [
+    6073,
+    6074,
+    6075,
+    6076,
+    6077,
+    6078,
+    6079,
+    6080,
+    6081,
+    6216,
+    6229,
+    6236,
+    6434
   ]
 }

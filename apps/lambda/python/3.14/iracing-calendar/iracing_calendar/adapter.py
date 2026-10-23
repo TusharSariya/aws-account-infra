@@ -72,10 +72,11 @@ def round_key(season, round_):
 
 def normalize(seasons, catalog, html, now):
     report = coverage_report(catalog, parse_inventory(html, catalog["year"]))
-    if report["new"] or report["missing"] or report["disagreements"]:
+    if report["disagreements"]:
         raise ContractError(
-            "Official catalog changed; run catalog report and review mappings"
+            "Official catalog date conflict: " + ", ".join(report["disagreements"])
         )
+    verified = {match["id"] for match in report["inventory_matches"]}
     events, coverage = [], set()
     mapped = {}
     observed = set()
@@ -218,13 +219,17 @@ def normalize(seasons, catalog, html, now):
     for entry in catalog["events"]:
         if entry["discipline"] not in {"Oval", "Sports Car", "Formula Car"}:
             continue
-        coverage.add(f"special:{catalog['year']}")
+        scope = "special:" + entry["id"]
         if entry["id"] in observed:
+            coverage.add(scope)
             continue
         if entry["api_mappings"]:
             raise ContractError(
                 f"Mapped special absent from API coverage: {entry['name']}"
             )
+        if entry["id"] not in verified:
+            continue
+        coverage.add(scope)
         report["unpublished_api"].append(entry["name"])
         if not entry["start"]:
             report["undated"].append(entry["name"])
@@ -234,7 +239,7 @@ def normalize(seasons, catalog, html, now):
             {
                 "id": identity + "|0",
                 "round_id": identity,
-                "coverage": f"special:{catalog['year']}",
+                "coverage": scope,
                 "name": entry["name"],
                 "track": entry["track"] or "Track unpublished",
                 "start": entry["start"],
@@ -276,7 +281,7 @@ def extract(api, catalog, fetch, now, previous=None):
         s["season_id"]
         for s in metadata.values()
         if s["season_year"] == now.year
-        and s.get("season_short_name") == f"{now.year} Season"
+        and s["season_id"] in catalog.get("retained_season_ids", [])
     )
     for season_id in sorted(required - seasons.keys()):
         if season_id not in metadata:
@@ -290,5 +295,36 @@ def extract(api, catalog, fetch, now, previous=None):
     events, coverage, report = normalize(
         list(seasons.values()), catalog, fetch.get(SOURCE), now
     )
-    report["announcements"] = supplement(events, catalog, fetch, now)
+    report["announcements"] = supplement(
+        events, catalog, fetch, now, report["identity_warnings"]
+    )
+    # A previously confirmed announcement must not regress to a date placeholder
+    # when its new title cannot be resolved. API-confirmed events remain current.
+    previously_timed = {
+        e.get("provenance", {}).get("special_id")
+        for e in (previous or {}).get("events", [])
+        if not e["all_day"] and not e.get("api_identity")
+    }
+    withheld = {
+        e["provenance"]["special_id"]
+        for e in events
+        if e["all_day"]
+        and not e.get("api_identity")
+        and e["provenance"]["special_id"] in previously_timed
+    }
+    for identity in sorted(withheld):
+        coverage.remove("special:" + identity)
+        report["identity_warnings"].append(
+            {
+                "id": identity,
+                "status": "unverified_announcement",
+                "sources": [],
+                "evidence": [],
+            }
+        )
+    events = [
+        e
+        for e in events
+        if not (not e.get("api_identity") and e["provenance"]["special_id"] in withheld)
+    ]
     return events, coverage, report

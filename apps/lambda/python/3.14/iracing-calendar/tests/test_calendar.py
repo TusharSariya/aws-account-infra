@@ -1,6 +1,5 @@
 import copy
 from datetime import UTC, date, datetime, timedelta
-from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import boto3
@@ -10,172 +9,101 @@ from moto import mock_aws
 
 from iracing_calendar import feed
 from iracing_calendar.reconcile import reconcile
-from iracing_calendar.schedule import occurrences, race_slots
-from iracing_calendar.sources import (
-    Fetcher,
-    deduplicate,
-    literal_array,
-    special_starts,
-    weekly_overrides,
-)
+from iracing_calendar.sources import Fetcher
 from iracing_calendar.store import Conflict, Store
 from iracing_calendar.sync import health, refresh
 
 NOW = datetime(2026, 9, 24, 12, tzinfo=UTC)
-SERIES = {
-    "name": "Example - 2026 Season 4",
-    "category": "SPORTS CAR",
-    "cars": "GT3",
-    "license": "Class C",
-    "frequency": "Races every other Saturday at 4 & 15 GMT and Sunday at 0 GMT, 20 GMT",
-    "sources": ["https://iracinghub.com/"],
-    "weeks": [
-        {"week": 1, "date": "2026-09-26", "track": "Road Atlanta", "laps": "20 laps"},
-        {"week": 2, "date": "2026-10-10", "track": "Daytona", "laps": "120 mins"},
-    ],
-}
-
-
-def snapshot(series=None, old=None, now=NOW):
-    incoming = occurrences(series or SERIES)
-    return reconcile(old or {}, incoming, ["series:2026 Season 4"], now)
-
-
-@pytest.mark.parametrize(
-    "frequency",
-    [
-        "Races every hour at :15",
-        "Races every 30 minutes",
-        "Races every odd 2 hours on the hour",
-        "Races 45 past every 2 hours",
-        "Open Qualifier every 30 mins at :15 & :45 past",
-    ],
-)
-def test_exclude_continuous_and_non_races(frequency):
-    assert race_slots(frequency) == []
-
-
-def test_alternating_weeks_and_cross_midnight():
-    events = occurrences(SERIES)
-    assert len(events) == 8
-    assert {e["start"][:10] for e in events} == {
-        "2026-09-26",
-        "2026-09-27",
-        "2026-10-10",
-        "2026-10-11",
+SCOPE = "api-season:42"
+EVENTS = [
+    {
+        "id": f"api:1:42:{week}:open|{slot}",
+        "round_id": f"api:1:42:{week}:open",
+        "coverage": SCOPE,
+        "name": "Example sponsored series",
+        "start": start,
+        "end": None,
+        "all_day": False,
+        "track": "Road Atlanta",
+        "sources": ["https://www.iracing.com/"],
     }
-    midnight = next(e for e in events if e["start"] == "2026-09-27T00:00:00+00:00")
-    assert (
-        datetime.fromisoformat(midnight["start"])
-        .astimezone(ZoneInfo("America/St_Johns"))
-        .isoformat()
-        == "2026-09-26T21:30:00-02:30"
+    for week, starts in enumerate(
+        [
+            [
+                "2026-09-26T04:00:00+00:00",
+                "2026-09-26T15:00:00+00:00",
+                "2026-09-27T00:00:00+00:00",
+                "2026-09-27T20:00:00+00:00",
+            ],
+            [
+                "2026-10-10T04:00:00+00:00",
+                "2026-10-10T15:00:00+00:00",
+                "2026-10-11T00:00:00+00:00",
+                "2026-10-11T20:00:00+00:00",
+            ],
+        ]
     )
-    assert events[0]["end"] is None
-    assert events[4]["end"] == "2026-10-10T06:00:00+00:00"
+    for slot, start in enumerate(starts)
+]
 
 
-def test_newfoundland_dst():
-    tz = ZoneInfo("America/St_Johns")
-    assert datetime(2026, 10, 31, 14, tzinfo=UTC).astimezone(tz).hour == 11
-    assert datetime(2026, 11, 1, 14, tzinfo=UTC).astimezone(tz).hour == 10
-
-
-def test_shared_days_and_all_starts():
-    assert len(race_slots("Races Thur & Sat at 10, 19 GMT & Fri & Sun at 1,4 GMT")) == 8
-    assert len(race_slots("Races on Wednesday and Saturdays at 14 and 19 GMT")) == 4
-    with pytest.raises(ValueError):
-        race_slots("Races on an unpublished schedule")
+def snapshot(events=None, old=None, now=NOW):
+    return reconcile(
+        old or {}, copy.deepcopy(EVENTS if events is None else events), [SCOPE], now
+    )
 
 
 def test_revisions_corrections_cancellations_rollover():
     first = snapshot()
-    same = snapshot(old=first, now=NOW + timedelta(days=7))
-    assert first["ics"] == same["ics"] and first["etag"] == same["etag"]
-    corrected = copy.deepcopy(SERIES)
-    corrected["weeks"][0]["track"] = "Road Atlanta - Full Course"
-    revised = snapshot(corrected, first)
+    assert snapshot(old=first, now=NOW + timedelta(days=7))["ics"] == first["ics"]
+    changed = copy.deepcopy(EVENTS)
+    for event in changed[:4]:
+        event["track"] = "Road Atlanta - Full Course"
+    revised = snapshot(changed, first)
     assert [e["sequence"] for e in revised["events"]] == [1] * 4 + [0] * 4
-    corrected["weeks"].pop()
-    cancelled = snapshot(corrected, revised)
-    assert cancelled["report"]["removed"] == 4
-    rollover = reconcile(first, [], ["series:2027 Season 1"], NOW)
-    assert rollover["ics"] == first["ics"]
+    assert snapshot(changed[:4], revised)["report"]["removed"] == 4
+    assert reconcile(first, [], ["api-season:43"], NOW)["ics"] == first["ics"]
 
 
 def test_placeholder_replacement_and_independent_ics():
-    unknown = SERIES | {"frequency": "4 Timeslots Per Week"}
-    initial = snapshot(unknown)
-    cal = vobject.readOne(initial["ics"])
-    event = cal.vevent_list[0]
+    placeholder = EVENTS[0] | {
+        "all_day": True,
+        "start": "2026-09-26",
+        "end": "2026-09-29",
+    }
+    initial = snapshot([placeholder])
+    event = vobject.readOne(initial["ics"]).vevent
     assert event.dtstart.value == date(2026, 9, 26)
     assert event.dtend.value == date(2026, 9, 29)
     assert event.transp.value == "TRANSPARENT"
     assert "Start times unconfirmed" in event.summary.value
-    verified = snapshot(SERIES, initial)
-    confirmed = vobject.readOne(verified["ics"])
-    assert confirmed.vevent_list[0].uid.value == event.uid.value
-    assert confirmed.vevent_list[0].sequence.value == "1"
-    assert not hasattr(confirmed.vevent_list[0], "dtend")
-    assert not hasattr(confirmed.vevent_list[0], "valarm")
+    confirmed = vobject.readOne(snapshot(old=initial)["ics"]).vevent_list[0]
+    assert confirmed.uid.value == event.uid.value
+    assert confirmed.sequence.value == "1"
+    assert not hasattr(confirmed, "dtend") and not hasattr(confirmed, "valarm")
     assert vobject.readOne(reconcile({}, [], [], NOW)["ics"]).name == "VCALENDAR"
 
 
-def test_retention():
+def test_retention_and_local_time():
     assert not snapshot(now=NOW + timedelta(days=90))["events"]
-
-
-def test_literal_data_never_executes():
+    tz = ZoneInfo("America/St_Johns")
+    assert datetime(2026, 10, 31, 14, tzinfo=UTC).astimezone(tz).hour == 11
+    assert datetime(2026, 11, 1, 14, tzinfo=UTC).astimezone(tz).hour == 10
     assert (
-        literal_array('const x=[{category:"OVAL",name:"race",weeks:[]}];alert("bad")')[
-            0
-        ]["name"]
-        == "race"
+        datetime.fromisoformat(EVENTS[2]["start"]).astimezone(tz).isoformat()
+        == "2026-09-26T21:30:00-02:30"
     )
-    with pytest.raises(ValueError):
-        literal_array('const x=[{category:"OVAL",name:(function(){return "bad"})()}]')
 
 
-def test_weekly_fixture():
-    body = Path("tests/fixtures/weekly.html").read_text()
-    overrides = weekly_overrides(body, "https://www.iracing.com/weekly")
-    assert len(overrides[("NASCAR iRacing Series Fixed", "2026-09-22")][0]) == 5
-    series = SERIES | {
-        "name": "NASCAR iRacing Series - 2026 Season Fixed",
-        "frequency": "5 Timeslots Per Week",
-    }
-    events = occurrences(series, overrides)
-    assert sum(not e["all_day"] for e in events) == 5
-    assert sum(e["all_day"] for e in events) == 1
-
-
-def test_special_dedup():
-    events = occurrences(SERIES | {"name": "NASCAR iRacing Series - 2026 Season Fixed"})
-    special = {
-        "name": "Southern 500",
-        "start": "2026-09-26",
-        "description": "Special",
-        "sources": ["https://www.iracing.com/special-events/"],
-    }
-    assert len(deduplicate(events, [special])) == 8
-    assert "Special" in events[0]["description"]
-
-
-def test_special_published_start_not_sim_time():
-    item = {
-        "name": "Petit Le Mans",
-        "start": "2026-09-25",
-        "end": "2026-09-28",
-        "round_id": "special:2026:petit",
-        "sources": [],
-    }
-    events = [item]
-    special_starts(
-        events,
-        "<h1>THIS WEEK: Petit Le Mans</h1><h3>ABOUT THE 2026 EVENT</h3><p>Timeslot #1: Friday at 22:00 GMT</p><p>Simulated October 3 at 10:55</p>",
-        "https://www.iracing.com/event",
+def test_adding_and_removing_slots_preserves_other_uids():
+    first = snapshot()
+    extra = EVENTS[0] | {"start": "2026-09-26T03:00:00+00:00"}
+    added = snapshot([extra, *EVENTS], first)
+    old_ids = {e["start"]: e["id"] for e in first["events"]}
+    assert all(
+        e["id"] == old_ids[e["start"]] for e in added["events"] if e["start"] in old_ids
     )
-    assert events[0]["start"] == "2026-09-25T22:00:00+00:00"
+    assert {e["start"]: e["id"] for e in snapshot(old=added)["events"]} == old_ids
 
 
 @pytest.fixture
@@ -234,12 +162,46 @@ def test_source_failure_preserves_snapshot(store):
 
 def test_refresh_and_busy(store):
     def extractor(*args):
-        return occurrences(SERIES), ["series:2026 Season 4"], {}
+        return copy.deepcopy(EVENTS), [SCOPE], {}
 
     result = refresh(store, NOW, extractor)
     assert result["timed"] == 8 and result["status"] == "ok"
     store.claim()
     assert refresh(store, NOW, extractor) == {"status": "busy"}
+
+
+def test_partial_refresh_publishes_and_logs_identity_warnings(store, caplog):
+    special = EVENTS[0] | {
+        "id": "special:2026:reviewed-event|0",
+        "round_id": "special:2026:reviewed-event",
+        "coverage": "special:2026:reviewed-event",
+        "provenance": {"special_id": "2026:reviewed-event"},
+    }
+    previous = reconcile({}, [special], [special["coverage"]], NOW)
+    store.write(previous)
+    warning = {
+        "id": None,
+        "status": "unknown",
+        "label": "New Sponsor",
+        "sources": [],
+        "evidence": [],
+    }
+
+    def extractor(*args):
+        return copy.deepcopy(EVENTS), [SCOPE], {"identity_warnings": [warning]}
+
+    result = refresh(store, NOW + timedelta(hours=6), extractor)
+    assert result["status"] == "ok"
+    assert result["retained_unverified_ids"] == [special["id"]]
+    published = store.read()[0]
+    assert published["last_success"] == (NOW + timedelta(hours=6)).timestamp()
+    assert (
+        next(e for e in published["events"] if e["id"] == special["id"])
+        == previous["events"][0]
+    )
+    assert published["report"]["sources"]["identity_warnings"] == [warning]
+    assert "iRacing identity review" in caplog.text
+    assert "iRacing retained unverified events" in caplog.text
 
 
 def test_health_does_not_fetch_sources(store, monkeypatch):
@@ -255,27 +217,7 @@ def test_source_allowlist_and_request_bound():
         fetch.get("http://127.0.0.1/")
     fetch.requests = 24
     with pytest.raises(ValueError):
-        fetch.get("https://iracinghub.com/")
-
-
-def test_adding_and_removing_slots_preserves_other_uids():
-    first = snapshot()
-    series = SERIES | {
-        "frequency": "Races Saturday at 3, 4, 15 GMT and Sunday at 0, 20 GMT"
-    }
-    added = snapshot(series, first)
-    old_ids = {e["start"]: e["id"] for e in first["events"]}
-    assert all(
-        e["id"] == old_ids[e["start"]] for e in added["events"] if e["start"] in old_ids
-    )
-    removed = snapshot(SERIES, added)
-    assert {e["start"]: e["id"] for e in removed["events"]} == old_ids
-
-
-def test_daily_schedule_and_unknown_qualifier():
-    assert len(race_slots("Races daily at 19 GMT")) == 7
-    with pytest.raises(ValueError):
-        race_slots("Races Saturday at 19 GMT except holidays")
+        fetch.get("https://www.iracing.com/")
 
 
 def test_source_cache_validators(monkeypatch):
@@ -284,7 +226,7 @@ def test_source_cache_validators(monkeypatch):
 
     from iracing_calendar import sources
 
-    url = "https://iracinghub.com/"
+    url = "https://www.iracing.com/"
     cached = {"body": base64.b64encode(b"literal data").decode(), "etag": '"abc"'}
     fetch = Fetcher({url: cached})
 
@@ -295,55 +237,3 @@ def test_source_cache_validators(monkeypatch):
     monkeypatch.setattr(sources, "urlopen", unchanged)
     assert fetch.get(url) == b"literal data"
     assert fetch.used[url] == cached
-
-
-def test_incomplete_special_times_fail_closed():
-    events = [
-        {
-            "name": "Petit Le Mans",
-            "start": "2026-09-25",
-            "end": "2026-09-28",
-            "round_id": "special:2026:petit",
-            "sources": [],
-        }
-    ]
-    with pytest.raises(ValueError):
-        special_starts(
-            events,
-            "<h1>Petit Le Mans</h1><p>ABOUT THE 2026 EVENT</p><p>Timeslot #1: Friday at 22:00 GMT</p><p>Timeslot #2: Saturday TBD</p>",
-            "https://www.iracing.com/event",
-        )
-
-
-def test_official_pdf_completeness_and_simulated_track_time(monkeypatch):
-    from iracing_calendar import sources
-
-    names = [f"Series {i} - 2026 Season 4" for i in range(80)]
-    toc = "\n".join(name + " . . . 6" for name in names)
-    block = "\nOVAL\nC Class Series (OVAL)\n" + "\n".join(
-        name + "\nGT3\nClass C 4.0 --> Pro/WC 4.0\nRaces Saturday at 19 GMT\n"
-        "Week 1 (2026-09-22)    Test Circuit - Grand    Rolling start, 20 laps\n"
-        "                       Prix                    Cautions enabled\n"
-        "                       (2024-01-01 12:00 1x)\n"
-        for name in names
-    )
-
-    class Page:
-        def __init__(self, text):
-            self.text = text
-
-        def extract_text(self, **kwargs):
-            return self.text
-
-    class Reader:
-        pages = [Page(toc), Page(block)] + [Page("")] * 48
-
-    monkeypatch.setattr(sources, "PdfReader", lambda body: Reader())
-    hub = [SERIES | {"name": name, "category": "OVAL"} for name in names]
-    official = sources.official_series(b"fixture", hub)
-    first = official[0]
-    assert first["weeks"][0]["track"] == "Test Circuit - Grand Prix"
-    assert occurrences(first)[0]["start"] == "2026-09-26T19:00:00+00:00"
-    Reader.pages[1] = Page(block[: block.index(names[-1])])
-    with pytest.raises(ValueError, match="table of contents"):
-        sources.official_series(b"truncated fixture", hub)

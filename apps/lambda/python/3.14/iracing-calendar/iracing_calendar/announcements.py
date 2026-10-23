@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 
 from .api import ContractError
 from .duration import end_time
+from .identity import IdentityResolver, source_reference
 from .sources import NEWS
 
 DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -18,9 +19,6 @@ def announcement_starts(body, entry, year):
     heading = soup.select_one("div.page-header > h1")
     if heading is None:
         raise ContractError("Official announcement heading structure changed")
-    title = heading.get_text(" ", strip=True).casefold()
-    if not any(name.casefold() in title for name in [entry["name"], *entry["aliases"]]):
-        return None
     text = soup.get_text(" ", strip=True)
     if not re.search(rf"ABOUT THE {year}\b", text):
         return None
@@ -49,59 +47,84 @@ def announcement_starts(body, entry, year):
     return values
 
 
-def supplement(events, catalog, fetch, now):
+def supplement(events, catalog, fetch, now, warnings=None):
+    warnings = warnings if warnings is not None else []
+    resolver = IdentityResolver(catalog)
     news = BeautifulSoup(fetch.get(NEWS), "html.parser")
     urls = {urljoin(NEWS, a["href"]) for a in news.select("a[href]")}
     urls.update(fetch.cache)
+    reviewed_articles = {
+        url
+        for entry in catalog["events"]
+        for url in entry["source_urls"]
+        if urlsplit(url).hostname == "www.iracing.com" and source_reference(url)
+    }
+    urls.update(reviewed_articles)
     urls = sorted(
         url
         for url in urls
         if urlsplit(url).hostname == "www.iracing.com"
-        and "/this-week-iracing-" in url
-        and "special-event" in url
+        and (
+            url in reviewed_articles
+            or ("/this-week-iracing-" in url and "special-event" in url)
+        )
     )
     if not news.select("a[href]"):
         raise ContractError("Official news index structure changed")
     checked = []
     for url in urls:
         body = fetch.get(url)
-        for entry in catalog["events"]:
-            if entry["discipline"] not in {"Oval", "Sports Car", "Formula Car"}:
-                continue
-            published = announcement_starts(body, entry, catalog["year"])
-            if published is None:
-                continue
-            checked.append(url)
-            if not published:
-                continue
-            matches = [
-                e
-                for e in events
-                if e.get("provenance", {}).get("special_id") == entry["id"]
-            ]
-            api_times = {e["start"] for e in matches if not e["all_day"]}
-            if api_times and api_times != set(published):
-                raise ContractError(
-                    f"API/announcement exact-start conflict: {entry['name']} ({url})"
-                )
-            if api_times:
-                for event in matches:
-                    event["sources"] = sorted(set(event["sources"]) | {url})
-            elif matches:
-                if len(matches) != 1:
-                    raise ContractError("Ambiguous special date placeholders")
-                placeholder = matches[0]
-                events.remove(placeholder)
-                events.extend(
-                    placeholder
-                    | {
-                        "id": placeholder["round_id"] + f"|{i}",
-                        "start": start,
-                        "all_day": False,
-                        "end": end_time(start, placeholder.get("duration")),
-                        "sources": sorted(set(placeholder["sources"]) | {url}),
-                        "provenance": placeholder["provenance"] | {"starts": url},
-                    }
-                    for i, start in enumerate(published)
-                )
+        soup = BeautifulSoup(body, "html.parser")
+        heading = soup.select_one("div.page-header > h1")
+        if heading is None:
+            raise ContractError("Official announcement heading structure changed")
+        if not re.search(
+            rf"ABOUT THE {catalog['year']}\b", soup.get_text(" ", strip=True)
+        ):
+            continue
+        resolution = resolver.resolve(
+            heading.get_text(" ", strip=True), [url], phrase=True
+        )
+        if resolution["id"] is None:
+            warnings.append(resolution | {"source_kind": "announcement"})
+            continue
+        entry = resolver.entries[resolution["id"]]
+        if entry["discipline"] not in {"Oval", "Sports Car", "Formula Car"}:
+            continue
+        published = announcement_starts(body, entry, catalog["year"])
+        if published is None:
+            continue
+        checked.append(url)
+        if not published:
+            continue
+        matches = [
+            e
+            for e in events
+            if e.get("provenance", {}).get("special_id") == entry["id"]
+        ]
+        api_times = {e["start"] for e in matches if not e["all_day"]}
+        if api_times and api_times != set(published):
+            raise ContractError(
+                f"API/announcement exact-start conflict: {entry['name']} ({url})"
+            )
+        if api_times:
+            for event in matches:
+                event["sources"] = sorted(set(event["sources"]) | {url})
+        elif matches:
+            if len(matches) != 1:
+                raise ContractError("Ambiguous special date placeholders")
+            placeholder = matches[0]
+            events.remove(placeholder)
+            events.extend(
+                placeholder
+                | {
+                    "id": placeholder["round_id"] + f"|{i}",
+                    "start": start,
+                    "all_day": False,
+                    "end": end_time(start, placeholder.get("duration")),
+                    "sources": sorted(set(placeholder["sources"]) | {url}),
+                    "provenance": placeholder["provenance"] | {"starts": url},
+                }
+                for i, start in enumerate(published)
+            )
     return sorted(set(checked))
