@@ -9,6 +9,8 @@ from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
 
+from .identity import IdentityResolver
+
 SOURCE = "https://www.iracing.com/special-events/"
 MONTHS = {
     name.lower(): i
@@ -48,7 +50,7 @@ def parse_inventory(html, year):
     headings = soup.select("div.wp-block-column > h2.has-studio-h-3-font-size")
     if not headings:
         raise ValueError("Official special-events card structure changed")
-    entries = {}
+    entries = []
     for heading in headings:
         name = heading.get_text(" ", strip=True)
         block = heading.parent
@@ -61,8 +63,6 @@ def parse_inventory(html, year):
             raise ValueError(f"Official special-events card changed: {name}")
         # Empty separator preserves dates with the year split across inline tags.
         start, end = date_window(paragraph.get_text("", strip=True), year)
-        if name in entries:
-            raise ValueError(f"Duplicate official special-event name: {name}")
         urls = {SOURCE}
         for anchor in block.select(".wp-block-button a[href]"):
             url = urljoin(SOURCE, anchor["href"])
@@ -71,12 +71,14 @@ def parse_inventory(html, year):
                 "forums.iracing.com",
             }:
                 urls.add(url)
-        entries[name] = {
-            "name": name,
-            "start": start,
-            "end": end,
-            "source_urls": sorted(urls),
-        }
+        entries.append(
+            {
+                "name": name,
+                "start": start,
+                "end": end,
+                "source_urls": sorted(urls),
+            }
+        )
     return entries
 
 
@@ -89,28 +91,62 @@ def load_catalog(year):
 
 
 def coverage_report(catalog, inventory):
-    """All unresolved entries stay visible; disagreements prohibit publication."""
-    reviewed = {e["name"]: e for e in catalog["events"]}
+    """Resolve observations once; only unambiguous IDs establish coverage."""
+    resolver = IdentityResolver(catalog)
     report = {
-        "new": sorted(inventory.keys() - reviewed.keys()),
-        "missing": sorted(reviewed.keys() - inventory.keys()),
+        "new": [],
+        "missing": [],
         "disagreements": [],
         "unresolved": [],
         "undated": [],
+        "identity_warnings": [],
+        "inventory_matches": [],
     }
-    for name, entry in reviewed.items():
+    matched = {}
+    blocked = set()
+    for card in inventory:
+        resolution = resolver.resolve(card["name"], card["source_urls"])
+        if resolution["id"] is None:
+            report["new"].append(card["name"])
+            report["identity_warnings"].append(resolution)
+            blocked.update(resolution["candidates"])
+            continue
+        identity = resolution["id"]
+        if identity in matched:
+            blocked.add(identity)
+            report["identity_warnings"].append(
+                resolution | {"status": "duplicate_card"}
+            )
+        matched[identity] = (card, resolution)
+    for identity in blocked:
+        matched.pop(identity, None)
+    for identity, entry in resolver.entries.items():
+        if identity not in matched:
+            report["missing"].append(entry["name"])
+            report["identity_warnings"].append(
+                {
+                    "id": identity,
+                    "status": "unverified_inventory",
+                    "label": entry["name"],
+                    "sources": entry["source_urls"],
+                    "evidence": [],
+                }
+            )
+        else:
+            card, resolution = matched[identity]
+            report["inventory_matches"].append(resolution)
+            if entry["discipline"] in {"Oval", "Sports Car", "Formula Car"} and (
+                entry["start"],
+                entry["end"],
+            ) != (card["start"], card["end"]):
+                report["disagreements"].append(identity)
         if entry["discipline"] not in {"Oval", "Sports Car", "Formula Car"}:
             continue
         if not entry["api_mappings"]:
-            report["unresolved"].append(name)
+            report["unresolved"].append(entry["name"])
         if entry["start"] is None:
-            report["undated"].append(name)
-        if name in inventory and (entry["start"], entry["end"]) != (
-            inventory[name]["start"],
-            inventory[name]["end"],
-        ):
-            report["disagreements"].append(name)
-    report["publication_ready"] = not any(
-        report[k] for k in ("new", "missing", "disagreements", "unresolved")
+            report["undated"].append(entry["name"])
+    report["publication_ready"] = not (
+        report["identity_warnings"] or report["disagreements"] or report["unresolved"]
     )
     return report

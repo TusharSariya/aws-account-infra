@@ -5,8 +5,6 @@ requires-python = ">=3.14"
 dependencies = [
     "boto3>=1.40,<2",
     "beautifulsoup4>=4.13,<5",
-    "json5>=0.12,<1",
-    "pypdf>=6,<7",
     "icalendar>=6.3,<8",
     "pyjwt[crypto]>=2.10,<3",
 ]

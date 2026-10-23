@@ -56,6 +56,11 @@ def differences(previous, result):
             {"id": key, "name": old[key]["name"], "start": old[key]["start"]}
             for key in sorted(old.keys() - new.keys())
         ],
+        "name_changes": [
+            {"id": key, "before": old[key]["name"], "after": new[key]["name"]}
+            for key in sorted(new.keys() & old.keys())
+            if old[key]["name"] != new[key]["name"]
+        ],
         "start_changes": [
             {
                 "id": key,
