@@ -65,7 +65,8 @@ jobs:
         run: rm -rf -- "$PRIVATE"
   contracts:
     needs: freeze-rbac
-    runs-on: ${{ vars.CI_EXECUTOR == 'talos' && 'homelab-talos-checks' || 'ubuntu-latest' }}
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ${{ vars.CI_EXECUTOR == 'talos' && fromJSON('["homelab-talos-checks"]') || fromJSON('["ubuntu-latest"]') }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
