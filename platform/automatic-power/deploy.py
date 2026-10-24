@@ -34,7 +34,7 @@ def validate(payload):
         raise ValueError("Incomplete deployment")
     for name, data in files.items():
         if name not in EXTRAS and not re.fullmatch(
-            re.escape(PACKAGE) + r"[a-z_]+\.py", name
+            re.escape(PACKAGE) + r"[a-z_][a-z0-9_]*\.py", name
         ):
             raise ValueError("Unexpected deployment path")
         if digest(data) != payload["hashes"][name]:
