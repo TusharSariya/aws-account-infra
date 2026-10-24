@@ -1,6 +1,7 @@
 """UID/CAS guarded quiescing of registered primary applications only."""
 
 import uuid
+from contextlib import nullcontext
 
 from .config import INVENTORY
 from .policy import AWAKE_ONLY, NODES, PLATFORM
@@ -94,6 +95,7 @@ def storage_for_host(identity, host):
 class Platform:
     def __init__(self, kube, management, journal):
         self.kube, self.management, self.journal = kube, management, journal
+        self.interlocks = {}
 
     def record_name(self, host):
         return host + "-platform.json"
@@ -242,27 +244,89 @@ class Platform:
             raise RuntimeError("Operator cordon is not owned by this operation")
         annotations["homelab.tfdraw.dev/power-operation"] = record["id"]
         annotations["homelab.tfdraw.dev/power-intent"] = "sleep"
-        self.kube.guarded(
-            "nodes",
-            node,
-            [
-                {"op": "add", "path": "/spec/unschedulable", "value": True},
-                {"op": "add", "path": "/metadata/annotations", "value": annotations},
-            ],
-        )
-        self.schedules(record, False)
+        lock = self.interlocks.get(host)
+        with lock.guard() if lock else nullcontext():
+            self.kube.guarded(
+                "nodes",
+                node,
+                [
+                    {"op": "add", "path": "/spec/unschedulable", "value": True},
+                    {
+                        "op": "add",
+                        "path": "/metadata/annotations",
+                        "value": annotations,
+                    },
+                ],
+            )
+            self.schedules(record, False)
         entries = {e["object"]["metadata"]["name"]: e for e in record["objects"]}
         for name in ORDER:
             if (
                 host == "primary"
                 and name == "cnpg"
-                and not self.hibernate(record, False)
+                and not self.shutdown_stage(
+                    host,
+                    record["cluster"],
+                    "database",
+                    lambda: self.hibernate(record, False),
+                )
             ):
                 return
-            if name in entries and not self.scale(entries[name], False):
-                return
+            if name in entries:
+                entry = entries[name]
+                if not self.shutdown_stage(
+                    host,
+                    entry["object"],
+                    entry["resource"],
+                    lambda entry=entry: self.scale(entry, False),
+                ):
+                    return
         record["phase"] = "quiesced"
         self.journal.write(self.record_name(host), record)
+
+    def shutdown_stage(self, host, obj, resource, callback):
+        lock = self.interlocks.get(host)
+        with lock.guard() if lock else nullcontext():
+            if lock:
+                lock.begin(
+                    "platform-stage",
+                    resource=resource,
+                    object={
+                        "metadata": {
+                            k: v
+                            for k, v in obj["metadata"].items()
+                            if k in {"name", "namespace", "uid"}
+                        }
+                    },
+                )
+            result = callback()
+            if lock and result:
+                lock.settle("platform-stage")
+            return result
+
+    def stage_settled(self, host, objects, pending):
+        before = pending["object"]
+        resource = pending["resource"]
+        if resource == "database":
+            current = self.current("clusters.postgresql.cnpg.io", before)
+            return current["metadata"].get("annotations", {}).get(
+                "cnpg.io/hibernation"
+            ) == "on" and any(
+                c.get("type") == "cnpg.io/hibernation" and c.get("status") == "True"
+                for c in current.get("status", {}).get("conditions", [])
+            )
+        current = self.current(resource, before)
+        selector = current["spec"]["selector"]
+        if selector.get("matchExpressions") or not selector.get("matchLabels"):
+            return False
+        return current["spec"].get("replicas", 1) == 0 and not any(
+            p["metadata"].get("namespace") == current["metadata"].get("namespace")
+            and all(
+                p["metadata"].get("labels", {}).get(k) == v
+                for k, v in selector["matchLabels"].items()
+            )
+            for p in objects["pods"]
+        )
 
     def restore(self, host, objects):
         record = self.journal.read(self.record_name(host))

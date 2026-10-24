@@ -1,0 +1,155 @@
+name: retained-power-deploy
+on:
+  pull_request:
+    paths:
+      - 'controllers/homelab-capacity/**'
+      - 'platform/automatic-power/**'
+      - 'scripts/homelab-power-hold.py'
+      - 'scripts/tests/test_homelab_power_hold.py'
+      - 'scripts/tests/test_retained_power_deploy.py'
+      - '.github/workflows/retained-power-deploy.yml'
+      - 'scripts/disable-desktop.py'
+      - 'config/environments/kubernetes/homelab/inference-values.yaml'
+      - 'config/environments/kubernetes/homelab/playground-values.yaml'
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type retained-power to deploy main after management RBAC reconciliation
+        required: true
+        type: string
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: ${{ github.event_name == 'workflow_dispatch' && 'tofu-apply' || format('retained-power-{0}', github.ref) }}
+  cancel-in-progress: false
+jobs:
+  freeze-rbac:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ${{ vars.CI_OPERATOR == 'mac' && fromJSON('["self-hosted","homelab-operator"]') || 'ubuntu-latest' }}
+    environment: prod
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: false
+      - uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8
+        if: runner.os != 'macOS'
+        with:
+          use-cache: false
+          oauth-client-id: ${{ vars.TS_OIDC_CLIENT_ID }}
+          audience: ${{ vars.TS_OIDC_AUDIENCE }}
+          tags: tag:github-ci
+          version: 1.102.4
+          hostname: gh-freeze-rbac-${{ github.run_id }}-${{ github.run_attempt }}
+      - if: runner.os != 'macOS'
+        run: sudo tailscale set --accept-routes=true
+      - name: Allocate private cluster access
+        id: private
+        run: |
+          umask 077
+          echo "path=$(mktemp -d "$RUNNER_TEMP/freeze-rbac.XXXXXXXX")" >> "$GITHUB_OUTPUT"
+      - name: Reconcile freeze permission and explicit desktop admission policy
+        env:
+          PRIVATE: ${{ steps.private.outputs.path }}
+          TALOS_SECRETS_B64: ${{ secrets.TALOS_SECRETS_B64 }}
+        run: |
+          uv run scripts/talos-ci.py setup --acceptance --checks-only
+          uv run scripts/talos-ci.py prepare --private "$PRIVATE"
+          uv run scripts/talos-ci.py connect --private "$PRIVATE"
+          "$HOME/.cache/aws-account-infra/talos/kubectl-v1.36.3" --kubeconfig "$PRIVATE/kubeconfig" apply -f charts/homelab-always-on/templates/power-freeze.yaml
+          uv run scripts/disable-desktop.py --kubeconfig "$PRIVATE/kubeconfig" --kubectl "$HOME/.cache/aws-account-infra/talos/kubectl-v1.36.3"
+      - name: Remove private cluster access
+        if: always() && steps.private.outputs.path != ''
+        env:
+          PRIVATE: ${{ steps.private.outputs.path }}
+        run: rm -rf -- "$PRIVATE"
+  contracts:
+    needs: freeze-rbac
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ${{ vars.CI_EXECUTOR == 'talos' && fromJSON('["homelab-talos-checks"]') || fromJSON('["ubuntu-latest"]') }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: false
+      - run: uv run --with pytest --project controllers/homelab-capacity python -m pytest controllers/homelab-capacity/tests -q
+      - run: uv run --with pytest --with PyYAML==6.0.3 python -m pytest scripts/tests/test_homelab_power_hold.py scripts/tests/test_retained_power_deploy.py scripts/tests/test_disable_desktop.py -q
+  deploy:
+    needs: contracts
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ${{ vars.CI_OPERATOR == 'mac' && fromJSON('["self-hosted","homelab-operator"]') || 'ubuntu-latest' }}
+    environment: prod
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check deployment confirmation
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: test "$CONFIRM" = retained-power
+      - uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8
+        if: runner.os != 'macOS'
+        with:
+          use-cache: false
+          oauth-client-id: ${{ vars.TS_OIDC_CLIENT_ID }}
+          audience: ${{ vars.TS_OIDC_AUDIENCE }}
+          tags: tag:github-ci
+          version: 1.102.4
+          hostname: gh-retained-power-${{ github.run_id }}-${{ github.run_attempt }}
+      - if: runner.os != 'macOS'
+        run: sudo tailscale set --accept-routes=true
+      - name: Wake and freeze both hosts
+        id: hold
+        uses: ./.github/actions/host-power-hold
+        with:
+          action: acquire
+          freeze: 'true'
+          secrets-b64: ${{ secrets.TALOS_SECRETS_B64 }}
+      - name: Deploy and verify the exact checked-out revision
+        env:
+          DEPLOY_KEY: ${{ secrets.RETAINED_POWER_DEPLOY_KEY }}
+          KNOWN_HOSTS: ${{ vars.RETAINED_POWER_KNOWN_HOSTS }}
+          PRIVATE: ${{ steps.hold.outputs.private-path }}
+        run: |
+          test -n "$DEPLOY_KEY"
+          test -n "$KNOWN_HOSTS"
+          umask 077
+          printf '%s\n' "$DEPLOY_KEY" > "$PRIVATE/deploy-key"
+          printf '%s\n' "$KNOWN_HOSTS" > "$PRIVATE/deploy-known-hosts"
+          mkdir -p ~/.ssh
+          cat > "$PRIVATE/deploy-ssh-config" <<EOF
+          Host retained-power-deploy
+            HostName 10.0.0.181
+            User tushar
+            IdentityFile $PRIVATE/deploy-key
+            IdentitiesOnly yes
+            UserKnownHostsFile $PRIVATE/deploy-known-hosts
+            StrictHostKeyChecking yes
+            ProxyCommand ssh -F $PRIVATE/deploy-ssh-config retained-power-relay
+          Host retained-power-relay
+            HostName 10.0.0.224
+            User root
+            IdentityFile $PRIVATE/deploy-key
+            IdentitiesOnly yes
+            UserKnownHostsFile $PRIVATE/deploy-known-hosts
+            StrictHostKeyChecking yes
+          EOF
+          python3 platform/automatic-power/deploy.py --target retained-power-deploy --ssh-config "$PRIVATE/deploy-ssh-config"
+      - name: Release verified deployment freeze
+        if: success()
+        uses: ./.github/actions/host-power-hold
+        with:
+          action: release
+          verified: 'true'
+          private-path: ${{ steps.hold.outputs.private-path }}
+      - name: Remove private credentials even if a failed deployment retains its freeze
+        if: always() && steps.hold.outputs.private-path != ''
+        env:
+          PRIVATE: ${{ steps.hold.outputs.private-path }}
+        run: rm -rf -- "$PRIVATE"

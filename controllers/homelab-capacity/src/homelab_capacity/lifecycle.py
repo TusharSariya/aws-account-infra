@@ -4,6 +4,7 @@ No wall-clock idle accounting: the caller supplies a monotonic clock and resets
 observations on process restart. Reconcile safe effects; observe uncertain shutdowns.
 """
 
+import time
 from dataclasses import asdict, dataclass, field
 
 HOSTS = frozenset({"primary", "secondary"})
@@ -23,6 +24,13 @@ class Observation:
     quiesced: bool = False
     vm_stopped: bool = False
     host_empty: bool = False
+    maintenance: bool = False
+    mains: str = "on"
+    mains_retire: bool = False
+    mains_transition: bool = False
+    restore_mains: bool = False
+    cloud_healthy: bool = True
+    mains_reason: str = ""
 
 
 @dataclass
@@ -37,6 +45,8 @@ class State:
     operation: int = 0
     shutdown_requested: bool = False
     wake_requested: bool = False
+    mains_commissioning: bool = False
+    operation_started_at: float | None = None
 
     def restart(self):
         self.idle_since = self.last_sample = self.deadline = None
@@ -76,7 +86,13 @@ def recovery_expired(state: State, now: float, recovery_seconds=1200):
         "draining",
         "stopping",
     }:
-        state.deadline = now + recovery_seconds
+        wall_now = time.time()
+        if state.operation_started_at is None:
+            state.operation_started_at = wall_now
+        elapsed = wall_now - state.operation_started_at
+        if elapsed < 0:
+            elapsed = recovery_seconds
+        state.deadline = now + max(0, recovery_seconds - elapsed)
     if state.deadline is not None and now >= state.deadline:
         state.phase = "blocked"
         state.reason = "Recovery deadline exceeded; inspect before resume"
@@ -110,6 +126,10 @@ def decide(
     state.last_sample = now
     if recovery_expired(state, now, recovery_seconds):
         return None
+    if obs.maintenance:
+        state.idle_since = None
+        state.reason = "Maintenance requested; power changes inhibited"
+        return None
     if obs.power not in {"on", "off"} or not obs.identity_ok:
         state.idle_since = None
         state.reason = "Power or registered identity is unknown"
@@ -120,7 +140,7 @@ def decide(
 
     def effect(action, phase):
         if mode == "observe" or (
-            mode == "wake" and action not in {"wake", "restore", "cancel"}
+            mode == "wake" and action not in {"wake", "mains-on", "restore", "cancel"}
         ):
             state.reason = "Rollout mode suppresses " + action
             return None
@@ -131,22 +151,35 @@ def decide(
         state.idle_since = None
         state.reason = action
         if state.deadline is None:
+            state.operation_started_at = time.time()
             state.deadline = now + recovery_seconds
         return action
 
+    if obs.mains_transition:
+        if obs.mains == "off" and not (demand or obs.restore_mains):
+            state.phase, state.deadline = "off", None
+            return None
+        if (demand or obs.restore_mains) and not state.paused and obs.cloud_healthy:
+            return effect("mains-on", "waking")
+        if obs.mains_retire and not state.paused and not obs.blockers and obs.complete:
+            return effect("mains-off", "stopping")
+        return None
     if obs.power == "off":
         state.phase = "off"
         state.shutdown_requested = False
         state.idle_since = None
         if demand and not state.paused:
             return effect("wake", "waking")
+        if obs.mains_retire and not state.paused and obs.complete and not obs.blockers:
+            return effect("mains-off", "stopping")
         state.deadline = None
+        state.operation_started_at = None
         state.reason = "Maintenance pause" if state.paused else "No demand"
         return None
     # A committed shutdown finishes even if demand arrives. The following off
     # observation starts wake. This avoids conflicting ACPI and power-on requests.
     if state.phase == "stopping":
-        if obs.vm_stopped and obs.host_empty:
+        if obs.vm_stopped and obs.host_empty and obs.complete and not obs.blockers:
             return effect("stop-host", "stopping")
         state.reason = "Waiting for worker shutdown and empty host"
         return None
@@ -178,6 +211,9 @@ def decide(
         state.reason = "Worker not ready; automatic shutdown prohibited"
         return None
     state.phase, state.deadline = "ready", None
+    state.operation_started_at = None
+    if not state.shutdown_requested:
+        state.mains_commissioning = False
     state.wake_requested = False
     if demand or not obs.complete or obs.blockers:
         state.idle_since = None

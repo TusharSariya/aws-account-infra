@@ -1,6 +1,12 @@
 name: Retained host maintenance hold
 description: Wake and hold registered hosts through the laptop API during Proxmox work
 inputs:
+  freeze:
+    description: Require acknowledged protection before critical work
+    default: 'false'
+  verified:
+    description: Critical operation completed and verified successfully
+    default: 'false'
   action:
     description: acquire or release
     required: true
@@ -33,22 +39,31 @@ runs:
       working-directory: ${{ github.workspace }}
       env:
         PRIVATE: ${{ steps.private.outputs.path }}
+        FREEZE: ${{ inputs.freeze }}
         TALOS_SECRETS_B64: ${{ inputs.secrets-b64 }}
       run: |
         uv run scripts/talos-ci.py setup --acceptance --checks-only
         uv run scripts/talos-ci.py prepare --private "$PRIVATE"
         uv run scripts/talos-ci.py connect --private "$PRIVATE"
         install -m 700 "$HOME/.cache/aws-account-infra/talos/kubectl-v1.36.3" "$PRIVATE/kubectl"
-        PATH="$PRIVATE:$PATH" python3 scripts/homelab-power-hold.py acquire --kubeconfig "$PRIVATE/kubeconfig" --receipt "$PRIVATE/power-hold.json" --hosts primary,secondary --wait
+        flags=()
+        if [[ "$FREEZE" == true ]]; then
+          "$PRIVATE/kubectl" --kubeconfig "$PRIVATE/kubeconfig" apply -f charts/homelab-always-on/templates/power-freeze.yaml
+          flags+=(--freeze)
+        fi
+        PATH="$PRIVATE:$PATH" python3 scripts/homelab-power-hold.py acquire --kubeconfig "$PRIVATE/kubeconfig" --receipt "$PRIVATE/power-hold.json" --hosts primary,secondary --wait "${flags[@]}"
     - name: Release only this operation's hold and remove its credentials
       if: inputs.action == 'release'
       shell: bash
       working-directory: ${{ github.workspace }}
       env:
         PRIVATE: ${{ inputs.private-path }}
+        VERIFIED: ${{ inputs.verified }}
       run: |
         test -n "$PRIVATE"
         if [[ -f "$PRIVATE/power-hold.json" ]]; then
-          PATH="$PRIVATE:$PATH" python3 scripts/homelab-power-hold.py release --kubeconfig "$PRIVATE/kubeconfig" --receipt "$PRIVATE/power-hold.json"
+          flags=()
+          if [[ "$VERIFIED" == true ]]; then flags+=(--verified); fi
+          PATH="$PRIVATE:$PATH" python3 scripts/homelab-power-hold.py release --kubeconfig "$PRIVATE/kubeconfig" --receipt "$PRIVATE/power-hold.json" "${flags[@]}"
         fi
         rm -rf -- "$PRIVATE"

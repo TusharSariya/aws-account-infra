@@ -1,14 +1,16 @@
 """IMM2 status and idempotent wake; deliberately no forced-off/reset operation."""
 
-from contextlib import contextmanager
-from dataclasses import dataclass
 import fcntl
 import json
-from pathlib import Path
 import re
 import subprocess
 import sys
+from contextlib import contextmanager
+from dataclasses import dataclass
+from pathlib import Path
+
 from .errors import RetryObservation
+from .interlock import Interlock, PowerBlocked
 
 
 class PowerError(RuntimeError):
@@ -49,7 +51,7 @@ def response_lines(output: str) -> list[str]:
     ]
     lines = [line for line in lines if line]
     if any(
-        re.search(r"\b(error|failed|invalid|denied|unexpected)\b", line, re.I)
+        re.search(r"\b(error|failed|invalid|denied|unexpected)\b", line, re.IGNORECASE)
         for line in lines
     ):
         raise PowerError("IMM2 rejected the command")
@@ -173,6 +175,7 @@ class PowerController:
             raise PowerError("Unknown registered host")
         self.target = target
         self.lock_dir = Path(data["lock_dir"]).expanduser()
+        self.interlock = Interlock(self.lock_dir, target)
         mode = data["hosts"][target].get("transport", "ipmi")
         if mode not in ("ipmi", "ssh"):
             raise PowerError("Unsupported power transport")
@@ -197,21 +200,38 @@ class PowerController:
         return self.transport.get_power()
 
     def ensure_on(self) -> dict:
-        with self.locked():
+        try:
+            return self._ensure_on()
+        except (PowerBlocked, BlockingIOError) as exc:
+            raise PowerError(
+                "Host operation already in progress or maintenance protected"
+            ) from exc
+
+    def _ensure_on(self):
+        with self.interlock.locked():
             before = self.get_power()
             if before.power == "on":
-                return {
-                    "target": self.target,
-                    "power": "on",
-                    "changed": False,
-                    "detail": before.detail,
-                }
-            self.transport.request_on()
-            after = self.get_power()
+                self.interlock.settle("imm-on")
+            with self.interlock.guard():
+                return self._request_on(before)
+
+    def _request_on(self, before):
+        if before.power == "on":
             return {
                 "target": self.target,
-                "power": after.power,
-                "changed": True,
-                "phase": "on" if after.power == "on" else "wake-requested",
-                "detail": after.detail,
+                "power": "on",
+                "changed": False,
+                "detail": before.detail,
             }
+        self.interlock.begin("imm-on")
+        self.transport.request_on()
+        after = self.get_power()
+        if after.power == "on":
+            self.interlock.settle("imm-on")
+        return {
+            "target": self.target,
+            "power": after.power,
+            "changed": True,
+            "phase": "on" if after.power == "on" else "wake-requested",
+            "detail": after.detail,
+        }

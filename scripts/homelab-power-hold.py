@@ -4,10 +4,10 @@
 import argparse
 import json
 import os
-from pathlib import Path
 import subprocess
 import time
 import uuid
+from pathlib import Path
 
 
 def restored(nodes, nexus):
@@ -31,6 +31,19 @@ def restored(nodes, nexus):
     )
 
 
+def freeze_acknowledged(lease, uid, hosts):
+    meta = lease["metadata"]
+    return (
+        meta["uid"] == uid
+        and meta.get("labels", {}).get("homelab.tfdraw.dev/power-hold") == "true"
+        and meta.get("annotations", {}).get("homelab.tfdraw.dev/hold-mode") == "freeze"
+        and all(
+            meta["annotations"].get("homelab.tfdraw.dev/frozen-" + host) == uid
+            for host in hosts
+        )
+    )
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=["acquire", "release"])
@@ -40,13 +53,30 @@ def main():
         "--hosts", choices=["primary", "primary,secondary"], default="primary"
     )
     parser.add_argument("--wait", action="store_true")
+    parser.add_argument(
+        "--freeze",
+        action="store_true",
+        help="Wait for an acknowledged coordinator power freeze after waking",
+    )
+    parser.add_argument(
+        "--verified",
+        action="store_true",
+        help="Release a freeze only after the maintenance operation is verified complete",
+    )
     args = parser.parse_args()
+    if args.freeze and not args.wait:
+        parser.error("--freeze requires --wait")
     os.umask(0o077)
     command = ["kubectl", "--kubeconfig", args.kubeconfig, "--request-timeout=20s"]
 
     def run(*argv, body=None):
         result = subprocess.run(
-            command + list(argv), input=body, text=True, capture_output=True, timeout=30
+            command + list(argv),
+            check=False,
+            input=body,
+            text=True,
+            capture_output=True,
+            timeout=30,
         )
         if result.returncode:
             raise RuntimeError(
@@ -97,9 +127,62 @@ def main():
                 raise RuntimeError(
                     "Wake deadline exceeded; hold remains until released"
                 )
+        if args.freeze:
+            lease = run("get", "lease", name, "-n", "homelab-platform", "-o", "json")
+            uid = result["metadata"]["uid"]
+            if lease["metadata"]["uid"] != uid:
+                raise ValueError("Hold identity changed before freeze")
+            # Persist protection type before requesting it; crashes cannot downgrade release.
+            args.receipt.write_text(
+                json.dumps(
+                    {"name": name, "uid": uid, "hosts": args.hosts, "freeze": True}
+                )
+            )
+            run(
+                "patch",
+                "lease",
+                name,
+                "-n",
+                "homelab-platform",
+                "--type=json",
+                "-p",
+                json.dumps(
+                    [
+                        {"op": "test", "path": "/metadata/uid", "value": uid},
+                        {
+                            "op": "test",
+                            "path": "/metadata/resourceVersion",
+                            "value": lease["metadata"]["resourceVersion"],
+                        },
+                        {
+                            "op": "add",
+                            "path": "/metadata/annotations/homelab.tfdraw.dev~1hold-mode",
+                            "value": "freeze",
+                        },
+                    ]
+                ),
+                "-o",
+                "json",
+            )
+            deadline = time.monotonic() + 1200
+            while time.monotonic() < deadline:
+                lease = run(
+                    "get", "lease", name, "-n", "homelab-platform", "-o", "json"
+                )
+                if freeze_acknowledged(lease, uid, args.hosts.split(",")):
+                    break
+                time.sleep(5)
+            else:
+                raise RuntimeError(
+                    "Power freeze not acknowledged; do not start maintenance; hold retained"
+                )
         print("Maintenance hold acquired: " + name)
     else:
         receipt = json.loads(args.receipt.read_text())
+        if receipt.get("freeze") and not args.verified:
+            raise RuntimeError(
+                "Critical hold retained: verified completion is required"
+            )
         lease = run(
             "get", "lease", receipt["name"], "-n", "homelab-platform", "-o", "json"
         )

@@ -25,6 +25,10 @@ CIRCULAR = {
     ('homelab-lifecycle-maintenance', '*'),
     ('homelab-ai-migration', '*'),
     ('homelab-capacity-host', '*'),
+    # External coordinator and helpers control the hosts running ARC.
+    ('retained-power-deploy', 'deploy'),
+    # Initial freeze RBAC must not depend on admission by that coordinator.
+    ('retained-power-deploy', 'freeze-rbac'),
     ('homelab-quota-acceptance', '*'),
     ('homelab-etcd-backup', '*'),
 }

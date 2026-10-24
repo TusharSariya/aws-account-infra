@@ -110,3 +110,7 @@ state, inspect the platform snapshot and protected storage, and confirm no
 conflicting operator maintenance. Then use `powerctl --config PRIVATE.json resume
 primary`. Observe restoration and demand processing to completion; a successful
 command submission alone is not proof of recovery. Never delete the journal.
+
+For durable firmware/IMM maintenance locks and optional Globe Suite mains switching,
+see [server mains control](server-mains-power.md). Mains switching is disabled until
+plug identity, wiring and supervised cold-cycle acceptance have been verified.

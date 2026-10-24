@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ruff: noqa: EXE001
 """One manual, guarded sleep for commissioning wake-only operation.
 
 Run on the laptop with the coordinator service stopped. This is not an idle
@@ -8,9 +9,9 @@ automatic-shutdown acceptance. It retains the normal platform recovery journal.
 
 import argparse
 import json
-from pathlib import Path
 import subprocess
 import time
+from pathlib import Path
 
 from homelab_capacity.config import load
 from homelab_capacity.coordinator import Coordinator
@@ -38,7 +39,8 @@ def main():
                 "is-active",
                 "--quiet",
                 "homelab-coordinator.service",
-            ]
+            ],
+            check=False,
         ).returncode
         == 0
     ):
@@ -99,23 +101,46 @@ def main():
                 raise RuntimeError("Final activity gate failed")
             receipt["phase"] = "worker-shutdown-requested"
             journal.write(name, receipt)
-            controller.management.talos(host, "shutdown", "--wait=false")
+            with controller.interlocks[host].guard():
+                fresh = controller.observation(host, controller.kube.inventory())
+                if (
+                    fresh.demand
+                    or fresh.blockers
+                    or not fresh.quiesced
+                    or not fresh.complete
+                ):
+                    raise RuntimeError("Final activity gate failed")
+                controller.interlocks[host].begin("stop-worker")
+                controller.management.talos(host, "shutdown", "--wait=false")
             while time.monotonic() < deadline:
                 pve = controller.management.pve(host)
                 if (
                     pve["status"] == "stopped"
                     and not pve["other_running"]
                     and not pve["users"]
+                    and pve.get("active_tasks") == []
                 ):
+                    controller.interlocks[host].settle("stop-worker")
                     break
                 time.sleep(5)
             else:
                 raise RuntimeError("Worker or host sessions did not stop gracefully")
             receipt["phase"] = "host-shutdown-requested"
             journal.write(name, receipt)
-            controller.management.pve(host, "poweroff")
+            with controller.interlocks[host].guard():
+                fresh = controller.observation(host, controller.kube.inventory())
+                if (
+                    not fresh.complete
+                    or fresh.blockers
+                    or not fresh.host_empty
+                    or not fresh.vm_stopped
+                ):
+                    raise RuntimeError("Host shutdown preflight failed")
+                controller.interlocks[host].begin("stop-host")
+                controller.management.pve(host, "poweroff")
             while time.monotonic() < deadline:
                 if controller.management.power(host).get_power().power == "off":
+                    controller.interlocks[host].settle("stop-host")
                     break
                 time.sleep(5)
             else:

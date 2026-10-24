@@ -3,4 +3,4 @@ ui:
   enabled: true
   hostname: playground
 desktop:
-  enabled: true
+  enabled: false

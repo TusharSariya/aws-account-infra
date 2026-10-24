@@ -2,14 +2,17 @@
 
 import argparse
 import json
+import socket
 import time
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from pathlib import Path
 
 from .capacity import verify, verify_storage
 from .config import INVENTORY, load
 from .effective import effective
 from .errors import RetryObservation, UncertainShutdown
+from .interlock import Interlock, PowerBlocked
 from .journal import Journal
 from .kube import Kube
 from .kueue import CHECK, CONTROLLER, admission_patch
@@ -21,6 +24,8 @@ from .lifecycle import (
     observe_off,
     recovery_expired,
 )
+from .mains import Mains
+from .mains import mode as mains_mode
 from .management import Management
 from .platform import Platform
 from .policy import DAEMONSETS, classify, done, housekeeping_jobs, owner
@@ -39,7 +44,32 @@ class Coordinator:
         self.kube = kube or Kube(config)
         self.management = management or Management(config)
         self.journal = journal or Journal(config["journal"])
+        self.imm_addresses = {}
+        lock_dir = self.journal.directory
+        if config.get("power_config"):
+            power_config = json.loads(
+                Path(config["power_config"]).expanduser().read_text()
+            )
+            lock_dir = power_config["lock_dir"]
+            self.imm_addresses = {
+                h: v["address"] for h, v in power_config["hosts"].items()
+            }
+        self.interlocks = {h: Interlock(lock_dir, h) for h in INVENTORY}
+        self.mains = {
+            h: Mains(entry, self.journal, h, self.interlocks[h])
+            for h, entry in config.get("mains", {}).items()
+            if entry.get("outlets") and entry.get("credentials_file")
+        }
+        for host, lock in self.interlocks.items():
+            record = self.journal.read(host + "-mains.json", {})
+            pending = lock.read()["pending"]
+            if host not in self.mains and (
+                record.get("phase") in {"cutting", "off", "energizing"}
+                or (pending and pending["action"] in {"mains-on", "mains-off"})
+            ):
+                raise PowerBlocked("Keep mains configuration until recovery completes")
         self.platform = Platform(self.kube, self.management, self.journal)
+        self.platform.interlocks = self.interlocks
         self.states = {
             h: State(**self.journal.read(h + ".json", {})) for h in INVENTORY
         }
@@ -94,6 +124,14 @@ class Coordinator:
         if action == "pause":
             state.paused = True
         elif action == "resume":
+            if self.interlocks[host].read()["pending"]:
+                state.reason = "Resume cannot clear an unresolved external command"
+                self.persist(host)
+                self.journal.write(
+                    host + "-command-result.json",
+                    {"id": request["id"], "action": action, "rejected": state.reason},
+                )
+                return
             state.paused = False
             if state.phase == "blocked":
                 # Resume is explicit recovery; never assume an uncertain effect succeeded.
@@ -111,6 +149,19 @@ class Coordinator:
             state.shutdown_requested = False
         elif action == "shutdown":
             state.shutdown_requested = True
+        elif action == "commission-mains":
+            try:
+                if host not in self.mains:
+                    raise PowerBlocked("Configure mains before commissioning")
+                self.mains[host].start_commission()
+                state.mains_commissioning = True
+                state.wake_requested = True
+            except (RuntimeError, ValueError) as exc:
+                self.journal.write(
+                    host + "-command-result.json",
+                    {"id": request["id"], "action": action, "rejected": str(exc)},
+                )
+                return
         else:
             raise ValueError("Unknown operator command")
         self.persist(host)
@@ -127,7 +178,65 @@ class Coordinator:
             node["metadata"]["uid"] == registration["node_uid"]
             and node["status"]["nodeInfo"]["systemUUID"] == registration["system_uuid"]
         )
-        power = self.management.power(host).get_power().power
+        mains = self.mains.get(host)
+        mains_state, cloud_healthy, mains_reason = "on", True, ""
+        mains_record = mains.read() if mains else {}
+        imm_available = None
+        if mains and host in self.imm_addresses:
+            try:
+                with socket.create_connection((self.imm_addresses[host], 443), 2):
+                    pass
+            except OSError:
+                imm_available = False
+        power = "unknown"
+        if imm_available is not False:
+            try:
+                power = self.management.power(host).get_power().power
+                imm_available = True
+            except (RuntimeError, OSError):
+                if not mains:
+                    raise
+        if mains:
+            try:
+                mains_state = mains.observe(imm_available=imm_available)
+            except PowerBlocked:
+                raise
+            except (RuntimeError, OSError, ValueError, KeyError):
+                cloud_healthy = False
+                mains_reason = "SmartThings unavailable; mains changes inhibited"
+                mains_state = "on" if imm_available is True else "unknown"
+            mains_record = mains.read()
+            if (
+                cloud_healthy
+                and imm_available is False
+                and (
+                    (mains_state == "off" and mains_record["phase"] == "off")
+                    or mains_record["phase"] == "energizing"
+                )
+            ):
+                power = "off"
+        cut_allowed = False
+        if mains and cloud_healthy:
+            try:
+                mains.may_cut()
+                cut_allowed = True
+            except (RuntimeError, OSError, ValueError):
+                mains_reason = (
+                    "Mains removal not commissioned or authorization unhealthy"
+                )
+        lock = self.interlocks[host]
+        if power == "on":
+            lock.settle("imm-on")
+            pending = lock.read()["pending"]
+            if (
+                mains
+                and mains_record.get("shutdown")
+                and self.states[host].phase != "stopping"
+                and not pending
+            ):
+                mains.invalidate_shutdown()
+        elif power == "off" and mains_state == "on":
+            lock.settle("stop-host")
         ai_pods = [
             p
             for p in objects["pods"]
@@ -239,6 +348,17 @@ class Coordinator:
             blockers=blockers,
             complete=True,
             quiesced=quiesced,
+            maintenance=bool(lock.read()["holds"]),
+            mains=mains_state,
+            mains_retire=(mains.eligible(power, time.monotonic()) and cut_allowed)
+            if mains
+            else False,
+            mains_reason=mains_reason,
+            cloud_healthy=cloud_healthy,
+            mains_transition=bool(
+                mains
+                and (mains_state != "on" or mains_record.get("phase") == "energizing")
+            ),
             retirement_ready=not (
                 host == "primary" and (ai_pods or housekeeping_jobs(objects))
             ),
@@ -250,10 +370,19 @@ class Coordinator:
                 obs.complete = False
                 obs.restore_ready = False
                 obs.blockers.append("Proxmox not observable")
+                if mains:
+                    obs.restore_mains = mains.commission_tick(self.states[host], obs)
                 return obs
             self.milestone(host, "proxmox_available")
             obs.vm_stopped = pve["status"] == "stopped"
             obs.host_empty = not pve["other_running"] and not pve["users"]
+            if pve.get("active_tasks") != []:
+                obs.host_empty = False
+                obs.blockers.append("Proxmox tasks active or unobservable")
+            if obs.vm_stopped:
+                lock.settle("stop-worker")
+            elif pve["status"] == "running":
+                lock.settle("start-worker")
             obs.ready = condition(node, "Ready") and not node["spec"].get(
                 "unschedulable", False
             )
@@ -318,16 +447,47 @@ class Coordinator:
                     for p in objects["pods"]
                     if p["spec"].get("nodeName") == registration["node"]
                 )
+        if mains:
+            obs.restore_mains = mains.commission_tick(self.states[host], obs)
+            obs.restore_mains |= mains_mode(
+                mains.entry
+            ) == "disabled" and mains_record.get("phase") in {"off", "energizing"}
         return obs
 
     def effect(self, host, action, objects):
-        if action == "wake":
+        # Quiesce acquires protection separately for each application stage.
+        if action == "quiesce":
+            self.require_acceptance(host)
+            return self.platform.quiesce(host, objects)
+        with self.interlocks[host].guard():
+            return self._effect(host, action, objects)
+
+    def _effect(self, host, action, objects):
+        if action in {"mains-on", "mains-off"}:
+            if action == "mains-off":
+                self.require_mains_acceptance(host)
+                fresh = self.observation(host, self.kube.inventory())
+                if (
+                    fresh.power != "off"
+                    or not fresh.mains_retire
+                    or fresh.demand
+                    or self.states[host].wake_requested
+                    or fresh.blockers
+                    or not fresh.complete
+                    or fresh.maintenance
+                ):
+                    return "cancel"
+            self.mains[host].advance("on" if action == "mains-on" else "off")
+        elif action == "wake":
+            if host in self.mains:
+                self.mains[host].invalidate_shutdown()
             self.milestone(host, "demand_detected", reset=True)
             self.milestone(host, "power_on_request")
             self.management.power(host).ensure_on()
         elif action in {"restore", "cancel"}:
             pve = self.management.pve(host)
             if pve["status"] == "stopped":
+                self.interlocks[host].begin("start-worker")
                 self.management.pve(host, "start-worker")
                 return
             node = next(
@@ -352,12 +512,74 @@ class Coordinator:
                 or not fresh.quiesced
             ):
                 return "cancel"
+            self.interlocks[host].begin("stop-worker")
             self.management.talos(host, "shutdown", "--wait=false")
         elif action == "stop-host":
             self.require_acceptance(host)
+            fresh = self.observation(host, self.kube.inventory())
+            if (
+                not (fresh.vm_stopped and fresh.host_empty and fresh.complete)
+                or fresh.blockers
+            ):
+                raise PowerBlocked("Host shutdown preflight is blocked")
+            self.interlocks[host].begin("stop-host")
+            if host in self.mains:
+                self.mains[host].shutdown_started(
+                    self.interlocks[host].read()["pending"]["id"]
+                )
             self.management.pve(host, "poweroff")
+            if host in self.mains:
+                self.mains[host].shutdown_acknowledged()
         else:
             raise ValueError("Unsupported lifecycle effect")
+
+    def require_mains_acceptance(self, host):
+        self.require_acceptance(host)
+        self.mains[host].may_cut()
+
+    def reconcile_protection(self, host, objects, obs):
+        lock = self.interlocks[host]
+        pending = lock.read()["pending"]
+        if (
+            pending
+            and pending["action"] == "platform-stage"
+            and self.platform.stage_settled(host, objects, pending)
+        ):
+            lock.settle("platform-stage")
+        # Do not acknowledge while a Kubernetes mutation or guest transition is unresolved.
+        state = self.states[host]
+        pods = [
+            p
+            for p in objects["pods"]
+            if p.get("spec", {}).get("nodeName") == INVENTORY[host]["node"]
+        ]
+        settled = (
+            (obs.ready or (obs.power == "off" and obs.mains == "on"))
+            and state.pending is None
+            and not any(p["metadata"].get("deletionTimestamp") for p in pods)
+        )
+        if state.phase in {"restoring", "waking"}:
+            settled = settled and all(done(p) or condition(p, "Ready") for p in pods)
+        lock.acknowledge(settled=settled)
+        for lease in objects.get("leases", []):
+            meta = lease["metadata"]
+            token = "ci-freeze-" + meta["uid"]
+            held = lock.read()["holds"].get(token)
+            if held and held["acknowledged"]:
+                key = "homelab.tfdraw.dev/frozen-" + host
+                if meta.get("annotations", {}).get(key) != meta["uid"]:
+                    self.kube.guarded(
+                        "leases",
+                        lease,
+                        [
+                            {
+                                "op": "add",
+                                "path": "/metadata/annotations/"
+                                + key.replace("/", "~1"),
+                                "value": meta["uid"],
+                            }
+                        ],
+                    )
 
     def require_acceptance(self, host):
         receipt = self.journal.read("acceptance.json", {})
@@ -387,6 +609,32 @@ class Coordinator:
                             "workloads.kueue.x-k8s.io", workload, patch, status=True
                         )
             raise
+        for lease in objects.get("leases", []):
+            meta = lease["metadata"]
+            if (
+                meta.get("namespace") != "homelab-platform"
+                or meta.get("annotations", {}).get("homelab.tfdraw.dev/hold-mode")
+                != "freeze"
+            ):
+                continue
+            token = "ci-freeze-" + meta["uid"]
+            for host in (
+                meta["annotations"].get("homelab.tfdraw.dev/hosts", "").split(",")
+            ):
+                if host not in self.interlocks:
+                    continue
+                lock = self.interlocks[host]
+                if (
+                    meta.get("labels", {}).get("homelab.tfdraw.dev/power-hold")
+                    == "true"
+                ):
+                    lock.acquire(token, "Critical CI operation: " + meta["name"])
+                elif (
+                    meta.get("labels", {}).get("homelab.tfdraw.dev/power-hold")
+                    == "false"
+                    and token in lock.read()["holds"]
+                ):
+                    lock.release(token)
         seen = self.journal.read("gateway-activity.json", {})
         for gateway in self.config.get("gateways", []):
             key = gateway["namespace"] + "/" + gateway["name"]
@@ -420,6 +668,9 @@ class Coordinator:
                 obs = self.observation(host, objects)
                 observed[host] = asdict(obs)
                 observe_off(state, obs)
+                self.reconcile_protection(host, objects, obs)
+                protected = self.interlocks[host].read()
+                obs.maintenance = bool(protected["holds"] or protected["pending"])
                 action = decide(
                     state,
                     obs,
@@ -431,6 +682,10 @@ class Coordinator:
                 if action:
                     try:
                         outcome = self.effect(host, action, objects)
+                    except PowerBlocked as exc:
+                        state.pending = None
+                        state.reason = str(exc)
+                        outcome = None
                     except RetryObservation as exc:
                         complete(state, action, retry=str(exc))
                     except UncertainShutdown as exc:
@@ -457,7 +712,12 @@ class Coordinator:
                     }
                     self.journal.write(host + "-transition.json", event)
                     print(json.dumps(event), flush=True)
-                if obs.ready and state.phase in {"ready", "idle"} and not state.paused:
+                if (
+                    obs.ready
+                    and state.phase in {"ready", "idle"}
+                    and not state.paused
+                    and not obs.maintenance
+                ):
                     ready.add(host)
                 if state.phase == "blocked" and self.config["modes"][host] != "observe":
                     node = self.kube.get("nodes", INVENTORY[host]["node"])
@@ -477,6 +737,8 @@ class Coordinator:
                         )
             except Exception as exc:  # noqa: BLE001 - fail closed at external-effect boundaries
                 state.idle_since = None
+                if host in self.mains:
+                    self.mains[host].off_since = self.mains[host].last_off_sample = None
                 state.reason = "Observation failed: " + type(exc).__name__
                 self.persist(host)
         if self.config.get("capacity", {}).get("pool", {}).get("dynamic") and any(
@@ -542,9 +804,7 @@ class Coordinator:
                                     host,
                                     "runner_container_started",
                                     at=datetime.fromisoformat(
-                                        status["state"]["running"]["startedAt"].replace(
-                                            "Z", "+00:00"
-                                        )
+                                        status["state"]["running"]["startedAt"]
                                     ).timestamp(),
                                 )
         allowed = None
@@ -572,7 +832,7 @@ class Coordinator:
                         "status": "True",
                         "reason": "Ready",
                         "message": "Retained-host coordinator is observing demand",
-                        "lastTransitionTime": datetime.now(timezone.utc).isoformat(),
+                        "lastTransitionTime": datetime.now(UTC).isoformat(),
                         "observedGeneration": check["metadata"]["generation"],
                     }
                 )
