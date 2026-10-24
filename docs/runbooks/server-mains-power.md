@@ -3,7 +3,8 @@
 The existing Ubuntu laptop coordinator owns workload retirement, Talos shutdown,
 Proxmox shutdown, IMM wake and optional Globe Suite switching through SmartThings.
 No second controller is installed. Mains control is disabled unless a host has an
-explicit `mains` configuration with `mode: automatic`, verified renewable OAuth,
+explicit `mains` configuration with `mode: automatic`, verified renewable OAuth
+(or the explicit temporary-credential option below),
 a completed commissioning cycle and matching site evidence. Modes are `disabled`,
 `commissioning`, and `automatic`; legacy `enabled` flags remain readable.
 
@@ -68,8 +69,8 @@ power failure or maintenance performed outside this workflow.
 2. Link compatible Globe Suite devices to SmartThings. Unsupported models remain
    disabled; evaluate local control next rather than weakening confirmation rules.
 3. Provision API authorization for device listing, status/health reads and switch
-   commands. For unattended service use renewable OAuth credentials; PATs are only
-   for temporary discovery and supervised commissioning. Current service-integration APIs include preview features:
+   commands. Prefer renewable OAuth credentials for unattended service. Temporary
+   PAT operation requires the explicit option below. Current service-integration APIs include preview features:
    verify authorization availability for the actual account before commissioning.
 4. Store credentials in a private directory under the service-writable journal,
    e.g. `~/.local/share/homelab-capacity/main/smartthings/credentials.json` (directory
@@ -175,8 +176,16 @@ refresh requires reauthorization rather than replaying a possibly single-use tok
 Automatic mode also requires `HOST-mains-site.json` with the exact `outlets` array
 and `electrical_rating`, `exclusive_load`, `no_competing_automation`, each containing
 an `evidence` reference and `checked_at` timestamp. Record actual inspections, never
-placeholder approvals. Keep unattended switching disabled until these and both
-cold-cycle validation and renewable authorization are complete.
+placeholder approvals. Keep unattended switching disabled until these and
+cold-cycle validation are complete.
+
+An operator may explicitly set `allow_temporary_credentials: true` on a host's
+private mains entry to use an existing PAT in automatic mode. This defaults to
+false and only relaxes the renewable OAuth requirement. Expiry, uncertain refresh,
+completed cold-cycle evidence, site evidence and all power interlocks still apply.
+No new mains removal is permitted with less than one hour of authorization left.
+Replace the PAT before it expires: an expired credential cannot restore power to
+an already disconnected server. Remove the option when renewable OAuth is ready.
 
 Read-only acceptance uses an awake hold so probe workloads retain admission.
 Mutating maintenance and deployment CI use `--wait --freeze`: wake first, wait for restored readiness, then

@@ -456,3 +456,51 @@ def test_automatic_mode_refuses_temporary_pat_after_completed_cycle(tmp_path):
     mains.entry["mode"] = "automatic"
     with pytest.raises(PowerBlocked, match="renewable OAuth"):
         mains.may_cut()
+
+
+def test_explicit_temporary_authorization_preserves_cycle_and_site_guards(tmp_path):
+    mains, _, _ = commissioned(tmp_path)
+    mains.entry.update(mode="automatic", allow_temporary_credentials=True)
+    with pytest.raises(PowerBlocked, match="cold-cycle"):
+        mains.may_cut()
+    mains.journal.write(
+        "secondary-mains-acceptance.json",
+        {
+            "host": "secondary",
+            "outlets": mains.entry["outlets"],
+            "cycle_id": "verified-cycle",
+        },
+    )
+    with pytest.raises(PowerBlocked, match="Site review"):
+        mains.may_cut()
+    mains.journal.write(
+        "secondary-mains-site.json",
+        {
+            "outlets": mains.entry["outlets"],
+            **{
+                k: {"evidence": "verified", "checked_at": 1}
+                for k in (
+                    "electrical_rating",
+                    "exclusive_load",
+                    "no_competing_automation",
+                )
+            },
+        },
+    )
+    mains.may_cut()
+
+
+@pytest.mark.parametrize("remaining,uncertain", [(3599, False), (8000, True)])
+def test_temporary_authorization_never_bypasses_expiry_or_uncertainty(
+    tmp_path, remaining, uncertain
+):
+    mains, _, cloud = commissioned(tmp_path)
+    mains.entry.update(mode="automatic", allow_temporary_credentials=True)
+    cloud.health = lambda: dict(
+        remaining_seconds=remaining,
+        refresh_uncertain=uncertain,
+        renewable=False,
+        refresh_verified=False,
+    )
+    with pytest.raises(PowerBlocked, match="Authorization unhealthy"):
+        mains.may_cut()
