@@ -32,6 +32,17 @@ ROUTER = 'http://playground-router.homelab-models.svc.cluster.local:8080'
 
 
 class ChartTests(unittest.TestCase):
+    def test_operator_disabled_desktop_has_no_runtime_backend_or_admission_quota(self):
+        self.assertEqual(render('playground', 'desktopOnly=true'), [])
+        config = json.loads(find(render('playground'), 'ConfigMap', 'playground-router-config')['data']['config.json'])
+        self.assertEqual([b['name'] for b in config['backends']], ['server'])
+        queue = find(render('inference'), 'ClusterQueue', 'desktop-compute')
+        self.assertEqual(queue['spec']['stopPolicy'], 'Hold')
+        for group in queue['spec']['resourceGroups']:
+            for flavor in group['flavors']:
+                self.assertEqual({r['name'] for r in flavor['resources']}, {'cpu', 'memory', 'ephemeral-storage', 'nvidia.com/gpu'})
+                self.assertTrue(all(str(r['nominalQuota']) in {'0', '0Gi'} for r in flavor['resources']))
+
     def test_backup_has_readonly_sources_and_restore_has_no_production_mounts(self):
         docs = render('ai')
         data = next(doc['data'] for doc in docs if doc['kind'] == 'ConfigMap' and doc['metadata']['name'] == 'ai-maintenance')
@@ -68,7 +79,7 @@ class ChartTests(unittest.TestCase):
     def test_desktop_objects_live_only_in_the_desktop_release(self):
         def names(docs):
             return {(d['kind'], d['metadata'].get('namespace'), d['metadata']['name']) for d in docs}
-        main, desktop = render('playground'), render('playground', 'desktopOnly=true')
+        main, desktop = render('playground'), render('playground', 'desktopOnly=true', 'desktop.enabled=true')
         self.assertEqual(names(desktop), DESKTOP_OBJECTS)
         self.assertFalse(names(main) & names(desktop))
         self.assertFalse(any(d['metadata'].get('namespace') == 'homelab-inference' for d in main))
@@ -88,7 +99,7 @@ class ChartTests(unittest.TestCase):
         self.assertIn('wait        = true', main)
 
     def test_desktop_ollama_is_a_kueue_gpu_runtime_tolerating_only_compute(self):
-        desktop = render('playground', 'desktopOnly=true')
+        desktop = render('playground', 'desktopOnly=true', 'desktop.enabled=true')
         deployment = find(desktop, 'Deployment', 'desktop-ollama', 'homelab-inference')
         self.assertEqual(deployment['metadata']['labels']['kueue.x-k8s.io/queue-name'], 'desktop')
         template = deployment['spec']['template']
@@ -114,8 +125,8 @@ class ChartTests(unittest.TestCase):
         self.assertEqual(volume['spec']['claimRef'], {'namespace': 'homelab-inference', 'name': 'desktop-ollama-models'})
 
     def test_only_the_router_reaches_desktop_ollama(self):
-        docs = render('playground')
-        policy = find(render('playground', 'desktopOnly=true'), 'NetworkPolicy', 'desktop-ollama', 'homelab-inference')
+        docs = render('playground', 'desktop.enabled=true')
+        policy = find(render('playground', 'desktopOnly=true', 'desktop.enabled=true'), 'NetworkPolicy', 'desktop-ollama', 'homelab-inference')
         self.assertEqual(policy['spec']['ingress'], [{
             'from': [{'namespaceSelector': {'matchLabels': {'kubernetes.io/metadata.name': 'homelab-models'}},
                       'podSelector': {'matchLabels': {'app': 'playground-router'}}}],
@@ -130,7 +141,7 @@ class ChartTests(unittest.TestCase):
     def test_router_config_gains_the_manual_power_desktop_backend_only_when_enabled(self):
         def config(docs):
             return json.loads(find(docs, 'ConfigMap', 'playground-router-config')['data']['config.json'])
-        on, off = config(render('playground')), config(render('playground', 'desktop.enabled=false'))
+        on, off = config(render('playground', 'desktop.enabled=true')), config(render('playground', 'desktop.enabled=false'))
         self.assertEqual([b['name'] for b in on['backends']], ['server', 'desktop'])
         self.assertEqual([b['name'] for b in off['backends']], ['server'])
         desktop = on['backends'][1]
@@ -144,7 +155,7 @@ class ChartTests(unittest.TestCase):
         def env(docs):
             ui = find(docs, 'Deployment', 'playground-ui')
             return {e['name']: e for e in ui['spec']['template']['spec']['containers'][0]['env']}
-        on, off = env(render('playground')), env(render('playground', 'desktop.enabled=false'))
+        on, off = env(render('playground', 'desktop.enabled=true')), env(render('playground', 'desktop.enabled=false'))
         self.assertEqual(on['OLLAMA_BASE_URLS']['value'], ROUTER + '/b/server;' + ROUTER + '/b/desktop')
         self.assertEqual(off['OLLAMA_BASE_URLS']['value'], ROUTER + '/b/server')
         self.assertNotIn('OLLAMA_BASE_URL', on)
