@@ -458,8 +458,11 @@ def test_automatic_mode_refuses_temporary_pat_after_completed_cycle(tmp_path):
         mains.may_cut()
 
 
-def test_explicit_temporary_authorization_preserves_cycle_and_site_guards(tmp_path):
-    mains, _, _ = commissioned(tmp_path)
+@pytest.mark.parametrize("remaining", [8000, None])
+def test_explicit_temporary_authorization_preserves_cycle_and_site_guards(tmp_path, remaining):
+    mains, _, cloud = commissioned(tmp_path)
+    health = cloud.health()
+    cloud.health = lambda: health | {"remaining_seconds": remaining}
     mains.entry.update(mode="automatic", allow_temporary_credentials=True)
     with pytest.raises(PowerBlocked, match="cold-cycle"):
         mains.may_cut()
@@ -490,7 +493,7 @@ def test_explicit_temporary_authorization_preserves_cycle_and_site_guards(tmp_pa
     mains.may_cut()
 
 
-@pytest.mark.parametrize("remaining,uncertain", [(3599, False), (8000, True)])
+@pytest.mark.parametrize("remaining,uncertain", [(3599, False), (8000, True), (None, True)])
 def test_temporary_authorization_never_bypasses_expiry_or_uncertainty(
     tmp_path, remaining, uncertain
 ):

@@ -19,7 +19,7 @@ apiVersion: batch/v1
 kind: CronJob
 metadata: {name: apps-db-backup, namespace: homelab-data}
 spec:
-  schedule: "30 8 * * *"
+  schedule: "0 12 * * *" # 08:30 NST (UTC-03:30), fixed year-round.
   timeZone: Etc/UTC
   concurrencyPolicy: Forbid
   startingDeadlineSeconds: 3600

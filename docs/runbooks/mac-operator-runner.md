@@ -317,7 +317,7 @@ starts or the run is cancelled.
   the container runners mount no Docker socket. Docker and image-build jobs stay on
   ARC or hosted.
 - **Hosted by design:**
-  - `homelab-etcd-backup` is a daily cron at 08:17 UTC, and the Mac may be asleep.
+  - `homelab-etcd-backup` is a daily cron at 11:30 UTC (08:00 NST year-round), and the Mac may be asleep.
     Its daily age encryption is also Linux amd64 only.
   - `ci-runner-image/build` builds a `linux/amd64` image with Docker.
 - **No Nexus.** Nexus is reachable only inside the cluster. On macOS,
