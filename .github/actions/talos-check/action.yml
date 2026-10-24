@@ -51,6 +51,12 @@ runs:
       env:
         PRIVATE: ${{ steps.private.outputs.path }}
       run: uv run scripts/talos-ci.py connect --private "$PRIVATE"
+    - name: Reconcile the declarative freeze acknowledgement permission
+      shell: bash
+      env:
+        PRIVATE: ${{ steps.private.outputs.path }}
+      run: |
+        "$HOME/.cache/aws-account-infra/talos/kubectl-v1.36.3" --kubeconfig "$PRIVATE/kubeconfig" apply -f charts/homelab-always-on/templates/power-freeze.yaml
     - name: Hold retained workers during cluster operations
       shell: bash
       env:

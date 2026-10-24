@@ -47,7 +47,10 @@ runs:
         uv run scripts/talos-ci.py connect --private "$PRIVATE"
         install -m 700 "$HOME/.cache/aws-account-infra/talos/kubectl-v1.36.3" "$PRIVATE/kubectl"
         flags=()
-        if [[ "$FREEZE" == true ]]; then flags+=(--freeze); fi
+        if [[ "$FREEZE" == true ]]; then
+          "$PRIVATE/kubectl" --kubeconfig "$PRIVATE/kubeconfig" apply -f charts/homelab-always-on/templates/power-freeze.yaml
+          flags+=(--freeze)
+        fi
         PATH="$PRIVATE:$PATH" python3 scripts/homelab-power-hold.py acquire --kubeconfig "$PRIVATE/kubeconfig" --receipt "$PRIVATE/power-hold.json" --hosts primary,secondary --wait "${flags[@]}"
     - name: Release only this operation's hold and remove its credentials
       if: inputs.action == 'release'
