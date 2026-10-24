@@ -88,6 +88,13 @@ check cancels retirement and restores services. Proxmox autostart and the
 coordinator can both attempt VM startup; a failed start is accepted only when a
 fresh direct query proves the worker is running.
 
+Kubernetes throttling, server timeouts, internal errors and transient connection
+failures also reobserve within that same deadline. A generic JSON-patch rejection
+can conceal a failed resource-version check: the coordinator rereads the object
+and retries only if its UID is unchanged and its resource version has advanced.
+Unchanged invalid patches, replaced resources, permission failures and certificate
+errors remain blocking. Retry attempts do not extend the recovery deadline.
+
 On coordinator restart, platform restoration/quiescing resumes from its existing
 snapshot with fresh identity and ownership checks. A possibly committed shutdown
 is observed, never blindly repeated. If completion cannot be proved within the
