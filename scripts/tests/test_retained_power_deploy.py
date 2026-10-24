@@ -28,6 +28,19 @@ def test_accepts_complete_checksummed_source():
     assert deploy.validate(data) == data["files"]
 
 
+def test_accepts_actual_repository_source_payload():
+    data = payload()
+    files = {
+        p.relative_to(ROOT).as_posix(): p.read_text()
+        for p in (ROOT / deploy.PACKAGE).glob("*.py")
+    }
+    files.update({name: (ROOT / name).read_text() for name in deploy.EXTRAS})
+    data["files"] = files
+    data["hashes"] = {name: deploy.digest(source) for name, source in files.items()}
+    assert deploy.PACKAGE + "imm2.py" in files
+    assert deploy.validate(data) == files
+
+
 @pytest.mark.parametrize(
     "path",
     ["../../.ssh/authorized_keys", deploy.PACKAGE + "../evil.py", "/tmp/evil.py"],
