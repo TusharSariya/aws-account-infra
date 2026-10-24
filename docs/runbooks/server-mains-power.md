@@ -235,3 +235,11 @@ second restriction for the same public key on primary permits only
 `/usr/bin/nc 10.0.0.181 22`; it relays the end-to-end SSH connection to the laptop
 without allowing a root shell or arbitrary forwarding. Pin both host keys in
 `RETAINED_POWER_KNOWN_HOSTS`. Both machines must be awake before deployment.
+
+The Ubuntu GPU desktop is temporarily disabled: `desktopQuota: false` and
+`desktop.enabled: false` keep its queue at zero quota/Hold and remove its runtime
+from the desired Helm manifests. CI's independent bootstrap reconciles those
+explicit flags with the accepted node UID, adds the quarantine taint, and scales
+any existing desktop runtime to zero. It does not delete model volumes or change
+the desktop's OS/power state. Re-enabling requires deliberate configuration changes
+and readiness validation before the operator removes quarantine.
