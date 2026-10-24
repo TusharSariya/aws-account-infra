@@ -228,3 +228,9 @@ and the independently verified laptop host-key line in environment variable
 `RETAINED_POWER_KNOWN_HOSTS`. The key cannot open an interactive shell or forward ports.
 Bootstrap enrollment is separate from deployments; subsequent runs update the receiver
 from the reviewed revision only after successful verification.
+
+The CI network reaches the primary Proxmox subnet router before the laptop. A
+second restriction for the same public key on primary permits only
+`/usr/bin/nc 10.0.0.181 22`; it relays the end-to-end SSH connection to the laptop
+without allowing a root shell or arbitrary forwarding. Pin both host keys in
+`RETAINED_POWER_KNOWN_HOSTS`. Both machines must be awake before deployment.

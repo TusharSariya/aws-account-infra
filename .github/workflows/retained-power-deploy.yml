@@ -83,6 +83,14 @@ jobs:
             IdentitiesOnly yes
             UserKnownHostsFile $PRIVATE/deploy-known-hosts
             StrictHostKeyChecking yes
+            ProxyCommand ssh -F $PRIVATE/deploy-ssh-config retained-power-relay
+          Host retained-power-relay
+            HostName 10.0.0.224
+            User root
+            IdentityFile $PRIVATE/deploy-key
+            IdentitiesOnly yes
+            UserKnownHostsFile $PRIVATE/deploy-known-hosts
+            StrictHostKeyChecking yes
           EOF
           python3 platform/automatic-power/deploy.py --target retained-power-deploy --ssh-config "$PRIVATE/deploy-ssh-config"
       - name: Release verified deployment freeze
