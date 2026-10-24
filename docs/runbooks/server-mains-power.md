@@ -178,7 +178,8 @@ an `evidence` reference and `checked_at` timestamp. Record actual inspections, n
 placeholder approvals. Keep unattended switching disabled until these and both
 cold-cycle validation and renewable authorization are complete.
 
-Critical CI uses `--wait --freeze`: wake first, wait for restored readiness, then
+Read-only acceptance uses an awake hold so probe workloads retain admission.
+Mutating maintenance and deployment CI use `--wait --freeze`: wake first, wait for restored readiness, then
 request a durable freeze and wait for acknowledgements for every host. Failed or
 cancelled work retains its freeze. Release requires `--verified` after checking the
 operation completed safely; deleting a Lease does not clear a persisted freeze.

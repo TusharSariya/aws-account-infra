@@ -61,9 +61,17 @@ runs:
       shell: bash
       env:
         PRIVATE: ${{ steps.private.outputs.path }}
+        OPERATION: ${{ inputs.operation }}
       run: |
         install -m 700 "$HOME/.cache/aws-account-infra/talos/kubectl-v1.36.3" "$PRIVATE/kubectl"
-        PATH="$PRIVATE:$PATH" python3 scripts/homelab-power-hold.py acquire --kubeconfig "$PRIVATE/kubeconfig" --receipt "$PRIVATE/power-hold.json" --hosts primary --wait --freeze
+        flags=()
+        # Acceptance needs admission to run its probe workloads. Mutating
+        # maintenance additionally freezes all host power entry points.
+        case "$OPERATION" in
+          network|pvc|capacity|capacity-credentials|lifecycle) ;;
+          *) flags+=(--freeze) ;;
+        esac
+        PATH="$PRIVATE:$PATH" python3 scripts/homelab-power-hold.py acquire --kubeconfig "$PRIVATE/kubeconfig" --receipt "$PRIVATE/power-hold.json" --hosts primary --wait "${flags[@]}"
     - name: Execute selected acceptance or maintenance operation
       shell: bash
       env:
