@@ -2,6 +2,7 @@
 
 import base64
 import json
+import re
 import ssl
 import subprocess
 import time
@@ -13,28 +14,65 @@ from .config import INVENTORY
 from .errors import RetryObservation
 
 
+class InvalidPatch(RuntimeError):
+    """An ambiguous JSON patch rejection needs fresh identity/version evidence."""
+
+
 def operation_error(result, operation):
     diagnostic = (result.stdout + result.stderr).lower()
-    # Inspect captured text for categories but never put it in public diagnostics.
-    if any(
-        marker in diagnostic
-        for marker in (
-            "(conflict)",
-            "object has been modified",
-            "test failed",
-            "timed out",
-            "timeout",
-            "connection refused",
-            "connection reset",
-            "serviceunavailable",
-            "too many requests",
-            "unexpected eof",
-        )
+    message = f"Kubernetes {operation}: rejected (exit {result.returncode})"
+    # kubectl's generic 422 hides JSON Patch test failures. Only guarded()
+    # may promote this to a retry, after checking the live identity and version.
+    if operation == "patch" and (
+        "the server rejected our request due to an error in our request" in diagnostic
     ):
+        return InvalidPatch(message)
+    reason = re.search(r"error from server \(([^)]+)\)", diagnostic)
+    retryable = {
+        "conflict",
+        "timeout",
+        "servertimeout",
+        "toomanyrequests",
+        "internalerror",
+        "serviceunavailable",
+        "expired",
+        "gone",
+    }
+    if reason:
+        # An explicit permanent API reason wins over words in its message,
+        # e.g. a Forbidden response mentioning a policy named "timeout".
+        transient = reason.group(1) in retryable
+    else:
+        transient = any(
+            marker in diagnostic
+            for marker in (
+                "object has been modified",
+                "test failed",
+                "timed out",
+                "timeout",
+                "connection refused",
+                "connection reset",
+                "unexpected eof",
+                "too many requests",
+                "serviceunavailable",
+                "network is unreachable",
+                "no route to host",
+                "temporary failure in name resolution",
+                "temporary failure",
+                "server misbehaving",
+                "client connection lost",
+                "connection closed",
+                "broken pipe",
+                "tls handshake timeout",
+            )
+        ) or bool(re.search(r"\beof\s*$", diagnostic))
+        if "x509:" in diagnostic:
+            transient = False
+    if transient:
         return RetryObservation(
             f"Kubernetes {operation}: transient conflict/transport (exit {result.returncode})"
         )
-    return RuntimeError(f"Kubernetes {operation}: rejected (exit {result.returncode})")
+    return RuntimeError(message)
 
 
 RESOURCES = {
@@ -109,13 +147,18 @@ class Kube:
         return summary
 
     def wait(self, *args):
-        result = subprocess.run(
-            self.command + list(args),
-            text=True,
-            capture_output=True,
-            check=False,
-            timeout=30,
-        )
+        try:
+            result = subprocess.run(
+                self.command + list(args),
+                text=True,
+                capture_output=True,
+                check=False,
+                timeout=30,
+            )
+        except subprocess.TimeoutExpired:
+            raise RetryObservation(
+                "Kubernetes readiness: client deadline exceeded"
+            ) from None
         if result.returncode == 0:
             return True
         diagnostic = (result.stdout + result.stderr).lower()
@@ -165,21 +208,32 @@ class Kube:
         return self.run(*args)
 
     def guarded(self, resource, obj, operations, status=False):
-        return self.patch(
-            resource,
-            obj,
-            [
-                {
-                    "op": "test",
-                    "path": "/metadata/uid",
-                    "value": obj["metadata"]["uid"],
-                },
-                {
-                    "op": "test",
-                    "path": "/metadata/resourceVersion",
-                    "value": obj["metadata"]["resourceVersion"],
-                },
-                *operations,
-            ],
-            status,
-        )
+        meta = obj["metadata"]
+        try:
+            return self.patch(
+                resource,
+                obj,
+                [
+                    {"op": "test", "path": "/metadata/uid", "value": meta["uid"]},
+                    {
+                        "op": "test",
+                        "path": "/metadata/resourceVersion",
+                        "value": meta["resourceVersion"],
+                    },
+                    *operations,
+                ],
+                status,
+            )
+        except InvalidPatch:
+            current = self.get(resource, meta["name"], meta.get("namespace"))[
+                "metadata"
+            ]
+            if current["uid"] != meta["uid"]:
+                raise RuntimeError(
+                    "Kubernetes patch: resource identity changed"
+                ) from None
+            if current["resourceVersion"] != meta["resourceVersion"]:
+                raise RetryObservation(
+                    "Kubernetes patch: resource version changed"
+                ) from None
+            raise

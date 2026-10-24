@@ -1,5 +1,6 @@
 {
   "idle_seconds": 300,
+  "mains": {},
   "modes": {"primary": "observe", "secondary": "observe"},
   "journal": "~/.local/share/homelab-capacity/main",
   "power_config": "~/.config/homelab-capacity/hosts.json",

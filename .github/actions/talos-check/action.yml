@@ -57,7 +57,7 @@ runs:
         PRIVATE: ${{ steps.private.outputs.path }}
       run: |
         install -m 700 "$HOME/.cache/aws-account-infra/talos/kubectl-v1.36.3" "$PRIVATE/kubectl"
-        PATH="$PRIVATE:$PATH" python3 scripts/homelab-power-hold.py acquire --kubeconfig "$PRIVATE/kubeconfig" --receipt "$PRIVATE/power-hold.json" --hosts primary --wait
+        PATH="$PRIVATE:$PATH" python3 scripts/homelab-power-hold.py acquire --kubeconfig "$PRIVATE/kubeconfig" --receipt "$PRIVATE/power-hold.json" --hosts primary --wait --freeze
     - name: Execute selected acceptance or maintenance operation
       shell: bash
       env:
@@ -72,13 +72,13 @@ runs:
         HOMELAB_WORKER_REBOOT_APPROVED: ${{ inputs.reboot-approved }}
       run: uv run scripts/talos-ci.py "$OPERATION" --private "$PRIVATE"
     - name: Release only this operation's maintenance hold
-      if: always() && steps.private.outputs.path != ''
+      if: success() && steps.private.outputs.path != ''
       shell: bash
       env:
         PRIVATE: ${{ steps.private.outputs.path }}
       run: |
         if [[ -f "$PRIVATE/power-hold.json" ]]; then
-          PATH="$PRIVATE:$PATH" python3 scripts/homelab-power-hold.py release --kubeconfig "$PRIVATE/kubeconfig" --receipt "$PRIVATE/power-hold.json"
+          PATH="$PRIVATE:$PATH" python3 scripts/homelab-power-hold.py release --verified --kubeconfig "$PRIVATE/kubeconfig" --receipt "$PRIVATE/power-hold.json"
         fi
     - name: Remove private authentication inputs
       if: always() && steps.private.outputs.path != ''

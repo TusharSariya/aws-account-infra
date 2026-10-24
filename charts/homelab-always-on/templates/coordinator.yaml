@@ -125,3 +125,18 @@ metadata: {name: retained-host-admission, namespace: {{ . }}}
 subjects: [{kind: ServiceAccount, name: retained-host-coordinator, namespace: homelab-platform}]
 roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: retained-host-admission}
 {{- end }}
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: {name: retained-host-freeze-ack, namespace: homelab-platform}
+rules:
+  - apiGroups: [coordination.k8s.io]
+    resources: [leases]
+    verbs: [get, patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: {name: retained-host-freeze-ack, namespace: homelab-platform}
+subjects: [{kind: ServiceAccount, name: retained-host-coordinator, namespace: homelab-platform}]
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: retained-host-freeze-ack}

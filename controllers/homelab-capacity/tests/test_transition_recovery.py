@@ -9,17 +9,26 @@ from homelab_capacity.lifecycle import Observation, State, complete, decide, obs
 def observation(**changes):
     return Observation(
         **(
-            dict(power="on", identity_ok=True, ready=True, complete=True, quiesced=True)
+            {
+                "power": "on",
+                "identity_ok": True,
+                "ready": True,
+                "complete": True,
+                "quiesced": True,
+            }
             | changes
         )
     )
 
 
-def test_final_demand_check_cancels_and_restores_instead_of_blocking():
+def test_final_demand_check_cancels_and_restores_instead_of_blocking(tmp_path):
     state = State(phase="draining")
     controller = object.__new__(Coordinator)
+    from homelab_capacity.interlock import Interlock
+
+    controller.interlocks = {"primary": Interlock(tmp_path, "primary")}
     controller.require_acceptance = lambda host: None
-    controller.kube = SimpleNamespace(inventory=lambda: {})
+    controller.kube = SimpleNamespace(inventory=dict)
     controller.observation = lambda host, objects: observation(demand=True)
     calls = []
     controller.management = SimpleNamespace(talos=lambda *args: calls.append(args))

@@ -2,12 +2,15 @@
 
 import argparse
 import json
-import uuid
 import subprocess
 import time
+import uuid
 from pathlib import Path
+
 from .config import INVENTORY, load
+from .interlock import Interlock
 from .journal import Journal
+from .smartthings import SmartThings
 
 
 def forward(args, config, journal):
@@ -83,6 +86,12 @@ def main():
             "hold",
             "release",
             "forward",
+            "maintenance-acquire",
+            "maintenance-release",
+            "discover-plugs",
+            "commission-mains",
+            "auth-status",
+            "auth-refresh",
         ],
     )
     parser.add_argument("host", choices=sorted(INVENTORY))
@@ -99,6 +108,38 @@ def main():
     args = parser.parse_args()
     config = load(args.config)
     journal = Journal(config["journal"])
+    power_config = json.loads(Path(config["power_config"]).expanduser().read_text())
+    interlock = Interlock(power_config["lock_dir"], args.host)
+    if args.action in {"auth-status", "auth-refresh"}:
+        api = SmartThings(config["mains"][args.host]["credentials_file"])
+        if args.action == "auth-refresh":
+            api.token(force_refresh=True)
+        print(json.dumps(api.health(), indent=2))
+        return
+    if args.action == "discover-plugs":
+        entry = config.get("mains", {}).get(args.host, {})
+        if not entry.get("credentials_file"):
+            raise ValueError("Configure mains credentials_file for read-only discovery")
+        print(json.dumps(SmartThings(entry["credentials_file"]).discover(), indent=2))
+        return
+    if args.action in {"maintenance-acquire", "maintenance-release"}:
+        if not args.token:
+            raise ValueError("Explicit maintenance token required")
+        if args.action == "maintenance-acquire":
+            result = interlock.acquire(args.token, args.reason)
+            print(
+                json.dumps(
+                    {
+                        "token": args.token,
+                        **result,
+                        "instruction": "Do not start maintenance until status shows acknowledged=true",
+                    }
+                )
+            )
+        else:
+            interlock.release(args.token)
+            print(json.dumps({"released": args.token}))
+        return
     if args.action == "forward":
         return forward(args, config, journal)
     if args.action == "status":
@@ -108,6 +149,9 @@ def main():
                     "state": journal.read(args.host + ".json", {}),
                     "observation": journal.read("observations.json", {}),
                     "holds": journal.read(args.host + "-holds.json", {}),
+                    "protection": interlock.read(),
+                    "mains": journal.read(args.host + "-mains.json", {}),
+                    "commissioning": journal.read(args.host + "-commission.json", {}),
                 },
                 indent=2,
             )

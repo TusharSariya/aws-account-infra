@@ -3,9 +3,9 @@
 
 import json
 import os
-from pathlib import Path
 import re
 import subprocess
+from pathlib import Path
 
 
 def run(*args):
@@ -47,7 +47,7 @@ def main():
     if vm not in {102, 103}:
         raise ValueError("Only registered worker VMs are permitted")
     vmconfig = run("qm", "config", str(vm))
-    match = re.search(r"^smbios1: .*?uuid=([0-9a-f-]+)", vmconfig, re.M)
+    match = re.search(r"^smbios1: .*?uuid=([0-9a-f-]+)", vmconfig, re.MULTILINE)
     if not match or match.group(1) != config["system_uuid"]:
         raise ValueError("Worker identity changed")
     resources = json.loads(
@@ -67,8 +67,8 @@ def main():
         source = run("qm", "config", "100")
         if (
             100 in running
-            or not re.search(r"^onboot: 0$", source, re.M)
-            or not re.search(r"^protection: 1$", source, re.M)
+            or not re.search(r"^onboot: 0$", source, re.MULTILINE)
+            or not re.search(r"^protection: 1$", source, re.MULTILINE)
         ):
             raise ValueError("Retired control-plane source is not fenced")
     # Modern systemd records even this non-interactive SSH session in utmp.
@@ -77,7 +77,7 @@ def main():
     while pid > 1:
         ancestors.add(pid)
         status = Path(f"/proc/{pid}/status").read_text()
-        pid = int(re.search(r"^PPid:\s+(\d+)", status, re.M).group(1))
+        pid = int(re.search(r"^PPid:\s+(\d+)", status, re.MULTILINE).group(1))
     sessions = run("who", "-u").splitlines()
     users = False
     for line in sessions:
@@ -87,12 +87,18 @@ def main():
         )
         if not session_pid.isdigit() or int(session_pid) not in ancestors:
             users = True
+    tasks = json.loads(
+        run("pvenode", "task", "list", "--source", "active", "--output-format", "json")
+    )
+    if not isinstance(tasks, list):
+        raise TypeError("Proxmox task inventory unavailable")
+    active_tasks = [task["upid"] for task in tasks]
     if action == "start-worker":
         worker["status"] = start_worker(vm, worker["status"])
     elif action == "poweroff":
-        if running or users:
+        if running or users or active_tasks:
             raise RuntimeError(
-                "Running guests or interactive users block host shutdown"
+                "Running guests, users or active tasks block host shutdown"
             )
         # A short fixed timer lets SSH deliver its acknowledgement before systemd
         # tears down the network. This never forces power off or retries a request.
@@ -117,6 +123,7 @@ def main():
                 "status": worker["status"],
                 "other_running": [v for v in running if v != vm],
                 "users": users,
+                "active_tasks": active_tasks,
                 "boot_id": Path("/proc/sys/kernel/random/boot_id").read_text().strip(),
             }
         )
@@ -126,6 +133,6 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception:
+    except Exception:  # noqa: BLE001 - suppress potentially sensitive management output
         # Avoid echoing raw management output or configuration to the caller.
         raise SystemExit("Retained-host operation failed; inspect host locally")

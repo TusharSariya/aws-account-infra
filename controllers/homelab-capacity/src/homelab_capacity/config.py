@@ -36,4 +36,7 @@ def load(path):
         m not in {"observe", "wake", "automatic"} for m in config["modes"].values()
     ):
         raise ValueError("Explicit rollout mode required for each registered host")
+    from .mains import validate
+
+    validate(config)
     return config

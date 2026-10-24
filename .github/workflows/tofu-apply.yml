@@ -141,6 +141,7 @@ jobs:
         uses: ./.github/actions/host-power-hold
         with:
           action: acquire
+          freeze: 'true'
           secrets-b64: ${{ secrets.TALOS_SECRETS_B64 }}
       - name: Verify Proxmox apply identity
         if: contains(fromJSON(needs.detect.outputs.units).*.id, 'proxmox-homelab')
@@ -256,6 +257,7 @@ jobs:
         uses: ./.github/actions/host-power-hold
         with:
           action: release
+          verified: ${{ job.status == 'success' }}
           private-path: ${{ steps.power_hold.outputs.private-path }}
 
       - uses: ./.github/actions/nexus-dependency-cache

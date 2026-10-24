@@ -25,6 +25,8 @@ CIRCULAR = {
     ('homelab-lifecycle-maintenance', '*'),
     ('homelab-ai-migration', '*'),
     ('homelab-capacity-host', '*'),
+    # External coordinator and helpers control the hosts running ARC.
+    ('retained-power-deploy', 'deploy'),
     ('homelab-quota-acceptance', '*'),
     ('homelab-etcd-backup', '*'),
 }
