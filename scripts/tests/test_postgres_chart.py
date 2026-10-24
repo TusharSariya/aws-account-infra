@@ -26,7 +26,7 @@ class ChartTests(unittest.TestCase):
     def test_backup_boundaries(self):
         docs=self.render(True)
         job=next(x for x in docs if x['kind']=='CronJob')['spec']
-        self.assertEqual(job['schedule'],'30 8 * * *')
+        self.assertEqual(job['schedule'],'0 12 * * *')
         self.assertEqual(job['timeZone'],'Etc/UTC')
         self.assertEqual(job['concurrencyPolicy'],'Forbid')
         self.assertEqual(job['jobTemplate']['spec']['activeDeadlineSeconds'],7200)

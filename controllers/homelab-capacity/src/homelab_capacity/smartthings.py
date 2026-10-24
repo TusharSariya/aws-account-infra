@@ -22,11 +22,22 @@ class SmartThings:
             raise PermissionError("SmartThings credentials must be private (0600)")
         return json.loads(self.path.read_text())
 
+    @staticmethod
+    def server_expiry(data):
+        # Explicit PAT policy: trust API authentication, not an invented deadline.
+        # OAuth still uses the provider's expires_in and refresh protocol.
+        return data.get("expiry_policy") == "server" and not all(
+            data.get(k) for k in ("refresh_token", "client_id", "client_secret")
+        )
+
     def health(self):
         data = self.credentials()
         return {
-            "expires_at": data.get("expires_at", 0),
-            "remaining_seconds": int(data.get("expires_at", 0) - self.clock()),
+            "expires_at": None if self.server_expiry(data) else data.get("expires_at", 0),
+            "remaining_seconds": (
+                None if self.server_expiry(data)
+                else int(data.get("expires_at", 0) - self.clock())
+            ),
             "renewable": all(
                 data.get(k) for k in ("refresh_token", "client_id", "client_secret")
             ),
@@ -47,7 +58,10 @@ class SmartThings:
                     "OAuth refresh outcome uncertain; reauthorization required"
                 )
             margin = 3600 if renewable else 60
-            if not force_refresh and data.get("expires_at", 0) > self.clock() + margin:
+            if not force_refresh and (
+                self.server_expiry(data)
+                or data.get("expires_at", 0) > self.clock() + margin
+            ):
                 return data["access_token"]
             if not all(
                 data.get(k) for k in ("refresh_token", "client_id", "client_secret")

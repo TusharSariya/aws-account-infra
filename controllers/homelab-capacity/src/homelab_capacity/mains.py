@@ -124,7 +124,8 @@ class Mains:
                 or not proof.get("evidence")
             ):
                 raise PowerBlocked("Verified mapping evidence is required")
-            if self.adapter.health()["remaining_seconds"] < 7200:
+            remaining = self.adapter.health()["remaining_seconds"]
+            if remaining is not None and remaining < 7200:
                 raise PowerBlocked(
                     "Commissioning needs at least two hours of authorization"
                 )
@@ -151,7 +152,8 @@ class Mains:
 
     def may_cut(self):
         auth = self.adapter.health()
-        if auth["remaining_seconds"] < 3600 or auth["refresh_uncertain"]:
+        remaining = auth["remaining_seconds"]
+        if (remaining is not None and remaining < 3600) or auth["refresh_uncertain"]:
             raise PowerBlocked(
                 "Authorization unhealthy or too close to expiry for mains removal"
             )

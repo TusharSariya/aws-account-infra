@@ -139,3 +139,39 @@ def test_refresh_is_proactive_and_records_verification(tmp_path):
     assert api.health()["refresh_verified"]
     assert not api.health()["refresh_uncertain"]
     assert len(requests) == 1
+
+
+def test_server_expiry_pat_uses_api_without_inventing_deadline(tmp_path):
+    api, requests = adapter(tmp_path, [{"items": []}])
+    api.path.write_text(json.dumps({"access_token": "secret", "expiry_policy": "server"}))
+    api.clock = lambda: 10**12
+    assert api.health()["expires_at"] is None
+    assert api.health()["remaining_seconds"] is None
+    assert api.discover() == []
+    assert len(requests) == 1
+
+
+def test_server_expiry_pat_still_rejects_real_401_without_retry(tmp_path):
+    api, requests = adapter(tmp_path, [HTTPError("https://api.smartthings.com", 401, "private", {}, None)])
+    api.path.write_text(json.dumps({"access_token": "secret", "expiry_policy": "server"}))
+    with pytest.raises(RuntimeError, match="requires observation"):
+        api.discover()
+    assert len(requests) == 1
+
+
+def test_missing_pat_expiry_without_opt_in_remains_invalid(tmp_path):
+    api, requests = adapter(tmp_path, [])
+    api.path.write_text(json.dumps({"access_token": "secret"}))
+    with pytest.raises(RuntimeError, match="expired"):
+        api.discover()
+    assert not requests
+
+
+def test_server_policy_does_not_override_oauth_refresh(tmp_path):
+    api, requests = adapter(tmp_path, [
+        {"access_token": "new", "expires_in": 7200}, {"items": []}
+    ], expires=0)
+    api.path.write_text(json.dumps(api.credentials() | {"expiry_policy": "server"}))
+    assert api.discover() == []
+    assert len(requests) == 2
+    assert api.health()["remaining_seconds"] == 7200

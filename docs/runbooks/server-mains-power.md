@@ -106,13 +106,15 @@ name it `homelab-plug-test`, and grant device read (`r:devices:*`) and execute
 (`x:devices:*`) permissions. No Globe Suite password is needed by the coordinator.
 
 After generating a fresh token, run `ssh laptop-dell-studio`, then run this on the
-laptop. Input is hidden and is not placed in shell history. The 23-hour local expiry
-leaves a margin inside a newly generated PAT's 24-hour lifetime. Do not use this
-expiry estimate for an older token.
+laptop. Input is hidden and is not placed in shell history. The owner-selected
+`expiry_policy: "server"` omits a local expiry estimate and lets SmartThings reject
+invalid credentials. Health reports expiry and remaining lifetime as unknown (`null`).
+This does not extend the provider's token lifetime or enable automatic refresh.
+OAuth credentials continue to honor provider expiry and refresh normally.
 
 ```sh
 python3 - <<'PYTOKEN'
-import getpass, json, os, time
+import getpass, json, os
 from pathlib import Path
 os.umask(0o077)
 p = Path.home() / ".local/share/homelab-capacity/main/smartthings/credentials.json"
@@ -123,7 +125,7 @@ token = getpass.getpass("Fresh SmartThings PAT: ").strip()
 if not token:
     raise SystemExit("No token entered; nothing saved.")
 with p.open("x") as stream:
-    json.dump({"access_token": token, "expires_at": int(time.time()) + 23 * 3600}, stream)
+    json.dump({"access_token": token, "expiry_policy": "server"}, stream)
     stream.write("\n")
 p.chmod(0o600)
 print("Saved privately:", p)
@@ -181,9 +183,11 @@ cold-cycle validation are complete.
 
 An operator may explicitly set `allow_temporary_credentials: true` on a host's
 private mains entry to use an existing PAT in automatic mode. This defaults to
-false and only relaxes the renewable OAuth requirement. Expiry, uncertain refresh,
+false and only relaxes the renewable OAuth requirement. Known expiry, uncertain refresh,
 completed cold-cycle evidence, site evidence and all power interlocks still apply.
-No new mains removal is permitted with less than one hour of authorization left.
+No new mains removal is permitted with less than one hour of known authorization left.
+For a PAT with `expiry_policy: "server"`, no local expiry cutoff is applied; actual
+API failures still block progress and uncertain switch commands are never replayed.
 Replace the PAT before it expires: an expired credential cannot restore power to
 an already disconnected server. Remove the option when renewable OAuth is ready.
 
