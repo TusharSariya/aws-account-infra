@@ -16,6 +16,7 @@ def validate(config):
         if (
             host not in {"primary", "secondary"}
             or type(entry.get("enabled", False)) is not bool
+            or type(entry.get("allow_temporary_credentials", False)) is not bool
             or mode(entry) not in {"disabled", "commissioning", "automatic"}
         ):
             raise ValueError("Invalid mains host or enable flag")
@@ -158,7 +159,9 @@ class Mains:
             return
         if mode(self.entry) != "automatic":
             raise PowerBlocked("Automatic mains removal is disabled")
-        if not auth["renewable"] or not auth["refresh_verified"]:
+        if not (auth["renewable"] and auth["refresh_verified"]) and not self.entry.get(
+            "allow_temporary_credentials", False
+        ):
             raise PowerBlocked(
                 "Verified renewable OAuth required for automatic mains removal"
             )
